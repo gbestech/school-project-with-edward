@@ -11,6 +11,7 @@ venv/
 # SQLite database
 *.sqlite3
 *.db
+/backups/
 
 # Backup files
 *.bak
