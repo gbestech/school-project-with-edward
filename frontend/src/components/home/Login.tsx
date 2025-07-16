@@ -6,47 +6,23 @@ import {
   AlertCircle, CheckCircle, Mail, Lock, UserCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Types
-interface CustomUser {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  is_active: boolean;
-  is_staff: boolean;
-  is_superuser: boolean;
-  date_joined: string;
-  full_name: string;
-}
+import type { CustomUser, UserRole, Particle } from '@/types/types'
 
 interface LoginCredentials {
   email: string;
   password: string;
-  role: string;
+  role: UserRole;
   rememberMe: boolean;
 }
 
 interface LoginProps {
-  onLogin: (user: CustomUser) => void;
+ onLogin: (credentials: LoginCredentials) => Promise<void>;
   onBackToHome: () => void;
   onSocialLogin?: (provider: 'google' | 'facebook') => void;
   onForgotPassword?: () => void;
   onCreateAccount?: () => void;
   isLoading?: boolean;
-  error?: string | null;
-}
-
-interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  size: number;
-  speed: number;
-  opacity: number;
-  angle: number;
+  errors?: Record<string, string>;
 }
 
 const Login: React.FC<LoginProps> = ({ 
@@ -56,17 +32,17 @@ const Login: React.FC<LoginProps> = ({
   onForgotPassword,
   onCreateAccount,
   isLoading: externalLoading = false,
-  error: externalError = null
+  errors: externalErrors = {}
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState<LoginCredentials>({
     email: '', 
     password: '', 
-    role: 'student',
+    role: 'student' as UserRole,
     rememberMe: false
   });
   const [internalLoading, setInternalLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [internalErrors, setInternalErrors] = useState<Record<string, string>>({});
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -74,19 +50,34 @@ const Login: React.FC<LoginProps> = ({
 
   // Combined loading state
   const isLoading = externalLoading || internalLoading;
-const navigate = useNavigate()
-  // Handle external errors
+  
+  // Combined errors state
+  const errors = useMemo(() => ({
+    ...internalErrors,
+    ...externalErrors
+  }), [internalErrors, externalErrors]);
+
+  const navigate = useNavigate();
+
+  // Handle external errors - clear internal errors when external errors come in
   useEffect(() => {
-    if (externalError) {
-      setErrors({ general: externalError });
+    if (Object.keys(externalErrors).length > 0) {
+      setInternalErrors({});
     }
-  }, [externalError]);
+  }, [externalErrors]);
 
   // Component mount state
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  // Clear external errors when user starts typing
+  useEffect(() => {
+    if (Object.keys(externalErrors).length > 0 && (form.email || form.password)) {
+      
+    }
+  }, [form.email, form.password, externalErrors]);
 
   // Optimized mouse tracking with proper throttling
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -159,7 +150,7 @@ const navigate = useNavigate()
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    setErrors(newErrors);
+    setInternalErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [form.email, form.password]);
 
@@ -170,25 +161,10 @@ const navigate = useNavigate()
     if (!validateForm()) return;
 
     setInternalLoading(true);
-    setErrors({});
+    setInternalErrors({});
 
     try {
-      // Create user object from form data
-      const mockUser: CustomUser = {
-        id: Date.now(), // Use timestamp as unique ID
-        username: form.email.split('@')[0],
-        email: form.email,
-        first_name: form.email.split('@')[0].charAt(0).toUpperCase() + form.email.split('@')[0].slice(1),
-        last_name: 'User',
-        role: form.role,
-        is_active: true,
-        is_staff: form.role === 'teacher',
-        is_superuser: form.role === 'admin',
-        date_joined: new Date().toISOString(),
-        full_name: `${form.email.split('@')[0].charAt(0).toUpperCase() + form.email.split('@')[0].slice(1)} User`
-      };
-
-      // Store remember me preference
+            // Store remember me preference
       if (form.rememberMe && typeof window !== 'undefined') {
         try {
           const rememberData = {
@@ -196,7 +172,6 @@ const navigate = useNavigate()
             role: form.role,
             timestamp: Date.now()
           };
-          // Using a simple in-memory approach since localStorage isn't available
           console.log('Remember me data:', rememberData);
         } catch (err) {
           console.warn('Could not save remember me preference:', err);
@@ -206,11 +181,11 @@ const navigate = useNavigate()
       setLoginSuccess(true);
       
       // Call the parent login handler
-      await onLogin(mockUser);
+      await onLogin(form);
       
     } catch (error) {
       console.error('Login error:', error);
-      setErrors({ general: 'Login failed. Please try again.' });
+      setInternalErrors({ general: 'Login failed. Please try again.' });
     } finally {
       setInternalLoading(false);
     }
@@ -218,21 +193,15 @@ const navigate = useNavigate()
 
   const handleInputChange = (field: keyof LoginCredentials, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    
+    // Clear internal errors for this field
+    if (internalErrors[field]) {
+      setInternalErrors(prev => ({ ...prev, [field]: '' }));
     }
-    // Clear general error when user starts typing
-    if (errors.general && (field === 'email' || field === 'password')) {
-      setErrors(prev => ({ ...prev, general: '' }));
-    }
-  };
-
-  const handleSocialLogin = (provider: 'google' | 'facebook') => {
-    if (onSocialLogin) {
-      onSocialLogin(provider);
-    } else {
-      console.log(`${provider} login initiated`);
-      // You could show a toast or handle this differently
+    
+    // Clear general internal error when user starts typing
+    if (internalErrors.general && (field === 'email' || field === 'password')) {
+      setInternalErrors(prev => ({ ...prev, general: '' }));
     }
   };
 
@@ -241,7 +210,6 @@ const navigate = useNavigate()
       onForgotPassword();
     } else {
       console.log('Forgot password clicked');
-      // You could show a modal or navigate to forgot password page
     }
   };
 
@@ -250,18 +218,7 @@ const navigate = useNavigate()
       onCreateAccount();
     } else {
       navigate('/signup');
-      // You could navigate to registration page
     }
-  };
-
-  // Auto-fill demo credentials (for development/demo purposes)
-  const fillDemoCredentials = () => {
-    setForm(prev => ({
-      ...prev,
-      email: 'demo@example.com',
-      password: 'demo123'
-    }));
-    setErrors({});
   };
 
   // Memoized feature data
@@ -327,7 +284,7 @@ const navigate = useNavigate()
           {/* Left: Branding */}
           <div className="text-white text-center lg:text-left space-y-6">
             <div className="space-y-4">
-                           <div className="space-y-3">
+              <div className="space-y-3">
                 <h2 className="text-4xl lg:text-5xl font-black leading-tight">
                   Welcome to the <br />
                   <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -370,7 +327,7 @@ const navigate = useNavigate()
           </div>
 
           {/* Right: Login Form */}
-          <div className="bg-white/10 backdrop-blur-2xl rounded-2xl p-6 border border-white/20 shadow-2xl max-w-md w-full mx-auto relative">
+          <div className="bg-white/10 backdrop-blur-2xl rounded-2xl p-6 border border-white/20 shadow-2xl max-w-md w-full mx-auto relative mt-24">
             <div className="text-white">
               {/* Header */}
               <div className="text-center mb-6">
@@ -397,30 +354,15 @@ const navigate = useNavigate()
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
-                {/* Error Message */}
-                {errors.general && (
+                {/* Error Messages */}
+                {(errors.general || errors.google) && (
                   <div className="flex items-center space-x-2 p-3 bg-red-500/20 border border-red-500/30 rounded-xl">
                     <AlertCircle size={14} className="text-red-400" />
-                    <span className="text-sm text-red-300">{errors.general}</span>
+                    <span className="text-sm text-red-300">
+                      {errors.general || errors.google}
+                    </span>
                   </div>
                 )}
-
-                {/* Demo Info */}
-                <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-blue-300 font-medium mb-1">Demo Credentials:</p>
-                      <p className="text-xs text-blue-200">demo@example.com / demo123</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={fillDemoCredentials}
-                      className="text-xs bg-blue-500/30 hover:bg-blue-500/40 px-2 py-1 rounded-md transition-colors"
-                    >
-                      Auto-fill
-                    </button>
-                  </div>
-                </div>
 
                 {/* Email */}
                 <div className="space-y-1">
@@ -500,6 +442,7 @@ const navigate = useNavigate()
                       <option value="student" className="bg-slate-800">Student</option>
                       <option value="teacher" className="bg-slate-800">Teacher</option>
                       <option value="parent" className="bg-slate-800">Parent</option>
+                      <option value="admin" className="bg-slate-800">Admin</option>
                     </select>
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 pointer-events-none">
                       <RoleIcon size={16} />
@@ -569,7 +512,7 @@ const navigate = useNavigate()
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => handleSocialLogin('google')}
+                    onClick={() => onSocialLogin?.('google')}
                     disabled={isLoading}
                     className="flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-300 group backdrop-blur-xl disabled:opacity-50"
                   >
@@ -584,7 +527,7 @@ const navigate = useNavigate()
                   
                   <button
                     type="button"
-                    onClick={() => handleSocialLogin('facebook')}
+                    onClick={() => onSocialLogin?.('facebook')}
                     disabled={isLoading}
                     className="flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-300 group backdrop-blur-xl disabled:opacity-50"
                   >

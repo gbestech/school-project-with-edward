@@ -12,29 +12,36 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-
-from decouple import config
-
 from dotenv import load_dotenv
 
-load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+load_dotenv(dotenv_path=BASE_DIR / ".env")
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "edwardaja750@gmail.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "your-brevo-smtp-password")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "edwardaja750@gmail.com")
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, "static"),
+# ]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-default-key")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-your-secret-key-here-change-in-production")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 
 
 # Application definition
@@ -63,6 +70,7 @@ INSTALLED_APPS = [
     "userprofile.apps.UserprofileConfig",
     "rest_framework",
     "rest_framework.authtoken",
+    "dashboard",
     "users",
     "authentication",
     "classroom",
@@ -79,6 +87,7 @@ INSTALLED_APPS = [
     "fee",
     "parent",
     "schoolterm",
+    "invitations",
 ]
 
 SITE_ID = 1
@@ -86,31 +95,105 @@ SITE_ID = 1
 # Use JWT
 REST_USE_JWT = True
 
-# Ensure email is used
+
+# ACCOUNT_LOGIN_METHODS = {"email"}
+# ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+
+
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_EMAIL_VERIFICATION = "none"
-ACCOUNT_LOGIN_METHODS = {"email"}
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_CONFIRM_EMAIL_ON_GET = True
+ACCOUNT_LOGIN_METHOD = "email"
+
+
+# New way to configure signup fields
+ACCOUNT_SIGNUP_FIELDS = ["email*"]
+
+# New way to configure login methods
+ACCOUNT_LOGIN_METHODS = ["email"]
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+ACCOUNT_LOGOUT_REDIRECT_URL = "/"
+
+ACCOUNT_LOGOUT_ON_GET = False
+
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"  # Change to "https" in production
+ACCOUNT_EMAIL_CONFIRMATION_HMAC = True
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+
+
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_PRESERVE_USERNAME_CASING = False
+ACCOUNT_UNIQUE_EMAIL = True
+
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"  # Skip email verification for social accounts
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+
 # For Google/Facebook
+# Social Authentication settings for dj-rest-auth
+
+
+SOCIALACCOUNT_ADAPTER = "authentication.adapters.CustomSocialAccountAdapter"
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
+        "SCOPE": [
+            "profile",
+            "email",
+        ],
+        "AUTH_PARAMS": {
+            "access_type": "online",
+        },
+        "OAUTH_PKCE_ENABLED": True,
+        "FETCH_USERINFO": True,
         "APP": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID", ""),
             "secret": os.getenv("GOOGLE_SECRET", ""),
-            "key": "",
-        }
+        },
     },
     "facebook": {
+        "METHOD": "oauth2",
+        "SCOPE": ["email", "public_profile"],
+        "AUTH_PARAMS": {"auth_type": "reauthenticate"},
+        "INIT_PARAMS": {"cookie": True},
+        "FIELDS": [
+            "id",
+            "first_name",
+            "last_name",
+            "middle_name",
+            "name",
+            "name_format",
+            "picture",
+            "short_name",
+            "email",
+        ],
+        "EXCHANGE_TOKEN": True,
+        "LOCALE_FUNC": "path.to.callable",
+        "VERIFIED_EMAIL": False,
+        "VERSION": "v13.0",
         "APP": {
             "client_id": os.getenv("FACEBOOK_CLIENT_ID", ""),
             "secret": os.getenv("FACEBOOK_SECRET", ""),
-            "key": "",
-        }
+        },
     },
 }
+
+
+REST_AUTH_SERIALIZERS = {
+    "LOGIN_SERIALIZER": "authentication.serializers.CustomTokenObtainPairSerializer",
+    "USER_DETAILS_SERIALIZER": "authentication.serializers.UserDetailsSerializer",
+}
+
+REST_AUTH_REGISTER_SERIALIZERS = {
+    "REGISTER_SERIALIZER": "dj_rest_auth.registration.serializers.RegisterSerializer",
+}
+
+
+class COROPHeadersMiddleware:
+    def process_response(self, request, response):
+        response["Cross-Origin-Opener-Policy"] = "same-origin"
+        response["Cross-Origin-Embedder-Policy"] = "require-corp"
+        return response
 
 
 MIDDLEWARE = [
@@ -126,8 +209,16 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:5173",  # Add this if you're using Vite
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",  # Add backend URL
+    "http://127.0.0.1:8000",  # Add backend URL
 ]
+
+# CORS_ALLOW_ALL_ORIGINS = True
+
 CORS_ALLOW_CREDENTIALS = True
 
 
@@ -147,6 +238,17 @@ TEMPLATES = [
         },
     },
 ]
+
+# When an anonymous user confirms their email
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = (
+    "http://localhost:5173/email-confirmed/"
+)
+
+# When a logged-in user confirms their email
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = (
+    "http://localhost:5173/dashboard/"
+)
+
 
 WSGI_APPLICATION = "config.wsgi.application"
 
@@ -221,44 +323,25 @@ REST_FRAMEWORK = {
 }
 
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# EMAIL SETTINGS - Using Brevo API (not SMTP)
+# We're using the Brevo API directly in utils/email.py, so we don't need SMTP settings here
+# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # Fallback for development
 
 
-# DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@example.com")
-
-
-# settings.py
-
-# EMAIL SETTINGS (Brevo / Sendinblue via Gmail test)
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp-relay.brevo.com"
-EMAIL_PORT = 587
-
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv(
-    "EMAIL_HOST_USER"
-)  # your Gmail or Brevo-approved sender email
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")  # your SMTP key from Brevo
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")  # same as EMAIL_HOST_USER
-
-
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "your-brevo-api-key-here")
 
 
 from datetime import timedelta
 
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
-PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_PUBLIC_KEY")
+PAYSTACK_PUBLIC_KEY = os.getenv("PAYSTACK_PUBLIC_KEY")
 
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,

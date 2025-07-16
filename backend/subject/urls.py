@@ -49,7 +49,7 @@ urlpatterns = [
 ]
 
 # Apply format suffix patterns for content negotiation (.json, .xml, etc.)
-urlpatterns = format_suffix_patterns(urlpatterns)
+# urlpatterns = format_suffix_patterns(urlpatterns)
 
 # ==============================================================================
 # URL PATTERN DOCUMENTATION

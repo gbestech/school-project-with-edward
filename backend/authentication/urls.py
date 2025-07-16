@@ -1,69 +1,66 @@
-# from django.urls import path, include
-# from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
-# from .views import (
-#     jwt_login_view,
-#     logout_view,
-#     password_reset_request,
-#     password_reset_confirm,
-#     check_email_view,
-#     register_view,
-# )
-
-# app_name = "authentication"
-
-# urlpatterns = [
-#     # JWT Auth endpoints
-#     path("api/token/", jwt_login_view, name="token_obtain_pair"),
-#     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-#     path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
-#     # Custom auth endpoints
-#     path("logout/", logout_view, name="logout"),
-#     path("check-email/", check_email_view, name="check_email"),
-#     path("register/", register_view, name="register"),
-#     path("password-reset/", password_reset_request, name="password_reset"),
-#     path(
-#         "password-reset-confirm/<uidb64>/<token>/",
-#         password_reset_confirm,
-#         name="password_reset_confirm",
-#     ),
-#     # dj-rest-auth
-#     path("dj-rest-auth/", include("dj_rest_auth.urls")),
-#     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
-#     path(
-#         "dj-rest-auth/social/", include("dj_rest_auth.social_urls")
-#     ),  # ✅ THIS IS THE CORRECT ONE
-# ]
+# authentication/urls.py
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from dj_rest_auth.registration.views import SocialLoginView, SocialConnectView
 from .views import (
-    jwt_login_view,
+    CustomTokenObtainPairView,
+    SimpleLoginView,
+    RegisterView,
+    VerifyAccountView,
+    ResendVerificationView,
+    CheckVerificationStatusView,
+    user_profile,
     logout_view,
     password_reset_request,
     password_reset_confirm,
     check_email_view,
-    register_view,
+    GoogleLogin,
+    DebugLoginView,
+    debug_auth,  # Import the function directly
+    debug_token,  # Import the function directly
 )
+
 
 app_name = "authentication"
 
 urlpatterns = [
-    # JWT Auth endpoints
-    path("api/token/", jwt_login_view, name="token_obtain_pair"),
-    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("api/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
-    # Custom auth endpoints
+    # ================== Main Auth endpoints ==================
+    path("login/", CustomTokenObtainPairView.as_view(), name="login"),
     path("logout/", logout_view, name="logout"),
-    path("check-email/", check_email_view, name="check_email"),
-    path("register/", register_view, name="register"),
+    path("register/", RegisterView.as_view(), name="register"),
+    path("verify-account/", VerifyAccountView.as_view(), name="verify_account"),
+    path(
+        "resend-verification/",
+        ResendVerificationView.as_view(),
+        name="resend_verification",
+    ),
+    # ================== JWT Token endpoints ==================
+    path("token/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # ================== User Profile ==================
+    path("profile/", user_profile, name="user_profile"),
+    # ================== Password Reset ==================
     path("password-reset/", password_reset_request, name="password_reset"),
     path(
         "password-reset-confirm/<uidb64>/<token>/",
         password_reset_confirm,
         name="password_reset_confirm",
     ),
-    # dj-rest-auth core endpoints
+    # ================== Utility endpoints ==================
+    path("check-email/", check_email_view, name="check_email"),
+    path(
+        "check-verification-status/",
+        CheckVerificationStatusView.as_view(),
+        name="check_verification_status",
+    ),
+    # ================== Social Authentication ==================
+    path("google/login/", GoogleLogin.as_view(), name="google_login"),
+    # ================== Debug endpoint ==================
+    path("debug-login/", DebugLoginView.as_view(), name="debug_login"),
+    # ================== dj-rest-auth endpoints ==================
     path("dj-rest-auth/", include("dj_rest_auth.urls")),
     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
-    # ✅ If using social login (Google, Facebook, etc.)
-    path("dj-rest-auth/social/", include("allauth.socialaccount.urls")),
+    path("debug/auth/", debug_auth, name="debug_auth"),
+    path("debug/token/", debug_token, name="debug_token"),
 ]

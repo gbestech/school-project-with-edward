@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from .models import Message
 from .serializers import MessageSerializer
 from .permissions import IsParentTeacherOrAdmin
+from django.db.models import Q
 
 
 class MessageViewSet(viewsets.ModelViewSet):
@@ -19,9 +20,7 @@ class MessageViewSet(viewsets.ModelViewSet):
             return Message.objects.filter(sender=user)
         else:
             # Return all messages where user is sender or recipient
-            return Message.objects.filter(sender=user) | Message.objects.filter(
-                recipient=user
-            )
+            return Message.objects.filter(Q(sender=user) | Q(recipient=user))
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)

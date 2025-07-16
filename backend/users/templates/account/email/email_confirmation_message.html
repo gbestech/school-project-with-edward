@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .btn {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Confirm Your Email</h2>
+  <p>Hi {{ user.get_full_name|default:user.email }},</p>
+  <p>Thanks for signing up at <strong>Everything School</strong>! Click the button below to activate your account:</p>
+  <p><a href="{{ activate_url }}" class="btn">Activate My Account</a></p>
+  <p>If you didn’t request this, you can safely ignore this email.</p>
+  <p>Best regards,<br/>The Everything School Team</p>
+</body>
+</html>

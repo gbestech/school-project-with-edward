@@ -5,10 +5,14 @@ User = get_user_model()
 
 
 class EmailBackend(BaseBackend):
-    def authenticate(self, request, username=None, password=None, **kwargs):
+    def authenticate(self, request, username=None, password=None, email=None, **kwargs):
         try:
-            # We assume username is the email here
-            user = User.objects.get(email=username)
+            # Support both username and email parameters
+            email_to_use = email or username
+            if not email_to_use:
+                return None
+            # Use email_to_use for lookup
+            user = User.objects.get(email=email_to_use)
         except User.DoesNotExist:
             return None
 
@@ -23,5 +27,5 @@ class EmailBackend(BaseBackend):
             return None
 
     def user_can_authenticate(self, user):
-        # You can add your own conditions here
+        # You can add your own conditions here, for example:
         return user.is_active

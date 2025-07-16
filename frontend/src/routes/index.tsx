@@ -14,10 +14,12 @@ const Home = lazy(() => import('./../pages/Landing'));
 const School_Activities =lazy(()=> import('./../pages/School_Activities'))
 const Login = lazy(() => import('./../pages/Login'));
 const SignUp = lazy(() => import('./../pages/SignUp'));
+const EmailVerification = lazy(() => import('./../pages/EmailVerification'));
 const About = lazy(() => import("./../pages/About"));
 const StudentDashboard = lazy(() => import('./../pages/student/Dashboard'));
 const TeacherDashboard = lazy(() => import('./../pages/teacher/Dashboard'));
 const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard'));
+const AdminDashbaord = lazy(() => import('./../pages/admin/Dashboard'))
 const NotFound = lazy(() => import('./../pages/NotFound'));
 
 // Loading fallback component
@@ -126,6 +128,11 @@ export const router = createBrowserRouter([
         errorElement: <RouteErrorElement />
       },
       {
+        path: 'verify-email',
+        element: <EmailVerification />,
+        errorElement: <RouteErrorElement />
+      },
+      {
         path: 'about',
         element: <About />,
         errorElement: <RouteErrorElement />
@@ -146,6 +153,20 @@ export const router = createBrowserRouter([
           }
         ]
       },
+
+       {
+        path: 'admin',
+        children: [
+          {
+            path: 'dashboard',
+            element: <AdminDashbaord />,
+            errorElement: <RouteErrorElement />
+          }
+        ]
+      },
+
+
+      
       {
         path: 'teacher',
         children: [
@@ -183,5 +204,6 @@ console.log('Available routes:', [
   '/about',
   '/student/dashboard',
   '/teacher/dashboard', 
-  '/parent/dashboard'
+  '/parent/dashboard',
+    '/admin/dashboard'
 ]);

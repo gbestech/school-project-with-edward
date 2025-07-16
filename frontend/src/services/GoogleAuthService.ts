@@ -1,4 +1,5 @@
-// GoogleAuthService.ts
+
+// ModernGoogleAuthService.ts - Using Google Identity Services
 export interface GoogleUser {
   id: string;
   email: string;
@@ -14,223 +15,214 @@ export interface GoogleAuthResponse {
   user: GoogleUser;
 }
 
-export class GoogleAuthService {
-  private static instance: GoogleAuthService;
-  private gapi: any = null;
-  private auth2: any = null;
-  private isInitializing: boolean = false;
-  private initPromise: Promise<void> | null = null;
+export class ModernGoogleAuthService {
+  private static instance: ModernGoogleAuthService;
+  private isInitialized: boolean = false;
+ private clientId: string = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
-  static getInstance(): GoogleAuthService {
-    if (!GoogleAuthService.instance) {
-      GoogleAuthService.instance = new GoogleAuthService();
+  static getInstance(): ModernGoogleAuthService {
+    if (!ModernGoogleAuthService.instance) {
+      ModernGoogleAuthService.instance = new ModernGoogleAuthService();
     }
-    return GoogleAuthService.instance;
+    return ModernGoogleAuthService.instance;
   }
 
-  // Initialize Google API with improved error handling and caching
   async initialize(clientId: string): Promise<void> {
-    // Return existing promise if already initializing
-    if (this.isInitializing && this.initPromise) {
-      return this.initPromise;
-    }
-
-    // Return immediately if already initialized
-    if (this.gapi && this.auth2) {
+    if (this.isInitialized) {
       return Promise.resolve();
     }
 
-    this.isInitializing = true;
-    this.initPromise = new Promise((resolve, reject) => {
-      // Check if Google API is already loaded
-      if ((window as any).gapi) {
-        this.gapi = (window as any).gapi;
-        this.initializeAuth2(clientId, resolve, reject);
+    this.clientId = clientId;
+
+    return new Promise((resolve, reject) => {
+      // Check if Google Identity Services is already loaded
+      if ((window as any).google?.accounts?.id) {
+        this.initializeGoogleIdentity(resolve, reject);
         return;
       }
 
-      // Load Google API script
+      // Load Google Identity Services script
       const script = document.createElement('script');
-      script.src = 'https://apis.google.com/js/api.js';
+      script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;
       script.defer = true;
       
       script.onload = () => {
-        this.gapi = (window as any).gapi;
-        this.initializeAuth2(clientId, resolve, reject);
+        console.log('Google Identity Services script loaded');
+        this.initializeGoogleIdentity(resolve, reject);
       };
       
       script.onerror = () => {
-        this.isInitializing = false;
-        this.initPromise = null;
-        reject(new Error('Failed to load Google API script'));
+        console.error('Failed to load Google Identity Services script');
+        reject(new Error('Failed to load Google Identity Services script'));
       };
       
       document.head.appendChild(script);
     });
+  }
 
+  private initializeGoogleIdentity(resolve: () => void, reject: (error: any) => void): void {
     try {
-      await this.initPromise;
-      this.isInitializing = false;
+      const google = (window as any).google;
+      
+      if (!google?.accounts?.id) {
+        throw new Error('Google Identity Services not available');
+      }
+
+      // Initialize Google Identity Services
+      google.accounts.id.initialize({
+        client_id: this.clientId,
+        callback: this.handleCredentialResponse.bind(this),
+        auto_select: false,
+        cancel_on_tap_outside: false
+      });
+
+      this.isInitialized = true;
+      console.log('Google Identity Services initialized successfully');
+      resolve();
     } catch (error) {
-      this.isInitializing = false;
-      this.initPromise = null;
-      throw error;
+      console.error('Google Identity Services initialization failed:', error);
+      reject(error);
     }
   }
 
-  private initializeAuth2(clientId: string, resolve: () => void, reject: (error: any) => void): void {
-    this.gapi.load('auth2', async () => {
-      try {
-        // Check if auth2 is already initialized
-        if (this.gapi.auth2.getAuthInstance()) {
-          this.auth2 = this.gapi.auth2.getAuthInstance();
-          resolve();
-          return;
-        }
-
-        this.auth2 = await this.gapi.auth2.init({
-          client_id: clientId,
-          scope: 'profile email',
-          fetch_basic_profile: true,
-          ux_mode: 'popup'
-        });
-        
-        resolve();
-      } catch (error) {
-        console.error('Auth2 initialization failed:', error);
-        reject(new Error('Failed to initialize Google Auth2'));
-      }
-    });
+  private handleCredentialResponse(response: any): void {
+    console.log('Credential response received:', response);
+    // This will be called when using the One Tap flow
   }
 
-  // Sign in with Google with improved error handling
   async signIn(): Promise<GoogleAuthResponse> {
-    if (!this.auth2) {
+    if (!this.isInitialized) {
       throw new Error('Google Auth not initialized. Call initialize() first.');
     }
 
-    try {
-      // Check if user is already signed in
-      if (this.auth2.isSignedIn.get()) {
-        const currentUser = this.auth2.currentUser.get();
-        return this.formatUserResponse(currentUser);
+    return new Promise((resolve, reject) => {
+      const google = (window as any).google;
+      
+      if (!google?.accounts?.oauth2) {
+        reject(new Error('Google OAuth2 not available'));
+        return;
       }
 
-      // Perform sign in
-      const googleUser = await this.auth2.signIn({
+      // Request access token
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: this.clientId,
+        scope: 'profile email',
+        callback: async (response: any) => {
+          console.log('Token response:', response);
+          
+          if (response.error) {
+            reject(new Error(response.error));
+            return;
+          }
+
+          try {
+            // Get user info using the access token
+            const userInfo = await this.fetchUserInfo(response.access_token);
+            
+            const authResponse: GoogleAuthResponse = {
+              access_token: response.access_token,
+              user: {
+                id: userInfo.id,
+                email: userInfo.email,
+                name: userInfo.name,
+                given_name: userInfo.given_name,
+                family_name: userInfo.family_name,
+                picture: userInfo.picture,
+                verified_email: userInfo.verified_email
+              }
+            };
+            
+            resolve(authResponse);
+          } catch (error) {
+            reject(error);
+          }
+        },
+        error_callback: (error: any) => {
+          console.error('Token client error:', error);
+          reject(new Error('Failed to get access token'));
+        }
+      });
+
+      // Request access token (this will show the popup)
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
+    });
+  }
+
+  private async fetchUserInfo(accessToken: string): Promise<any> {
+    const response = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch user info');
+    }
+
+    return response.json();
+  }
+
+  // Alternative method using popup
+  async signInWithPopup(): Promise<GoogleAuthResponse> {
+    if (!this.isInitialized) {
+      throw new Error('Google Auth not initialized. Call initialize() first.');
+    }
+
+    return new Promise((_, reject) => {
+      // Create a popup window
+      const popup = window.open(
+        '',
+        'google-signin',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      );
+
+      if (!popup) {
+        reject(new Error('Popup blocked. Please allow popups for this site.'));
+        return;
+      }
+
+      // Build the OAuth URL
+      const params = new URLSearchParams({
+        client_id: this.clientId,
+        redirect_uri: window.location.origin,
+        response_type: 'code',
+        scope: 'profile email',
+        access_type: 'online',
         prompt: 'select_account'
       });
-      
-      return this.formatUserResponse(googleUser);
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      
-      // Handle specific error cases
-      if (typeof error === 'object' && error !== null && 'error' in error) {
-        const err = error as { error: string };
-        if (err.error === 'popup_closed_by_user') {
-          throw new Error('Sign-in was cancelled');
-        } else if (err.error === 'access_denied') {
-          throw new Error('Access denied by user');
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+      popup.location.href = authUrl;
+
+      // Monitor the popup
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          reject(new Error('Sign-in was cancelled'));
         }
-      }
-      throw new Error('Google sign-in failed. Please try again.');
-    }
+      }, 1000);
+
+      // Handle the callback (you'll need to implement this based on your setup)
+      // This is a simplified version - you'll need proper callback handling
+    });
   }
 
-  // Format user response consistently
-  private formatUserResponse(googleUser: any): GoogleAuthResponse {
-    const profile = googleUser.getBasicProfile();
-    const authResponse = googleUser.getAuthResponse();
-
-    if (!profile || !authResponse) {
-      throw new Error('Invalid Google user data received');
-    }
-
-    return {
-      access_token: authResponse.access_token,
-      user: {
-        id: profile.getId(),
-        email: profile.getEmail(),
-        name: profile.getName(),
-        given_name: profile.getGivenName(),
-        family_name: profile.getFamilyName(),
-        picture: profile.getImageUrl(),
-        verified_email: true
-      }
-    };
-  }
-
-  // Sign out with error handling
-  async signOut(): Promise<void> {
-    try {
-      if (this.auth2 && this.auth2.isSignedIn.get()) {
-        await this.auth2.signOut();
-      }
-    } catch (error) {
-      console.error('Google sign-out error:', error);
-      throw new Error('Failed to sign out from Google');
-    }
-  }
-
-  // Check if user is signed in
-  isSignedIn(): boolean {
-    return this.auth2 ? this.auth2.isSignedIn.get() : false;
-  }
-
-  // Get current user if signed in
-  getCurrentUser(): GoogleUser | null {
-    if (!this.auth2 || !this.auth2.isSignedIn.get()) {
-      return null;
-    }
-
-    try {
-      const currentUser = this.auth2.currentUser.get();
-      const profile = currentUser.getBasicProfile();
-      
-      return {
-        id: profile.getId(),
-        email: profile.getEmail(),
-        name: profile.getName(),
-        given_name: profile.getGivenName(),
-        family_name: profile.getFamilyName(),
-        picture: profile.getImageUrl(),
-        verified_email: true
-      };
-    } catch (error) {
-      console.error('Error getting current user:', error);
-      return null;
-    }
-  }
-
-  // Disconnect user from the application
-  async disconnect(): Promise<void> {
-    try {
-      if (this.auth2 && this.auth2.isSignedIn.get()) {
-        await this.auth2.disconnect();
-      }
-    } catch (error) {
-      console.error('Google disconnect error:', error);
-      throw new Error('Failed to disconnect from Google');
-    }
-  }
-
-  // Check if Google API is available
-  isGoogleApiLoaded(): boolean {
-    return !!(window as any).gapi;
+  // Check if Google Identity Services is available
+  isGoogleIdentityLoaded(): boolean {
+    return !!((window as any).google?.accounts?.id);
   }
 
   // Get initialization status
   getInitializationStatus(): {
     isInitialized: boolean;
-    isInitializing: boolean;
-    isGoogleApiLoaded: boolean;
+    isGoogleIdentityLoaded: boolean;
+    clientId: string;
   } {
     return {
-      isInitialized: !!(this.gapi && this.auth2),
-      isInitializing: this.isInitializing,
-      isGoogleApiLoaded: this.isGoogleApiLoaded()
+      isInitialized: this.isInitialized,
+      isGoogleIdentityLoaded: this.isGoogleIdentityLoaded(),
+      clientId: this.clientId
     };
   }
 }

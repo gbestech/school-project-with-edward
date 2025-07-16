@@ -1,0 +1,10 @@
+Hi {{ user.get_full_name|default:user.email }},
+
+Thanks for signing up at Everything School! Please confirm your email address by clicking the link below:
+
+{{ activate_url }}
+
+If you didn’t sign up, you can ignore this email.
+
+Thanks,
+The Everything School Team
