@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import type { CustomUser, UserRole, Particle } from '@/types/types'
 
 interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
   role: UserRole;
   rememberMe: boolean;
@@ -36,7 +36,7 @@ const Login: React.FC<LoginProps> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState<LoginCredentials>({
-    email: '', 
+    username: '', 
     password: '', 
     role: 'student' as UserRole,
     rememberMe: false
@@ -74,10 +74,10 @@ const Login: React.FC<LoginProps> = ({
 
   // Clear external errors when user starts typing
   useEffect(() => {
-    if (Object.keys(externalErrors).length > 0 && (form.email || form.password)) {
+    if (Object.keys(externalErrors).length > 0 && (form.username || form.password)) {
       
     }
-  }, [form.email, form.password, externalErrors]);
+  }, [form.username, form.password, externalErrors]);
 
   // Optimized mouse tracking with proper throttling
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -136,23 +136,18 @@ const Login: React.FC<LoginProps> = ({
   // Form validation with proper error handling
   const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!form.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(form.email)) {
-      newErrors.email = 'Please enter a valid email address';
+    // Remove email regex validation, just check for non-empty username
+    if (!form.username.trim()) {
+      newErrors.username = 'Username is required';
     }
-
     if (!form.password) {
       newErrors.password = 'Password is required';
     } else if (form.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-
     setInternalErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [form.email, form.password]);
+  }, [form.username, form.password]);
 
   // Enhanced login handler with proper error management
   const handleLogin = async (e: React.FormEvent) => {
@@ -168,7 +163,7 @@ const Login: React.FC<LoginProps> = ({
       if (form.rememberMe && typeof window !== 'undefined') {
         try {
           const rememberData = {
-            email: form.email,
+            username: form.username,
             role: form.role,
             timestamp: Date.now()
           };
@@ -180,6 +175,9 @@ const Login: React.FC<LoginProps> = ({
 
       setLoginSuccess(true);
       
+      // Debug: Print login credentials payload
+      console.log('Login payload:', form);
+
       // Call the parent login handler
       await onLogin(form);
       
@@ -200,7 +198,7 @@ const Login: React.FC<LoginProps> = ({
     }
     
     // Clear general internal error when user starts typing
-    if (internalErrors.general && (field === 'email' || field === 'password')) {
+    if (internalErrors.general && (field === 'username' || field === 'password')) {
       setInternalErrors(prev => ({ ...prev, general: '' }));
     }
   };
@@ -364,28 +362,28 @@ const Login: React.FC<LoginProps> = ({
                   </div>
                 )}
 
-                {/* Email */}
+                {/* Username */}
                 <div className="space-y-1">
                   <label className="block text-sm font-semibold text-white/90 flex items-center space-x-2">
                     <Mail size={14} />
-                    <span>Email</span>
+                    <span>Username</span>
                   </label>
                   <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="Enter your email"
+                    type="text"
+                    value={form.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
+                    placeholder="Enter your username"
                     className={`w-full px-4 py-3 rounded-xl bg-white/5 border text-white placeholder-white/40 focus:outline-none focus:ring-2 transition-all duration-300 backdrop-blur-xl ${
-                      errors.email 
+                      errors.username 
                         ? 'border-red-500/50 focus:ring-red-400/50' 
                         : 'border-white/20 focus:ring-blue-400/50'
                     }`}
                     disabled={isLoading}
                   />
-                  {errors.email && (
+                  {errors.username && (
                     <p className="text-red-300 text-xs flex items-center space-x-1">
                       <AlertCircle size={12} />
-                      <span>{errors.email}</span>
+                      <span>{errors.username}</span>
                     </p>
                   )}
                 </div>

@@ -14,8 +14,20 @@ from subject.models import Subject
 class Teacher(models.Model):
     """Teacher profile extending User model"""
 
+    STAFF_TYPE_CHOICES = [
+        ("teaching", "Teaching"),
+        ("non-teaching", "Non-Teaching"),
+    ]
+    LEVEL_CHOICES = [
+        ("nursery", "Nursery"),
+        ("primary", "Primary"),
+        ("secondary", "Secondary"),
+    ]
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     employee_id = models.CharField(max_length=20, unique=True)
+    staff_type = models.CharField(max_length=20, choices=STAFF_TYPE_CHOICES, default="teaching")
+    level = models.CharField(max_length=20, choices=LEVEL_CHOICES, blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True)
     address = models.TextField(blank=True)
     date_of_birth = models.DateField(null=True, blank=True)

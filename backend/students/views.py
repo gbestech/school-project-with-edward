@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
@@ -25,7 +25,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["education_level", "student_class", "gender"]
+    filterset_fields = ["education_level", "student_class", "gender", "is_active"]
     search_fields = [
         "user__first_name",
         "user__last_name",
@@ -37,7 +37,7 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Optimize queryset with select_related for better performance."""
-        return Student.objects.select_related("user").prefetch_related("parents")
+        return Student.objects.select_related("user").prefetch_related("parents")  # type: ignore
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""
@@ -47,13 +47,35 @@ class StudentViewSet(viewsets.ModelViewSet):
             return StudentCreateSerializer
         return StudentDetailSerializer
 
+    def create(self, request, *args, **kwargs):
+        # Allow unauthenticated POST requests for testing
+        self.permission_classes = [AllowAny]
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        student = serializer.save()
+        student_password = getattr(serializer, '_generated_student_password', None)
+        student_username = getattr(serializer, '_generated_student_username', None)
+        parent_password = getattr(serializer, '_generated_parent_password', None)
+        headers = self.get_success_headers(serializer.data)
+        # Return the student data and the generated passwords
+        return Response(
+            {
+                "student": StudentDetailSerializer(student, context=self.get_serializer_context()).data,
+                "student_username": student_username,
+                "student_password": student_password,
+                "parent_password": parent_password,
+            },
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )  # type: ignore[unreachable]
+
     def retrieve(self, request, pk=None):
         """Enhanced retrieve with education-level specific data."""
         student = get_object_or_404(Student, pk=pk)
         student_data = StudentDetailSerializer(student).data
 
         # Basic attendance summary
-        attendance_qs = Attendance.objects.filter(student=student)
+        attendance_qs = Attendance.objects.filter(student=student)  # type: ignore
         total_attendance = attendance_qs.count()
         present_count = attendance_qs.filter(status="present").count()
         attendance_percentage = (
@@ -95,16 +117,16 @@ class StudentViewSet(viewsets.ModelViewSet):
             }
         else:
             # For primary and secondary students, include detailed academic results
-            results = StudentResult.objects.filter(student=student)
+            results = StudentResult.objects.filter(student=student)  # type: ignore
             term_breakdown = {}
 
-            for term in ["term1", "term2", "term3"]:
-                term_results = results.filter(term=term)
-                avg_score = term_results.aggregate(avg=Avg("score"))["avg"] or 0
-                term_breakdown[term] = {
+            for term_code, term_label in [("FIRST", "First Term"), ("SECOND", "Second Term"), ("THIRD", "Third Term")]:
+                term_results = results.filter(exam_session__term=term_code)
+                avg_score = term_results.aggregate(avg=Avg("total_score"))["avg"] or 0
+                term_breakdown[term_label] = {
                     "average_score": round(avg_score, 2),
                     "subjects": [
-                        {"subject": r.subject.name, "score": r.score}
+                        {"subject": r.subject.name, "score": r.total_score}
                         for r in term_results
                     ],
                 }
@@ -135,9 +157,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         return Response({"count": students.count(), "students": serializer.data})
 
     @action(detail=False, methods=["get"])
-    def students_by_class(self, request):
+    def students_by_class(self, request, class_name=None):
         """Get students by specific class."""
-        class_name = request.query_params.get("class_name")
         if not class_name:
             return Response(
                 {"error": "class_name parameter is required"},
@@ -155,11 +176,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         )
 
     @action(detail=False, methods=["get"])
-    def students_by_age_range(self, request):
+    def students_by_age_range(self, request, min_age=None, max_age=None):
         """Get students within a specific age range."""
-        min_age = request.query_params.get("min_age")
-        max_age = request.query_params.get("max_age")
-
         if not min_age or not max_age:
             return Response(
                 {"error": "Both min_age and max_age parameters are required"},
@@ -392,6 +410,28 @@ class StudentViewSet(viewsets.ModelViewSet):
             )
 
         return response
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        student = self.get_object()
+        student.is_active = True
+        student.save()
+        from .serializers import StudentDetailSerializer
+        return Response({
+            'status': 'student activated',
+            'student': StudentDetailSerializer(student, context={'request': request}).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        student = self.get_object()
+        student.is_active = False
+        student.save()
+        from .serializers import StudentDetailSerializer
+        return Response({
+            'status': 'student deactivated',
+            'student': StudentDetailSerializer(student, context={'request': request}).data
+        }, status=status.HTTP_200_OK)
 
     def _get_age_group(self, age):
         """Categorize age into groups."""

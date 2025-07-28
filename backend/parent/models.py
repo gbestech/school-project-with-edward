@@ -19,6 +19,24 @@ class Message(models.Model):
         return f"From {self.sender} to {self.recipient}: {self.subject}"
 
 
+class ParentStudentRelationship(models.Model):
+    parent = models.ForeignKey('ParentProfile', on_delete=models.CASCADE)
+    student = models.ForeignKey('students.Student', on_delete=models.CASCADE)
+    relationship = models.CharField(max_length=20, choices=[
+        ("Father", "Father"),
+        ("Mother", "Mother"),
+        ("Guardian", "Guardian"),
+        ("Sponsor", "Sponsor"),
+    ])
+    is_primary_contact = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('parent', 'student')
+
+    def __str__(self):
+        return f"{self.parent} - {self.student} ({self.relationship})"
+
+
 class ParentProfile(models.Model):
     user = models.OneToOneField(
         CustomUser,
@@ -26,8 +44,13 @@ class ParentProfile(models.Model):
         related_name="parent_profile",
         limit_choices_to={"role": "parent"},
     )
+    phone = models.CharField(max_length=20, blank=True, null=True, help_text="Parent's phone number")
+    address = models.CharField(max_length=255, blank=True, null=True, help_text="Parent's address")
     students = models.ManyToManyField(
-        Student, related_name="parents", help_text="Students linked to this parent"
+        'students.Student',
+        through='ParentStudentRelationship',
+        related_name="parents",
+        help_text="Students linked to this parent"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

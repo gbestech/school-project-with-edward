@@ -35,9 +35,7 @@ const Landing = () => {
   return (
     <>
       <Navbar
-        isMenuOpen={isMenuOpen}
-        setIsMenuOpen={setIsMenuOpen}
-        setIsLoginOpen={setIsLoginOpen}
+      
       />
       <Hero setIsLoginOpen={setIsLoginOpen} />
       <Footer />

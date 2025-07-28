@@ -16,25 +16,33 @@ from dotenv import load_dotenv
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# ✅ Media files configuration
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "edwardaja750@gmail.com")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "your-brevo-smtp-password")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "edwardaja750@gmail.com")
-# STATICFILES_DIRS = [
-#     os.path.join(BASE_DIR, "static"),
-# ]
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-your-secret-key-here-change-in-production")
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY", "django-insecure-your-secret-key-here-change-in-production"
+)
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -208,6 +216,11 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",  # Add this if you're using Vite
@@ -325,7 +338,9 @@ REST_FRAMEWORK = {
 
 # EMAIL SETTINGS - Using Brevo API (not SMTP)
 # We're using the Brevo API directly in utils/email.py, so we don't need SMTP settings here
-# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # Fallback for development
+EMAIL_BACKEND = (
+    "django.core.mail.backends.console.EmailBackend"  # Fallback for development
+)
 
 
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "your-brevo-api-key-here")

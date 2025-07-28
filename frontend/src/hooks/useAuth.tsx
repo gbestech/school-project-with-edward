@@ -196,10 +196,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   setIsLoading(true);
 
   try {
-    console.log('Attempting login with:', { email: credentials.email });
+    console.log('Attempting login with:', { username: credentials.username });
 
     const loginData = {
-      email: credentials.email,
+      username: credentials.username,
       password: credentials.password,
     };
 

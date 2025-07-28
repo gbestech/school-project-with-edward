@@ -13,7 +13,7 @@ logger.debug("UserProfile signals module loaded")
 def handle_user_profile(sender, instance, created, **kwargs):
     """Handle profile creation and updates for all user types"""
 
-    if instance.role in ["teacher", "admin"]:
+    if instance.role in ["teacher", "admin", "student"]:
         # Handle UserProfile
         profile, profile_created = UserProfile.objects.get_or_create(user=instance)
         if not profile_created:
@@ -22,18 +22,7 @@ def handle_user_profile(sender, instance, created, **kwargs):
                 profile.save()
             except Exception as e:
                 logger.error(f"Error updating UserProfile for user {instance.id}: {e}")
-
-    elif instance.role == "parent":
-        # Handle ParentProfile
-        profile, profile_created = ParentProfile.objects.get_or_create(user=instance)
-        if not profile_created:
-            # Profile already exists, just save it to trigger any updates
-            try:
-                profile.save()
-            except Exception as e:
-                logger.error(
-                    f"Error updating ParentProfile for user {instance.id}: {e}"
-                )
+    # Removed ParentProfile creation to prevent duplicate errors
 
 
 # Alternative: If you want to keep separate signals, use this approach

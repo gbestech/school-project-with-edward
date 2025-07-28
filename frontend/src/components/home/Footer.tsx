@@ -73,7 +73,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
   // 
   if (isDashboard) {
     return (
-      <footer className="bg-white/70 backdrop-blur-xl border-t border-gray-200/50 mt-auto">
+      <footer style={{ background: 'var(--background-secondary)', borderTop: '1px solid var(--border)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             {/* Brand */}
@@ -85,19 +85,18 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
                 <span className="text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
                   AI HUSTLE DAILY
                 </span>
-                <div className="text-xs text-gray-500 font-medium">Dashboard</div>
+                <div className="text-xs font-medium" style={{ color: 'var(--secondary-text)' }}>Dashboard</div>
               </div>
             </div>
-
             {/* Copyright */}
             <div className="text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm" style={{ color: 'var(--secondary-text)' }}>
                 © {currentYear} AI Hustle Daily. All rights reserved.
               </p>
               <div className="flex items-center justify-center space-x-1 mt-1">
-                <span className="text-xs text-gray-500">Made with</span>
+                <span className="text-xs" style={{ color: 'var(--secondary-text)' }}>Made with</span>
                 <Heart className="text-red-500 fill-current animate-pulse" size={12} />
-                <span className="text-xs text-gray-500">in Nigeria</span>
+                <span className="text-xs" style={{ color: 'var(--secondary-text)' }}>in Nigeria</span>
               </div>
             </div>
           </div>
@@ -107,24 +106,21 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
   }
 
   return (
-    <footer className="relative bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden">
+    <footer className="relative overflow-hidden" style={{ background: 'var(--background)' }}>
       {/* Animated Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-conic from-transparent via-white/5 to-transparent rounded-full animate-spin slow-spin"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96" style={{ background: 'var(--accent)', opacity: 0.1, borderRadius: '9999px', filter: 'blur(48px)' }}></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96" style={{ background: 'var(--accent)', opacity: 0.1, borderRadius: '9999px', filter: 'blur(48px)' }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px]" style={{ background: 'conic-gradient(from 180deg at 50% 50%, var(--surface), transparent 100%)', borderRadius: '9999px', filter: 'blur(64px)' }}></div>
       </div>
-
       {/* Newsletter Section */}
       <NewsLetter />
       {/* Stats */}
       <Stat/>
-
       {/* Main Footer Content */}
       <div className="relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
-            
             {/* Brand Section */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6 group">
@@ -137,52 +133,49 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
                   </span>
                 </div>
               </div>
-              
-              <p className="text-gray-400 mb-6 leading-relaxed">
+              <p className="mb-6 leading-relaxed" style={{ color: 'var(--secondary-text)' }}>
                 Empowering the next generation with cutting-edge AI education and innovative learning experiences. Join thousands of students transforming their future.
               </p>
-
               {/* Contact Info */}
               <div className="space-y-3 mb-8">
-                <div className="flex items-center space-x-3 text-gray-400 hover:text-white transition-colors duration-300 group cursor-pointer">
+                <div className="flex items-center space-x-3 transition-colors duration-300 group cursor-pointer" style={{ color: 'var(--secondary-text)' }}>
                   <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center group-hover:bg-blue-500/20 transition-colors duration-300">
                     <Mail size={16} />
                   </div>
                   <span>contact@aihustledaily.com</span>
                 </div>
-                <div className="flex items-center space-x-3 text-gray-400 hover:text-white transition-colors duration-300 group cursor-pointer">
+                <div className="flex items-center space-x-3 transition-colors duration-300 group cursor-pointer" style={{ color: 'var(--secondary-text)' }}>
                   <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center group-hover:bg-green-500/20 transition-colors duration-300">
                     <Phone size={16} />
                   </div>
                   <span>+234 (0) 123 456 7890</span>
                 </div>
-                <div className="flex items-center space-x-3 text-gray-400 hover:text-white transition-colors duration-300 group cursor-pointer">
+                <div className="flex items-center space-x-3 transition-colors duration-300 group cursor-pointer" style={{ color: 'var(--secondary-text)' }}>
                   <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center group-hover:bg-red-500/20 transition-colors duration-300">
                     <MapPin size={16} />
                   </div>
                   <span>Lagos, Nigeria</span>
                 </div>
               </div>
-
               {/* Social Links */}
               <div className="flex space-x-4">
                 {socialLinks.map((social, index) => (
                   <a
                     key={index}
                     href={social.href}
-                    className={`w-12 h-12 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center text-gray-400 ${social.color} ${social.bgColor} border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-110 hover:shadow-lg group`}
+                    className={`w-12 h-12 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/10 hover:border-white/20 transition-all duration-300 hover:scale-110 hover:shadow-lg group`}
                     aria-label={social.name}
+                    style={{ color: 'var(--secondary-text)' }}
                   >
                     <social.icon size={20} />
                   </a>
                 ))}
               </div>
             </div>
-
             {/* Footer Links */}
             {Object.entries(footerLinks).slice(0, 3).map(([category, links]) => (
               <div key={category}>
-                <h4 className="text-white font-semibold mb-6 capitalize relative">
+                <h4 className="font-semibold mb-6 capitalize relative" style={{ color: 'var(--primary-text)' }}>
                   {category}
                   <div className="absolute -bottom-2 left-0 w-8 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
                 </h4>
@@ -191,7 +184,8 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
                     <li key={index}>
                       <a
                         href={link.href}
-                        className="flex items-center space-x-3 text-gray-400 hover:text-white transition-all duration-300 group"
+                        className="flex items-center space-x-3 transition-all duration-300 group"
+                        style={{ color: 'var(--secondary-text)' }}
                       >
                         {'icon' in link && link.icon && (
                           <div className="w-6 h-6 flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
@@ -208,42 +202,41 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
               </div>
             ))}
           </div>
-
           {/* Bottom Section */}
-          <div className="border-t border-white/10 pt-8">
+          <div className="border-t pt-8" style={{ borderColor: 'var(--border)' }}>
             <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="flex flex-wrap items-center space-x-6 text-sm text-gray-400">
+              <div className="flex flex-wrap items-center space-x-6 text-sm" style={{ color: 'var(--secondary-text)' }}>
                 {footerLinks.legal.map((link, index) => (
                   <a
                     key={index}
                     href={link.href}
-                    className="hover:text-white transition-colors duration-300 hover:underline"
+                    className="transition-colors duration-300 hover:underline"
+                    style={{ color: 'var(--secondary-text)' }}
                   >
                     {link.name}
                   </a>
                 ))}
               </div>
-
               <div className="flex items-center space-x-4">
-                <div className="text-sm text-gray-400">
+                <div className="text-sm" style={{ color: 'var(--secondary-text)' }}>
                   © {currentYear} AI Hustle Daily. All rights reserved.
                 </div>
                 <div className="flex items-center space-x-1">
-                  <span className="text-xs text-gray-500">Made with</span>
+                  <span className="text-xs" style={{ color: 'var(--secondary-text)' }}>Made with</span>
                   <Heart className="text-red-500 fill-current animate-pulse" size={12} />
-                  <span className="text-xs text-gray-500">in Nigeria</span>
+                  <span className="text-xs" style={{ color: 'var(--secondary-text)' }}>in Nigeria</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
       {/* Scroll to Top Button */}
       <button
         onClick={scrollToTop}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-110 flex items-center justify-center group z-50"
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-2xl shadow-lg transition-all duration-300 hover:scale-110 flex items-center justify-center group z-50"
         aria-label="Scroll to top"
+        style={{ background: 'linear-gradient(to right, #2563eb, #7c3aed)', color: 'white', boxShadow: '0 4px 24px var(--shadow)' }}
       >
         <ArrowUp className="transition-transform duration-300 group-hover:-translate-y-1" size={20} />
       </button>

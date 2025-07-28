@@ -11,7 +11,7 @@ SUBJECT_CATEGORY_CHOICES = [
     ("extra_curricular", "Extra-Curricular"),
     ("language", "Language"),
     ("science", "Science"),
-    ("mathematics", "Mathematics"),
+    ("mathematics", "Maths"),
     ("social_studies", "Social Studies"),
     ("arts", "Arts"),
     ("physical_education", "Physical Education"),

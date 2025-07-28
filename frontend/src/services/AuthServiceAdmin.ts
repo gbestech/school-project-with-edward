@@ -65,16 +65,16 @@ export function useAdminAuth() {
       // Use the correct endpoints based on role
       let endpoint = '';
       if (params?.role === UserRole.STUDENT) {
-        endpoint = '/api/students/students/';
+        endpoint = '/api/students/';
       } else if (params?.role === UserRole.TEACHER) {
-        endpoint = '/api/teachers/teachers/';
+        endpoint = '/api/teachers/';
       } else if (params?.role === UserRole.PARENT) {
         endpoint = '/api/parents/';
       } else {
         // For admin or general users, combine all endpoints
         const [studentsRes, teachersRes, parentsRes] = await Promise.all([
-          api.get('/api/students/students/', { params }),
-          api.get('/api/teachers/teachers/', { params }),
+          api.get('/api/students/', { params }),
+          api.get('/api/teachers/', { params }),
           api.get('/api/parents/', { params })
         ]);
         
@@ -156,7 +156,7 @@ export function useAdminAuth() {
       
       // Try different endpoints to find the user
       try {
-        const response = await api.get(`/api/students/students/${userId}/`);
+        const response = await api.get(`/api/students/${userId}/`);
         return {
           id: response.data.id,
           user_data: {
@@ -176,7 +176,7 @@ export function useAdminAuth() {
         };
       } catch (studentError) {
         try {
-          const response = await api.get(`/api/teachers/teachers/${userId}/`);
+          const response = await api.get(`/api/teachers/${userId}/`);
           return {
             id: response.data.id,
             user_data: {
@@ -490,6 +490,19 @@ export function useAdminAuth() {
     }
   };
 
+  // Activate a student (studentId, userId)
+  const activateStudent = async (studentId: number, userId: number): Promise<void> => {
+    // Activate student profile
+    await api.patch(`/api/students/${studentId}/`, { is_active: true });
+    // Activate user account
+    await api.patch(`/api/authentication/users/${userId}/activate/`, { is_active: true });
+  };
+
+  // Activate a teacher (userId)
+  const activateTeacher = async (userId: number): Promise<void> => {
+    await api.patch(`/api/authentication/users/${userId}/activate/`, { is_active: true, is_staff: true });
+  };
+
   // Return all methods including base auth methods
   return {
     // Base auth methods from useAuth
@@ -524,6 +537,8 @@ export function useAdminAuth() {
     exportUsers,
     bulkUpdateUsers,
     bulkDeleteUsers,
+    activateStudent,
+    activateTeacher,
   };
 }
 

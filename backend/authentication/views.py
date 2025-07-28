@@ -19,7 +19,7 @@ from rest_framework import status, generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import (
@@ -66,14 +66,19 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            # If generated credentials are present, include them in the response
+            generated_username = getattr(user, 'generated_username', None)
+            generated_password = getattr(user, 'generated_password', None)
+            response_data = {
+                "message": "Account created successfully. Please check your email/SMS for verification code.",
+                "email": user.email,
+                "verification_method": request.data.get("verification_method", "email"),
+            }
+            if generated_username and generated_password:
+                response_data["username"] = generated_username
+                response_data["password"] = generated_password
             return Response(
-                {
-                    "message": "Account created successfully. Please check your email/SMS for verification code.",
-                    "email": user.email,
-                    "verification_method": request.data.get(
-                        "verification_method", "email"
-                    ),
-                },
+                response_data,
                 status=status.HTTP_201_CREATED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -88,7 +93,11 @@ class VerifyAccountView(APIView):
     def post(self, request):
         serializer = VerifyAccountSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.validated_data["user"]
+            user = serializer.validated_data["user"]  # type: ignore
+            user_username = serializer.validated_data.get("user_username")
+            user_password = serializer.validated_data.get("user_password")
+            parent_username = serializer.validated_data.get("parent_username")
+            parent_password = serializer.validated_data.get("parent_password")
 
             # Generate JWT tokens for automatic login
             refresh = RefreshToken.for_user(user)
@@ -111,6 +120,10 @@ class VerifyAccountView(APIView):
                         "first_name": user.first_name,
                         "last_name": user.last_name,
                         "role": user.role,
+                        "username": user_username,
+                        "password": user_password,
+                        "parent_username": parent_username,
+                        "parent_password": parent_password,
                     },
                 },
                 status=status.HTTP_200_OK,
@@ -127,11 +140,11 @@ class ResendVerificationView(APIView):
     def post(self, request):
         serializer = ResendVerificationSerializer(data=request.data)
         if serializer.is_valid():
-            verification_code = serializer.resend_code(serializer.validated_data)
+            verification_code = serializer.resend_code(serializer.validated_data)  # type: ignore
             return Response(
                 {
-                    "message": f"Verification code sent successfully via {serializer.validated_data['verification_method']}.",
-                    "email": serializer.validated_data["email"],
+                    "message": f"Verification code sent successfully via {serializer.validated_data['verification_method']}",  # type: ignore
+                    "email": serializer.validated_data["email"],  # type: ignore
                 },
                 status=status.HTTP_200_OK,
             )
@@ -167,7 +180,7 @@ class SimpleLoginView(APIView):
             data=request.data, context={"request": request}
         )
         if serializer.is_valid():
-            user = serializer.validated_data["user"]
+            user = serializer.validated_data["user"] # type: ignore
 
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
@@ -214,7 +227,7 @@ def simple_login_view(request):
     """Simple login view (function-based)"""
     serializer = SimpleLoginSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
-        user = serializer.validated_data["user"]
+        user = serializer.validated_data["user"] # type: ignore
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -247,6 +260,7 @@ def simple_login_view(request):
 # ============== UTILITY VIEWS ==============
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def check_verification_status(request):
@@ -278,9 +292,10 @@ def check_verification_status(request):
         )
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
-def check_verification_status(request):
+def check_verification_status_post(request):
     """Check if user account is verified (function-based)"""
     email = request.data.get("email")
     if not email:
@@ -640,6 +655,7 @@ def debug_token(request):
 # ============== ALTERNATIVE FUNCTION-BASED VIEWS ==============
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def register_user(request):
@@ -650,21 +666,22 @@ def register_user(request):
         return JsonResponse(
             {
                 "message": "Registration successful. Please verify your account.",
-                "email": user.email,
-                "user_id": user.id,
+                "email": user.email,  # type: ignore
+                "user_id": user.id,  # type: ignore
             },
             status=201,
         )
     return JsonResponse(serializer.errors, status=400)
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def verify_account(request):
     """Alternative function-based verification view"""
     serializer = VerifyAccountSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.validated_data["user"]
+        user = serializer.validated_data["user"]  # type: ignore
 
         # Auto-login after verification
         refresh = RefreshToken.for_user(user)
@@ -688,23 +705,25 @@ def verify_account(request):
     return JsonResponse(serializer.errors, status=400)
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def resend_verification(request):
     """Alternative function-based resend verification view"""
     serializer = ResendVerificationSerializer(data=request.data)
     if serializer.is_valid():
-        verification_code = serializer.resend_code(serializer.validated_data)
+        verification_code = serializer.resend_code(serializer.validated_data)  # type: ignore
         return JsonResponse(
             {
                 "message": "Verification code resent successfully.",
-                "email": serializer.validated_data["email"],
+                "email": serializer.validated_data["email"],  # type: ignore
             },
             status=200,
         )
     return JsonResponse(serializer.errors, status=400)
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def check_email_view(request):
@@ -740,6 +759,7 @@ def check_email_view(request):
 # ============== MISSING FUNCTION-BASED VIEWS ==============
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def register_view(request):
@@ -750,8 +770,8 @@ def register_view(request):
         return Response(
             {
                 "message": "Account created successfully. Please check your email/SMS for verification code.",
-                "email": user.email,
-                "user_id": user.id,
+                "email": user.email,  # type: ignore
+                "user_id": user.id,  # type: ignore
                 "verification_method": request.data.get("verification_method", "email"),
             },
             status=status.HTTP_201_CREATED,
@@ -759,13 +779,14 @@ def register_view(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def verify_account_view(request):
     """Function-based verification view (alternative name for verify_account)"""
     serializer = VerifyAccountSerializer(data=request.data)
     if serializer.is_valid():
-        user = serializer.validated_data["user"]
+        user = serializer.validated_data["user"]  # type: ignore
 
         # Generate JWT tokens for automatic login
         refresh = RefreshToken.for_user(user)
@@ -795,17 +816,18 @@ def verify_account_view(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
 def resend_verification_view(request):
     """Function-based resend verification view (alternative name for resend_verification)"""
     serializer = ResendVerificationSerializer(data=request.data)
     if serializer.is_valid():
-        verification_code = serializer.resend_code(serializer.validated_data)
+        verification_code = serializer.resend_code(serializer.validated_data)  # type: ignore
         return Response(
             {
-                "message": f"Verification code sent successfully via {serializer.validated_data['verification_method']}.",
-                "email": serializer.validated_data["email"],
+                "message": f"Verification code sent successfully via {serializer.validated_data['verification_method']}",  # type: ignore
+                "email": serializer.validated_data["email"],  # type: ignore
             },
             status=status.HTTP_200_OK,
         )
@@ -922,3 +944,18 @@ def debug_login_function(request):
     except Exception as e:
         print(f"Error: {str(e)}")
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def activate_user(request, user_id):
+    try:
+        user = User.objects.get(pk=user_id)
+        is_active = request.data.get('is_active')
+        if is_active is not None:
+            user.is_active = bool(is_active)
+            user.save()
+            return Response({'success': True, 'is_active': user.is_active})
+        return Response({'error': 'Missing is_active field'}, status=400)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)

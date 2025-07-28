@@ -60,31 +60,31 @@ const Stat = () => {
   }, []);
 
   return (
-    <div className="bg-white py-20">
+    <div className="py-20" style={{ background: 'var(--background)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Stats Section */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--primary-text)' }}>
             Trusted by Thousands Worldwide
           </h2>
-          <p className="text-gray-600 text-lg mb-12">
+          <p className="text-lg mb-12" style={{ color: 'var(--secondary-text)' }}>
             Join a community of learners who've transformed their careers
           </p>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
             {stats.map((stat, index) => (
               <div key={index} className="group cursor-pointer">
-                <div className="relative mb-6">
+                <div className={`relative mb-6`}>
                   <div className={`w-20 h-20 mx-auto bg-gradient-to-br ${stat.gradient} rounded-3xl flex items-center justify-center shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-2xl`}>
                     <stat.icon className="text-white" size={28} />
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 mx-auto w-20 h-20"></div>
                 </div>
-                <div className="text-4xl md:text-5xl font-black text-gray-900 mb-2 transition-all duration-300">
+                <div className="text-4xl md:text-5xl font-black mb-2 transition-all duration-300" style={{ color: 'var(--primary-text)' }}>
                   {stat.value}
                 </div>
-                <p className="text-gray-600 font-semibold text-lg">
+                <p className="font-semibold text-lg" style={{ color: 'var(--secondary-text)' }}>
                   {stat.label}
                 </p>
               </div>
@@ -93,13 +93,13 @@ const Stat = () => {
         </div>
 
         {/* Reviews Section */}
-        <div className="bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-3xl p-8 md:p-12 shadow-xl">
+        <div className="rounded-3xl p-8 md:p-12 shadow-xl" style={{ background: 'var(--surface)', boxShadow: '0 4px 24px var(--shadow)' }}>
           <div className="text-center mb-12">
-            <div className="inline-flex items-center space-x-2 bg-yellow-100 rounded-full px-6 py-2 mb-6">
+            <div className="inline-flex items-center space-x-2 rounded-full px-6 py-2 mb-6" style={{ background: '#fef9c3' }}>
               <Star className="text-yellow-500 fill-current" size={16} />
-              <span className="text-yellow-700 font-semibold text-sm">4.9/5 AVERAGE RATING</span>
+              <span className="font-semibold text-sm" style={{ color: '#b45309' }}>4.9/5 AVERAGE RATING</span>
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h3 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: 'var(--primary-text)' }}>
               What Our Students Say
             </h3>
           </div>
@@ -107,8 +107,8 @@ const Stat = () => {
           {/* Featured Review */}
           <div className="max-w-4xl mx-auto">
             <div className={`transition-all duration-300 ${isAnimating ? 'opacity-0 transform translate-y-4' : 'opacity-100 transform translate-y-0'}`}>
-              <div className="bg-white rounded-2xl p-8 md:p-10 shadow-lg relative">
-                <Quote className="absolute top-6 left-6 text-blue-200" size={32} />
+              <div className="rounded-2xl p-8 md:p-10 shadow-lg relative" style={{ background: 'var(--background)', boxShadow: '0 2px 12px var(--shadow)' }}>
+                <Quote className="absolute top-6 left-6" size={32} style={{ color: 'var(--accent)' }} />
                 
                 <div className="relative z-10">
                   <div className="flex items-center justify-center mb-6">
@@ -117,7 +117,7 @@ const Stat = () => {
                     ))}
                   </div>
                   
-                  <blockquote className="text-xl md:text-2xl text-gray-700 font-medium text-center mb-8 leading-relaxed">
+                  <blockquote className="text-xl md:text-2xl font-medium text-center mb-8 leading-relaxed" style={{ color: 'var(--secondary-text)' }}>
                     "{reviews[currentReview].text}"
                   </blockquote>
                   
@@ -126,13 +126,13 @@ const Stat = () => {
                       {reviews[currentReview].avatar}
                     </div>
                     <div className="text-left">
-                      <div className="font-bold text-gray-900 text-lg">
+                      <div className="font-bold text-lg" style={{ color: 'var(--primary-text)' }}>
                         {reviews[currentReview].name}
                       </div>
-                      <div className="text-gray-600 font-medium">
+                      <div className="font-medium" style={{ color: 'var(--secondary-text)' }}>
                         {reviews[currentReview].role}
                       </div>
-                      <div className="text-blue-600 text-sm font-semibold">
+                      <div className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
                         via {reviews[currentReview].source}
                       </div>
                     </div>
@@ -152,6 +152,7 @@ const Stat = () => {
                       ? 'bg-blue-600 w-8' 
                       : 'bg-gray-300 hover:bg-gray-400'
                   }`}
+                  style={currentReview === index ? { background: 'var(--accent)' } : { background: 'var(--surface)' }}
                 />
               ))}
             </div>
@@ -159,18 +160,18 @@ const Stat = () => {
 
           {/* Review Sources */}
           <div className="mt-12 text-center">
-            <p className="text-gray-500 text-sm mb-6">Featured on trusted platforms</p>
+            <p className="text-sm mb-6" style={{ color: 'var(--secondary-text)' }}>Featured on trusted platforms</p>
             <div className="flex items-center justify-center space-x-8 opacity-60">
-              <div className="bg-white px-6 py-3 rounded-lg shadow-sm font-semibold text-gray-700">
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
                 Google Reviews
               </div>
-              <div className="bg-white px-6 py-3 rounded-lg shadow-sm font-semibold text-gray-700">
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
                 Trustpilot
               </div>
-              <div className="bg-white px-6 py-3 rounded-lg shadow-sm font-semibold text-gray-700">
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
                 Course Report
               </div>
-              <div className="bg-white px-6 py-3 rounded-lg shadow-sm font-semibold text-gray-700">
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
                 LinkedIn
               </div>
             </div>

@@ -2,6 +2,9 @@ from rest_framework import serializers
 from .models import Student
 from users.models import CustomUser
 from parent.models import ParentProfile
+from django.contrib.auth.models import BaseUserManager, User
+from django.contrib.auth.base_user import AbstractBaseUser
+from utils import generate_unique_username
 
 
 class StudentDetailSerializer(serializers.ModelSerializer):
@@ -19,8 +22,11 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     is_nursery_student = serializers.BooleanField(read_only=True)
     is_primary_student = serializers.BooleanField(read_only=True)
     is_secondary_student = serializers.BooleanField(read_only=True)
+    is_active = serializers.BooleanField(required=False)
     parents = serializers.SerializerMethodField()
     emergency_contacts = serializers.SerializerMethodField()
+    profile_picture = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
+    classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     class Meta:
         model = Student
@@ -39,6 +45,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             "is_nursery_student",
             "is_primary_student",
             "is_secondary_student",
+            "is_active",
             "admission_date",
             "parent_contact",
             "emergency_contact",
@@ -46,6 +53,8 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             "medical_conditions",
             "special_requirements",
             "parents",
+            "profile_picture",
+            "classroom",
         ]
         read_only_fields = ["id", "admission_date", "education_level"]
 
@@ -62,16 +71,19 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         return obj.age
 
     def get_parents(self, obj):
-        """Returns detailed parent information including contact details."""
+        """Returns detailed parent information including contact details and relationship."""
         parent_data = []
-        for parent in obj.parents.all():
+        from parent.models import ParentStudentRelationship
+        relationships = ParentStudentRelationship.objects.filter(student=obj)
+        for rel in relationships.select_related('parent__user'):
+            parent_profile = rel.parent
             parent_info = {
-                "id": parent.id,
-                "full_name": parent.user.full_name,
-                "email": parent.user.email,
-                "phone": getattr(parent, "phone", None),
-                "relationship": getattr(parent, "relationship", None),
-                "is_primary_contact": getattr(parent, "is_primary_contact", False),
+                "id": parent_profile.id,
+                "full_name": parent_profile.user.full_name,
+                "email": parent_profile.user.email,
+                "phone": getattr(parent_profile, "phone", None),
+                "relationship": rel.relationship,  # <-- This is now correct
+                "is_primary_contact": rel.is_primary_contact,
             }
             parent_data.append(parent_info)
         return parent_data
@@ -97,6 +109,19 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             )
 
         return contacts
+
+    # profile_picture is now a URL string, just return it directly
+
+    # def get_profile_picture(self, obj):
+    #     # Prefer userprofile image, fallback to user.profile_picture
+    #     if hasattr(obj.user, "profile") and getattr(
+    #         obj.user.profile, "profile_picture", None
+    #     ):
+    #         try:
+    #             return obj.user.profile.profile_picture.url
+    #         except Exception:
+    #             pass
+    #     return getattr(obj.user, "profile_picture", None)
 
     def validate_student_class(self, value):
         """Validate that the student class is appropriate for the education level."""
@@ -178,7 +203,10 @@ class StudentListSerializer(serializers.ModelSerializer):
     student_class_display = serializers.CharField(
         source="get_student_class_display", read_only=True
     )
+    is_active = serializers.BooleanField()
     parent_count = serializers.SerializerMethodField()
+    profile_picture = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
+    classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     class Meta:
         model = Student
@@ -191,9 +219,12 @@ class StudentListSerializer(serializers.ModelSerializer):
             "education_level_display",
             "student_class",
             "student_class_display",
+            "is_active",
             "parent_contact",
             "parent_count",
             "admission_date",
+            "profile_picture",
+            "classroom",
         ]
 
     def get_full_name(self, obj):
@@ -206,9 +237,11 @@ class StudentListSerializer(serializers.ModelSerializer):
         """Returns the number of registered parents."""
         return obj.parents.count()
 
+    # profile_picture is now a URL string, just return it directly
+
 
 class StudentCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating new students."""
+    """Serializer for creating new students with automatic parent creation."""
 
     user_email = serializers.EmailField(write_only=True)
     user_first_name = serializers.CharField(write_only=True, max_length=30)
@@ -216,6 +249,32 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     user_middle_name = serializers.CharField(
         write_only=True, max_length=30, required=False, allow_blank=True
     )
+
+    # ADD THIS: Profile picture support for creation
+    profile_picture = serializers.URLField(required=False, allow_null=True)
+
+    # Parent fields (optional when linking to existing parent)
+    existing_parent_id = serializers.IntegerField(write_only=True, required=False)
+    parent_first_name = serializers.CharField(
+        write_only=True, max_length=30, required=False
+    )
+    parent_last_name = serializers.CharField(
+        write_only=True, max_length=30, required=False
+    )
+    parent_email = serializers.EmailField(write_only=True, required=False)
+    parent_contact = serializers.CharField(
+        write_only=True, max_length=15, required=False
+    )
+    parent_address = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
+    )
+    relationship = serializers.ChoiceField(
+        choices=["Father", "Mother", "Guardian", "Sponsor"],
+        write_only=True,
+        required=False,
+    )
+    is_primary_contact = serializers.BooleanField(write_only=True, required=False)
+    classroom = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Student
@@ -228,34 +287,204 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             "date_of_birth",
             "education_level",
             "student_class",
+            "profile_picture",  # ADD THIS
+            "classroom",
+            "existing_parent_id",
+            "parent_first_name",
+            "parent_last_name",
+            "parent_email",
             "parent_contact",
+            "parent_address",
             "emergency_contact",
             "medical_conditions",
             "special_requirements",
+            "relationship",
+            "is_primary_contact",
         ]
 
     def create(self, validated_data):
-        """Create user and student profile."""
-        # Extract user data
-        user_data = {
-            "email": validated_data.pop("user_email"),
-            "first_name": validated_data.pop("user_first_name"),
-            "last_name": validated_data.pop("user_last_name"),
-            "middle_name": validated_data.pop("user_middle_name", ""),
-            "user_type": "student",  # Assuming you have user types
-        }
+        print('DEBUG validated_data:', validated_data)
+        print('DEBUG profile_picture:', validated_data.get('profile_picture', None))
+        # Extract profile_picture before creating student
+        profile_picture = validated_data.pop("profile_picture", None)
 
-        # Create user
-        user = CustomUser.objects.create_user(**user_data)
+        from parent.models import ParentProfile, ParentStudentRelationship
 
-        # Create student profile
-        student = Student.objects.create(user=user, **validated_data)
+        first_name = validated_data.pop("user_first_name")
+        last_name = validated_data.pop("user_last_name")
+        middle_name = validated_data.pop("user_middle_name", "")
+        email = validated_data.pop("user_email")
+        relationship = validated_data.pop("relationship", None)
+        is_primary_contact = validated_data.pop("is_primary_contact", False)
+        role = "student"
+        # Check if linking to existing parent
+        existing_parent_id = validated_data.pop("existing_parent_id", None)
+        if existing_parent_id:
+            try:
+                parent_profile = ParentProfile.objects.get(id=existing_parent_id)
+                parent_user = parent_profile.user
+                self._generated_parent_password = None
+                self._generated_parent_username = parent_user.username
+            except ParentProfile.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Parent not found with the provided ID."
+                )
+        else:
+            parent_first_name = validated_data.pop("parent_first_name")
+            parent_last_name = validated_data.pop("parent_last_name")
+            parent_email = validated_data.pop("parent_email")
+            parent_contact = validated_data.pop("parent_contact")
+            parent_address = validated_data.pop("parent_address", "")
+            if CustomUser.objects.filter(email=parent_email).exists():
+                raise serializers.ValidationError(
+                    "A parent with this email already exists."
+                )
+            import secrets
+            import string
 
+            parent_password = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+            )
+            parent_username = generate_unique_username("parent")
+            parent_user = CustomUser.objects.create_user(
+                email=parent_email,
+                username=parent_username,
+                first_name=parent_first_name,
+                last_name=parent_last_name,
+                role="parent",
+                password=parent_password,
+                is_active=True,
+            )
+            parent_profile, created = ParentProfile.objects.get_or_create(
+                user=parent_user,
+                defaults={
+                    "phone": parent_contact,
+                    "address": parent_address,
+                },
+            )
+            if not created:
+                parent_profile.phone = parent_contact
+                parent_profile.address = parent_address
+                parent_profile.save()
+            self._generated_parent_password = parent_password
+            self._generated_parent_username = parent_username
+        import secrets
+        import string
+
+        student_password = "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+        )
+        student_username = generate_unique_username("student")
+        student_user = CustomUser.objects.create_user(
+            email=email,
+            username=student_username,
+            first_name=first_name,
+            last_name=last_name,
+            middle_name=middle_name,
+            role=role,
+            password=student_password,
+            is_active=True,
+        )
+        student = Student.objects.create(
+            user=student_user, profile_picture=profile_picture, **validated_data
+        )
+
+        print(
+            f"🖼️ Created student {student.full_name} with profile_picture: {student.profile_picture}"
+        )
+        # Link parent and student with relationship and is_primary_contact
+        ParentStudentRelationship.objects.create(
+            parent=parent_profile,
+            student=student,
+            relationship=relationship or "Guardian",
+            is_primary_contact=is_primary_contact,
+        )
+        # Set parent_contact from parent_profile.phone if using existing parent
+        if existing_parent_id and parent_profile.phone:
+            student.parent_contact = parent_profile.phone
+            student.save()
+        self._generated_student_password = student_password
+        self._generated_student_username = student_username
+        try:
+            from utils.email import send_email_via_brevo
+
+            if self._generated_parent_password:
+                parent_subject = "Welcome to SchoolMS - Your Parent Account Details"
+                parent_html_content = f"""
+                <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">
+                    <h2 style=\"color: #333; text-align: center;\">Welcome to SchoolMS!</h2>
+                    <p>Hello {parent_user.first_name} {parent_user.last_name},</p>
+                    <p>Your parent account has been created successfully by the school administrator.</p>
+                    <p>You are now linked to your child: {first_name} {last_name}</p>
+                    <p><strong>Your Login Credentials:</strong></p>
+                    <ul>
+                        <li><strong>Email:</strong> {parent_user.email}</li>
+                        <li><strong>Password:</strong> {self._generated_parent_password}</li>
+                    </ul>
+                    <p>Please change your password after your first login for security.</p>
+                    <p>Best regards,<br>SchoolMS Team</p>
+                    <hr style=\"margin: 30px 0; border: none; border-top: 1px solid #eee;\">
+                    <p style=\"color: #666; font-size: 12px; text-align: center;\">
+                        This is an automated message from SchoolMS. Please do not reply to this email.
+                    </p>
+                </div>
+                """
+                send_email_via_brevo(
+                    parent_subject, parent_html_content, parent_user.email
+                )
+            else:
+                parent_subject = "New Student Added to Your Account - SchoolMS"
+                parent_html_content = f"""
+                <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">
+                    <h2 style=\"color: #333; text-align: center;\">New Student Added</h2>
+                    <p>Hello {parent_user.first_name} {parent_user.last_name},</p>
+                    <p>A new student has been added to your parent account:</p>
+                    <div style=\"background-color: #f5f5f5; padding: 15px; margin: 20px 0; border-radius: 8px;\">
+                        <p><strong>Student Name:</strong> {first_name} {last_name}</p>
+                    </div>
+                    <p>You can now view and manage this student's information through your parent dashboard.</p>
+                    <p>Best regards,<br>SchoolMS Team</p>
+                    <hr style=\"margin: 30px 0; border: none; border-top: 1px solid #eee;\">
+                    <p style=\"color: #666; font-size: 12px; text-align: center;\">
+                        This is an automated message from SchoolMS. Please do not reply to this email.
+                    </p>
+                </div>
+                """
+                send_email_via_brevo(
+                    parent_subject, parent_html_content, parent_user.email
+                )
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send welcome emails: {e}")
         return student
+
+    def validate(self, data):
+        existing_parent_id = data.get("existing_parent_id")
+        parent_fields = [
+            "parent_first_name",
+            "parent_last_name",
+            "parent_email",
+            "parent_contact",
+        ]
+        if existing_parent_id:
+            for field in parent_fields:
+                if data.get(field):
+                    raise serializers.ValidationError(
+                        f"Cannot provide {field} when linking to existing parent."
+                    )
+        else:
+            for field in parent_fields:
+                if not data.get(field):
+                    raise serializers.ValidationError(
+                        f"{field.replace('_', ' ').title()} is required when creating a new parent."
+                    )
+        return data
 
     def validate_student_class(self, value):
         """Validate student class matches education level."""
-        education_level = self.initial_data.get("education_level")
+        education_level = self.initial_data.get("education_level")  # type: ignore
 
         nursery_classes = ["NURSERY_1", "NURSERY_2", "PRE_K", "KINDERGARTEN"]
         primary_classes = [

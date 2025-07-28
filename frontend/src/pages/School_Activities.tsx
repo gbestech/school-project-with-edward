@@ -1,6 +1,5 @@
 import React from 'react'
-import MultiCarousel from './../components/MultiCarousel'
-
+import MultiCarousel from '@/components/MultiCarousel'
 const School_Activities = () => {
   return (
     <div>

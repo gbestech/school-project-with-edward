@@ -11,6 +11,7 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 import string
+import calendar
 
 User = get_user_model()
 
@@ -20,13 +21,25 @@ User = get_user_model()
 class RegisterSerializer(serializers.ModelSerializer):
     """Registration serializer - creates inactive user and sends verification"""
 
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password_confirm = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, validators=[validate_password], required=False)
+    password_confirm = serializers.CharField(write_only=True, required=False)
     email = serializers.EmailField(required=True)
     phone_number = serializers.CharField(required=False)  # For SMS verification
     verification_method = serializers.ChoiceField(
         choices=[("email", "Email"), ("sms", "SMS")], default="email"
     )
+
+    # Student-specific fields (only required when role is student)
+    student_class = serializers.CharField(required=False)
+    education_level = serializers.CharField(required=False)
+    date_of_birth = serializers.DateField(required=False)
+    gender = serializers.CharField(required=False)
+    
+    # Parent fields (only required when role is student)
+    parent_first_name = serializers.CharField(required=False)
+    parent_last_name = serializers.CharField(required=False)
+    parent_email = serializers.EmailField(required=False)
+    parent_phone = serializers.CharField(required=False)
 
     class Meta:
         model = User
@@ -40,6 +53,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             "role",
             "phone_number",
             "verification_method",
+            "student_class",
+            "education_level",
+            "date_of_birth",
+            "gender",
+            "parent_first_name",
+            "parent_last_name",
+            "parent_email",
+            "parent_phone",
         )
         extra_kwargs = {
             "username": {"required": False},
@@ -60,53 +81,124 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        if attrs["password"] != attrs["password_confirm"]:
-            raise serializers.ValidationError("Passwords don't match.")
-
+        role = attrs.get("role")
+        # Only require password for student registration (or if you want for other roles)
+        if role == "student":
+            if not attrs.get("password") or not attrs.get("password_confirm"):
+                raise serializers.ValidationError("Password and password_confirm are required for student registration.")
+            if attrs["password"] != attrs["password_confirm"]:
+                raise serializers.ValidationError("Passwords don't match.")
         # If SMS verification chosen, phone number is required
         if attrs.get("verification_method") == "sms" and not attrs.get("phone_number"):
             raise serializers.ValidationError(
                 "Phone number is required for SMS verification."
             )
-
+        # Validate student-specific fields when role is student
+        if role == "student":
+            required_student_fields = ["student_class", "education_level", "date_of_birth", "gender"]
+            for field in required_student_fields:
+                if not attrs.get(field):
+                    raise serializers.ValidationError(f"{field.replace('_', ' ').title()} is required for student registration.")
+            # Validate parent fields
+            required_parent_fields = ["parent_first_name", "parent_last_name", "parent_email", "parent_phone"]
+            for field in required_parent_fields:
+                if not attrs.get(field):
+                    raise serializers.ValidationError(f"{field.replace('_', ' ').title()} is required for student registration.")
+            # Check if parent email already exists
+            if User.objects.filter(email=attrs.get("parent_email")).exists():
+                raise serializers.ValidationError("A parent with this email already exists.")
         return attrs
 
     def create(self, validated_data):
+        from django.utils import timezone
+        import secrets
+        import string
         verification_method = validated_data.pop("verification_method", "email")
-        validated_data.pop("password_confirm")
-        password = validated_data.pop("password")
-
-        # Auto-generate username from email if not provided
-        if not validated_data.get("username"):
-            email = validated_data.get("email")
-            base_username = email.split("@")[0]
-            username = base_username
-            counter = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
-            validated_data["username"] = username
-
-        # Create user as inactive initially
-        user = User.objects.create_user(
-            password=password,
-            is_active=False,  # User needs to verify first
-            **validated_data,
-        )
-
+        role = validated_data.get("role")
+        # Remove password fields for non-student roles
+        password = validated_data.pop("password", None)
+        validated_data.pop("password_confirm", None)
+        # Generate password if not provided (for admin, teacher, parent)
+        if not password:
+            password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+        # Generate username in format: ROLE/SCHOOL/MONTH/YEAR/ID
+        school_code = "GTS"  # Change as needed
+        now = timezone.now()
+        month = calendar.month_abbr[now.month].upper()
+        year = str(now.year)[-2:]
+        # Temporarily create user to get ID
+        temp_user = User(email=validated_data["email"], first_name=validated_data["first_name"], last_name=validated_data["last_name"], role=role)
+        temp_user.save()
+        id_number = str(temp_user.id).zfill(4)
+        role_code = {
+            "admin": "ADM",
+            "student": "STD",
+            "teacher": "TCH",
+            "parent": "PAR",
+        }.get(role, role.upper()[:3])
+        username = f"{role_code}/{school_code}/{month}/{year}/{id_number}"
+        temp_user.username = username
+        temp_user.set_password(password)
+        temp_user.is_active = False  # User needs to verify first
+        temp_user.save()
+        user = temp_user
         # Generate verification code
         verification_code = "".join(random.choices(string.digits, k=6))
         user.verification_code = verification_code
         user.verification_code_expires = timezone.now() + timedelta(minutes=15)
         user.save()
-
+        # If role is student, create student and parent records
+        if role == "student":
+            student_data = {}
+            parent_data = {}
+            student_fields = ["student_class", "education_level", "date_of_birth", "gender"]
+            parent_fields = ["parent_first_name", "parent_last_name", "parent_email", "parent_phone"]
+            for field in student_fields:
+                if field in validated_data:
+                    student_data[field] = validated_data.pop(field)
+            for field in parent_fields:
+                if field in validated_data:
+                    parent_data[field] = validated_data.pop(field)
+            self.create_student_and_parent(user, student_data, parent_data)
         # Send verification based on chosen method
         if verification_method == "email":
             self.send_verification_email(user, verification_code)
         elif verification_method == "sms":
             self.send_verification_sms(user, verification_code)
-
+        # Attach generated credentials for response
+        user.generated_username = username
+        user.generated_password = password
         return user
+
+    def create_student_and_parent(self, user, student_data, parent_data):
+        """Create student and parent records for student registration"""
+        from students.models import Student
+        from parent.models import ParentProfile
+        
+        # Create parent user (inactive until verified)
+        parent_username = parent_data["parent_email"].split("@")[0]
+        parent_user = User.objects.create_user(
+            email=parent_data["parent_email"],
+            username=parent_username,
+            first_name=parent_data["parent_first_name"],
+            last_name=parent_data["parent_last_name"],
+            role="parent",
+            password=parent_data["parent_email"],  # Use email as initial password
+            is_active=False,  # Parent also needs verification
+        )
+        
+        # Create student record
+        student = Student.objects.create(
+            user=user,
+            **student_data
+        )
+        
+        # Create parent profile and link to student
+        parent_profile = ParentProfile.objects.create(
+            user=parent_user,
+            phone=parent_data["parent_phone"],
+        )
+        parent_profile.students.add(student)
 
     def send_verification_email(self, user, code):
         """Send verification code via email using Brevo"""
@@ -281,48 +373,36 @@ class UserDetailsSerializer(serializers.ModelSerializer):
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Normal login after account is verified - based on your original code"""
 
-    email = serializers.EmailField()
+    username = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         print("🔍 validate() got attrs:", attrs)
-        email = attrs.get("email")
+        username = attrs.get("username")
         password = attrs.get("password")
 
-        if not email or not password:
-            raise serializers.ValidationError("Email and password are required.")
+        if not username or not password:
+            raise serializers.ValidationError("Username and password are required.")
 
-        if email and password:
-            user = authenticate(self.context["request"], email=email, password=password)
-            if not user:
-                raise serializers.ValidationError("Invalid credentials.")
-            if not user.is_active:
-                raise serializers.ValidationError("Account not verified.")
-        else:
-            raise serializers.ValidationError("Must include 'email' and 'password'.")
+        user = authenticate(self.context.get('request'), username=username, password=password)
+        if not user:
+            raise serializers.ValidationError("Invalid username or password.")
+        if not user.is_active:
+            raise serializers.ValidationError("User account is not active.")
 
-        # Your original parent linkage validation
-        if user.role == "parent":
-            if (
-                not hasattr(user, "parent_profile")
-                or not user.parent_profile.students.exists()
-            ):
-                raise ValidationError("No linked students. Contact the administrator.")
-
-        self.user = user
-
-        # Generate JWT tokens
-        attrs["username"] = email
-        data = super().validate(attrs)
-        # data = super().validate({"username": email, "password": password})
-
-        # Add extra fields to the response
-        data["id"] = user.id
-        data["email"] = user.email
-        data["first_name"] = user.first_name
-        data["last_name"] = user.last_name
-        data["role"] = user.role
-
+        refresh = self.get_token(user)
+        data = {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role,
+            },
+        }
         return data
 
     @classmethod

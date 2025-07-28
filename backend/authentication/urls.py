@@ -18,6 +18,7 @@ from .views import (
     DebugLoginView,
     debug_auth,  # Import the function directly
     debug_token,  # Import the function directly
+    activate_user,
 )
 
 
@@ -63,4 +64,5 @@ urlpatterns = [
     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
     path("debug/auth/", debug_auth, name="debug_auth"),
     path("debug/token/", debug_token, name="debug_token"),
+    path('users/<int:user_id>/activate/', activate_user, name='activate_user'),
 ]

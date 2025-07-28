@@ -1739,7 +1739,7 @@ export interface UserContactInfo {
 }
 
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
   role: UserRole;
   rememberMe: boolean;
@@ -1896,6 +1896,8 @@ export interface Student extends BaseEntity {
   readonly full_name?: string;
   readonly age: number;
   readonly years_enrolled: number;
+  // Add is_active for dashboard activation status
+  is_active?: boolean;
 }
 
 export interface CreateStudentData {
@@ -2864,33 +2866,33 @@ export interface StudentEntity {
   student_id: string;
   grade: string;
   class: string;
-  enrollment_date?: string;
-  status?: StudentStatus;
-  parent_contact?: string;
-  emergency_contact?: string;
-  medical_info?: string;
-  gender?: Gender;
-  date_of_birth?: ISODateString;
+  enrollment_date: string;
+  status: 'active' | 'inactive' | 'suspended' | 'graduated';
+  parent_contact: string;
+  emergency_contact: string;
+  medical_info: string;
+  gender: Gender;
+  date_of_birth: string;
   admission_date: string;
-  current_grade_level?: GradeLevel | string;
+  current_grade_level: string;
   section: string;
-  roll_number?: string;
-  guardian_name?: string;
-  guardian_phone?: string;
-  guardian_email?: string;
-  address?: string;
-  blood_group?: string;
-  allergies?: string;
-  previous_school?: string;
-  transfer_certificate?: string;
+  roll_number: string;
+  guardian_name: string;
+  guardian_phone: string;
+  guardian_email: string;
+  address: string;
+  blood_group: string;
+  allergies: string;
+  previous_school: string;
+  transfer_certificate: string;
   academic_year: string;
-  fee_status?: FeeStatus;
-  transport_required?: boolean;
-  hostel_required?: boolean;
-  extracurricular_activities?: string[];
-  disciplinary_records?: string[];
-  attendance_percentage?: number;
-  full_name?: string;
+  fee_status: 'paid' | 'pending' | 'overdue';
+  transport_required: boolean;
+  hostel_required: boolean;
+  extracurricular_activities: string[];
+  disciplinary_records: string[];
+  attendance_percentage: number;
+  full_name: string;
   created_at: string;
   updated_at: string;
 }
@@ -2901,33 +2903,33 @@ export interface TeacherEntity {
   user: CustomUser;
   employee_id: string;
   hire_date: string;
-  employment_status?: EmploymentStatus;
-  department?: string;
-  subject?: string;
-  qualification?: string;
-  experience_years?: number;
+  employment_status: 'active' | 'inactive' | 'terminated' | 'on_leave';
+  department: string;
+  subject: string;
+  qualification: string;
+  experience_years: number;
   qualifications: string[];
-  specializations?: Subject[] | string[];
-  full_name?: string;
-  years_at_school?: number;
-  salary?: number;
-  contact_number?: string;
-  emergency_contact?: string;
-  address?: string;
-  date_of_birth?: ISODateString;
-  gender?: Gender;
-  marital_status?: MaritalStatus;
-  blood_group?: string;
-  previous_experience?: string;
-  teaching_subjects?: string[];
-  class_teacher_of?: string;
-  performance_rating?: number;
-  certifications?: string[];
-  training_programs?: string[];
-  achievements?: string[];
-  disciplinary_records?: string[];
-  leave_balance?: number;
-  attendance_percentage?: number;
+  specializations: string[];
+  full_name: string;
+  years_at_school: number;
+  salary: number;
+  contact_number: string;
+  emergency_contact: string;
+  address: string;
+  date_of_birth: string;
+  gender: 'male' | 'female' | 'other' | 'not_specified';
+  marital_status: 'single' | 'married' | 'divorced' | 'widowed' | 'not_specified';
+  blood_group: string;
+  previous_experience: string;
+  teaching_subjects: string[];
+  class_teacher_of: string;
+  performance_rating: number;
+  certifications: string[];
+  training_programs: string[];
+  achievements: string[];
+  disciplinary_records: string[];
+  leave_balance: number;
+  attendance_percentage: number;
   created_at: string;
   updated_at: string;
 }

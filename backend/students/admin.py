@@ -3,6 +3,26 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import Student
+import secrets
+import string
+
+
+def reset_student_passwords(modeladmin, request, queryset):
+    for student in queryset:
+        student_user = student.user
+        student_password = "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
+        )
+        student_user.set_password(student_password)
+        student_user.save()
+        modeladmin.message_user(
+            request, f"Student {student_user.username} new password: {student_password}"
+        )
+
+
+reset_student_passwords.short_description = (
+    "Reset and display credentials for selected students"
+)
 
 
 @admin.register(Student)
@@ -48,7 +68,18 @@ class StudentAdmin(admin.ModelAdmin):
 
     # Organize fields in fieldsets for better UX
     fieldsets = (
-        ("Basic Information", {"fields": ("user", "gender", "date_of_birth")}),
+        (
+            "Basic Information",
+            {
+                "fields": (
+                    "user",
+                    "gender",
+                    "date_of_birth",
+                    "profile_picture",
+                    "profile_picture_preview",
+                )
+            },
+        ),
         (
             "Academic Information",
             {
@@ -74,14 +105,19 @@ class StudentAdmin(admin.ModelAdmin):
     )
 
     # Read-only fields
-    readonly_fields = ("admission_date",)
+    readonly_fields = ("admission_date", "profile_picture_preview")
 
     # Fields to display in list view filters
     list_per_page = 25
     list_max_show_all = 100
 
     # Enable bulk actions
-    actions = ["mark_as_nursery", "mark_as_primary", "mark_as_secondary"]
+    actions = [
+        "mark_as_nursery",
+        "mark_as_primary",
+        "mark_as_secondary",
+        reset_student_passwords,
+    ]
 
     def get_full_name(self, obj):
         """Returns the full name of the student including middle name if present."""
@@ -109,6 +145,16 @@ class StudentAdmin(admin.ModelAdmin):
 
     get_age.short_description = "Age"
     get_age.admin_order_field = "date_of_birth"
+
+    def profile_picture_preview(self, obj):
+        if obj.profile_picture:
+            return format_html(
+                '<img src="{}" width="100" height="100" style="object-fit: cover;" />',
+                obj.profile_picture,
+            )
+        return "No image uploaded"
+
+    profile_picture_preview.short_description = "Profile Picture Preview"
 
     def get_parent_contact(self, obj):
         """Display parent contact with clickable link if available."""

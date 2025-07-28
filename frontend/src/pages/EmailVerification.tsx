@@ -13,6 +13,7 @@ const EmailVerification: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const authService = new AuthService();
+  const [credentials, setCredentials] = useState<{username?: string, password?: string, parentUsername?: string, parentPassword?: string}>({});
 
   useEffect(() => {
     // Get email from URL params if available
@@ -48,7 +49,13 @@ const EmailVerification: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Account verified successfully! Redirecting...');
+        setSuccess('Account verified successfully! Please save your credentials below.');
+        setCredentials({
+          username: data.user?.username,
+          password: data.user?.password,
+          parentUsername: data.user?.parent_username,
+          parentPassword: data.user?.parent_password,
+        });
         
         // Store tokens
         if (data.access) {
@@ -197,6 +204,23 @@ const EmailVerification: React.FC = () => {
               </button>
             </div>
           </form>
+
+          {credentials.username && credentials.password && (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mt-4">
+              <strong>Your Login Credentials:</strong>
+              <div className="mt-2">
+                <div>Username: <span className="font-mono">{credentials.username}</span> <button onClick={() => navigator.clipboard.writeText(credentials.username!)}>Copy</button></div>
+                <div>Password: <span className="font-mono">{credentials.password}</span> <button onClick={() => navigator.clipboard.writeText(credentials.password!)}>Copy</button></div>
+                {credentials.parentUsername && credentials.parentPassword && (
+                  <>
+                    <div className="mt-2">Parent Username: <span className="font-mono">{credentials.parentUsername}</span> <button onClick={() => navigator.clipboard.writeText(credentials.parentUsername!)}>Copy</button></div>
+                    <div>Parent Password: <span className="font-mono">{credentials.parentPassword}</span> <button onClick={() => navigator.clipboard.writeText(credentials.parentPassword!)}>Copy</button></div>
+                  </>
+                )}
+              </div>
+              <div className="mt-2 text-xs text-red-600">Please save these credentials securely. You will not be able to see the password again!</div>
+            </div>
+          )}
 
           <div className="mt-6">
             <div className="relative">

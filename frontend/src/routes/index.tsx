@@ -6,21 +6,34 @@ import { AuthProvider } from './../hooks/useAuth';
 import { ThemeProvider } from './../hooks/useTheme';
 import { lazy, Suspense } from "react";
 
-
-
-
-// Lazy load all components
-const Home = lazy(() => import('./../pages/Landing'));
-const School_Activities =lazy(()=> import('./../pages/School_Activities'))
-const Login = lazy(() => import('./../pages/Login'));
-const SignUp = lazy(() => import('./../pages/SignUp'));
-const EmailVerification = lazy(() => import('./../pages/EmailVerification'));
-const About = lazy(() => import("./../pages/About"));
-const StudentDashboard = lazy(() => import('./../pages/student/Dashboard'));
-const TeacherDashboard = lazy(() => import('./../pages/teacher/Dashboard'));
-const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard'));
-const AdminDashbaord = lazy(() => import('./../pages/admin/Dashboard'))
-const NotFound = lazy(() => import('./../pages/NotFound'));
+// Lazy load all components with consistent import paths and error handling
+const Home = lazy(() => import('./../pages/Landing').catch(() => ({ default: () => <div>Error loading Home</div> })));
+const School_Activities = lazy(() => import('./../pages/School_Activities').catch(() => ({ default: () => <div>Error loading School Activities</div> })));
+const Login = lazy(() => import('./../pages/Login').catch(() => ({ default: () => <div>Error loading Login</div> })));
+const SignUp = lazy(() => import('./../pages/SignUp').catch(() => ({ default: () => <div>Error loading SignUp</div> })));
+const EmailVerification = lazy(() => import('./../pages/EmailVerification').catch(() => ({ default: () => <div>Error loading Email Verification</div> })));
+const About = lazy(() => import('./../pages/About').catch(() => ({ default: () => <div>Error loading About</div> })));
+const StudentDashboard = lazy(() => import('./../pages/student/Dashboard').catch(() => ({ default: () => <div>Error loading Student Dashboard</div> })));
+const TeacherDashboard = lazy(() => import('./../pages/teacher/Dashboard').catch(() => ({ default: () => <div>Error loading Teacher Dashboard</div> })));
+const StudentList = lazy(() => import('./../pages/student/Allstudents').catch(() => ({ default: () => <div>Error loading Student List</div> })));
+const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard').catch(() => ({ default: () => <div>Error loading Parent Dashboard</div> })));
+const NotFound = lazy(() => import('./../pages/NotFound').catch(() => ({ default: () => <div>Page Not Found</div> })));
+const AdminDashboardLayout = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Admin Layout</div> })));
+const DashboardHome = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Dashboard Home</div> })));
+const DashboardMainContent = lazy(() => import('./../components/dashboards/admin/DashboardMainContent'));
+const AdminClassroomManagement = lazy(() => import('./../pages/admin/AdminClassroomManagement').catch(() => ({ default: () => <div>Error loading Classroom Management</div> })));
+const AdminLessonsManagement = lazy(() => import('./../pages/admin/AdminLessonsManagement').catch(() => ({ default: () => <div>Error loading Lessons Management</div> })));
+const AdminExamsManagement = lazy(() => import('./../pages/admin/AdminExamsManagement').catch(() => ({ default: () => <div>Error loading Exams Management</div> })));
+const AdminAtendanceMangement = lazy(() => import('./../pages/admin/AdminAttendanceView').catch(() => ({ default: () => <div>Error loading Attendance Dashboard</div> })));
+const AddStudentForm = lazy(() => import('./../pages/admin/AddStudentForm').catch(() => ({ default: () => <div>Error loading Add Student Form</div> })));
+const AdminSubjectManagement = lazy(() => import('./../pages/admin/AdminSubjectManagement').catch(() => ({ default: () => <div>Error loading Admin Subject Management</div> })));
+const AdminResultManagement = lazy(() => import('./../pages/admin/AdminResultManagement').catch(() => ({ default: () => <div>Error loading Admin Result Management</div> })));
+const AllTeachers = lazy(() => import('./../pages/admin/AllTeachers').catch(() => ({ default: () => <div>Error loading All Teachers</div> })));
+const AddTeacherForm = lazy(() => import('./../pages/admin/AddTeacherForm').catch(() => ({ default: () => <div>Error loading Add Teacher Form</div> })));
+const AllParents = lazy(() => import('./../pages/admin/AllParents').catch(() => ({ default: () => <div>Error loading All Parents</div> })));
+const AddParentForm = lazy(() => import('./../pages/admin/AddParentForm').catch(() => ({ default: () => <div>Error loading Add Parent Form</div> })));
+const AdminDashboardContentLoader = lazy(() => import('./../pages/admin/AdminDashboardContentLoader').catch(() => ({ default: () => <div>Error loading Admin Dashboard Content</div> })));
+const SettingsPage = lazy(() => import('./../pages/admin/Settings').catch(() => ({ default: () => <div>Error loading Settings</div> })));
 
 // Loading fallback component
 const LoadingSpinner = () => (
@@ -91,19 +104,6 @@ const RootLayout = () => {
   );
 };
 
-// Test component to verify SignUp route works
-// const SignUpTest = () => (
-//   <div className="min-h-screen flex items-center justify-center bg-green-100">
-//     <div className="bg-white p-8 rounded-lg shadow-lg">
-//       <h1 className="text-2xl font-bold text-green-600 mb-4">SignUp Route Working!</h1>
-//       <p className="text-gray-600">This is a test component to verify the route works.</p>
-//       <p className="text-sm text-gray-500 mt-2">
-//         Replace this with your actual SignUp component import.
-//       </p>
-//     </div>
-//   </div>
-// );
-
 // Create the router configuration
 export const router = createBrowserRouter([
   {
@@ -123,7 +123,6 @@ export const router = createBrowserRouter([
       },
       {
         path: 'signup',
-        // Temporarily use test component to isolate the issue
         element: <SignUp />,
         errorElement: <RouteErrorElement />
       },
@@ -138,11 +137,10 @@ export const router = createBrowserRouter([
         errorElement: <RouteErrorElement />
       },
     {
-      path: 'school_activites',
+        path: 'school_activities', // Fixed typo: was 'school_activites'
       element: <School_Activities/>,
       errorElement: <RouteErrorElement />
     },
-
       {
         path: 'student',
         children: [
@@ -153,20 +151,87 @@ export const router = createBrowserRouter([
           }
         ]
       },
-
-       {
+      {
         path: 'admin',
+        element: <AdminDashboardLayout />,
         children: [
           {
             path: 'dashboard',
-            element: <AdminDashbaord />,
+            element: <AdminDashboardContentLoader />,
             errorElement: <RouteErrorElement />
-          }
+          },
+          {
+            path: 'students',
+            element: <StudentList />,
+            errorElement: <RouteErrorElement />
+          },
+
+          {
+            path: 'results',
+            element: <AdminResultManagement />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'classes',
+            element: <AdminClassroomManagement />,
+            errorElement: <RouteErrorElement />
+          },
+
+           {
+            path: 'subjects',
+            element: <AdminSubjectManagement />,
+            errorElement: <RouteErrorElement />
+           },
+
+           {
+            path: 'exams',
+            element: <AdminExamsManagement />,
+            errorElement: <RouteErrorElement />
+           },
+           {
+            path: 'lessons',
+            element: <AdminLessonsManagement />,
+            errorElement: <RouteErrorElement />
+           },
+
+           {
+            path: 'attendance',
+            element: <AdminAtendanceMangement />,
+            errorElement: <RouteErrorElement />
+           },
+
+          {
+            path: 'students/add',
+            element: <AddStudentForm />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'teachers',
+            element: <AllTeachers />,
+            errorElement: <RouteErrorElement />
+          },
+       {
+            path: 'teachers/add',
+            element: <AddTeacherForm />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'parents',
+            element: <AllParents />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'parents/add',
+            element: <AddParentForm />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'settings',
+            element: <SettingsPage />, 
+            errorElement: <RouteErrorElement />
+          },
         ]
       },
-
-
-      
       {
         path: 'teacher',
         children: [
@@ -187,6 +252,7 @@ export const router = createBrowserRouter([
           }
         ]
       },
+      
       {
         path: '*',
         element: <NotFound />,
@@ -195,13 +261,14 @@ export const router = createBrowserRouter([
   }
 ]);
 
-// Additional debugging - check if components are loading correctly
+// Debug logging
 console.log('Router configuration loaded');
 console.log('Available routes:', [
   '/',
   '/login', 
   '/signup',
   '/about',
+  '/school_activities',
   '/student/dashboard',
   '/teacher/dashboard', 
   '/parent/dashboard',

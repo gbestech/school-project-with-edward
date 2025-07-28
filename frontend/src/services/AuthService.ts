@@ -1,7 +1,7 @@
 
 // Types and Interfaces
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
   rememberMe?: boolean;
 }
@@ -170,8 +170,6 @@ export class AuthService {
         first_name: credentials.firstName,
         last_name: credentials.lastName,
         email: credentials.email,
-        password: credentials.password,
-        password_confirm: credentials.confirmPassword,
         role: credentials.role,
         agree_to_terms: credentials.agreeToTerms,
         subscribe_newsletter: credentials.subscribeNewsletter,
@@ -200,9 +198,17 @@ export class AuthService {
         };
       }
 
+      // If backend returns generated credentials, include them in the response
+      let credentialsInfo = '';
+      if (data.username && data.password) {
+        credentialsInfo = `Username: ${data.username}\nPassword: ${data.password}`;
+      } else if (data.generated_username && data.generated_password) {
+        credentialsInfo = `Username: ${data.generated_username}\nPassword: ${data.generated_password}`;
+      }
+
       return {
         success: true,
-        message: data.message || 'Account created successfully! Please check your email for verification.',
+        message: (data.message || 'Account created successfully! Please check your email for verification.') + (credentialsInfo ? `\n${credentialsInfo}` : ''),
         data: data,
       };
     } catch (error) {
@@ -490,7 +496,7 @@ export class AuthService {
           'X-CSRFToken': this.getCSRFToken(),
         },
         body: JSON.stringify({
-          email: credentials.email,
+          username: credentials.username,
           password: credentials.password,
         }),
       });

@@ -65,8 +65,8 @@ const Login = () => {
         const errorData = error.response.data
         if (errorData.non_field_errors) {
           setErrors({ general: errorData.non_field_errors[0] })
-        } else if (errorData.email) {
-          setErrors({ email: errorData.email[0] })
+        } else if (errorData.username) {
+          setErrors({ username: errorData.username[0] })
         } else if (errorData.password) {
           setErrors({ password: errorData.password[0] })
         } else if (errorData.detail) {
