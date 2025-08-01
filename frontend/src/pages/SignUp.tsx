@@ -23,6 +23,7 @@ const initialStudent = {
   academicYear: '',
   education_level: '',
   student_class: '',
+  registration_number: '', // <-- Add registration number
   parentName: '',
   parentFirstName: '',
   parentLastName: '',
@@ -49,6 +50,7 @@ const initialTeacher = {
   email: '',
   subject: '',
   phone: '',
+  employee_id: '',
 };
 const initialAdmin = {
   firstName: '',
@@ -322,6 +324,9 @@ const SignUpPage: React.FC = () => {
                 <option value="GRADE_12">Grade 12</option>
               </select>
             </div>
+            <div className="mb-4">
+              <input name="registration_number" value={student.registration_number} onChange={e => handleChange(e, 'student')} placeholder="Registration Number (Optional)" className="w-full p-3 border rounded-lg" />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <input name="phoneNumber" value={student.phoneNumber} onChange={e => handleChange(e, 'student')} placeholder="Phone Number" className="p-3 border rounded-lg" />
             </div>
@@ -502,6 +507,7 @@ const SignUpPage: React.FC = () => {
               <input name="firstName" value={teacher.firstName} onChange={e => handleChange(e, 'teacher')} placeholder="First Name" className="p-3 border rounded-lg" />
               <input name="lastName" value={teacher.lastName} onChange={e => handleChange(e, 'teacher')} placeholder="Last Name" className="p-3 border rounded-lg" />
               <input name="email" value={teacher.email} onChange={e => handleChange(e, 'teacher')} placeholder="Email" className="p-3 border rounded-lg" />
+              <input name="employee_id" value={teacher.employee_id} onChange={e => handleChange(e, 'teacher')} placeholder="Employment ID (e.g., Emp-001)" className="p-3 border rounded-lg" />
               <input name="subject" value={teacher.subject} onChange={e => handleChange(e, 'teacher')} placeholder="Subject" className="p-3 border rounded-lg" />
               <input name="phone" value={teacher.phone} onChange={e => handleChange(e, 'teacher')} placeholder="Phone" className="p-3 border rounded-lg" />
             </div>

@@ -20,6 +20,7 @@ type StudentFormData = {
   academicYear: string;
   education_level: string;
   student_class: string;
+  registration_number: string; // <-- Add registration number
   existing_parent_id: string;
   parentFirstName: string;
   parentLastName: string;
@@ -107,6 +108,7 @@ const AddStudentForm: React.FC = () => {
     academicYear: '',
     education_level: '',
     student_class: '',
+    registration_number: '', // <-- Add registration number
     existing_parent_id: '',
     parentFirstName: '',
     parentLastName: '',
@@ -242,6 +244,7 @@ const AddStudentForm: React.FC = () => {
         academic_year: formData.academicYear,
         education_level: formData.education_level,
         student_class: formData.student_class,
+        registration_number: formData.registration_number,
         classroom: formData.classroom,
         address: formData.address,
         phone_number: formData.phoneNumber,
@@ -288,6 +291,7 @@ const AddStudentForm: React.FC = () => {
           academicYear: '',
           education_level: '',
           student_class: '',
+          registration_number: '', // <-- Add registration number
           existing_parent_id: '',
           parentFirstName: '',
           parentLastName: '',
@@ -378,6 +382,18 @@ const AddStudentForm: React.FC = () => {
               ))}
             </select>
           </div>
+        </div>
+        {/* Registration Number */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Registration Number</label>
+          <input
+            type="text"
+            name="registration_number"
+            value={formData.registration_number}
+            onChange={handleInputChange}
+            className="w-full p-3 border border-gray-300 rounded-lg"
+            placeholder="Enter registration number (optional)"
+          />
         </div>
         {/* Classroom Selection */}
         <div className="mb-4">

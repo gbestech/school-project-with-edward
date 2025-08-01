@@ -65,10 +65,10 @@ urlpatterns = [
     # App-specific API routes
     path("api/dashboard/", include("dashboard.urls")),
     path("api/profiles/", include("userprofile.urls")),  # FIXED: Added specific path
-    path("api/teachers/", include("teacher.urls")),
-    path("api/classrooms/", include("classroom.urls")),
-    path("api/subjects/", include("subject.urls")),
-    path("api/timetable/", include("timetable.urls")),
+                      path("api/teachers/", include("teacher.urls")),
+                  path("api/classrooms/", include("classroom.urls")),
+                  path("api/subjects/", include("subject.urls")),
+                  path("api/timetable/", include("timetable.urls")),
     path("api/attendance/", include("attendance.urls")),
     path("api/exams/", include("exam.urls")),
     path("api/parents/", include("parent.urls")),
@@ -76,6 +76,8 @@ urlpatterns = [
     path("api/messaging/", include("messaging.urls")),
     path("api/utils/", include("utils.urls")),
     path("api/invitations/", include("invitations.urls")),
+    path("api/results/", include("result.urls")),
+    path("api/", include("schoolSettings.urls")),
     # Social account routes (optional, mainly for admin)
     path("api/socialaccounts/", include("allauth.socialaccount.urls")),
     # Social provider routes (if needed for direct provider integration)

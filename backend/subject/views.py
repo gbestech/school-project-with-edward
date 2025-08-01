@@ -15,13 +15,11 @@ from django.utils import timezone
 import logging
 
 from .models import Subject, SUBJECT_CATEGORY_CHOICES, EDUCATION_LEVELS
-from classroom.models import GradeLevel  # Import from the correct app
+# from classroom.models import GradeLevel  # Commented out to avoid circular import
 from .serializers import (
     SubjectSerializer,
     SubjectListSerializer,
     SubjectCreateUpdateSerializer,
-    SubjectGradeCheckSerializer,
-    SubjectPrerequisiteSerializer,
     SubjectEducationLevelSerializer,
 )
 

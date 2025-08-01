@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "users",
     "authentication",
     "classroom",
+    "schoolSettings",
     "subject",
     "academics",
     "teacher",

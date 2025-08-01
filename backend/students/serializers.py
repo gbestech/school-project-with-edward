@@ -250,6 +250,11 @@ class StudentCreateSerializer(serializers.ModelSerializer):
         write_only=True, max_length=30, required=False, allow_blank=True
     )
 
+    # Registration number field
+    registration_number = serializers.CharField(
+        max_length=20, required=False, allow_blank=True, allow_null=True
+    )
+
     # ADD THIS: Profile picture support for creation
     profile_picture = serializers.URLField(required=False, allow_null=True)
 
@@ -305,8 +310,9 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         print('DEBUG validated_data:', validated_data)
         print('DEBUG profile_picture:', validated_data.get('profile_picture', None))
-        # Extract profile_picture before creating student
+        # Extract profile_picture and registration_number before creating student
         profile_picture = validated_data.pop("profile_picture", None)
+        registration_number = validated_data.pop("registration_number", None)
 
         from parent.models import ParentProfile, ParentStudentRelationship
 
@@ -374,7 +380,8 @@ class StudentCreateSerializer(serializers.ModelSerializer):
         student_password = "".join(
             secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
         )
-        student_username = generate_unique_username("student")
+        # Use registration number for username generation
+        student_username = generate_unique_username("student", registration_number)
         student_user = CustomUser.objects.create_user(
             email=email,
             username=student_username,
@@ -386,7 +393,10 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             is_active=True,
         )
         student = Student.objects.create(
-            user=student_user, profile_picture=profile_picture, **validated_data
+            user=student_user, 
+            profile_picture=profile_picture, 
+            registration_number=registration_number,
+            **validated_data
         )
 
         print(
@@ -480,6 +490,16 @@ class StudentCreateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         f"{field.replace('_', ' ').title()} is required when creating a new parent."
                     )
+        
+        # Validate registration number uniqueness
+        registration_number = data.get("registration_number")
+        if registration_number:
+            from utils import generate_unique_username
+            from users.models import CustomUser
+            base_username = generate_unique_username("student", registration_number)
+            if CustomUser.objects.filter(username=base_username).exists():
+                raise serializers.ValidationError(f"Student with registration number '{registration_number}' already exists.")
+        
         return data
 
     def validate_student_class(self, value):

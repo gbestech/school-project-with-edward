@@ -1,121 +1,85 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, User, Phone, Mail, MapPin, Calendar, Users, GraduationCap, X, Save, UserPlus } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, User, Phone, Mail, MapPin, Calendar, Users, GraduationCap, X, Save, UserPlus, Power, PowerOff } from 'lucide-react';
+import api from '@/services/api';
 
-// Add interfaces for Parent and Child
+// Updated interfaces to match API response
 interface Child {
   id: number;
-  name: string;
-  grade: string;
-  age: number;
-  class: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  education_level: string;
 }
 
 interface Parent {
   id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  occupation: string;
-  emergencyContact: string;
-  dateJoined: string;
-  status: string;
-  children: Child[];
+  user: string; // email
+  students: Child[];
+  is_active: boolean;
+  parent_username?: string;
+  parent_password?: string;
 }
 
 const ParentAdminList: React.FC = () => {
-  // TEST ELEMENT FOR RENDERING CONFIRMATION
-  // Remove this after confirming rendering works
-  const testBanner = (
-    <div style={{ background: '#fffae6', color: '#b45309', padding: '16px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px', border: '2px solid #fbbf24', borderRadius: '8px', marginBottom: '24px', zIndex: 1000 }}>
-      TEST: ParentAdminList component is rendering!
-    </div>
-  );
   const [parents, setParents] = useState<Parent[]>([]);
   const [filteredParents, setFilteredParents] = useState<Parent[]>([]);
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view'); // 'view', 'edit', 'create'
+  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toggleLoading, setToggleLoading] = useState<number | null>(null);
 
-  // Sample data - in real app, this would come from API
-  const initialParents: Parent[] = [
-    {
-      id: 1,
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'john.smith@email.com',
-      phone: '+1-555-0123',
-      address: '123 Main St, Springfield, IL 62701',
-      occupation: 'Software Engineer',
-      emergencyContact: '+1-555-0124',
-      dateJoined: '2023-01-15',
-      status: 'Active',
-      children: [
-        { id: 101, name: 'Emma Smith', grade: '5th Grade', age: 10, class: '5A' },
-        { id: 102, name: 'Liam Smith', grade: '3rd Grade', age: 8, class: '3B' }
-      ]
-    },
-    {
-      id: 2,
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@email.com',
-      phone: '+1-555-0234',
-      address: '456 Oak Ave, Springfield, IL 62702',
-      occupation: 'Marketing Manager',
-      emergencyContact: '+1-555-0235',
-      dateJoined: '2023-03-20',
-      status: 'Active',
-      children: [
-        { id: 201, name: 'Noah Johnson', grade: '7th Grade', age: 12, class: '7C' }
-      ]
-    },
-    {
-      id: 3,
-      firstName: 'Michael',
-      lastName: 'Brown',
-      email: 'michael.brown@email.com',
-      phone: '+1-555-0345',
-      address: '789 Pine St, Springfield, IL 62703',
-      occupation: 'Teacher',
-      emergencyContact: '+1-555-0346',
-      dateJoined: '2022-09-10',
-      status: 'Inactive',
-      children: [
-        { id: 301, name: 'Olivia Brown', grade: '6th Grade', age: 11, class: '6A' },
-        { id: 302, name: 'Ethan Brown', grade: '4th Grade', age: 9, class: '4B' },
-        { id: 303, name: 'Ava Brown', grade: '2nd Grade', age: 7, class: '2C' }
-      ]
+  // Fetch parents from API
+  const fetchParents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.get('/parents/');
+      setParents(response);
+      setFilteredParents(response);
+    } catch (err) {
+      console.error('Error fetching parents:', err);
+      setError('Failed to load parents. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const [formData, setFormData] = useState<Omit<Parent, 'id' | 'dateJoined' | 'children'>>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    address: '',
-    occupation: '',
-    emergencyContact: '',
-    status: 'Active'
-  });
+  };
 
   useEffect(() => {
-    setParents(initialParents);
-    setFilteredParents(initialParents);
+    fetchParents();
   }, []);
 
   useEffect(() => {
     const filtered = parents.filter((parent) =>
-      `${parent.firstName} ${parent.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parent.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parent.phone.includes(searchTerm)
+      parent.user.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredParents(filtered);
   }, [searchTerm, parents]);
+
+  // Toggle parent activation status
+  const handleToggleStatus = async (parent: Parent) => {
+    try {
+      setToggleLoading(parent.id);
+      const endpoint = parent.is_active ? 'deactivate' : 'activate';
+      await api.post(`/parents/${parent.id}/${endpoint}/`, {});
+      
+      // Update the parent in the local state
+      setParents(parents.map(p => 
+        p.id === parent.id ? { ...p, is_active: !p.is_active } : p
+      ));
+      
+      // Show success message
+      alert(`Parent ${parent.is_active ? 'deactivated' : 'activated'} successfully!`);
+    } catch (err) {
+      console.error('Error toggling parent status:', err);
+      alert('Failed to update parent status. Please try again.');
+    } finally {
+      setToggleLoading(null);
+    }
+  };
 
   const handleView = (parent: Parent) => {
     setSelectedParent(parent);
@@ -125,32 +89,12 @@ const ParentAdminList: React.FC = () => {
 
   const handleEdit = (parent: Parent) => {
     setSelectedParent(parent);
-    setFormData({
-      firstName: parent.firstName,
-      lastName: parent.lastName,
-      email: parent.email,
-      phone: parent.phone,
-      address: parent.address,
-      occupation: parent.occupation,
-      emergencyContact: parent.emergencyContact,
-      status: parent.status
-    });
     setModalMode('edit');
     setShowModal(true);
   };
 
   const handleCreate = () => {
     setSelectedParent(null);
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      address: '',
-      occupation: '',
-      emergencyContact: '',
-      status: 'Active'
-    });
     setModalMode('create');
     setShowModal(true);
   };
@@ -159,28 +103,42 @@ const ParentAdminList: React.FC = () => {
     setShowDeleteConfirm(parentId);
   };
 
-  const confirmDelete = () => {
-    setParents(parents.filter((p) => p.id !== showDeleteConfirm));
-    setShowDeleteConfirm(null);
+  const confirmDelete = async () => {
+    if (!showDeleteConfirm) return;
+    
+    try {
+      await api.delete(`/parents/${showDeleteConfirm}/`);
+      setParents(parents.filter((p) => p.id !== showDeleteConfirm));
+      setShowDeleteConfirm(null);
+      alert('Parent deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting parent:', err);
+      alert('Failed to delete parent. Please try again.');
+    }
   };
 
-  const handleSave = () => {
-    if (modalMode === 'create') {
-      const newParent: Parent = {
-        ...formData,
-        id: parents.length > 0 ? Math.max(...parents.map((p) => p.id)) + 1 : 1,
-        dateJoined: new Date().toISOString().split('T')[0],
-        children: []
-      };
-      setParents([...parents, newParent]);
-    } else if (modalMode === 'edit' && selectedParent) {
-      setParents(
-        parents.map((p) =>
-          p.id === selectedParent.id ? { ...p, ...formData } : p
-        )
-      );
+  const handleSave = async () => {
+    try {
+      if (modalMode === 'create') {
+        // Handle parent creation
+        const newParent = await api.post('/parents/', {
+          // Add form data here
+        });
+        setParents([...parents, newParent]);
+        alert('Parent created successfully!');
+      } else if (modalMode === 'edit' && selectedParent) {
+        // Handle parent update
+        const updatedParent = await api.put(`/parents/${selectedParent.id}/`, {
+          // Add form data here
+        });
+        setParents(parents.map(p => p.id === selectedParent.id ? updatedParent : p));
+        alert('Parent updated successfully!');
+      }
+      setShowModal(false);
+    } catch (err) {
+      console.error('Error saving parent:', err);
+      alert('Failed to save parent. Please try again.');
     }
-    setShowModal(false);
   };
 
   const closeModal = () => {
@@ -188,9 +146,36 @@ const ParentAdminList: React.FC = () => {
     setSelectedParent(null);
   };
 
-  const getStatusColor = (status: string) => {
-    return status === 'Active' ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100';
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading parents...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -213,7 +198,7 @@ const ParentAdminList: React.FC = () => {
             <Search className="absolute left-3 top-3 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search parents by name, email, or phone..."
+              placeholder="Search parents by email..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -233,11 +218,9 @@ const ParentAdminList: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Children</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -251,47 +234,63 @@ const ParentAdminList: React.FC = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {parent.firstName} {parent.lastName}
+                            {parent.user}
                           </div>
-                          <div className="text-sm text-gray-500">{parent.occupation}</div>
+                          {parent.parent_username && (
+                            <div className="text-sm text-gray-500">Username: {parent.parent_username}</div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{parent.email}</div>
-                      <div className="text-sm text-gray-500">{parent.phone}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Users className="text-gray-400 mr-2" size={16} />
-                        <span className="text-sm text-gray-900">{parent.children.length}</span>
+                        <span className="text-sm text-gray-900">{parent.students.length}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(parent.status)}`}>
-                        {parent.status}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(parent.is_active)}`}>
+                        {parent.is_active ? 'Active' : 'Inactive'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(parent.dateJoined).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
                           onClick={() => handleView(parent)}
                           className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded"
+                          title="View Details"
                         >
                           <Eye size={16} />
                         </button>
                         <button
                           onClick={() => handleEdit(parent)}
                           className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded"
+                          title="Edit Parent"
                         >
                           <Edit size={16} />
                         </button>
                         <button
+                          onClick={() => handleToggleStatus(parent)}
+                          disabled={toggleLoading === parent.id}
+                          className={`p-1 rounded transition-colors ${
+                            parent.is_active 
+                              ? 'text-orange-600 hover:text-orange-900 hover:bg-orange-50' 
+                              : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                          } ${toggleLoading === parent.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={parent.is_active ? 'Deactivate Parent' : 'Activate Parent'}
+                        >
+                          {toggleLoading === parent.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                          ) : parent.is_active ? (
+                            <PowerOff size={16} />
+                          ) : (
+                            <Power size={16} />
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleDelete(parent.id)}
                           className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
+                          title="Delete Parent"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -332,49 +331,22 @@ const ParentAdminList: React.FC = () => {
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                          <p className="mt-1 text-sm text-gray-900">{selectedParent.firstName} {selectedParent.lastName}</p>
-                        </div>
-                        <div>
                           <label className="block text-sm font-medium text-gray-700">Email</label>
                           <p className="mt-1 text-sm text-gray-900 flex items-center">
                             <Mail className="mr-1" size={16} />
-                            {selectedParent.email}
+                            {selectedParent.user}
                           </p>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Phone</label>
-                          <p className="mt-1 text-sm text-gray-900 flex items-center">
-                            <Phone className="mr-1" size={16} />
-                            {selectedParent.phone}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Emergency Contact</label>
-                          <p className="mt-1 text-sm text-gray-900">{selectedParent.emergencyContact}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Address</label>
-                          <p className="mt-1 text-sm text-gray-900 flex items-center">
-                            <MapPin className="mr-1" size={16} />
-                            {selectedParent.address}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Occupation</label>
-                          <p className="mt-1 text-sm text-gray-900">{selectedParent.occupation}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Date Joined</label>
-                          <p className="mt-1 text-sm text-gray-900 flex items-center">
-                            <Calendar className="mr-1" size={16} />
-                            {new Date(selectedParent.dateJoined).toLocaleDateString()}
-                          </p>
-                        </div>
+                        {selectedParent.parent_username && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">Username</label>
+                            <p className="mt-1 text-sm text-gray-900">{selectedParent.parent_username}</p>
+                          </div>
+                        )}
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Status</label>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedParent.status)}`}>
-                            {selectedParent.status}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedParent.is_active)}`}>
+                            {selectedParent.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </div>
                       </div>
@@ -384,17 +356,16 @@ const ParentAdminList: React.FC = () => {
                     <div className="bg-blue-50 rounded-lg p-6">
                       <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                         <GraduationCap className="mr-2" size={20} />
-                        Children ({selectedParent.children.length})
+                        Children ({selectedParent.students.length})
                       </h4>
-                      {selectedParent.children.length > 0 ? (
+                      {selectedParent.students.length > 0 ? (
                         <div className="grid gap-4">
-                          {selectedParent.children.map((child) => (
+                          {selectedParent.students.map((child) => (
                             <div key={child.id} className="bg-white rounded-lg p-4 border border-blue-200">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h5 className="font-medium text-gray-900">{child.name}</h5>
-                                  <p className="text-sm text-gray-600">Grade: {child.grade} | Class: {child.class}</p>
-                                  <p className="text-sm text-gray-600">Age: {child.age} years old</p>
+                                  <h5 className="font-medium text-gray-900">{child.full_name}</h5>
+                                  <p className="text-sm text-gray-600">Education Level: {child.education_level}</p>
                                 </div>
                                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                   <GraduationCap className="text-blue-600" size={16} />
@@ -409,108 +380,9 @@ const ParentAdminList: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <form>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">First Name</label>
-                        <input
-                          type="text"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.firstName}
-                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Last Name</label>
-                        <input
-                          type="text"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.lastName}
-                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <input
-                          type="email"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Phone</label>
-                        <input
-                          type="tel"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Address</label>
-                        <input
-                          type="text"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.address}
-                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Occupation</label>
-                        <input
-                          type="text"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.occupation}
-                          onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Emergency Contact</label>
-                        <input
-                          type="tel"
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.emergencyContact}
-                          onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">Status</label>
-                        <select
-                          className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          value={formData.status}
-                          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                        >
-                          <option value="Active">Active</option>
-                          <option value="Inactive">Inactive</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex justify-end space-x-3 mt-6">
-                      <button
-                        type="button"
-                        onClick={closeModal}
-                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSave}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                      >
-                        <Save size={16} />
-                        {modalMode === 'create' ? 'Create Parent' : 'Save Changes'}
-                      </button>
-                    </div>
-                  </form>
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Edit and create functionality will be implemented here.</p>
+                  </div>
                 )}
               </div>
             </div>

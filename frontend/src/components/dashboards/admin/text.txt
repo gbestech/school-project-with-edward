@@ -4,3 +4,488 @@
 	I learnt about how  many people lived in the ancient days of magic and mystery.
 Through reading, I don't have to learn the hard way. I know about dangerous diseases to avoid. I know about dangerous animals to avoid and also know how to stay healthy and alive.
 "
+
+
+
+import React, { useState, useEffect } from 'react';
+import { Settings, Upload, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
+
+// TypeScript interfaces
+interface SchoolSettings {
+  id: string;
+  school_name: string;
+  school_address: string;
+  school_phone: string;
+  school_email: string;
+  school_website: string;
+  academic_year: string;
+  current_term: string;
+  school_motto: string;
+  timezone: string;
+  date_format: string;
+  time_format: string;
+  language: string;
+  logo_url?: string;
+  favicon_url?: string;
+  auto_save: boolean;
+  notifications_enabled: boolean;
+  dark_mode: boolean;
+  maintenance_mode: boolean;
+  session_timeout: number;
+  max_login_attempts: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface GeneralTabProps {}
+
+const GeneralTab: React.FC<GeneralTabProps> = () => {
+  const [settings, setSettings] = useState<SchoolSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+
+  // Fetch settings on component mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/school-settings/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+
+      const data = await response.json();
+      setSettings(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!settings) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch('/api/school-settings/', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save settings');
+      }
+
+      const updatedSettings = await response.json();
+      setSettings(updatedSettings);
+      setSuccess('Settings saved successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File, type: 'logo' | 'favicon') => {
+    try {
+      setError(null);
+      setSuccess(null);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`/api/school-settings/upload-${type}/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to upload ${type}`);
+      }
+
+      const data = await response.json();
+      
+      // Update settings with new file URL
+      if (settings) {
+        setSettings({
+          ...settings,
+          [`${type}_url`]: data[`${type}Url`]
+        });
+      }
+
+      setSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded successfully!`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to upload ${type}`);
+    }
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      handleFileUpload(file, 'logo');
+    }
+  };
+
+  const handleFaviconChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setFaviconFile(file);
+      handleFileUpload(file, 'favicon');
+    }
+  };
+
+  const handleInputChange = (field: keyof SchoolSettings, value: any) => {
+    if (settings) {
+      setSettings({
+        ...settings,
+        [field]: value
+      });
+    }
+  };
+
+  const handleNumberInput = (field: keyof SchoolSettings, value: string) => {
+    const numValue = parseInt(value) || 0;
+    if (settings) {
+      setSettings({
+        ...settings,
+        [field]: numValue
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600">Failed to load settings</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <p className="text-green-800">{success}</p>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-semibold text-slate-900 flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Settings className="w-4 h-4 text-white" />
+            </div>
+            School Information
+          </h3>
+          
+          <button
+            onClick={saveSettings}
+            disabled={saving}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Name *
+            </label>
+            <input
+              type="text"
+              value={settings.school_name}
+              onChange={(e) => handleInputChange('school_name', e.target.value.trim())}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+              placeholder="Enter school name"
+              aria-label="School name"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Timezone
+            </label>
+            <select 
+              value={settings.timezone}
+              onChange={(e) => handleInputChange('timezone', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+              aria-label="Timezone selection"
+            >
+              <option value="UTC">UTC</option>
+              <option value="UTC-05:00">UTC-05:00 (Eastern Time)</option>
+              <option value="UTC-08:00">UTC-08:00 (Pacific Time)</option>
+              <option value="UTC+01:00">UTC+01:00 (West Africa Time)</option>
+              <option value="UTC+02:00">UTC+02:00 (Central Africa Time)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Address
+            </label>
+            <textarea
+              value={settings.school_address || ''}
+              onChange={(e) => handleInputChange('school_address', e.target.value)}
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+              placeholder="Enter school address"
+              aria-label="School address"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Academic Year
+            </label>
+            <select 
+              value={settings.academic_year}
+              onChange={(e) => handleInputChange('academic_year', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+              aria-label="Academic year selection"
+            >
+              <option value="2024-2025">2024-2025</option>
+              <option value="2025-2026">2025-2026</option>
+              <option value="2026-2027">2026-2027</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Phone
+            </label>
+            <input
+              type="tel"
+              value={settings.school_phone || ''}
+              onChange={(e) => handleInputChange('school_phone', e.target.value.trim())}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+              placeholder="Enter school phone number"
+              aria-label="School phone number"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Email
+            </label>
+            <input
+              type="email"
+              value={settings.school_email || ''}
+              onChange={(e) => handleInputChange('school_email', e.target.value.trim())}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+              placeholder="Enter school email"
+              aria-label="School email address"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Logo Upload
+            </label>
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-blue-300 transition-colors duration-200">
+              {settings.logo_url ? (
+                <div className="mb-4">
+                  <img 
+                    src={settings.logo_url} 
+                    alt="School logo" 
+                    className="w-16 h-16 mx-auto object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-slate-100 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-slate-400" />
+                </div>
+              )}
+              <p className="text-sm text-slate-600 mb-2">Drop your logo here or click to browse</p>
+              <p className="text-xs text-slate-400 mb-4">PNG, JPG, GIF up to 2MB</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="hidden"
+                id="logo-upload"
+                aria-label="Upload logo"
+              />
+              <label
+                htmlFor="logo-upload"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+              >
+                Choose File
+              </label>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Favicon Upload
+            </label>
+            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-blue-300 transition-colors duration-200">
+              {settings.favicon_url ? (
+                <div className="mb-4">
+                  <img 
+                    src={settings.favicon_url} 
+                    alt="School favicon" 
+                    className="w-8 h-8 mx-auto object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-8 h-8 bg-slate-100 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                  <Upload className="w-4 h-4 text-slate-400" />
+                </div>
+              )}
+              <p className="text-sm text-slate-600 mb-2">Drop your favicon here or click to browse</p>
+              <p className="text-xs text-slate-400 mb-4">ICO, PNG up to 1MB</p>
+              <input
+                type="file"
+                accept=".ico,image/png"
+                onChange={handleFaviconChange}
+                className="hidden"
+                id="favicon-upload"
+                aria-label="Upload favicon"
+              />
+              <label
+                htmlFor="favicon-upload"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 cursor-pointer"
+              >
+                Choose File
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 rounded-xl p-6">
+          <h4 className="font-medium text-slate-900 mb-4">General Preferences</h4>
+          <div className="space-y-1">
+            <ToggleSwitch
+              id="auto-save"
+              checked={settings.auto_save}
+              onChange={(checked: boolean) => handleInputChange('auto_save', checked)}
+              label="Auto-save changes"
+              description="Automatically save changes without manual confirmation"
+            />
+            <ToggleSwitch
+              id="notifications"
+              checked={settings.notifications_enabled}
+              onChange={(checked: boolean) => handleInputChange('notifications_enabled', checked)}
+              label="Enable notifications"
+              description="Receive system notifications and updates"
+            />
+            <ToggleSwitch
+              id="dark-mode"
+              checked={settings.dark_mode}
+              onChange={(checked: boolean) => handleInputChange('dark_mode', checked)}
+              label="Dark mode"
+              description="Use dark theme across the application"
+            />
+            <ToggleSwitch
+              id="maintenance-mode"
+              checked={settings.maintenance_mode}
+              onChange={(checked: boolean) => handleInputChange('maintenance_mode', checked)}
+              label="Maintenance mode"
+              description="Put the system in maintenance mode (admin only access)"
+            />
+          </div>
+        </div>
+
+        <div className="bg-slate-50 rounded-xl p-6 mt-6">
+          <h4 className="font-medium text-slate-900 mb-4">Session Management</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Session Timeout (minutes)
+              </label>
+              <input
+                type="number"
+                value={settings.session_timeout}
+                onChange={(e) => handleNumberInput('session_timeout', e.target.value)}
+                min="5"
+                max="480"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+                aria-label="Session timeout in minutes"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Max Login Attempts
+              </label>
+              <input
+                type="number"
+                value={settings.max_login_attempts}
+                onChange={(e) => handleNumberInput('max_login_attempts', e.target.value)}
+                min="1"
+                max="20"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200"
+                aria-label="Maximum login attempts"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GeneralTab;

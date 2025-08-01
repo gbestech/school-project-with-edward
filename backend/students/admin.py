@@ -30,6 +30,7 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "get_full_name",
+        "registration_number",
         "get_age",
         "gender",
         "education_level",
@@ -51,6 +52,7 @@ class StudentAdmin(admin.ModelAdmin):
         "user__first_name",
         "user__middle_name",
         "user__last_name",
+        "registration_number",
         "student_class",
         "parent_contact",
         "emergency_contact",
@@ -83,7 +85,7 @@ class StudentAdmin(admin.ModelAdmin):
         (
             "Academic Information",
             {
-                "fields": ("education_level", "student_class", "admission_date"),
+                "fields": ("education_level", "student_class", "registration_number", "admission_date"),
                 "description": "Academic level and class information",
             },
         ),

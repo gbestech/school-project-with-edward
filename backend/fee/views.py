@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.http import HttpResponse
@@ -19,6 +19,11 @@ from .models import (
     FeeStructure,
     StudentFee,
     Payment,
+    PaymentAttempt,
+    PaymentWebhook,
+    PaymentGatewayConfig,
+    PaymentPlan,
+    PaymentInstallment,
     FeeDiscount,
     StudentDiscount,
     PaymentReminder,
@@ -37,6 +42,11 @@ from .serializers import (
     PaymentReminderSerializer,
     BulkFeeGenerationSerializer,
     FeeReportSerializer,
+    PaymentGatewayConfigSerializer,
+    PaymentPlanSerializer,
+    PaymentInstallmentSerializer,
+    PaymentAttemptSerializer,
+    PaymentWebhookSerializer,
 )
 from .filters import StudentFeeFilter, PaymentFilter
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
@@ -217,9 +227,38 @@ class StudentFeeViewSet(viewsets.ModelViewSet):
             return Response(result)
         return Response(serializer.errors, status=400)
 
+    @action(detail=True, methods=["post"])
+    def create_payment_plan(self, request, pk=None):
+        """Create payment plan for a student fee"""
+        student_fee = self.get_object()
+
+        # Check if user can create payment plans
+        if not (request.user.is_staff or hasattr(request.user, "student_profile")):
+            return Response({"error": "Permission denied"}, status=403)
+
+        # Validate that this is the student's own fee if not staff
+        if (
+            hasattr(request.user, "student_profile")
+            and student_fee.student != request.user.student_profile
+        ):
+            return Response(
+                {"error": "Can only create payment plans for your own fees"}, status=403
+            )
+
+        serializer = PaymentPlanSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                payment_plan = FeeService.create_payment_plan(
+                    student_fee, serializer.validated_data
+                )
+                return Response(PaymentPlanSerializer(payment_plan).data)
+            except Exception as e:
+                return Response({"error": str(e)}, status=400)
+        return Response(serializer.errors, status=400)
+
 
 class PaymentViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing payments"""
+    """ViewSet for managing payments with multi-gateway support"""
 
     queryset = (
         Payment.objects.select_related(
@@ -234,10 +273,12 @@ class PaymentViewSet(viewsets.ModelViewSet):
     filterset_class = PaymentFilter
     search_fields = [
         "reference",
+        "gateway_reference",
         "student_fee__student__user__first_name",
         "student_fee__student__user__last_name",
+        "receipt_number",
     ]
-    ordering_fields = ["amount", "payment_date", "created_at"]
+    ordering_fields = ["amount", "payment_date", "created_at", "gateway_status"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
@@ -253,7 +294,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def initiate(self, request):
-        """Initiate a payment"""
+        """Initiate a payment with specified gateway"""
         serializer = PaymentInitiationSerializer(data=request.data)
         if serializer.is_valid():
             try:
@@ -267,7 +308,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def verify(self, request):
-        """Verify a payment"""
+        """Verify a payment from any gateway"""
         serializer = PaymentVerificationSerializer(data=request.data)
         if serializer.is_valid():
             try:
@@ -284,14 +325,211 @@ class PaymentViewSet(viewsets.ModelViewSet):
         """Generate payment receipt"""
         payment = self.get_object()
 
+        if not payment.verified:
+            return Response({"error": "Payment not verified"}, status=400)
+
         # Generate PDF receipt (you'll need to implement this)
         # For now, return payment details
         return Response(
             {
                 "payment": PaymentSerializer(payment).data,
                 "receipt_url": f"/api/payments/{payment.id}/receipt/",
+                "receipt_number": payment.receipt_number,
             }
         )
+
+    @action(detail=False, methods=["get"])
+    def gateways(self, request):
+        """Get available payment gateways"""
+        gateways = PaymentGatewayConfig.objects.filter(is_active=True)
+        serializer = PaymentGatewayConfigSerializer(gateways, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_gateway(self, request):
+        """Get payments by gateway"""
+        gateway = request.query_params.get("gateway")
+        status_filter = request.query_params.get("status")
+
+        queryset = self.get_queryset()
+
+        if gateway:
+            queryset = queryset.filter(payment_gateway=gateway)
+        if status_filter:
+            queryset = queryset.filter(gateway_status=status_filter)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def refund(self, request, pk=None):
+        """Initiate payment refund"""
+        payment = self.get_object()
+
+        if not payment.verified or payment.gateway_status != "SUCCESS":
+            return Response({"error": "Payment cannot be refunded"}, status=400)
+
+        try:
+            result = PaymentService.initiate_refund(payment, request.data.get("reason"))
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
+class PaymentGatewayConfigViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing payment gateway configurations"""
+
+    queryset = PaymentGatewayConfig.objects.all().order_by("gateway")
+    serializer_class = PaymentGatewayConfigSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["gateway", "is_active", "is_test_mode"]
+    search_fields = ["gateway"]
+    ordering_fields = ["gateway", "created_at"]
+    ordering = ["gateway"]
+
+    @action(detail=True, methods=["post"])
+    def toggle_status(self, request, pk=None):
+        """Toggle gateway active status"""
+        gateway_config = self.get_object()
+        gateway_config.is_active = not gateway_config.is_active
+        gateway_config.save()
+
+        return Response(
+            {
+                "message": f"Gateway {gateway_config.gateway} {'activated' if gateway_config.is_active else 'deactivated'}",
+                "is_active": gateway_config.is_active,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def test_connection(self, request, pk=None):
+        """Test gateway connection"""
+        gateway_config = self.get_object()
+
+        try:
+            result = PaymentService.test_gateway_connection(gateway_config)
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
+class PaymentAttemptViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for viewing payment attempts"""
+
+    queryset = PaymentAttempt.objects.all().order_by("-created_at")
+    serializer_class = PaymentAttemptSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["gateway", "status", "student_fee"]
+    search_fields = ["attempt_reference", "error_message"]
+    ordering_fields = ["created_at", "amount"]
+    ordering = ["-created_at"]
+
+    @action(detail=False, methods=["get"])
+    def failure_analysis(self, request):
+        """Get payment failure analysis"""
+        try:
+            analysis = PaymentService.get_failure_analysis()
+            return Response(analysis)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
+class PaymentWebhookViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for managing payment webhooks"""
+
+    queryset = PaymentWebhook.objects.all().order_by("-created_at")
+    serializer_class = PaymentWebhookSerializer
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["gateway", "event_type", "processed"]
+    search_fields = ["event_type", "event_id"]
+    ordering_fields = ["created_at", "processed_at"]
+    ordering = ["-created_at"]
+
+    @action(detail=True, methods=["post"])
+    def reprocess(self, request, pk=None):
+        """Reprocess a webhook"""
+        webhook = self.get_object()
+
+        try:
+            result = PaymentService.process_webhook(webhook)
+            return Response(result)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+    @action(detail=False, methods=["get"])
+    def unprocessed(self, request):
+        """Get unprocessed webhooks"""
+        queryset = self.get_queryset().filter(processed=False)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class PaymentPlanViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing payment plans"""
+
+    queryset = (
+        PaymentPlan.objects.select_related("student_fee__student")
+        .all()
+        .order_by("-created_at")
+    )
+    serializer_class = PaymentPlanSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["is_active", "is_completed", "student_fee"]
+    search_fields = [
+        "name",
+        "student_fee__student__user__first_name",
+        "student_fee__student__user__last_name",
+    ]
+    ordering_fields = ["created_at", "total_amount"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # If user is a student, only show their own payment plans
+        if hasattr(self.request.user, "student_profile"):
+            queryset = queryset.filter(
+                student_fee__student=self.request.user.student_profile
+            )
+
+        return queryset
+
+    @action(detail=True, methods=["get"])
+    def installments(self, request, pk=None):
+        """Get installments for a payment plan"""
+        payment_plan = self.get_object()
+        installments = payment_plan.installments.all()
+        serializer = PaymentInstallmentSerializer(installments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def pay_installment(self, request, pk=None):
+        """Pay a specific installment"""
+        payment_plan = self.get_object()
+        installment_number = request.data.get("installment_number")
+
+        try:
+            installment = payment_plan.installments.get(
+                installment_number=installment_number
+            )
+
+            if installment.is_paid:
+                return Response({"error": "Installment already paid"}, status=400)
+
+            # Create payment for installment
+            result = PaymentService.create_installment_payment(
+                installment, request.data, request.user
+            )
+            return Response(result)
+
+        except PaymentInstallment.DoesNotExist:
+            return Response({"error": "Installment not found"}, status=404)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 
 class FeeDiscountViewSet(viewsets.ModelViewSet):
@@ -465,10 +703,43 @@ class ReportViewSet(viewsets.ViewSet):
             ).count(),
         }
 
+        # Gateway statistics
+        gateway_stats = (
+            Payment.objects.filter(
+                student_fee__academic_session=active_session, verified=True
+            )
+            .values("payment_gateway")
+            .annotate(total_amount=Sum("amount"), count=Count("id"))
+            .order_by("-total_amount")
+        )
+
         return Response(
             {
                 "session": AcademicSessionSerializer(active_session).data,
                 "financial_summary": total_fees,
                 "fee_counts": fee_counts,
+                "gateway_statistics": list(gateway_stats),
             }
         )
+
+    @action(detail=False, methods=["get"])
+    def payment_analytics(self, request):
+        """Get payment analytics"""
+        try:
+            analytics = ReportService.get_payment_analytics(
+                start_date=request.query_params.get("start_date"),
+                end_date=request.query_params.get("end_date"),
+                gateway=request.query_params.get("gateway"),
+            )
+            return Response(analytics)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+    @action(detail=False, methods=["get"])
+    def gateway_performance(self, request):
+        """Get gateway performance metrics"""
+        try:
+            performance = ReportService.get_gateway_performance()
+            return Response(performance)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)

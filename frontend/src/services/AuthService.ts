@@ -10,8 +10,8 @@ export interface SignupCredentials {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
-  confirmPassword: string;
+  password?: string; // Optional since passwords are auto-generated
+  confirmPassword?: string; // Optional since passwords are auto-generated
   role: 'student' | 'teacher' | 'parent' | 'admin';
   phone?: string;
   agreeToTerms: boolean;
@@ -178,6 +178,14 @@ export class AuthService {
       // Only include phone_number if not empty
       if (credentials.phone && credentials.phone.trim() !== "") {
         payload.phone_number = credentials.phone;
+      }
+
+      // Only include password fields if provided (for backward compatibility)
+      if (credentials.password) {
+        payload.password = credentials.password;
+      }
+      if (credentials.confirmPassword) {
+        payload.password_confirm = credentials.confirmPassword;
       }
 
       const response = await fetch(`${this.baseUrl}/auth/register/`, {
@@ -611,7 +619,7 @@ export class AuthService {
   // Token Management
   private getStoredToken(): string | null {
     try {
-      return localStorage.getItem('auth_token');
+      return localStorage.getItem('authToken');
     } catch (error) {
       return null;
     }
@@ -627,7 +635,7 @@ export class AuthService {
 
   private removeToken(): void {
     try {
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('authToken');
     } catch (error) {
       console.warn('Failed to remove token:', error);
     }

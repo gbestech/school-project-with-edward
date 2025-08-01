@@ -4,12 +4,15 @@ import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import {router} from './routes'// Adjust the path to where your router file is located
 import './i18n'; 
+import { SettingsProvider } from './contexts/SettingsContext'
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
   createRoot(rootElement).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <SettingsProvider>
+        <RouterProvider router={router} />
+      </SettingsProvider>
     </StrictMode>,
   );
 } else {

@@ -27,7 +27,6 @@ interface DashboardMainContentProps {
   attendanceData: any;
   classrooms: any;
   parents: any;
-  // userProfile?: any; // Remove this prop
   onRefresh?: () => void;
 }
 
@@ -38,12 +37,12 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
   attendanceData: _attendanceData,
   classrooms: _classrooms,
   parents: _parents,
-  // userProfile: _userProfile, // Remove this prop
   onRefresh
 }) => {
   const { user, activateStudent, activateTeacher } = useAdminAuth();
   const [currentDate] = useState(new Date());
   const { isDarkMode, toggleTheme } = useTheme();
+  
   // Dropdown state
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const [showMessageDropdown, setShowMessageDropdown] = useState(false);
@@ -51,8 +50,9 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
   const messageRef = useRef<HTMLSpanElement>(null);
   const [activatingStudentId, setActivatingStudentId] = useState<number | null>(null);
   const [activatingTeacherId, setActivatingTeacherId] = useState<number | null>(null);
-  // Add state for activating/deactivating parent
   const [activatingParentId, setActivatingParentId] = useState<number | null>(null);
+
+  // Use parents from props directly, no need for local state since refresh will update props
 
   // Dummy data
   const dummyNotifications = [
@@ -64,6 +64,7 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
     { id: 1, title: 'New Student Registration', content: 'A new student has registered.', is_read: false, sender: 'System' },
     { id: 2, title: 'Teacher Meeting', content: 'Staff meeting tomorrow at 3 PM.', is_read: false, sender: 'Principal' }
   ];
+
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -85,6 +86,15 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
     return () => { document.body.style.overflow = ''; };
   }, []);
 
+  // Helper function to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
+    };
+  };
+
   const getUserDisplayName = () => {
     if (user?.first_name || user?.last_name) {
       return `${user.first_name || ''} ${user.last_name || ''}`.trim();
@@ -100,25 +110,13 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
       if (onRefresh) onRefresh();
       toast.success('Student activated successfully');
     } catch (e) {
-      // Optionally show error
       toast.error('Student activation failed');
     } finally {
       setActivatingStudentId(null);
     }
   };
 
-  const handleActivateTeacher = async (teacher: any) => {
-    setActivatingTeacherId(teacher.user.id);
-    try {
-      await activateTeacher(teacher.user.id);
-      if (onRefresh) onRefresh();
-      toast.success('Teacher activated successfully');
-    } catch (e) {
-      toast.error('Teacher activation failed');
-    } finally {
-      setActivatingTeacherId(null);
-    }
-  };
+
 
   // Fix: Teacher activation with toast
   const handleToggleTeacherActive = async (teacher: any) => {
@@ -128,7 +126,10 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
         ? `/api/teachers/${teacher.id}/deactivate/`
         : `/api/teachers/${teacher.id}/activate/`;
       const method = 'POST';
-      const res = await fetch(endpoint, { method });
+      const res = await fetch(endpoint, { 
+        method,
+        headers: getAuthHeaders()
+      });
       if (!res.ok) throw new Error('Request failed');
       if (onRefresh) onRefresh();
       toast.success(`Teacher ${teacher.user.is_active ? 'deactivated' : 'activated'} successfully`);
@@ -139,25 +140,49 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = ({
     }
   };
 
-  // Fix: Parent activation with correct endpoint, state update, and toast
+  // Fixed: Parent activation with proper endpoint, auth headers, and real-time refresh
   const handleToggleParentActive = async (parent: any) => {
     setActivatingParentId(parent.id);
+    
+    // Get current active status from the parent data
+    const currentIsActive = parent.is_active;
+    
     try {
-      const endpoint = parent.user.is_active
-        ? `/api/parents/${parent.id}/deactivate/`
-        : `/api/parents/${parent.id}/activate/`;
-      const method = 'POST';
-      const res = await fetch(endpoint, { method });
-      if (!res.ok) throw new Error('Request failed');
+      // Use the correct endpoint based on the backend URL structure
+      const endpoint = `/api/parents/${parent.id}/${currentIsActive ? 'deactivate' : 'activate'}/`;
+      
+      const res = await fetch(endpoint, { 
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      
+      // Trigger refresh to update the parent data in real-time
       if (onRefresh) onRefresh();
-      toast.success(`Parent ${parent.user.is_active ? 'deactivated' : 'activated'} successfully`);
-    } catch (e) {
-      toast.error('Parent activation failed');
+      toast.success(`Parent ${currentIsActive ? 'deactivated' : 'activated'} successfully`);
+    } catch (e: any) {
+      console.error('Parent activation error:', e);
+      
+      // Show specific error message
+      if (e.message.includes('401')) {
+        toast.error('Authentication failed. Please login again.');
+      } else if (e.message.includes('403')) {
+        toast.error('You do not have permission to perform this action.');
+      } else if (e.message.includes('404')) {
+        toast.error('Parent activation endpoint not found. Please contact administrator.');
+      } else {
+        toast.error(`Parent activation failed: ${e.message}`);
+      }
     } finally {
       setActivatingParentId(null);
     }
   };
-console.log("Students", _students);
+
+  console.log("Students", _students);
+  
   // Example calculations (adapt as needed)
   const totalStudents = _dashboardStats?.totalStudents || (Array.isArray(_students) ? _students.length : 0);
   const totalTeachers = _dashboardStats?.totalTeachers || (Array.isArray(_teachers) ? _teachers.length : 0);
@@ -166,6 +191,7 @@ console.log("Students", _students);
   const maleStudents = Array.isArray(_students) ? _students.filter((s: any) => s.gender === 'M').length : 0;
   const femaleStudents = Array.isArray(_students) ? _students.filter((s: any) => s.gender === 'F').length : 0;
   const totalStudentsForGender = maleStudents + femaleStudents;
+  
   const processedAttendanceData = Array.isArray(_attendanceData?.dailyAttendance)
     ? _attendanceData.dailyAttendance.map((entry: any) => ({
         date: entry.date,
@@ -175,14 +201,17 @@ console.log("Students", _students);
     : [];
   const totalPresent = processedAttendanceData.reduce((sum: number, entry: any) => sum + (entry.present || 0), 0);
   const totalAbsent = processedAttendanceData.reduce((sum: number, entry: any) => sum + (entry.absent || 0), 0);
+  
   const noticeItems = [
     { title: 'School annual sports day celebration 2024', date: '20 January, 2024', views: '20k', image: '🏆' },
     { title: 'Annual Function celebration 2023-24', date: '05 January, 2024', views: '15k', image: '🎭' },
     { title: 'Mid term examination routine published', date: '15 December, 2023', views: '22k', image: '📚' },
     { title: 'Inter school annual painting competition', date: '18 December, 2023', views: '18k', image: '🎨' }
   ];
+  
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
+    
   const generateCalendar = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -194,6 +223,14 @@ console.log("Students", _students);
     for (let i = 0; i < startingDay; i++) days.push(null);
     for (let day = 1; day <= daysInMonth; day++) days.push(day);
     return days;
+  };
+
+  // Helper function to get parent display name
+  const getParentDisplayName = (parent: any) => {
+    if (parent.user?.first_name || parent.user?.last_name) {
+      return `${parent.user.first_name || ''} ${parent.user.last_name || ''}`.trim();
+    }
+    return parent.user?.email || parent.user?.username || `Parent #${parent.id}`;
   };
 
   return (
@@ -314,6 +351,7 @@ console.log("Students", _students);
           </div>
         </div>
       </header>
+      
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1" style={{ background: 'var(--background)', border: '1px solid var(--border)' }}>
@@ -361,6 +399,7 @@ console.log("Students", _students);
           </div>
         </div>
       </div>
+      
       {/* Attendance Chart */}
       <div className="p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 mb-8" style={{ background: 'var(--background)', border: '1px solid var(--border)' }}>
         <h3 className="text-lg font-semibold mb-6" style={{ color: 'var(--primary-text)' }}>Weekly Attendance Chart</h3>
@@ -382,6 +421,7 @@ console.log("Students", _students);
           )}
         </div>
       </div>
+      
       {/* Charts and Data */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Gender Distribution */}
@@ -409,6 +449,7 @@ console.log("Students", _students);
             </div>
           </div>
         </div>
+        
         {/* Attendance Chart */}
         <div className="p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300" style={{ background: 'var(--background)', border: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between mb-6">
@@ -557,12 +598,12 @@ console.log("Students", _students);
         <div className="space-y-4">
           {Array.isArray(_parents) && _parents.slice(0, 5).map((parent: any, index: number) => {
               console.log('Parent data:', parent);
-            const isActive = parent.user?.is_active;
+            const isActive = parent.is_active;
             return (
               <div key={index} className="flex items-center justify-between p-3 border rounded-lg transition-all duration-200 hover:shadow-md hover:-translate-y-1" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-center">
                   <User className="w-5 h-5 mr-3 text-accent" />
-                    <span className="font-medium" style={{ color: 'var(--primary-text)' }}>{parent?.user || parent.user?.email}</span>
+                    <span className="font-medium" style={{ color: 'var(--primary-text)' }}>{getParentDisplayName(parent)}</span>
                   <span className={`ml-2 px-2 py-1 text-xs rounded ${isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{isActive ? 'Active' : 'Inactive'}</span>
                 </div>
                   <span className="text-sm text-secondary-text">{parent.user}</span>

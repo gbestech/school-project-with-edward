@@ -21,6 +21,7 @@ import {
   Grid3X3,
   List
 } from 'lucide-react';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface Teacher {
   id: number;
@@ -172,6 +173,7 @@ const mockTeachers: Teacher[] = [
 ];
 
 const TeacherList = () => {
+  const { settings } = useSettings();
   const [teachers, setTeachers] = useState<Teacher[]>(mockTeachers);
   const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>(mockTeachers);
   const [searchTerm, setSearchTerm] = useState('');
@@ -266,7 +268,7 @@ const TeacherList = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">God's Treasure Schools</h1>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">{settings?.school_name || "God's Treasure Schools"}</h1>
               <p className="text-gray-600">Teacher Management System - Nursery, Primary & Secondary</p>
             </div>
           </div>

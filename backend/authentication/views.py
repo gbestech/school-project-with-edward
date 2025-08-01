@@ -66,9 +66,9 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # If generated credentials are present, include them in the response
-            generated_username = getattr(user, 'generated_username', None)
-            generated_password = getattr(user, 'generated_password', None)
+            # Access generated credentials from the user object
+            generated_username = getattr(user, '_generated_username', None)
+            generated_password = getattr(user, '_generated_password', None)
             response_data = {
                 "message": "Account created successfully. Please check your email/SMS for verification code.",
                 "email": user.email,

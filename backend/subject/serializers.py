@@ -1,12 +1,20 @@
 from rest_framework import serializers
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .models import Subject, SUBJECT_CATEGORY_CHOICES, EDUCATION_LEVELS
+from .models import (
+    Subject,
+    SUBJECT_CATEGORY_CHOICES,
+    EDUCATION_LEVELS,
+    NURSERY_LEVELS,
+    SS_SUBJECT_TYPES,
+)
 
 
 class SubjectSerializer(serializers.ModelSerializer):
     # Read-only computed fields from model properties
-    grade_range_display = serializers.ReadOnlyField()
+    display_name = serializers.ReadOnlyField()
     education_levels_display = serializers.ReadOnlyField()
+    nursery_levels_display = serializers.ReadOnlyField()
+    full_level_display = serializers.ReadOnlyField()
     total_weekly_hours = serializers.ReadOnlyField()
     category_display_with_icon = serializers.CharField(
         source="get_category_display_with_icon", read_only=True
@@ -16,10 +24,19 @@ class SubjectSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(
         source="get_category_display", read_only=True
     )
+    ss_subject_type_display = serializers.CharField(
+        source="get_ss_subject_type_display", read_only=True
+    )
+
+    # Boolean property fields
+    is_nursery_subject = serializers.ReadOnlyField()
+    is_primary_subject = serializers.ReadOnlyField()
+    is_junior_secondary_subject = serializers.ReadOnlyField()
+    is_senior_secondary_subject = serializers.ReadOnlyField()
 
     # Custom validation fields
     code = serializers.CharField(
-        max_length=10, help_text="Unique subject code (e.g., MATH101, ENG201)"
+        max_length=15, help_text="Unique subject code (e.g., MATH-NUR, ENG-PRI, PHY-SS)"
     )
 
     # Method fields for additional context
@@ -27,6 +44,7 @@ class SubjectSerializer(serializers.ModelSerializer):
     prerequisite_subjects = serializers.SerializerMethodField()
     dependent_subjects = serializers.SerializerMethodField()
     subject_summary = serializers.SerializerMethodField()
+    education_level_details = serializers.SerializerMethodField()
 
     # Nested serialization for related fields
     grade_levels = serializers.StringRelatedField(many=True, read_only=True)
@@ -38,17 +56,27 @@ class SubjectSerializer(serializers.ModelSerializer):
             # Basic fields
             "id",
             "name",
+            "short_name",
+            "display_name",
             "code",
             "description",
             "category",
             "category_display",
             "category_display_with_icon",
-            # Grade and education level fields
-            "grade_levels",
-            "grade_levels_info",
-            "grade_range_display",
+            # Education level fields
             "education_levels",
             "education_levels_display",
+            "nursery_levels",
+            "nursery_levels_display",
+            "full_level_display",
+            "education_level_details",
+            # Senior Secondary specific
+            "ss_subject_type",
+            "ss_subject_type_display",
+            "is_cross_cutting",
+            # Grade level integration
+            "grade_levels",
+            "grade_levels_info",
             # Academic configuration
             "credit_hours",
             "is_compulsory",
@@ -61,19 +89,29 @@ class SubjectSerializer(serializers.ModelSerializer):
             "has_continuous_assessment",
             "has_final_exam",
             "pass_mark",
-            # Practical components
+            # Practical and activity components
             "has_practical",
             "practical_hours",
+            "is_activity_based",
             "total_weekly_hours",
             # Resource requirements
             "requires_lab",
             "requires_special_equipment",
             "equipment_notes",
+            "requires_specialist_teacher",
+            # Educational level checks
+            "is_nursery_subject",
+            "is_primary_subject",
+            "is_junior_secondary_subject",
+            "is_senior_secondary_subject",
             # Status fields
             "is_active",
             "is_discontinued",
-            # Metadata
+            # Metadata and organization
             "introduced_year",
+            "curriculum_version",
+            "subject_order",
+            "learning_outcomes",
             "subject_summary",
             # Timestamps
             "created_at",
@@ -100,7 +138,9 @@ class SubjectSerializer(serializers.ModelSerializer):
             {
                 "id": subject.id,
                 "name": subject.name,
+                "short_name": subject.short_name,
                 "code": subject.code,
+                "display_name": subject.display_name,
             }
             for subject in prerequisites
         ]
@@ -112,24 +152,82 @@ class SubjectSerializer(serializers.ModelSerializer):
             {
                 "id": subject.id,
                 "name": subject.name,
+                "short_name": subject.short_name,
                 "code": subject.code,
+                "display_name": subject.display_name,
             }
             for subject in dependents
         ]
 
+    def get_education_level_details(self, obj):
+        """Return detailed education level information"""
+        details = {
+            "applicable_levels": [],
+            "nursery_specific": [],
+            "level_compatibility": {
+                "nursery": obj.is_nursery_subject,
+                "primary": obj.is_primary_subject,
+                "junior_secondary": obj.is_junior_secondary_subject,
+                "senior_secondary": obj.is_senior_secondary_subject,
+            },
+        }
+
+        # Add applicable education levels
+        if obj.education_levels:
+            level_dict = dict(EDUCATION_LEVELS)
+            details["applicable_levels"] = [
+                {"code": level, "name": level_dict.get(level, level)}
+                for level in obj.education_levels
+            ]
+
+        # Add nursery specific levels
+        if obj.nursery_levels:
+            nursery_dict = dict(NURSERY_LEVELS)
+            details["nursery_specific"] = [
+                {"code": level, "name": nursery_dict.get(level, level)}
+                for level in obj.nursery_levels
+            ]
+
+        return details
+
     def get_subject_summary(self, obj):
         """Return comprehensive subject summary"""
         return {
-            "total_credit_hours": obj.credit_hours,
-            "total_practical_hours": obj.practical_hours,
-            "total_weekly_hours": obj.total_weekly_hours,
-            "has_prerequisites": obj.prerequisites.exists(),
-            "prerequisite_count": obj.prerequisites.count(),
-            "dependent_count": obj.unlocks_subjects.count(),
-            "grade_level_count": obj.grade_levels.count(),
-            "assessment_type": self._get_assessment_type(obj),
-            "resource_requirements": self._get_resource_requirements(obj),
-            "status": self._get_status_summary(obj),
+            "basic_info": {
+                "display_name": obj.display_name,
+                "total_credit_hours": obj.credit_hours,
+                "total_practical_hours": obj.practical_hours,
+                "total_weekly_hours": obj.total_weekly_hours,
+            },
+            "classification": {
+                "category": obj.get_category_display(),
+                "is_compulsory": obj.is_compulsory,
+                "is_core": obj.is_core,
+                "is_cross_cutting": obj.is_cross_cutting,
+                "is_activity_based": obj.is_activity_based,
+                "ss_subject_type": (
+                    obj.get_ss_subject_type_display() if obj.ss_subject_type else None
+                ),
+            },
+            "relationships": {
+                "has_prerequisites": obj.prerequisites.exists(),
+                "prerequisite_count": obj.prerequisites.count(),
+                "dependent_count": obj.unlocks_subjects.count(),
+                "grade_level_count": obj.grade_levels.count(),
+            },
+            "assessment": {
+                "assessment_type": self._get_assessment_type(obj),
+                "pass_mark": obj.pass_mark,
+            },
+            "resources": {
+                "resource_requirements": self._get_resource_requirements(obj),
+                "requires_specialist": obj.requires_specialist_teacher,
+            },
+            "status": {
+                "status": self._get_status_summary(obj),
+                "introduced_year": obj.introduced_year,
+                "curriculum_version": obj.curriculum_version,
+            },
         }
 
     def _get_assessment_type(self, obj):
@@ -164,19 +262,19 @@ class SubjectSerializer(serializers.ModelSerializer):
             return "Active"
 
     def validate_code(self, value):
-        """Ensure subject code is uppercase and follows format"""
+        """Ensure subject code follows the new format"""
         if not value:
             raise serializers.ValidationError("Subject code is required.")
 
         # Convert to uppercase
         value = value.upper()
 
-        # Basic format validation (letters followed by numbers)
+        # Enhanced format validation for new code structure
         import re
 
-        if not re.match(r"^[A-Z]{2,4}\d{2,4}$", value):
+        if not re.match(r"^[A-Z]{2,6}-[A-Z]{2,4}$", value):
             raise serializers.ValidationError(
-                "Subject code must be 2-4 letters followed by 2-4 numbers (e.g., MATH101, ENG201)"
+                "Subject code must follow format: SUBJECT-LEVEL (e.g., MATH-NUR, ENG-PRI, PHY-SS)"
             )
 
         return value
@@ -194,18 +292,23 @@ class SubjectSerializer(serializers.ModelSerializer):
         return value.strip().title()
 
     def validate_credit_hours(self, value):
-        """Validate credit hours based on category"""
+        """Validate credit hours based on category and education level"""
         if value < 1:
             raise serializers.ValidationError("Credit hours must be at least 1.")
 
         category = self.initial_data.get("category", "")
-        if category == "extra_curricular" and value > 2:
+        education_levels = self.initial_data.get("education_levels", [])
+
+        # Nursery subjects typically have fewer credit hours
+        if "NURSERY" in education_levels and value > 3:
             raise serializers.ValidationError(
-                "Extra-curricular subjects typically have maximum 2 credit hours."
+                "Nursery subjects typically have maximum 3 credit hours."
             )
-        elif category == "core" and value < 2:
+
+        # Cross-cutting subjects validation
+        if category in ["cross_cutting"] and value < 2:
             raise serializers.ValidationError(
-                "Core subjects typically have minimum 2 credit hours."
+                "Cross-cutting subjects typically have minimum 2 credit hours."
             )
 
         return value
@@ -223,12 +326,6 @@ class SubjectSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def validate_pass_mark(self, value):
-        """Validate pass mark"""
-        if not (1 <= value <= 100):
-            raise serializers.ValidationError("Pass mark must be between 1 and 100.")
-        return value
-
     def validate_education_levels(self, value):
         """Validate education levels"""
         if not isinstance(value, list):
@@ -240,6 +337,34 @@ class SubjectSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f"Invalid education level: {level}. Must be one of {valid_levels}"
                 )
+        return value
+
+    def validate_nursery_levels(self, value):
+        """Validate nursery levels"""
+        if not value:
+            return value
+
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Nursery levels must be a list.")
+
+        valid_levels = [choice[0] for choice in NURSERY_LEVELS]
+        for level in value:
+            if level not in valid_levels:
+                raise serializers.ValidationError(
+                    f"Invalid nursery level: {level}. Must be one of {valid_levels}"
+                )
+        return value
+
+    def validate_ss_subject_type(self, value):
+        """Validate Senior Secondary subject type"""
+        if not value:
+            return value
+
+        valid_types = [choice[0] for choice in SS_SUBJECT_TYPES]
+        if value not in valid_types:
+            raise serializers.ValidationError(
+                f"Invalid SS subject type: {value}. Must be one of {valid_types}"
+            )
         return value
 
     def validate(self, data):
@@ -266,13 +391,41 @@ class SubjectSerializer(serializers.ModelSerializer):
                 }
             )
 
-        # Category and compulsory field logic
-        category = data.get("category")
-        is_compulsory = data.get("is_compulsory")
+        # Senior Secondary validations
+        education_levels = data.get("education_levels", [])
+        ss_subject_type = data.get("ss_subject_type")
+        is_cross_cutting = data.get("is_cross_cutting", False)
 
-        if category == "extra_curricular" and is_compulsory:
+        if "SENIOR_SECONDARY" in education_levels and not ss_subject_type:
             raise serializers.ValidationError(
-                {"is_compulsory": "Extra-curricular subjects cannot be compulsory."}
+                {
+                    "ss_subject_type": "Senior Secondary subjects must have a subject type."
+                }
+            )
+
+        if is_cross_cutting and "SENIOR_SECONDARY" not in education_levels:
+            raise serializers.ValidationError(
+                {
+                    "is_cross_cutting": "Cross-cutting subjects can only be applied to Senior Secondary level."
+                }
+            )
+
+        # Nursery validations
+        is_activity_based = data.get("is_activity_based", False)
+        nursery_levels = data.get("nursery_levels", [])
+
+        if is_activity_based and "NURSERY" not in education_levels:
+            raise serializers.ValidationError(
+                {
+                    "is_activity_based": "Activity-based subjects can only be applied to Nursery level."
+                }
+            )
+
+        if nursery_levels and "NURSERY" not in education_levels:
+            raise serializers.ValidationError(
+                {
+                    "nursery_levels": "Nursery levels can only be specified for nursery subjects."
+                }
             )
 
         # Assessment validation
@@ -318,6 +471,8 @@ class SubjectSerializer(serializers.ModelSerializer):
                     or (not instance.is_active and instance.is_compulsory),
                     "has_resource_requirements": instance.requires_lab
                     or instance.requires_special_equipment,
+                    "curriculum_alignment": instance.curriculum_version
+                    or "Not specified",
                 }
 
         return data
@@ -329,7 +484,8 @@ class SubjectListSerializer(serializers.ModelSerializer):
     category_display_with_icon = serializers.CharField(
         source="get_category_display_with_icon", read_only=True
     )
-    grade_range_display = serializers.ReadOnlyField()
+    display_name = serializers.ReadOnlyField()
+    full_level_display = serializers.ReadOnlyField()
     total_weekly_hours = serializers.ReadOnlyField()
     status_summary = serializers.SerializerMethodField()
 
@@ -338,16 +494,22 @@ class SubjectListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "short_name",
+            "display_name",
             "code",
             "category_display_with_icon",
-            "grade_range_display",
+            "full_level_display",
             "credit_hours",
             "practical_hours",
             "total_weekly_hours",
             "is_compulsory",
+            "is_core",
+            "is_cross_cutting",
+            "is_activity_based",
             "is_active",
             "is_discontinued",
             "status_summary",
+            "subject_order",
         ]
 
     def get_status_summary(self, obj):
@@ -381,10 +543,14 @@ class SubjectCreateUpdateSerializer(serializers.ModelSerializer):
         model = Subject
         fields = [
             "name",
+            "short_name",
             "code",
             "description",
             "category",
             "education_levels",
+            "nursery_levels",
+            "ss_subject_type",
+            "is_cross_cutting",
             "credit_hours",
             "is_compulsory",
             "is_core",
@@ -393,12 +559,17 @@ class SubjectCreateUpdateSerializer(serializers.ModelSerializer):
             "pass_mark",
             "has_practical",
             "practical_hours",
+            "is_activity_based",
             "requires_lab",
             "requires_special_equipment",
             "equipment_notes",
+            "requires_specialist_teacher",
             "is_active",
             "is_discontinued",
             "introduced_year",
+            "curriculum_version",
+            "subject_order",
+            "learning_outcomes",
             "grade_level_ids",
             "prerequisite_ids",
         ]
@@ -492,61 +663,74 @@ class SubjectCreateUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class SubjectGradeCheckSerializer(serializers.Serializer):
-    """Serializer for checking subject availability for specific grades"""
+class NurserySubjectSerializer(serializers.ModelSerializer):
+    """Specialized serializer for nursery subjects"""
 
-    grade_level_id = serializers.IntegerField(help_text="Grade level ID to check")
-
-    def validate_grade_level_id(self, value):
-        """Validate grade level ID exists"""
-        from .models import GradeLevel
-
-        if not GradeLevel.objects.filter(id=value).exists():
-            raise serializers.ValidationError(
-                "Grade level with this ID does not exist."
-            )
-
-        return value
-
-
-class SubjectPrerequisiteSerializer(serializers.ModelSerializer):
-    """Serializer for managing subject prerequisites"""
-
-    prerequisites_info = serializers.SerializerMethodField()
-    can_add_prerequisites = serializers.SerializerMethodField()
+    nursery_levels_display = serializers.ReadOnlyField()
+    is_activity_based = serializers.BooleanField(default=True)
 
     class Meta:
         model = Subject
         fields = [
             "id",
             "name",
+            "short_name",
             "code",
-            "prerequisites_info",
-            "can_add_prerequisites",
+            "description",
+            "nursery_levels",
+            "nursery_levels_display",
+            "is_activity_based",
+            "credit_hours",
+            "practical_hours",
+            "is_active",
+            "subject_order",
         ]
 
-    def get_prerequisites_info(self, obj):
-        """Get detailed prerequisite information"""
-        prerequisites = obj.get_prerequisite_subjects()
-        return [
-            {
-                "id": prereq.id,
-                "name": prereq.name,
-                "code": prereq.code,
-                "category": prereq.get_category_display(),
-            }
-            for prereq in prerequisites
+    def validate(self, data):
+        # Ensure this is a nursery subject
+        if "NURSERY" not in data.get("education_levels", ["NURSERY"]):
+            data["education_levels"] = ["NURSERY"]
+        return super().validate(data)
+
+
+class SeniorSecondarySubjectSerializer(serializers.ModelSerializer):
+    """Specialized serializer for Senior Secondary subjects"""
+
+    ss_subject_type_display = serializers.CharField(
+        source="get_ss_subject_type_display", read_only=True
+    )
+
+    class Meta:
+        model = Subject
+        fields = [
+            "id",
+            "name",
+            "short_name",
+            "code",
+            "description",
+            "ss_subject_type",
+            "ss_subject_type_display",
+            "is_cross_cutting",
+            "credit_hours",
+            "practical_hours",
+            "requires_specialist_teacher",
+            "is_active",
         ]
 
-    def get_can_add_prerequisites(self, obj):
-        """Check if more prerequisites can be added"""
-        # Business logic: prevent circular dependencies
-        potential_prereqs = (
-            Subject.objects.filter(is_active=True)
-            .exclude(id=obj.id)
-            .exclude(prerequisites=obj)
-        )
-        return potential_prereqs.exists()
+    def validate(self, data):
+        # Ensure this is a Senior Secondary subject
+        if "SENIOR_SECONDARY" not in data.get("education_levels", ["SENIOR_SECONDARY"]):
+            data["education_levels"] = ["SENIOR_SECONDARY"]
+
+        # Require ss_subject_type for SS subjects
+        if not data.get("ss_subject_type"):
+            raise serializers.ValidationError(
+                {
+                    "ss_subject_type": "Senior Secondary subjects must have a subject type."
+                }
+            )
+
+        return super().validate(data)
 
 
 class SubjectEducationLevelSerializer(serializers.ModelSerializer):
@@ -554,6 +738,7 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
 
     applicable_education_levels = serializers.SerializerMethodField()
     education_level_compatibility = serializers.SerializerMethodField()
+    level_specific_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
@@ -562,29 +747,130 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
             "name",
             "code",
             "education_levels",
+            "nursery_levels",
             "applicable_education_levels",
             "education_level_compatibility",
+            "level_specific_info",
         ]
 
     def get_applicable_education_levels(self, obj):
         """Get formatted education levels"""
-        return (
-            [
-                {"code": level, "name": dict(EDUCATION_LEVELS).get(level, level)}
-                for level in obj.education_levels
-            ]
-            if obj.education_levels
-            else [{"code": level[0], "name": level[1]} for level in EDUCATION_LEVELS]
-        )
+        result = []
+
+        if obj.education_levels:
+            for level in obj.education_levels:
+                level_dict = dict(EDUCATION_LEVELS)
+                level_info = {
+                    "code": level,
+                    "name": level_dict.get(level, level),
+                    "is_current": True,
+                }
+
+                # Add nursery sub-levels if applicable
+                if level == "NURSERY" and obj.nursery_levels:
+                    nursery_dict = dict(NURSERY_LEVELS)
+                    level_info["sub_levels"] = [
+                        {
+                            "code": sub_level,
+                            "name": nursery_dict.get(sub_level, sub_level),
+                        }
+                        for sub_level in obj.nursery_levels
+                    ]
+
+                result.append(level_info)
+        else:
+            # If no specific levels, show all as applicable
+            for level_code, level_name in EDUCATION_LEVELS:
+                result.append(
+                    {"code": level_code, "name": level_name, "is_current": False}
+                )
+
+        return result
 
     def get_education_level_compatibility(self, obj):
         """Check compatibility with different education levels"""
         return {
-            "nursery_compatible": not obj.education_levels
-            or "NURSERY" in obj.education_levels,
-            "primary_compatible": not obj.education_levels
-            or "PRIMARY" in obj.education_levels,
-            "secondary_compatible": not obj.education_levels
-            or "SECONDARY" in obj.education_levels,
+            "nursery_compatible": obj.is_nursery_subject,
+            "primary_compatible": obj.is_primary_subject,
+            "junior_secondary_compatible": obj.is_junior_secondary_subject,
+            "senior_secondary_compatible": obj.is_senior_secondary_subject,
             "all_levels": not obj.education_levels,
+            "cross_cutting": obj.is_cross_cutting,
+            "activity_based": obj.is_activity_based,
         }
+
+    def get_level_specific_info(self, obj):
+        """Get level-specific information"""
+        info = {
+            "general": {
+                "requires_specialist": obj.requires_specialist_teacher,
+                "has_practical": obj.has_practical,
+                "credit_hours": obj.credit_hours,
+            }
+        }
+
+        # Add nursery-specific info
+        if obj.is_nursery_subject:
+            info["nursery"] = {
+                "is_activity_based": obj.is_activity_based,
+                "applicable_levels": obj.nursery_levels_display,
+            }
+
+        # Add Senior Secondary specific info
+        if obj.is_senior_secondary_subject:
+            info["senior_secondary"] = {
+                "subject_type": (
+                    obj.get_ss_subject_type_display() if obj.ss_subject_type else None
+                ),
+                "is_cross_cutting": obj.is_cross_cutting,
+            }
+
+        return info
+
+
+class SubjectFilterSerializer(serializers.Serializer):
+    """Serializer for filtering subjects by various criteria"""
+
+    education_level = serializers.ChoiceField(
+        choices=EDUCATION_LEVELS, required=False, help_text="Filter by education level"
+    )
+
+    nursery_level = serializers.ChoiceField(
+        choices=NURSERY_LEVELS, required=False, help_text="Filter by nursery level"
+    )
+
+    category = serializers.ChoiceField(
+        choices=SUBJECT_CATEGORY_CHOICES,
+        required=False,
+        help_text="Filter by subject category",
+    )
+
+    ss_subject_type = serializers.ChoiceField(
+        choices=SS_SUBJECT_TYPES,
+        required=False,
+        help_text="Filter by Senior Secondary subject type",
+    )
+
+    is_compulsory = serializers.BooleanField(
+        required=False, help_text="Filter by compulsory status"
+    )
+
+    is_cross_cutting = serializers.BooleanField(
+        required=False, help_text="Filter cross-cutting subjects"
+    )
+
+    is_activity_based = serializers.BooleanField(
+        required=False, help_text="Filter activity-based subjects"
+    )
+
+    requires_specialist = serializers.BooleanField(
+        required=False, help_text="Filter subjects requiring specialist teachers"
+    )
+
+    has_practical = serializers.BooleanField(
+        required=False, help_text="Filter subjects with practical components"
+    )
+
+    is_active = serializers.BooleanField(
+        default=True, help_text="Filter by active status"
+    )

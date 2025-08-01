@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Plus, Edit, Trash2, Printer, Download, X, Eye } from 'lucide-react';
 import { mockExams, Exam, ObjectiveQuestion, TheoryQuestion, SchoolInfo, SectionCQuestion } from '../../../data/mockExamsData';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface ExamsPageProps {
   searchTerm?: string;
@@ -22,6 +23,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   selectedClass = 'all',
   selectedSubject = 'all',
 }) => {
+  const { settings } = useSettings();
   // Use imported mockExams as the initial state
   const [exams, setExams] = useState<Exam[]>(mockExams);
 
@@ -42,10 +44,10 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     totalMarks: 0,
     questions: { objectives: [], theory: [], sectionc: [] },
     school: {
-      name: "GOD'S TREASURE SCHOOLS",
-      address: "NO. 54 DAGBANA ROAD JIKWOYI PHASE 3 ABUJA",
-      session: "2024/2025 ACADEMIC SESSION",
-      term: "FIRST TERM EXAMINATION"
+      name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
+      address: settings?.school_address || "NO. 54 DAGBANA ROAD JIKWOYI PHASE 3 ABUJA",
+      session: settings?.academic_year || "2024/2025 ACADEMIC SESSION",
+      term: settings?.current_term || "FIRST TERM EXAMINATION"
     }
   });
 
@@ -91,14 +93,14 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       totalMarks: 0,
       questions: { objectives: [], theory: [], sectionc: [] },
       school: {
-        name: "GOD'S TREASURE SCHOOLS",
-        address: "NO. 54 DAGBANA ROAD JIKWOYI PHASE 3 ABUJA",
-        session: "2024/2025 ACADEMIC SESSION",
-        term: "FIRST TERM EXAMINATION"
+        name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
+        address: settings?.school_address || "NO. 54 DAGBANA ROAD JIKWOYI PHASE 3 ABUJA",
+        session: settings?.academic_year || "2024/2025 ACADEMIC SESSION",
+        term: settings?.current_term || "FIRST TERM EXAMINATION"
       }
     });
     setShowExamModal(false);
-  }, []);
+  }, [settings]);
 
   const handleEditExam = useCallback((exam: Exam) => {
     setNewExam({ ...exam });

@@ -12,6 +12,7 @@ from datetime import timedelta
 import random
 import string
 import calendar
+import secrets
 
 User = get_user_model()
 
@@ -34,6 +35,10 @@ class RegisterSerializer(serializers.ModelSerializer):
     education_level = serializers.CharField(required=False)
     date_of_birth = serializers.DateField(required=False)
     gender = serializers.CharField(required=False)
+    registration_number = serializers.CharField(required=False, max_length=20)
+    
+    # Teacher-specific fields (only required when role is teacher)
+    employee_id = serializers.CharField(required=False, max_length=20)
     
     # Parent fields (only required when role is student)
     parent_first_name = serializers.CharField(required=False)
@@ -57,6 +62,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             "education_level",
             "date_of_birth",
             "gender",
+            "registration_number",
+            "employee_id",
             "parent_first_name",
             "parent_last_name",
             "parent_email",
@@ -82,12 +89,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         role = attrs.get("role")
-        # Only require password for student registration (or if you want for other roles)
-        if role == "student":
-            if not attrs.get("password") or not attrs.get("password_confirm"):
-                raise serializers.ValidationError("Password and password_confirm are required for student registration.")
-            if attrs["password"] != attrs["password_confirm"]:
-                raise serializers.ValidationError("Passwords don't match.")
+        # All roles now use auto-generated passwords, so password fields are optional
         # If SMS verification chosen, phone number is required
         if attrs.get("verification_method") == "sms" and not attrs.get("phone_number"):
             raise serializers.ValidationError(
@@ -107,6 +109,26 @@ class RegisterSerializer(serializers.ModelSerializer):
             # Check if parent email already exists
             if User.objects.filter(email=attrs.get("parent_email")).exists():
                 raise serializers.ValidationError("A parent with this email already exists.")
+            
+            # Check if registration number is already in use (if provided)
+            registration_number = attrs.get("registration_number")
+            if registration_number:
+                from utils import generate_unique_username
+                from users.models import CustomUser
+                base_username = generate_unique_username("student", registration_number)
+                if CustomUser.objects.filter(username=base_username).exists():
+                    raise serializers.ValidationError(f"Student with registration number '{registration_number}' already exists.")
+        
+        # Validate teacher-specific fields when role is teacher
+        elif role == "teacher":
+            employee_id = attrs.get("employee_id")
+            if employee_id:
+                from utils import generate_unique_username
+                from users.models import CustomUser
+                base_username = generate_unique_username("teacher", None, employee_id)
+                if CustomUser.objects.filter(username=base_username).exists():
+                    raise serializers.ValidationError(f"Teacher with employment ID '{employee_id}' already exists.")
+        
         return attrs
 
     def create(self, validated_data):
@@ -115,33 +137,36 @@ class RegisterSerializer(serializers.ModelSerializer):
         import string
         verification_method = validated_data.pop("verification_method", "email")
         role = validated_data.get("role")
-        # Remove password fields for non-student roles
+        # Remove password fields for all roles (auto-generated)
         password = validated_data.pop("password", None)
         validated_data.pop("password_confirm", None)
-        # Generate password if not provided (for admin, teacher, parent)
-        if not password:
-            password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
-        # Generate username in format: ROLE/SCHOOL/MONTH/YEAR/ID
-        school_code = "GTS"  # Change as needed
-        now = timezone.now()
-        month = calendar.month_abbr[now.month].upper()
-        year = str(now.year)[-2:]
-        # Temporarily create user to get ID
-        temp_user = User(email=validated_data["email"], first_name=validated_data["first_name"], last_name=validated_data["last_name"], role=role)
-        temp_user.save()
-        id_number = str(temp_user.id).zfill(4)
-        role_code = {
-            "admin": "ADM",
-            "student": "STD",
-            "teacher": "TCH",
-            "parent": "PAR",
-        }.get(role, role.upper()[:3])
-        username = f"{role_code}/{school_code}/{month}/{year}/{id_number}"
-        temp_user.username = username
-        temp_user.set_password(password)
-        temp_user.is_active = False  # User needs to verify first
-        temp_user.save()
-        user = temp_user
+        # Always generate password for all roles
+        password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+        # Generate username using the updated function
+        from utils import generate_unique_username
+        
+        # Extract registration number for students and employee_id for teachers
+        registration_number = None
+        employee_id = None
+        if role == "student":
+            registration_number = validated_data.get("registration_number")
+        elif role == "teacher":
+            employee_id = validated_data.get("employee_id")
+        
+        # Generate username
+        username = generate_unique_username(role, registration_number, employee_id)
+        
+        # Create user with generated username
+        user = User(
+            email=validated_data["email"], 
+            first_name=validated_data["first_name"], 
+            last_name=validated_data["last_name"], 
+            role=role,
+            username=username
+        )
+        user.set_password(password)
+        user.is_active = False  # User needs to verify first
+        user.save()
         # Generate verification code
         verification_code = "".join(random.choices(string.digits, k=6))
         user.verification_code = verification_code
@@ -151,7 +176,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         if role == "student":
             student_data = {}
             parent_data = {}
-            student_fields = ["student_class", "education_level", "date_of_birth", "gender"]
+            student_fields = ["student_class", "education_level", "date_of_birth", "gender", "registration_number"]
             parent_fields = ["parent_first_name", "parent_last_name", "parent_email", "parent_phone"]
             for field in student_fields:
                 if field in validated_data:
@@ -165,9 +190,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             self.send_verification_email(user, verification_code)
         elif verification_method == "sms":
             self.send_verification_sms(user, verification_code)
-        # Attach generated credentials for response
-        user.generated_username = username
-        user.generated_password = password
+        
+        # Store generated credentials as instance attributes for the view to access
+        user._generated_username = username
+        user._generated_password = password
         return user
 
     def create_student_and_parent(self, user, student_data, parent_data):
@@ -176,7 +202,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         from parent.models import ParentProfile
         
         # Create parent user (inactive until verified)
-        parent_username = parent_data["parent_email"].split("@")[0]
+        from utils import generate_unique_username
+        parent_username = generate_unique_username("parent")
         parent_user = User.objects.create_user(
             email=parent_data["parent_email"],
             username=parent_username,

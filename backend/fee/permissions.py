@@ -1,4 +1,3 @@
-# fees/permissions.py
 from rest_framework import permissions
 
 
@@ -41,5 +40,27 @@ class IsStudentOwnerOrAdmin(permissions.BasePermission):
 
         if hasattr(request.user, "student_profile"):
             return obj.student == request.user.student_profile
+
+        return False
+
+
+class CanMakePayment(permissions.BasePermission):
+    """
+    Permission for making payments
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_staff:
+            return True
+
+        # Students can only make payments for their own fees
+        if hasattr(request.user, "student_profile"):
+            if hasattr(obj, "student_fee"):
+                return obj.student_fee.student == request.user.student_profile
+            elif hasattr(obj, "student"):
+                return obj.student == request.user.student_profile
 
         return False

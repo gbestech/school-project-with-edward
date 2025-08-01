@@ -228,6 +228,15 @@ class Student(models.Model):
     )
 
     admission_date = models.DateField(auto_now_add=True)
+    
+    # Registration number field
+    registration_number = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        null=True,
+        help_text="Student's unique registration number",
+    )
 
     # ADD THIS: Profile picture field for students
     profile_picture = models.URLField(
