@@ -40,6 +40,47 @@ class SchoolSettings(models.Model):
     dark_mode = models.BooleanField(default=False)
     maintenance_mode = models.BooleanField(default=False)
     
+    # Design Settings
+    primary_color = models.CharField(max_length=7, default="#3B82F6", help_text="Primary color in hex format")
+    theme = models.CharField(max_length=20, default="default", choices=[
+        ("default", "Default"),
+        ("modern", "Modern"),
+        ("classic", "Classic"), 
+        ("vibrant", "Vibrant"),
+        ("minimal", "Minimal"),
+        ("corporate", "Corporate"),
+        ("premium", "Premium"),
+        ("obsidian", "Obsidian (Ultra Premium)"),
+        ("aurora", "Aurora (Ultra Premium)"),
+        ("midnight", "Midnight (Ultra Premium)"),
+        ("crimson", "Crimson (Ultra Premium)"),
+        ("forest", "Forest (Ultra Premium)"),
+        ("golden", "Golden (Ultra Premium)")
+    ])
+    animations_enabled = models.BooleanField(default=True, help_text="Enable smooth transitions and animations")
+    compact_mode = models.BooleanField(default=False, help_text="Reduce spacing for more content density")
+    typography = models.CharField(max_length=50, default="Inter", choices=[
+        ("Inter", "Inter"),
+        ("Roboto", "Roboto"),
+        ("Open Sans", "Open Sans"),
+        ("Poppins", "Poppins"),
+        ("Montserrat", "Montserrat")
+    ])
+    border_radius = models.CharField(max_length=20, default="rounded-lg", choices=[
+        ("rounded-none", "Sharp"),
+        ("rounded", "Slightly Rounded"),
+        ("rounded-lg", "Rounded"),
+        ("rounded-xl", "More Rounded"),
+        ("rounded-2xl", "Very Rounded")
+    ])
+    shadow_style = models.CharField(max_length=20, default="shadow-md", choices=[
+        ("shadow-none", "No Shadow"),
+        ("shadow-sm", "Subtle Shadow"),
+        ("shadow-md", "Medium Shadow"),
+        ("shadow-lg", "Large Shadow"),
+        ("shadow-xl", "Extra Large Shadow")
+    ])
+    
     # Session Management
     session_timeout = models.IntegerField(default=30, help_text="Session timeout in minutes")
     max_login_attempts = models.IntegerField(default=5)

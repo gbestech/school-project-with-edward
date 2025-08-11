@@ -59,7 +59,7 @@ router.register(
 # ============================================================================
 # PEOPLE MANAGEMENT ROUTES
 # ============================================================================
-router.register(r"teachers", TeacherViewSet, basename="teacher")
+# Note: Teachers are handled by the teacher app at /api/teachers/
 router.register(r"students", StudentViewSet, basename="student")
 
 # ============================================================================
@@ -173,6 +173,11 @@ urlpatterns = [
     # CLASSROOM MANAGEMENT ENDPOINTS
     # ========================================================================
     # Classroom specific endpoints
+    path(
+        "classrooms/statistics/",
+        ClassroomViewSet.as_view({"get": "statistics"}),
+        name="classroom-statistics",
+    ),
     path(
         "classrooms/<int:classroom_id>/students/",
         ClassroomViewSet.as_view({"get": "students"}),

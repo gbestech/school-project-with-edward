@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { User, X } from 'lucide-react';
-import { api } from '@/hooks/useAuth';
+import api from '@/services/api';
+import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 
 // --- Student Form Types ---
 type StudentFormData = {
@@ -147,17 +147,28 @@ const AddStudentForm: React.FC = () => {
   const handleParentUsernameSearch = async () => {
     if (!parentUsernameSearch) return;
     try {
+      console.log('Searching for parent with username:', parentUsernameSearch);
       const res = await api.get(`/api/parents/search/?q=${encodeURIComponent(parentUsernameSearch)}`);
-      const found = res.data.find((p: any) => p.username === parentUsernameSearch);
+      console.log('Search response:', res);
+      
+      // The API service returns data directly, not in res.data
+      const parentData = Array.isArray(res) ? res : [];
+      console.log('Parent data array:', parentData);
+      
+      // Find the parent by username
+      const found = parentData.find((p: any) => p.username === parentUsernameSearch);
+      console.log('Found parent:', found);
+      
       if (found) {
         setParentDetails(found);
         setSelectedParent(found);
         toast.success('Parent found and details filled!');
       } else {
         toast.error('Parent not found. Please add the parent first.');
-        setTimeout(() => navigate('/admin/add-parent'), 1500);
+        setTimeout(() => navigate('/admin/parents/add'), 1500);
       }
     } catch (err) {
+      console.error('Error searching for parent:', err);
       toast.error('Error searching for parent.');
     }
   };
@@ -169,8 +180,14 @@ const AddStudentForm: React.FC = () => {
     }
     setParentSearchLoading(true);
     api.get(`/api/parents/search/?q=${encodeURIComponent(parentSearch)}`)
-      .then(res => setParentOptions(res.data))
-      .catch(() => setParentOptions([]))
+      .then(res => {
+        console.log('Parent search response:', res);
+        setParentOptions(res || []);
+      })
+      .catch((err) => {
+        console.error('Parent search error:', err);
+        setParentOptions([]);
+      })
       .finally(() => setParentSearchLoading(false));
   }, [parentSearch]);
 
@@ -269,11 +286,11 @@ const AddStudentForm: React.FC = () => {
       const response = await api.post('/api/students/', payload);
       setSuccess('Student and Parent created successfully!');
       toast.success('Student and Parent added successfully');
-      if (response.data) {
-        setStudentUsername(response.data.student_username);
-        setStudentPassword(response.data.student_password);
-        setParentUsername(response.data.parent_username);
-        setParentPassword(response.data.parent_password);
+      if (response) {
+        setStudentUsername(response.student_username);
+        setStudentPassword(response.student_password);
+        setParentUsername(response.parent_username);
+        setParentPassword(response.parent_password);
         setShowPasswordModal(true);
       }
       setTimeout(() => {
@@ -426,24 +443,37 @@ const AddStudentForm: React.FC = () => {
             placeholder="Type at least 2 characters (name, username, or email)"
           />
           {parentSearchLoading && <div className="text-sm text-gray-500">Searching...</div>}
-          {parentOptions.length > 0 && (
-            <ul className="border border-gray-200 rounded mt-2 bg-white max-h-40 overflow-y-auto">
+          {parentOptions && parentOptions.length > 0 && (
+            <ul className="border border-gray-200 rounded mt-2 bg-white max-h-40 overflow-y-auto shadow-lg">
               {parentOptions.map(parent => (
                 <li
                   key={parent.id}
-                  className={`p-2 cursor-pointer hover:bg-blue-50 ${selectedParent && selectedParent.id === parent.id ? 'bg-blue-100' : ''}`}
+                  className={`p-3 cursor-pointer transition-colors ${
+                    selectedParent && selectedParent.id === parent.id 
+                      ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-500' 
+                      : 'hover:bg-blue-50 text-gray-900'
+                  }`}
                   onClick={() => setSelectedParent(parent)}
                 >
-                  <div className="font-semibold">{parent.full_name} ({parent.username})</div>
-                  <div className="text-xs text-gray-600">{parent.email} | {parent.phone}</div>
+                  <div className="font-semibold text-sm">{parent.full_name} ({parent.username})</div>
+                  <div className="text-xs text-gray-600 mt-1">{parent.email} | {parent.phone}</div>
                 </li>
               ))}
             </ul>
           )}
           {selectedParent && (
-            <div className="mt-2 p-2 bg-green-50 rounded text-green-800 flex items-center justify-between">
-              <span>Selected Parent: <b>{selectedParent.full_name}</b> ({selectedParent.username})</span>
-              <button className="ml-2 text-xs text-red-600 underline" onClick={() => setSelectedParent(null)}>Clear</button>
+            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 flex items-center justify-between">
+              <div>
+                <span className="font-medium">Selected Parent:</span> 
+                <span className="font-semibold ml-1">{selectedParent.full_name}</span> 
+                <span className="text-green-600 ml-1">({selectedParent.username})</span>
+              </div>
+              <button 
+                className="ml-2 text-xs text-red-600 hover:text-red-800 underline font-medium" 
+                onClick={() => setSelectedParent(null)}
+              >
+                Clear
+              </button>
             </div>
           )}
         </div>
@@ -469,11 +499,14 @@ const AddStudentForm: React.FC = () => {
         </div>
         {/* If parent is found, show details read-only */}
         {parentDetails && (
-          <div className="mb-4 p-4 bg-green-50 rounded">
-            <div><b>Full Name:</b> {parentDetails.full_name}</div>
-            <div><b>Email:</b> {parentDetails.email}</div>
-            <div><b>Phone:</b> {parentDetails.phone}</div>
-            <div><b>Address:</b> {parentDetails.address}</div>
+          <div className="mb-4 p-4 bg-white border border-green-200 rounded-lg">
+            <h4 className="font-semibold text-green-500 mb-2">Parent Details Found:</h4>
+            <div className="space-y-1 text-sm">
+              <div><span className="font-medium text-green-800">Full Name:</span> <span className="text-green-500">{parentDetails.full_name}</span></div>
+              <div><span className="font-medium text-green-800">Email:</span> <span className="text-green-500">{parentDetails.email}</span></div>
+              <div><span className="font-medium text-green-800">Phone:</span> <span className="text-green-500">{parentDetails.phone}</span></div>
+              <div><span className="font-medium text-green-800">Address:</span> <span className="text-green-500">{parentDetails.address}</span></div>
+            </div>
           </div>
         )}
         {/* Only show new parent fields if no parent is found/selected */}
@@ -497,9 +530,14 @@ const AddStudentForm: React.FC = () => {
           </div>
         )}
         {/* If no parent is found, prompt to create a parent first */}
-        {parentSearch.length > 1 && parentOptions.length === 0 && !parentSearchLoading && !selectedParent && (
-          <div className="mt-2 p-2 bg-yellow-50 rounded text-yellow-800">
-            No parent found. Please create a parent first before adding the student.
+        {parentSearch.length > 1 && (!parentOptions || parentOptions.length === 0) && !parentSearchLoading && !selectedParent && (
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                <span className="text-yellow-800 text-xs font-bold">!</span>
+              </div>
+              <span className="text-yellow-800 font-medium">No parent found. Please create a parent first before adding the student.</span>
+            </div>
           </div>
         )}
         <div className="mb-4">

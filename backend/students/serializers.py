@@ -292,6 +292,7 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             "date_of_birth",
             "education_level",
             "student_class",
+            "registration_number",
             "profile_picture",  # ADD THIS
             "classroom",
             "existing_parent_id",

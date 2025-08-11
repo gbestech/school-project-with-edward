@@ -19,6 +19,9 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             'timezone', 'date_format', 'time_format', 'language',
             'logo', 'favicon', 'auto_save', 'notifications_enabled', 'dark_mode',
             'maintenance_mode', 'session_timeout', 'max_login_attempts',
+            # Design Settings
+            'primary_color', 'theme', 'animations_enabled', 'compact_mode',
+            'typography', 'border_radius', 'shadow_style',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

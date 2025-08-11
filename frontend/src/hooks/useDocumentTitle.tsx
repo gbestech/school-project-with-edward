@@ -1,16 +1,20 @@
 // hooks/useDocumentTitle.ts
 import { useEffect, useRef } from 'react';
+import { useSettings } from '../contexts/SettingsContext';
 
 /**
  * Custom hook to set and manage document title
  * @param title - The title to set for the document
  * @param restoreOnUnmount - Whether to restore the previous title when component unmounts
+ * @param includeSchoolName - Whether to include the school name in the title
  */
 export const useDocumentTitle = (
   title: string, 
-  restoreOnUnmount: boolean = false
+  restoreOnUnmount: boolean = false,
+  includeSchoolName: boolean = false
 ): void => {
-  const prevTitleRef = useRef<string>();
+  const prevTitleRef = useRef<string | undefined>(undefined);
+  const { settings } = useSettings();
 
   useEffect(() => {
     // Store the previous title on first render
@@ -18,8 +22,12 @@ export const useDocumentTitle = (
       prevTitleRef.current = document.title;
     }
 
-    // Set the new title
-    document.title = title;
+    // Set the new title with optional school name
+    const fullTitle = includeSchoolName && settings?.school_name 
+      ? `${title} - ${settings.school_name}`
+      : title;
+    
+    document.title = fullTitle;
 
     // Cleanup function to restore previous title if needed
     return () => {
@@ -27,7 +35,7 @@ export const useDocumentTitle = (
         document.title = prevTitleRef.current;
       }
     };
-  }, [title, restoreOnUnmount]);
+  }, [title, restoreOnUnmount, includeSchoolName, settings?.school_name]);
 
   // Update the stored previous title when title changes
   useEffect(() => {

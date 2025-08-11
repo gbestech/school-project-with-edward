@@ -10,7 +10,8 @@ class GradeLevel(models.Model):
     EDUCATION_LEVELS = [
         ("NURSERY", "Nursery"),
         ("PRIMARY", "Primary"),
-        ("SECONDARY", "Secondary"),
+        ("JUNIOR_SECONDARY", "Junior Secondary"),
+        ("SENIOR_SECONDARY", "Senior Secondary"),
     ]
 
     name = models.CharField(max_length=50)

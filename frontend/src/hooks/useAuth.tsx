@@ -3,90 +3,10 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import type { CustomUser, LoginCredentials, UserProfile, FullUserData, StudentUserData, TeacherUserData, ParentUserData } from '@/types/types';
 import { UserRole, UserVerificationStatus, UserContactInfo } from '@/types/types';
 import axios, { AxiosError } from 'axios';
-
-// Configure axios with base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-
-// ✅ Request interceptor - FIXED: Use Token format instead of Bearer
-api.interceptors.request.use(
-  (config) => {
-    console.log('about to set token in request interceptor');
-    const token = localStorage.getItem('authToken');
-    console.log('Stored token:', token);
-    console.log('LocalStorage token:', localStorage.getItem('authToken'));
-    if (token) {
-      // Determine whether it's JWT (long token) or TokenAuth (short key)
-      const isJWT = token.length > 100;
-      config.headers.Authorization = isJWT ? `Bearer ${token}` : `Token ${token}`;
-    }
-    console.log('Set Authorization header after login:', config.headers.Authorization);
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+import api from '@/services/api';
 
 
 
-// ✅ Response interceptor with token refresh
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    console.error('API Error:', {
-      url: originalRequest?.url,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-
-        try {
-          
-          const response = await axios.post(`${API_BASE_URL}/api/auth/token/refresh/`, {
-            refresh: refreshToken,
-          });
-
-          const newToken = response.data.access;
-          localStorage.setItem('authToken', newToken);
-          // Use Token format for refreshed requests too
-          const isJWT = newToken.length > 100;
-          
-          api.defaults.headers.common['Authorization'] = newToken.length > 100 ? `Bearer ${newToken}` : `Token ${newToken}`;
-          originalRequest.headers.Authorization = isJWT ? `Bearer ${newToken}` : `Token ${newToken}`;
-         
-
-         
-         
-          // originalRequest.headers.Authorization = `Token ${newToken}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          clearAuthData();
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        }
-      } else {
-        console.warn('No refresh token available');
-        clearAuthData();
-        window.location.href = '/login';
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
 
 
 
@@ -208,24 +128,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Use the custom JWT authentication endpoint
     const response = await api.post('/api/auth/login/', loginData);
     console.log('Login response received:', {
-      hasUser: !!response.data.user,
-      hasAccessToken: !!response.data.access,
-      hasKey: !!response.data.key,
-      keys: Object.keys(response.data)
+      hasUser: !!response.user,
+      hasAccessToken: !!response.access,
+      hasKey: !!response.key,
+      keys: Object.keys(response)
     });
 
     // Extract tokens - handle JWT format
     let token: string | undefined;
     let refreshToken: string | undefined;
 
-    if ('access' in response.data) {
-      token = response.data.access;
-      refreshToken = response.data.refresh;
-    } else if ('access_token' in response.data) {
-      token = response.data.access_token;
-      refreshToken = response.data.refresh_token;
-    } else if ('key' in response.data) {
-      token = response.data.key;
+    if ('access' in response) {
+      token = response.access;
+      refreshToken = response.refresh;
+    } else if ('access_token' in response) {
+      token = response.access_token;
+      refreshToken = response.refresh_token;
+    } else if ('key' in response) {
+      token = response.key;
     }
 
     if (!token) {
@@ -244,13 +164,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let role: UserRole;
     let rawUserData: any;
 
-    if (response.data.user) {
-      rawUserData = response.data;
+    if (response.user) {
+      rawUserData = response;
       role = mapServerRoleToEnum(rawUserData.user.role || rawUserData.role);
     } else {
       console.log('No user data in login response, fetching from profile...');
       const profileResponse = await api.get('/api/profiles/me/');
-      rawUserData = profileResponse.data;
+      rawUserData = profileResponse;
       role = mapServerRoleToEnum(rawUserData.role || rawUserData.user?.role);
     }
 
@@ -310,13 +230,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ]);
 
       if (profileData.status === 'fulfilled') {
-        userData.profile = profileData.value.data;
+        userData.profile = profileData.value;
       }
       if (verificationStatus.status === 'fulfilled') {
-        userData.verification_status = verificationStatus.value.data;
+        userData.verification_status = verificationStatus.value;
       }
       if (contactInfo.status === 'fulfilled') {
-        userData.contact_info = contactInfo.value.data;
+        userData.contact_info = contactInfo.value;
       }
     } catch (error) {
       console.warn('Some profile data could not be fetched:', error);
@@ -444,7 +364,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchUserProfile = async (): Promise<UserProfile | null> => {
     try {
       const response = await api.get('/api/profiles/me/');
-      const profile = response.data;
+      const profile = response;
       
       if (user) {
         const updatedUser = { ...user, profile };
@@ -463,7 +383,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUserProfile = async (profileData: Partial<UserProfile>): Promise<UserProfile | null> => {
     try {
       const response = await api.patch('/api/profiles/update_preferences/', profileData);
-      const updatedProfile = response.data;
+      const updatedProfile = response;
       
       if (user) {
         const updatedUser = { ...user, profile: updatedProfile };
@@ -490,7 +410,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
       
-      const profilePictureUrl = response.data.profile_picture_url;
+      const profilePictureUrl = response.profile_picture_url;
       
       // Update user state with new profile picture
       if (user && user.profile) {
@@ -516,7 +436,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchVerificationStatus = async (): Promise<UserVerificationStatus | null> => {
     try {
       const response = await api.get('/api/profiles/verification_status/');
-      const verificationStatus = response.data;
+      const verificationStatus = response;
       
       if (user) {
         const updatedUser = { ...user, verification_status: verificationStatus };
@@ -535,7 +455,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchContactInfo = async (): Promise<UserContactInfo | null> => {
     try {
       const response = await api.get('/api/profiles/contact_info/');
-      const contactInfo = response.data;
+      const contactInfo = response;
       
       if (user) {
         const updatedUser = { ...user, contact_info: contactInfo };

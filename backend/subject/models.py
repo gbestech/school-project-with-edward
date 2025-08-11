@@ -108,12 +108,7 @@ class Subject(models.Model):
         help_text="Specific grade levels where this subject is taught",
     )
 
-    # Academic configuration
-    credit_hours = models.PositiveIntegerField(
-        default=1,
-        validators=[MinValueValidator(1), MaxValueValidator(10)],
-        help_text="Number of credit hours per week",
-    )
+
 
     # Subject requirements and classification
     is_compulsory = models.BooleanField(
@@ -333,8 +328,8 @@ class Subject(models.Model):
 
     @property
     def total_weekly_hours(self):
-        """Calculate total weekly hours including practical"""
-        return self.credit_hours + self.practical_hours
+        """Calculate total weekly hours (practical only)"""
+        return self.practical_hours
 
     @property
     def education_levels_display(self):

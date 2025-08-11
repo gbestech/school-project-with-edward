@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import ResultService, { StudentTermResult, ExamSession } from '../../../services/ResultService';
 import { useSettings } from '@/contexts/SettingsContext';
+import { getAbsoluteUrl } from '@/utils/urlUtils';
 
 interface SubjectResult {
   id: string;
@@ -66,7 +67,7 @@ interface SchoolData {
 const getSchoolData = (settings: any) => ({
   name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
   address: settings?.school_address || "No 54 Dagbana Road, Opp. St. Kevin's Catholic Church, Phase III Jikwoyi, Abuja",
-  logo: settings?.logo_url || "🏫",
+  logo: getAbsoluteUrl(settings?.logo_url) || "🏫",
   nextTermBegins: settings?.current_term || "12th September, 2024"
 });
 
@@ -309,7 +310,17 @@ const SchoolResultTemplate = () => {
               {/* Header */}
               <div className="text-center mb-6 border-b-2 border-black pb-4">
                 <div className="flex items-center justify-center gap-4 mb-2">
-                  <div className="text-4xl">{getSchoolData(settings).logo}</div>
+                  <div className="text-4xl">
+                    {getSchoolData(settings).logo && getSchoolData(settings).logo !== "🏫" ? (
+                      <img 
+                        src={getSchoolData(settings).logo} 
+                        alt={`${getSchoolData(settings).name} logo`}
+                        className="w-16 h-16 object-contain"
+                      />
+                    ) : (
+                      <span>{getSchoolData(settings).logo}</span>
+                    )}
+                  </div>
                   <div className="flex-1">
                     <h1 className="text-xl font-bold uppercase tracking-wider">{getSchoolData(settings).name}</h1>
                     <p className="text-sm mt-1">{getSchoolData(settings).address}</p>

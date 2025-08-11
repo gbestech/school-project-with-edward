@@ -77,8 +77,7 @@ class SubjectSerializer(serializers.ModelSerializer):
             # Grade level integration
             "grade_levels",
             "grade_levels_info",
-            # Academic configuration
-            "credit_hours",
+
             "is_compulsory",
             "is_core",
             # Prerequisites and dependencies
@@ -195,7 +194,7 @@ class SubjectSerializer(serializers.ModelSerializer):
         return {
             "basic_info": {
                 "display_name": obj.display_name,
-                "total_credit_hours": obj.credit_hours,
+
                 "total_practical_hours": obj.practical_hours,
                 "total_weekly_hours": obj.total_weekly_hours,
             },
@@ -291,27 +290,7 @@ class SubjectSerializer(serializers.ModelSerializer):
 
         return value.strip().title()
 
-    def validate_credit_hours(self, value):
-        """Validate credit hours based on category and education level"""
-        if value < 1:
-            raise serializers.ValidationError("Credit hours must be at least 1.")
 
-        category = self.initial_data.get("category", "")
-        education_levels = self.initial_data.get("education_levels", [])
-
-        # Nursery subjects typically have fewer credit hours
-        if "NURSERY" in education_levels and value > 3:
-            raise serializers.ValidationError(
-                "Nursery subjects typically have maximum 3 credit hours."
-            )
-
-        # Cross-cutting subjects validation
-        if category in ["cross_cutting"] and value < 2:
-            raise serializers.ValidationError(
-                "Cross-cutting subjects typically have minimum 2 credit hours."
-            )
-
-        return value
 
     def validate_practical_hours(self, value):
         """Validate practical hours"""
@@ -484,7 +463,11 @@ class SubjectListSerializer(serializers.ModelSerializer):
     category_display_with_icon = serializers.CharField(
         source="get_category_display_with_icon", read_only=True
     )
+    category_display = serializers.CharField(
+        source="get_category_display", read_only=True
+    )
     display_name = serializers.ReadOnlyField()
+    education_levels_display = serializers.ReadOnlyField()
     full_level_display = serializers.ReadOnlyField()
     total_weekly_hours = serializers.ReadOnlyField()
     status_summary = serializers.SerializerMethodField()
@@ -497,9 +480,12 @@ class SubjectListSerializer(serializers.ModelSerializer):
             "short_name",
             "display_name",
             "code",
+            "category",  # Added for filtering
+            "category_display",
             "category_display_with_icon",
+            "education_levels",  # Added for filtering
+            "education_levels_display",
             "full_level_display",
-            "credit_hours",
             "practical_hours",
             "total_weekly_hours",
             "is_compulsory",
@@ -551,7 +537,6 @@ class SubjectCreateUpdateSerializer(serializers.ModelSerializer):
             "nursery_levels",
             "ss_subject_type",
             "is_cross_cutting",
-            "credit_hours",
             "is_compulsory",
             "is_core",
             "has_continuous_assessment",
@@ -680,7 +665,6 @@ class NurserySubjectSerializer(serializers.ModelSerializer):
             "nursery_levels",
             "nursery_levels_display",
             "is_activity_based",
-            "credit_hours",
             "practical_hours",
             "is_active",
             "subject_order",
@@ -711,7 +695,6 @@ class SeniorSecondarySubjectSerializer(serializers.ModelSerializer):
             "ss_subject_type",
             "ss_subject_type_display",
             "is_cross_cutting",
-            "credit_hours",
             "practical_hours",
             "requires_specialist_teacher",
             "is_active",
@@ -805,7 +788,6 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
             "general": {
                 "requires_specialist": obj.requires_specialist_teacher,
                 "has_practical": obj.has_practical,
-                "credit_hours": obj.credit_hours,
             }
         }
 

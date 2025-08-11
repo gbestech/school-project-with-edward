@@ -1,8 +1,8 @@
 // Example usage in your JSX component
 import React, { useState, useEffect } from 'react';
 import { GoogleAuthButton } from "./../home/GoogleAuthButton";
-import { GoogleAuthService, GoogleAuthResponse } from './../../services/GoogleAuthService';
-import { AuthService } from './../../services/AuthService2';
+// import { GoogleAuthService, GoogleAuthResponse } from './../../services/GoogleAuthService';
+// import { AuthService } from './../../services/AuthService2';
 
 interface User {
   id: string;

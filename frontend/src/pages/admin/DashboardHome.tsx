@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import DashboardMainContent from '@/components/dashboards/admin/DashboardMainContent';
 import AdminDashboard from '@/components/dashboards/admin/Admin';
 import { useAdminAuth } from '@/services/AuthServiceAdmin';
-import { api } from '@/hooks/useAuth';
+import api from '@/services/api';
 import {
   UserProfile,
   AdminDashboardStats,
@@ -28,6 +28,7 @@ interface DashboardData {
   dashboardStats: DashboardStats | null;
   students: Student[] | null;
   teachers: Teacher[] | null;
+  parents: any[] | null;
   attendanceData: AttendanceData | null;
   classrooms: Classroom[] | null;
   messages: Message[] | null;
@@ -60,12 +61,20 @@ const DashboardHome: React.FC = () => {
     dashboardStats: null,
     students: null,
     teachers: null,
+    parents: null,
     attendanceData: null,
     classrooms: null,
     messages: null,
     userProfile: null,
     loading: true,
     error: null
+  });
+
+  // Debug authentication state
+  console.log('DashboardHome - Authentication state:', {
+    isAuthenticated,
+    user,
+    isAdmin: isAdmin()
   });
 
   const [refreshKey, setRefreshKey] = useState<number>(0);
@@ -401,7 +410,7 @@ const DashboardHome: React.FC = () => {
 
   const fetchClassrooms = async (): Promise<Classroom[]> => {
     try {
-      const response = await api.get('/api/classrooms/');
+      const response = await api.get('/api/classrooms/classrooms/'); // Fixed: use correct classrooms endpoint
       return response.data;
     } catch (error) {
       return [];
@@ -431,6 +440,7 @@ const DashboardHome: React.FC = () => {
         getDashboardStats().catch(error => null),
         getUsers({ role: UserRole.STUDENT, limit: 100 }).catch(error => ({ users: [], total: 0 })),
         getUsers({ role: UserRole.TEACHER, limit: 100 }).catch(error => ({ users: [], total: 0 })),
+        getUsers({ role: UserRole.PARENT, limit: 100 }).catch(error => ({ users: [], total: 0 })),
         fetchAttendanceData().catch(error => null),
         fetchClassrooms().catch(error => []),
         fetchMessages().catch(error => []),
@@ -440,12 +450,14 @@ const DashboardHome: React.FC = () => {
         dashboardStats,
         studentsData,
         teachersData,
+        parentsData,
         attendanceData,
         classrooms,
         messages,
         userProfile
       ] = await Promise.all(dataFetchPromises) as [
         AdminDashboardStats | null,
+        { users: AdminUserManagement[]; total: number } | null,
         { users: AdminUserManagement[]; total: number } | null,
         { users: AdminUserManagement[]; total: number } | null,
         AttendanceData | null,
@@ -457,6 +469,7 @@ const DashboardHome: React.FC = () => {
         dashboardStats: dashboardStats ? mapToDashboardStats(dashboardStats) : null,
         students: studentsData?.users ? await mapToStudentsEnhanced(studentsData.users) : null,
         teachers: teachersData?.users ? await mapToTeachersEnhanced(teachersData.users) : null,
+        parents: parentsData?.users || null,
         attendanceData: attendanceData,
         classrooms: classrooms,
         messages: messages,
@@ -477,6 +490,32 @@ const DashboardHome: React.FC = () => {
   // Handlers
   const handleRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
+  }, []);
+
+  const handleUserStatusUpdate = useCallback((userId: number, userType: 'student' | 'teacher' | 'parent', isActive: boolean) => {
+    setDashboardData(prev => {
+      const updateUserInArray = (users: any[] | null) => {
+        if (!users || !Array.isArray(users)) return users;
+        return users.map(user => {
+          const userToCheck = user.user?.id || user.user_id || user.id;
+          if (userToCheck === userId) {
+            return {
+              ...user,
+              user: user.user ? { ...user.user, is_active: isActive } : undefined,
+              is_active: isActive
+            };
+          }
+          return user;
+        });
+      };
+
+      return {
+        ...prev,
+        students: userType === 'student' ? updateUserInArray(prev.students) : prev.students,
+        teachers: userType === 'teacher' ? updateUserInArray(prev.teachers) : prev.teachers,
+        parents: userType === 'parent' ? updateUserInArray(prev.parents) : prev.parents,
+      };
+    });
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -528,6 +567,7 @@ const DashboardHome: React.FC = () => {
       dashboardStats={dashboardData.dashboardStats}
       students={dashboardData.students}
       teachers={dashboardData.teachers}
+      parents={dashboardData.parents}
       attendanceData={dashboardData.attendanceData}
       classrooms={dashboardData.classrooms}
       messages={dashboardData.messages}

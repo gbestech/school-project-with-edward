@@ -27,7 +27,7 @@ class SchoolSettingsDetail(APIView):
                 # Create default settings if none exist
                 settings = SchoolSettings.objects.create()
             
-            serializer = SchoolSettingsSerializer(settings, context={'request': request})
+            serializer = SchoolSettingsSerializer(settings)
             return Response(serializer.data)
         except Exception as e:
             return Response(
@@ -46,11 +46,13 @@ class SchoolSettingsDetail(APIView):
             data = request.data.copy()
             data.pop('logo_url', None)
             data.pop('favicon_url', None)
+            data.pop('logo', None)  # Remove logo field as it should be uploaded separately
+            data.pop('favicon', None)  # Remove favicon field as it should be uploaded separately
             data.pop('id', None)
             data.pop('created_at', None)
             data.pop('updated_at', None)
             
-            serializer = SchoolSettingsSerializer(settings, data=data, partial=True, context={'request': request})
+            serializer = SchoolSettingsSerializer(settings, data=data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -261,13 +263,15 @@ class FileUploadView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            if 'file' not in request.FILES:
+            # Check for the correct field name based on file_type
+            field_name = file_type
+            if field_name not in request.FILES:
                 return Response(
-                    {'error': 'No file provided'},
+                    {'error': f'No {file_type} file provided'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            uploaded_file = request.FILES['file']
+            uploaded_file = request.FILES[field_name]
             
             # Validate file type
             allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml']
@@ -289,10 +293,16 @@ class FileUploadView(APIView):
             if not settings:
                 settings = SchoolSettings.objects.create()
             
-            # Update the appropriate field directly with the uploaded file
+            # Delete old file if it exists before saving the new one
             if file_type == 'logo':
+                if settings.logo:
+                    # Delete the old logo file from storage
+                    settings.logo.delete(save=False)
                 settings.logo = uploaded_file
             elif file_type == 'favicon':
+                if settings.favicon:
+                    # Delete the old favicon file from storage
+                    settings.favicon.delete(save=False)
                 settings.favicon = uploaded_file
             
             settings.save()

@@ -19,7 +19,16 @@ import logging
 from .models import (
     Subject,
     GradeLevel,
+    Classroom,
+    ClassroomTeacherAssignment,
+    StudentEnrollment,
+    ClassSchedule,
+    Section,
+    AcademicYear,
+    Term,
+    Student,
 )
+from teacher.models import Teacher
 from subject.models import (
     SUBJECT_CATEGORY_CHOICES,
     EDUCATION_LEVELS,
@@ -28,6 +37,17 @@ from subject.models import (
 )
 from .serializers import (
     SubjectSerializer,
+    ClassroomSerializer,
+    ClassroomDetailSerializer,
+    ClassroomTeacherAssignmentSerializer,
+    StudentEnrollmentSerializer,
+    ClassScheduleSerializer,
+    GradeLevelSerializer,
+    SectionSerializer,
+    AcademicYearSerializer,
+    TermSerializer,
+    TeacherSerializer,
+    StudentSerializer,
 )
 from subject.serializers import (
     SubjectListSerializer,
@@ -48,8 +68,12 @@ logger = logging.getLogger(__name__)
 
 class GradeLevelViewSet(viewsets.ModelViewSet):
     """ViewSet for GradeLevel model"""
-    permission_classes = [IsAuthenticated]
-    serializer_class = SubjectSerializer  # Placeholder - you'll need to create proper serializer
+    permission_classes = []  # Allow public access
+    serializer_class = GradeLevelSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['education_level', 'is_active']
+    search_fields = ['name', 'education_level']
+    ordering_fields = ['order', 'name']
     
     def get_queryset(self):
         return GradeLevel.objects.all()
@@ -104,80 +128,144 @@ class GradeLevelViewSet(viewsets.ModelViewSet):
 
 class SectionViewSet(viewsets.ModelViewSet):
     """ViewSet for Section model"""
-    permission_classes = [IsAuthenticated]
-    serializer_class = SubjectSerializer  # Placeholder
+    permission_classes = []  # Allow public access for section loading
+    serializer_class = SectionSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['grade_level', 'grade_level__education_level', 'is_active']
+    search_fields = ['name', 'grade_level__name']
+    ordering_fields = ['name', 'grade_level__order']
     
     def get_queryset(self):
-        return []  # Placeholder - implement when Section model is available
+        return Section.objects.select_related('grade_level').all()
 
 class AcademicYearViewSet(viewsets.ModelViewSet):
     """ViewSet for AcademicYear model"""
     permission_classes = [IsAuthenticated]
-    serializer_class = SubjectSerializer  # Placeholder
+    serializer_class = AcademicYearSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active', 'is_current']
+    search_fields = ['name']
+    ordering_fields = ['start_date', 'name']
     
     def get_queryset(self):
-        return []  # Placeholder - implement when AcademicYear model is available
+        return AcademicYear.objects.all()
     
     @action(detail=False, methods=['get'])
     def current(self, request):
         """Get current academic year"""
-        return Response({"message": "Current academic year endpoint not implemented yet"})
+        current_year = AcademicYear.objects.filter(is_current=True).first()
+        if current_year:
+            serializer = AcademicYearSerializer(current_year)
+            return Response(serializer.data)
+        return Response({"message": "No current academic year set"})
     
     @action(detail=True, methods=['get'])
     def terms(self, request, pk=None):
         """Get terms for a specific academic year"""
-        return Response({"message": "Terms endpoint not implemented yet"})
+        academic_year = self.get_object()
+        terms = academic_year.terms.all()
+        serializer = TermSerializer(terms, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """Get statistics for a specific academic year"""
-        return Response({"message": "Statistics endpoint not implemented yet"})
+        academic_year = self.get_object()
+        classroom_count = academic_year.classrooms.count()
+        term_count = academic_year.terms.count()
+        
+        return Response({
+            'classroom_count': classroom_count,
+            'term_count': term_count,
+            'is_current': academic_year.is_current
+        })
 
 class TermViewSet(viewsets.ModelViewSet):
     """ViewSet for Term model"""
     permission_classes = [IsAuthenticated]
-    serializer_class = SubjectSerializer  # Placeholder
+    serializer_class = TermSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['academic_year', 'is_active', 'is_current']
+    search_fields = ['name', 'academic_year__name']
+    ordering_fields = ['name', 'start_date']
     
     def get_queryset(self):
-        return []  # Placeholder - implement when Term model is available
+        return Term.objects.select_related('academic_year').all()
     
     @action(detail=False, methods=['get'])
     def current(self, request):
         """Get current term"""
-        return Response({"message": "Current term endpoint not implemented yet"})
+        current_term = Term.objects.filter(is_current=True).first()
+        if current_term:
+            serializer = TermSerializer(current_term)
+            return Response(serializer.data)
+        return Response({"message": "No current term set"})
     
     @action(detail=True, methods=['get'])
     def subjects(self, request, pk=None):
         """Get subjects for a specific term"""
+        term = self.get_object()
+        # This would need to be implemented based on your subject-term relationship
         return Response({"message": "Subjects endpoint not implemented yet"})
 
 class TeacherViewSet(viewsets.ModelViewSet):
     """ViewSet for Teacher model"""
     permission_classes = [IsAuthenticated]
-    serializer_class = SubjectSerializer  # Placeholder
+    serializer_class = TeacherSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active', 'specialization']
+    search_fields = ['user__first_name', 'user__last_name', 'employee_id']
+    ordering_fields = ['user__first_name', 'user__last_name', 'hire_date']
     
     def get_queryset(self):
-        return []  # Placeholder - implement when Teacher model is available
+        return Teacher.objects.select_related('user').all()
     
     @action(detail=True, methods=['get'])
     def classes(self, request, pk=None):
         """Get classes for a specific teacher"""
-        return Response({"message": "Classes endpoint not implemented yet"})
+        teacher = self.get_object()
+        primary_classes = teacher.primary_classes.all()
+        assigned_classes = teacher.assigned_classes.all()
+        
+        primary_serializer = ClassroomSerializer(primary_classes, many=True)
+        assigned_serializer = ClassroomSerializer(assigned_classes, many=True)
+        
+        return Response({
+            'primary_classes': primary_serializer.data,
+            'assigned_classes': assigned_serializer.data
+        })
     
     @action(detail=True, methods=['get'])
     def subjects(self, request, pk=None):
         """Get subjects for a specific teacher"""
-        return Response({"message": "Subjects endpoint not implemented yet"})
+        teacher = self.get_object()
+        assignments = teacher.classroomteacherassignment_set.filter(is_active=True).select_related('subject')
+        subjects = [assignment.subject for assignment in assignments]
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def schedule(self, request, pk=None):
         """Get schedule for a specific teacher"""
-        return Response({"message": "Schedule endpoint not implemented yet"})
+        teacher = self.get_object()
+        schedules = ClassSchedule.objects.filter(teacher=teacher, is_active=True).select_related('classroom', 'subject')
+        serializer = ClassScheduleSerializer(schedules, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def workload(self, request, pk=None):
         """Get workload for a specific teacher"""
-        return Response({"message": "Workload endpoint not implemented yet"})
+        teacher = self.get_object()
+        primary_classes_count = teacher.primary_classes.count()
+        assigned_classes_count = teacher.assigned_classes.count()
+        total_subjects = teacher.classroomteacherassignment_set.filter(is_active=True).count()
+        
+        return Response({
+            'primary_classes_count': primary_classes_count,
+            'assigned_classes_count': assigned_classes_count,
+            'total_subjects': total_subjects,
+            'total_workload': primary_classes_count + assigned_classes_count
+        })
 
 class StudentViewSet(viewsets.ModelViewSet):
     """ViewSet for Student model"""
@@ -298,31 +386,89 @@ class SubjectManagementViewSet(viewsets.ModelViewSet):
 
 class ClassroomViewSet(viewsets.ModelViewSet):
     """ViewSet for Classroom model"""
-    permission_classes = [IsAuthenticated]
-    serializer_class = SubjectSerializer  # Placeholder
+    permission_classes = []  # Allow public access for classroom assignment
+    serializer_class = ClassroomSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['section__grade_level__education_level', 'is_active', 'academic_year']
+    search_fields = ['name', 'section__name', 'section__grade_level__name']
+    ordering_fields = ['name', 'created_at', 'current_enrollment']
     
     def get_queryset(self):
-        return []  # Placeholder - implement when Classroom model is available
+        return Classroom.objects.select_related(
+            'section__grade_level', 
+            'academic_year', 
+            'term', 
+            'class_teacher__user'
+        ).prefetch_related(
+            'students',
+            'subject_teachers',
+            'schedules'
+        )
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return ClassroomDetailSerializer
+        return ClassroomSerializer
     
     @action(detail=True, methods=['get'])
     def students(self, request, pk=None):
         """Get students for a specific classroom"""
-        return Response({"message": "Students endpoint not implemented yet"})
+        classroom = self.get_object()
+        enrollments = classroom.studentenrollment_set.filter(is_active=True).select_related('student')
+        serializer = StudentEnrollmentSerializer(enrollments, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def teachers(self, request, pk=None):
         """Get teachers for a specific classroom"""
-        return Response({"message": "Teachers endpoint not implemented yet"})
+        classroom = self.get_object()
+        assignments = classroom.classroomteacherassignment_set.filter(is_active=True).select_related('teacher__user', 'subject')
+        serializer = ClassroomTeacherAssignmentSerializer(assignments, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def subjects(self, request, pk=None):
         """Get subjects for a specific classroom"""
-        return Response({"message": "Subjects endpoint not implemented yet"})
+        classroom = self.get_object()
+        subjects = Subject.objects.filter(
+            classroomteacherassignment__classroom=classroom,
+            classroomteacherassignment__is_active=True
+        ).distinct()
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def schedule(self, request, pk=None):
         """Get schedule for a specific classroom"""
-        return Response({"message": "Schedule endpoint not implemented yet"})
+        classroom = self.get_object()
+        schedules = classroom.schedules.filter(is_active=True).select_related('subject', 'teacher__user')
+        serializer = ClassScheduleSerializer(schedules, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def statistics(self, request):
+        """Get classroom statistics"""
+        total_classrooms = Classroom.objects.count()
+        active_classrooms = Classroom.objects.filter(is_active=True).count()
+        total_enrollment = sum(c.current_enrollment for c in Classroom.objects.all())
+        avg_enrollment = total_enrollment / total_classrooms if total_classrooms > 0 else 0
+        
+        # By education level
+        nursery_count = Classroom.objects.filter(section__grade_level__education_level='NURSERY').count()
+        primary_count = Classroom.objects.filter(section__grade_level__education_level='PRIMARY').count()
+        secondary_count = Classroom.objects.filter(section__grade_level__education_level='SECONDARY').count()
+        
+        return Response({
+            'total_classrooms': total_classrooms,
+            'active_classrooms': active_classrooms,
+            'total_enrollment': total_enrollment,
+            'average_enrollment': round(avg_enrollment, 1),
+            'by_education_level': {
+                'nursery': nursery_count,
+                'primary': primary_count,
+                'secondary': secondary_count
+            }
+        })
 
 class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
     """ViewSet for ClassroomTeacherAssignment model"""

@@ -1,4 +1,5 @@
-import { useAuth, api } from '@/hooks/useAuth'; // Import your existing auth context
+import { useAuth } from '@/hooks/useAuth'; // Import your existing auth context
+import api from '@/services/api';
 import type { 
   // UserProfile, 
   // UserVerificationStatus, 
@@ -65,22 +66,22 @@ export function useAdminAuth() {
       // Use the correct endpoints based on role
       let endpoint = '';
       if (params?.role === UserRole.STUDENT) {
-        endpoint = '/api/students/';
+        endpoint = '/students/';
       } else if (params?.role === UserRole.TEACHER) {
-        endpoint = '/api/teachers/';
+        endpoint = '/teachers/teachers/'; // Fixed: use correct teachers endpoint
       } else if (params?.role === UserRole.PARENT) {
-        endpoint = '/api/parents/';
+        endpoint = '/parents/';
       } else {
         // For admin or general users, combine all endpoints
-        const [studentsRes, teachersRes, parentsRes] = await Promise.all([
-          api.get('/api/students/', { params }),
-          api.get('/api/teachers/', { params }),
-          api.get('/api/parents/', { params })
-        ]);
+                 const [studentsRes, teachersRes, parentsRes] = await Promise.all([
+                       api.get('/api/students/', { params }),
+                       api.get('/api/teachers/teachers/', { params }), // Fixed: use correct teachers endpoint
+                       api.get('/api/parents/', { params })
+         ]);
         
         // Combine and format the results
         const allUsers = [
-          ...studentsRes.data.results?.map((student: any) => ({
+          ...(studentsRes.results || studentsRes || []).map((student: any) => ({
             id: student.id,
             user_data: {
               id: student.user?.id || student.id,
@@ -97,7 +98,7 @@ export function useAdminAuth() {
             suspension_reason: undefined,
             notes: undefined
           })) || [],
-          ...teachersRes.data.results?.map((teacher: any) => ({
+          ...(teachersRes.results || teachersRes || []).map((teacher: any) => ({
             id: teacher.id,
             user_data: {
               id: teacher.user?.id || teacher.id,
@@ -113,8 +114,8 @@ export function useAdminAuth() {
             is_suspended: false,
             suspension_reason: undefined,
             notes: undefined
-          })) || [],
-          ...parentsRes.data.results?.map((parent: any) => ({
+          })),
+          ...(parentsRes.results || parentsRes || []).map((parent: any) => ({
             id: parent.id,
             user_data: {
               id: parent.user?.id || parent.id,
@@ -130,7 +131,7 @@ export function useAdminAuth() {
             is_suspended: false,
             suspension_reason: undefined,
             notes: undefined
-          })) || []
+          }))
         ];
         
         return {
@@ -176,7 +177,7 @@ export function useAdminAuth() {
         };
       } catch (studentError) {
         try {
-          const response = await api.get(`/api/teachers/${userId}/`);
+          const response = await api.get(`/api/teachers/teachers/${userId}/`);
           return {
             id: response.data.id,
             user_data: {
@@ -226,7 +227,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.post('/api/admin/users/', userData);
+      const response = await api.post('/admin/users/', userData);
       return response.data;
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -239,7 +240,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.patch(`/api/admin/users/${userId}/`, userData);
+      const response = await api.patch(`/admin/users/${userId}/`, userData);
       return response.data;
     } catch (error) {
       console.error(`Failed to update user ${userId}:`, error);
@@ -252,7 +253,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.delete(`/api/admin/users/${userId}/`);
+      await api.delete(`/admin/users/${userId}/`);
     } catch (error) {
       console.error(`Failed to delete user ${userId}:`, error);
       throw error;
@@ -264,7 +265,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/api/admin/users/${userId}/suspend/`, { reason });
+      await api.post(`/admin/users/${userId}/suspend/`, { reason });
     } catch (error) {
       console.error(`Failed to suspend user ${userId}:`, error);
       throw error;
@@ -276,7 +277,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/api/admin/users/${userId}/unsuspend/`);
+      await api.post(`/admin/users/${userId}/unsuspend/`);
     } catch (error) {
       console.error(`Failed to unsuspend user ${userId}:`, error);
       throw error;
@@ -288,7 +289,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.post(`/api/admin/users/${userId}/reset_password/`, { new_password: newPassword });
+      const response = await api.post(`/admin/users/${userId}/reset_password/`, { new_password: newPassword });
       return response.data;
     } catch (error) {
       console.error(`Failed to reset password for user ${userId}:`, error);
@@ -301,7 +302,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/api/admin/users/${userId}/send_verification/`);
+      await api.post(`/admin/users/${userId}/send_verification/`);
     } catch (error) {
       console.error(`Failed to send verification email to user ${userId}:`, error);
       throw error;
@@ -313,7 +314,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/api/admin/users/${userId}/verify/`);
+      await api.post(`/admin/users/${userId}/verify/`);
     } catch (error) {
       console.error(`Failed to verify user ${userId}:`, error);
       throw error;
@@ -343,7 +344,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.patch(`/api/admin/users/${userId}/profile/`, profileData);
+      const response = await api.patch(`/admin/users/${userId}/profile/`, profileData);
       return response.data;
     } catch (error) {
       console.error(`Failed to update profile for user ${userId}:`, error);
@@ -359,7 +360,7 @@ export function useAdminAuth() {
       const formData = new FormData();
       formData.append('profile_image', file);
       
-      const response = await api.post(`/api/admin/users/${userId}/profile_picture/`, formData, {
+      const response = await api.post(`/admin/users/${userId}/profile_picture/`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -377,7 +378,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.get(`/api/admin/users/${userId}/verification_status/`);
+      const response = await api.get(`/admin/users/${userId}/verification_status/`);
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch verification status for user ${userId}:`, error);
@@ -390,7 +391,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.get(`/api/admin/users/${userId}/contact_info/`);
+      const response = await api.get(`/admin/users/${userId}/contact_info/`);
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch contact info for user ${userId}:`, error);
@@ -407,8 +408,8 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.get('/api/dashboard/stats/');
-      return response.data;
+                    const response = await api.get('/api/dashboard/stats/');
+       return response;
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
       throw error;
@@ -432,7 +433,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.get('/api/admin/audit_logs/', { params });
+      const response = await api.get('/admin/audit_logs/', { params });
       return response.data;
     } catch (error) {
       console.error('Failed to fetch audit logs:', error);
@@ -450,7 +451,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      const response = await api.get('/api/admin/users/export/', {
+      const response = await api.get('/admin/users/export/', {
         params: { format, ...filters },
         responseType: 'blob',
       });
@@ -466,7 +467,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post('/api/admin/users/bulk_update/', {
+      await api.post('/admin/users/bulk_update/', {
         user_ids: userIds,
         updates,
       });
@@ -481,7 +482,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post('/api/admin/users/bulk_delete/', {
+      await api.post('/admin/users/bulk_delete/', {
         user_ids: userIds,
       });
     } catch (error) {
@@ -490,17 +491,51 @@ export function useAdminAuth() {
     }
   };
 
-  // Activate a student (studentId, userId)
-  const activateStudent = async (studentId: number, userId: number): Promise<void> => {
-    // Activate student profile
-    await api.patch(`/api/students/${studentId}/`, { is_active: true });
-    // Activate user account
-    await api.patch(`/api/authentication/users/${userId}/activate/`, { is_active: true });
+  // Activate/deactivate a student (studentId, userId)
+  const activateStudent = async (studentId: number, userId: number, isActive: boolean = true): Promise<void> => {
+    try {
+      console.log(`🔄 Activating/deactivating student: ${userId}, isActive: ${isActive}`);
+      
+      // Activate/deactivate user account
+      const response = await api.patch(`/api/auth/users/${userId}/activate/`, { is_active: isActive });
+      console.log('✅ Student activation response:', response);
+      
+      // Also update student profile if needed
+      try {
+        await api.patch(`/api/students/${studentId}/`, { is_active: isActive });
+      } catch (error) {
+        console.warn('Could not update student profile, but user account updated successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error activating/deactivating student:', error);
+      throw error;
+    }
   };
 
-  // Activate a teacher (userId)
-  const activateTeacher = async (userId: number): Promise<void> => {
-    await api.patch(`/api/authentication/users/${userId}/activate/`, { is_active: true, is_staff: true });
+  // Activate/deactivate a teacher (userId)
+  const activateTeacher = async (userId: number, isActive: boolean = true): Promise<void> => {
+    try {
+      console.log(`🔄 Activating/deactivating teacher: ${userId}, isActive: ${isActive}`);
+      
+      const response = await api.patch(`/api/auth/users/${userId}/activate/`, { is_active: isActive });
+      console.log('✅ Teacher activation response:', response);
+    } catch (error) {
+      console.error('❌ Error activating/deactivating teacher:', error);
+      throw error;
+    }
+  };
+
+  // Activate/deactivate a parent (userId)
+  const activateParent = async (userId: number, isActive: boolean = true): Promise<void> => {
+    try {
+      console.log(`🔄 Activating/deactivating parent: ${userId}, isActive: ${isActive}`);
+      
+      const response = await api.patch(`/api/auth/users/${userId}/activate/`, { is_active: isActive });
+      console.log('✅ Parent activation response:', response);
+    } catch (error) {
+      console.error('❌ Error activating/deactivating parent:', error);
+      throw error;
+    }
   };
 
   // Return all methods including base auth methods
@@ -539,6 +574,7 @@ export function useAdminAuth() {
     bulkDeleteUsers,
     activateStudent,
     activateTeacher,
+    activateParent,
   };
 }
 

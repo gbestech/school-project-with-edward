@@ -17,18 +17,18 @@ from .views import (
 
 # Main router for core subject operations
 router = DefaultRouter()
-router.register(r"subjects", SubjectViewSet, basename="subject")
+router.register(r"", SubjectViewSet, basename="subject")
 
 # Analytics router for read-only analytics endpoints
 analytics_router = DefaultRouter()
 analytics_router.register(
-    r"subjects", SubjectAnalyticsViewSet, basename="subject-analytics"
+    r"", SubjectAnalyticsViewSet, basename="subject-analytics"
 )
 
 # Management router for admin-only operations
 management_router = DefaultRouter()
 management_router.register(
-    r"subjects", SubjectManagementViewSet, basename="subject-management"
+    r"", SubjectManagementViewSet, basename="subject-management"
 )
 
 # ==============================================================================

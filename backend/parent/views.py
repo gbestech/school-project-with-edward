@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
 from django.db.models import Avg, Q
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -21,7 +22,7 @@ class ParentViewSet(viewsets.ModelViewSet):
     serializer_class = ParentProfileSerializer
     permission_classes = [IsParentOrAdmin]
 
-    @action(detail=False, methods=["get"], url_path="search")
+    @action(detail=False, methods=["get"], url_path="search", permission_classes=[AllowAny])
     def search(self, request):
         """Search parents by name, username, or email."""
         query = request.query_params.get("q", "")

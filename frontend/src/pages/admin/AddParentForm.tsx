@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import { api } from '@/hooks/useAuth';
+import api from '@/services/api';
 
 const AddParentForm: React.FC = () => {
   const [formData, setFormData] = useState({

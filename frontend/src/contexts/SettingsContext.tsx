@@ -32,6 +32,7 @@ interface SettingsContextType {
   settings: SchoolSettings | null;
   loading: boolean;
   error: string | null;
+  setError: (error: string | null) => void;
   refreshSettings: () => Promise<void>;
   updateSettings: (newSettings: Partial<SchoolSettings>) => Promise<void>;
 }
@@ -111,6 +112,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     settings,
     loading,
     error,
+    setError,
     refreshSettings,
     updateSettings,
   };

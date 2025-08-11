@@ -11,7 +11,7 @@ import {
   Download,
   User
 } from 'lucide-react';
-import { api } from '@/hooks/useAuth';
+import StudentService, { Student, CreateStudentData, UpdateStudentData } from '@/services/StudentService';
 import { useNavigate } from 'react-router-dom';
 
 // Helper for debounce
@@ -52,24 +52,6 @@ const CLASS_CHOICES = [
   { value: 'GRADE_12', label: 'Grade 12', level: 'SECONDARY' },
 ];
 
-// Student type (minimal for list)
-type Student = {
-  id: number;
-  full_name: string;
-  age: number;
-  gender: string;
-  education_level: string;
-  education_level_display: string;
-  student_class: string;
-  student_class_display: string;
-  parent_contact: string | null;
-  parent_count: number;
-  admission_date: string;
-  is_active: boolean;
-  profile_picture: string | null;
-  email?: string; // Add email to match backend detail
-};
-
 const StudentsComponent = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,7 +84,7 @@ const StudentsComponent = () => {
       // TODO: Implement proper PDF export when jsPDF issues are resolved
       // For now, users can use browser print (Ctrl+P) to save as PDF
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.log('Error generating PDF:', error);
       setError('Failed to generate PDF. Please use browser print function instead.');
     }
   };
@@ -122,13 +104,13 @@ const StudentsComponent = () => {
       params.page_size = pageSize;
       
       console.log('🔍 Request params:', params);
-      console.log('🔍 API base URL:', api.defaults.baseURL);
+      console.log('🔍 API base URL:', import.meta.env.VITE_API_URL || 'http://localhost:8000/api');
       
-      const res = await api.get('/api/students/', { params });
+      const res = await StudentService.getStudents(params);
       
-      console.log('✅ Students API Response:', res.data);
+      console.log('✅ Students API Response:', res);
       
-      const data = res.data;
+      const data = res;
       let studentsData: Student[] = [];
       
       if (Array.isArray(data)) {
@@ -156,9 +138,9 @@ const StudentsComponent = () => {
       setStudents(studentsData);
       
     } catch (err: any) {
-      console.error('❌ Students fetch error:', err);
-      console.error('❌ Error response:', err.response?.data);
-      console.error('❌ Error status:', err.response?.status);
+      console.log('❌ Students fetch error:', err);
+      console.log('❌ Error response:', err.response?.data);
+      console.log('❌ Error status:', err.response?.status);
       
       if (err.response?.status === 401) {
         setError('Authentication failed. Please log in again.');
@@ -216,7 +198,7 @@ const StudentsComponent = () => {
       // Check if it's a full URL or just a path
       const imageUrl = student.profile_picture.startsWith('http') 
         ? student.profile_picture 
-        : `${api.defaults.baseURL}${student.profile_picture}`;
+        : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${student.profile_picture}`;
       
       console.log(`🖼️ Final image URL for ${student.full_name}:`, imageUrl);
       
@@ -226,7 +208,7 @@ const StudentsComponent = () => {
           alt={student.full_name}
           className="w-10 h-10 rounded-full object-cover border"
           onError={(e) => {
-            console.error(`❌ Failed to load image for ${student.full_name}:`, imageUrl);
+            console.log(`❌ Failed to load image for ${student.full_name}:`, imageUrl);
             // Hide the broken image and show initials instead
             e.currentTarget.style.display = 'none';
             e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -256,8 +238,8 @@ const StudentsComponent = () => {
     setModalLoading(true);
     setViewError(null);
     try {
-      const res = await api.get(`/api/students/${studentId}/`);
-      setViewStudent({ ...res.data.student });
+      const res = await StudentService.getStudent(studentId);
+      setViewStudent(res);
     } catch (err: any) {
       setViewError(err.response?.data?.detail || err.message || 'Failed to fetch student details');
       setViewStudent(null);
@@ -270,9 +252,9 @@ const StudentsComponent = () => {
   const handleEditStudent = async (studentId: number) => {
     setModalLoading(true);
     try {
-      const res = await api.get(`/api/students/${studentId}/`);
-      setEditStudent({ ...res.data.student });
-      setEditForm({ ...res.data.student });
+      const res = await StudentService.getStudent(studentId);
+      setEditStudent(res);
+      setEditForm(res);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch student for editing');
     } finally {
@@ -290,8 +272,8 @@ const StudentsComponent = () => {
         education_level: editForm.education_level,
         student_class: editForm.student_class,
       };
-      const res = await api.patch(`/api/students/${editStudent.id}/`, payload);
-      setStudents((prev) => prev.map((s) => (s.id === editStudent.id ? { ...s, ...res.data } : s)));
+      const res = await StudentService.updateStudent(editStudent.id, payload);
+      setStudents((prev) => prev.map((s) => (s.id === editStudent.id ? { ...s, ...res } : s)));
       setEditStudent(null);
       setEditForm({});
     } catch (err: any) {
@@ -310,7 +292,7 @@ const StudentsComponent = () => {
     if (!deleteStudentId) return;
     setLoading(true);
     try {
-      await api.delete(`/api/students/${deleteStudentId}/`);
+      await StudentService.deleteStudent(deleteStudentId);
       setStudents((prev) => prev.filter((s) => s.id !== deleteStudentId));
       setSelectedStudents((prev) => prev.filter((id) => id !== deleteStudentId));
       setDeleteStudentId(null);
@@ -323,24 +305,13 @@ const StudentsComponent = () => {
   // Handler: Cancel delete
   const cancelDeleteStudent = () => setDeleteStudentId(null);
 
-  // Handler: Activate/Deactivate student
+  // Handler: Toggle student active status
   const handleToggleActive = async (student: Student) => {
-    setLoading(true);
     try {
-      let res;
-      if (student.is_active) {
-        res = await api.post(`/api/students/${student.id}/deactivate/`);
-      } else {
-        res = await api.post(`/api/students/${student.id}/activate/`);
-      }
-      const updatedStudent = res.data.student;
-      setStudents((prev) =>
-        prev.map((s) => (s.id === updatedStudent.id ? { ...s, ...updatedStudent } : s))
-      );
+      const res = await StudentService.toggleStudentStatus(student.id);
+      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, is_active: res.is_active } : s)));
     } catch (err: any) {
-      setError(err.message || 'Failed to update status');
-    } finally {
-      setLoading(false);
+      setError(err.message || 'Failed to toggle student status');
     }
   };
 

@@ -179,106 +179,59 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class SchoolSettingsSerializer(serializers.ModelSerializer):
-    # Nested relationships
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-    subjects = SubjectSerializer(many=True, read_only=True)
-    sessions = AcademicSessionSerializer(many=True, read_only=True)
-    grading_system = GradingSystemSerializer(read_only=True)
-    timetable_settings = TimetableSettingsSerializer(read_only=True)
-    roles = RoleSerializer(many=True, read_only=True)
-    announcements = AnnouncementSerializer(many=True, read_only=True)
-    quick_links = QuickLinkSerializer(many=True, read_only=True)
-
     # Custom fields for frontend compatibility
     logo_url = serializers.SerializerMethodField()
     favicon_url = serializers.SerializerMethodField()
-    default_avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = SchoolSettings
         fields = [
             # General Settings
             "id",
-            "site_name",
             "school_name",
-            "address",
-            "contact_info",
-            "logo",
+            "school_address",
+            "school_phone",
+            "school_email",
+            "school_website",
+            "academic_year",
+            "current_term",
+            "school_motto",
             "logo_url",
-            "favicon",
             "favicon_url",
-            "academic_year_start",
-            "academic_year_end",
-            "motto",
-            # Timezone & Localization
+            # System Preferences
             "timezone",
             "date_format",
+            "time_format",
             "language",
-            # Design Settings
-            "theme",
-            "primary_color",
-            "secondary_color",
-            "font_family",
-            "font_size",
-            # Homepage Customization
-            "show_announcements",
-            "show_calendar",
-            "show_quick_links",
-            # Academic Settings
-            "allow_self_registration",
-            "email_verification_required",
-            "registration_approval_required",
-            "default_user_role",
-            # Password Policy
-            "password_min_length",
-            "password_reset_interval",
-            "password_require_numbers",
-            "password_require_symbols",
-            "password_require_uppercase",
-            # Profile Settings
-            "default_avatar",
-            "default_avatar_url",
-            "allow_profile_image_upload",
-            "profile_image_max_size",
-            # System Settings
-            "notifications",
             "auto_save",
+            "notifications_enabled",
+            "dark_mode",
+            "maintenance_mode",
+            "session_timeout",
+            "max_login_attempts",
+            # Design Settings
+            "primary_color",
+            "theme",
+            "animations_enabled",
+            "compact_mode",
+            "typography",
+            "border_radius",
+            "shadow_style",
             # Timestamps
             "created_at",
             "updated_at",
-            # Nested relationships
-            "class_levels",
-            "subjects",
-            "sessions",
-            "grading_system",
-            "timetable_settings",
-            "roles",
-            "announcements",
-            "quick_links",
         ]
 
     def get_logo_url(self, obj):
         if obj.logo:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.logo.url)
-            return obj.logo.url
+            # Return relative URL so it works with frontend proxy
+            return f"/media/school_logos/{obj.logo.name.split('/')[-1]}"
         return None
 
     def get_favicon_url(self, obj):
         if obj.favicon:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.favicon.url)
-            return obj.favicon.url
-        return None
-
-    def get_default_avatar_url(self, obj):
-        if obj.default_avatar:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.default_avatar.url)
-            return obj.default_avatar.url
+            # Return relative URL so it works with frontend proxy
+            return f"/media/school_favicons/{obj.favicon.name.split('/')[-1]}"
         return None
 
 
@@ -289,40 +242,26 @@ class SchoolSettingsUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolSettings
         fields = [
-            "site_name",
             "school_name",
-            "address",
-            "contact_info",
+            "school_address",
+            "school_phone",
+            "school_email",
+            "school_website",
+            "academic_year",
+            "current_term",
+            "school_motto",
             "logo",
             "favicon",
-            "academic_year_start",
-            "academic_year_end",
-            "motto",
             "timezone",
             "date_format",
+            "time_format",
             "language",
-            "theme",
-            "primary_color",
-            "secondary_color",
-            "font_family",
-            "font_size",
-            "show_announcements",
-            "show_calendar",
-            "show_quick_links",
-            "allow_self_registration",
-            "email_verification_required",
-            "registration_approval_required",
-            "default_user_role",
-            "password_min_length",
-            "password_reset_interval",
-            "password_require_numbers",
-            "password_require_symbols",
-            "password_require_uppercase",
-            "default_avatar",
-            "allow_profile_image_upload",
-            "profile_image_max_size",
-            "notifications",
             "auto_save",
+            "notifications_enabled",
+            "dark_mode",
+            "maintenance_mode",
+            "session_timeout",
+            "max_login_attempts",
         ]
 
 

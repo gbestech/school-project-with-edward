@@ -19,6 +19,7 @@ from .views import (
     debug_auth,  # Import the function directly
     debug_token,  # Import the function directly
     activate_user,
+    admin_reset_password,
 )
 
 
@@ -48,6 +49,7 @@ urlpatterns = [
         password_reset_confirm,
         name="password_reset_confirm",
     ),
+    path("admin-reset-password/", admin_reset_password, name="admin_reset_password"),
     # ================== Utility endpoints ==================
     path("check-email/", check_email_view, name="check_email"),
     path(

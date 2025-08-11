@@ -56,6 +56,19 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   const classes = ['all', 'Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3', 'SS 1', 'SS 2', 'SS 3'];
   const subjects = ['all', 'Mathematics', 'English Language', 'Basic Science and Technology', 'Social Studies', 'French', 'Phonics', 'Creative Arts'];
 
+  // Update newExam when settings change
+  useEffect(() => {
+    setNewExam(prev => ({
+      ...prev,
+      school: {
+        name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
+        address: settings?.school_address || "NO. 54 DAGBANA ROAD JIKWOYI PHASE 3 ABUJA",
+        session: settings?.academic_year || "2024/2025 ACADEMIC SESSION",
+        term: settings?.current_term || "FIRST TERM EXAMINATION"
+      }
+    }));
+  }, [settings]);
+
   // Memoized filtered exams
   const filteredExams = useMemo(() => {
     return exams.filter(exam => {
@@ -134,6 +147,13 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     const objectivesMarks = exam.questions.objectives.length;
     const theoryMarks = exam.questions.theory.reduce((sum, q) => sum + q.marks, 0);
     const sectionC = exam.questions.sectionc;
+    
+    // Use dynamic school information from settings
+    const schoolName = settings?.school_name || exam.school.name;
+    const schoolAddress = settings?.school_address || exam.school.address;
+    const academicSession = settings?.academic_year || exam.school.session;
+    const currentTerm = settings?.current_term || exam.school.term;
+    
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -141,7 +161,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   <style>
     body { font-family: Arial, sans-serif; margin: 15mm; line-height: 1.3; font-size: 14px; position: relative; }
     body::before {
-      content: "GOD'S TREASURE SCHOOLS";
+      content: "${schoolName}";
       position: fixed;
       top: 40%;
       left: 50%;
@@ -183,9 +203,9 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
 </head>
 <body>
   <div class="header">
-    <div class="school-name">${exam.school.name}</div>
-    <div class="school-address">${exam.school.address}</div>
-    <div class="exam-title">${exam.school.term} ${exam.school.session}</div>
+    <div class="school-name">${schoolName}</div>
+    <div class="school-address">${schoolAddress}</div>
+    <div class="exam-title">${currentTerm} ${academicSession}</div>
   </div>
   <table class="exam-details-table">
     <tr>

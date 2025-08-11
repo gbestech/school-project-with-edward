@@ -1,10 +1,13 @@
-import React from 'react'
-import ClassroomManagement from '@/components/dashboards/admin/Classroom'
+import EnhancedClassroom from '@/components/dashboards/admin/EnhancedClassroom'
+import AuthCheck from '@/components/dashboards/admin/AuthCheck'
+
 const AdminClassroomManagement = () => {
   return (
-    <div>
-      <ClassroomManagement/>
-    </div>
+    <AuthCheck>
+      <div>
+        <EnhancedClassroom/>
+      </div>
+    </AuthCheck>
   )
 }
 

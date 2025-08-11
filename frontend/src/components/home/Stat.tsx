@@ -60,15 +60,15 @@ const Stat = () => {
   }, []);
 
   return (
-    <div className="py-20" style={{ background: 'var(--background)' }}>
+    <div className="py-20 bg-white dark:bg-slate-950 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Stats Section */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--primary-text)' }}>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900 dark:text-slate-100">
             Trusted by Thousands Worldwide
           </h2>
-          <p className="text-lg mb-12" style={{ color: 'var(--secondary-text)' }}>
+          <p className="text-lg mb-12 text-slate-600 dark:text-slate-400">
             Join a community of learners who've transformed their careers
           </p>
           
@@ -81,10 +81,10 @@ const Stat = () => {
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 mx-auto w-20 h-20"></div>
                 </div>
-                <div className="text-4xl md:text-5xl font-black mb-2 transition-all duration-300" style={{ color: 'var(--primary-text)' }}>
+                <div className="text-4xl md:text-5xl font-black mb-2 transition-all duration-300 text-slate-900 dark:text-slate-100">
                   {stat.value}
                 </div>
-                <p className="font-semibold text-lg" style={{ color: 'var(--secondary-text)' }}>
+                <p className="font-semibold text-lg text-slate-600 dark:text-slate-400">
                   {stat.label}
                 </p>
               </div>
@@ -93,13 +93,13 @@ const Stat = () => {
         </div>
 
         {/* Reviews Section */}
-        <div className="rounded-3xl p-8 md:p-12 shadow-xl" style={{ background: 'var(--surface)', boxShadow: '0 4px 24px var(--shadow)' }}>
+        <div className="rounded-3xl p-8 md:p-12 shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
           <div className="text-center mb-12">
-            <div className="inline-flex items-center space-x-2 rounded-full px-6 py-2 mb-6" style={{ background: '#fef9c3' }}>
+            <div className="inline-flex items-center space-x-2 rounded-full px-6 py-2 mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
               <Star className="text-yellow-500 fill-current" size={16} />
-              <span className="font-semibold text-sm" style={{ color: '#b45309' }}>4.9/5 AVERAGE RATING</span>
+              <span className="font-semibold text-sm text-amber-800 dark:text-amber-200">4.9/5 AVERAGE RATING</span>
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold mb-4" style={{ color: 'var(--primary-text)' }}>
+            <h3 className="text-2xl md:text-3xl font-bold mb-4 text-slate-900 dark:text-slate-100">
               What Our Students Say
             </h3>
           </div>
@@ -107,8 +107,8 @@ const Stat = () => {
           {/* Featured Review */}
           <div className="max-w-4xl mx-auto">
             <div className={`transition-all duration-300 ${isAnimating ? 'opacity-0 transform translate-y-4' : 'opacity-100 transform translate-y-0'}`}>
-              <div className="rounded-2xl p-8 md:p-10 shadow-lg relative" style={{ background: 'var(--background)', boxShadow: '0 2px 12px var(--shadow)' }}>
-                <Quote className="absolute top-6 left-6" size={32} style={{ color: 'var(--accent)' }} />
+              <div className="rounded-2xl p-8 md:p-10 shadow-lg relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                <Quote className="absolute top-6 left-6 text-blue-500 dark:text-blue-400" size={32} />
                 
                 <div className="relative z-10">
                   <div className="flex items-center justify-center mb-6">
@@ -117,7 +117,7 @@ const Stat = () => {
                     ))}
                   </div>
                   
-                  <blockquote className="text-xl md:text-2xl font-medium text-center mb-8 leading-relaxed" style={{ color: 'var(--secondary-text)' }}>
+                  <blockquote className="text-xl md:text-2xl font-medium text-center mb-8 leading-relaxed text-slate-600 dark:text-slate-400">
                     "{reviews[currentReview].text}"
                   </blockquote>
                   
@@ -126,13 +126,13 @@ const Stat = () => {
                       {reviews[currentReview].avatar}
                     </div>
                     <div className="text-left">
-                      <div className="font-bold text-lg" style={{ color: 'var(--primary-text)' }}>
+                      <div className="font-bold text-lg text-slate-900 dark:text-slate-100">
                         {reviews[currentReview].name}
                       </div>
-                      <div className="font-medium" style={{ color: 'var(--secondary-text)' }}>
+                      <div className="font-medium text-slate-600 dark:text-slate-400">
                         {reviews[currentReview].role}
                       </div>
-                      <div className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+                      <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                         via {reviews[currentReview].source}
                       </div>
                     </div>
@@ -150,9 +150,8 @@ const Stat = () => {
                   className={`w-3 h-3 rounded-full transition-all duration-300 ${
                     currentReview === index 
                       ? 'bg-blue-600 w-8' 
-                      : 'bg-gray-300 hover:bg-gray-400'
+                      : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500'
                   }`}
-                  style={currentReview === index ? { background: 'var(--accent)' } : { background: 'var(--surface)' }}
                 />
               ))}
             </div>
@@ -160,18 +159,18 @@ const Stat = () => {
 
           {/* Review Sources */}
           <div className="mt-12 text-center">
-            <p className="text-sm mb-6" style={{ color: 'var(--secondary-text)' }}>Featured on trusted platforms</p>
+            <p className="text-sm mb-6 text-slate-500 dark:text-slate-400">Featured on trusted platforms</p>
             <div className="flex items-center justify-center space-x-8 opacity-60">
-              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                 Google Reviews
               </div>
-              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                 Trustpilot
               </div>
-              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                 Course Report
               </div>
-              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold" style={{ background: 'var(--surface)', color: 'var(--primary-text)' }}>
+              <div className="px-6 py-3 rounded-lg shadow-sm font-semibold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
                 LinkedIn
               </div>
             </div>

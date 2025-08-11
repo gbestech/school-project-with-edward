@@ -49,7 +49,7 @@ SECRET_KEY = os.getenv(
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend"]
 
 
 # Application definition
@@ -97,6 +97,7 @@ INSTALLED_APPS = [
     "parent",
     "schoolterm",
     "invitations",
+    "events",
 ]
 
 SITE_ID = 1

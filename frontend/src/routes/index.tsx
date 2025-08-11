@@ -1,10 +1,13 @@
 
 // router/index.tsx
+import React from 'react';
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import { ErrorBoundary } from './../components/ErrorBoundary';
 import { AuthProvider } from './../hooks/useAuth';
-import { ThemeProvider } from './../hooks/useTheme';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import { GlobalThemeProvider } from '@/contexts/GlobalThemeContext';
 import { lazy, Suspense } from "react";
+import ContactRibbon from './../components/home/ContactRibbon';
 
 // Lazy load all components with consistent import paths and error handling
 const Home = lazy(() => import('./../pages/Landing').catch(() => ({ default: () => <div>Error loading Home</div> })));
@@ -32,8 +35,13 @@ const AllTeachers = lazy(() => import('./../pages/admin/AllTeachers').catch(() =
 const AddTeacherForm = lazy(() => import('./../pages/admin/AddTeacherForm').catch(() => ({ default: () => <div>Error loading Add Teacher Form</div> })));
 const AllParents = lazy(() => import('./../pages/admin/AllParents').catch(() => ({ default: () => <div>Error loading All Parents</div> })));
 const AddParentForm = lazy(() => import('./../pages/admin/AddParentForm').catch(() => ({ default: () => <div>Error loading Add Parent Form</div> })));
+const AddAdminForm = lazy(() => import('./../pages/admin/AddAdminForm').catch(() => ({ default: () => <div>Error loading Add Admin Form</div> })));
+const AllAdmins = lazy(() => import('./../pages/admin/AllAdmins').catch(() => ({ default: () => <div>Error loading All Admins</div> })));
+const PasswordRecovery = lazy(() => import('./../pages/admin/PasswordRecovery').catch(() => ({ default: () => <div>Error loading Password Recovery</div> })));
 const AdminDashboardContentLoader = lazy(() => import('./../pages/admin/AdminDashboardContentLoader').catch(() => ({ default: () => <div>Error loading Admin Dashboard Content</div> })));
 const SettingsPage = lazy(() => import('./../pages/admin/Settings').catch(() => ({ default: () => <div>Error loading Settings</div> })));
+const ThemeTest = lazy(() => import('./../pages/ThemeTestPage').catch(() => ({ default: () => <div>Error loading Theme Test</div> })));
+const TestHooks = lazy(() => import('./../components/TestHooks').catch(() => ({ default: () => <div>Error loading Test Hooks</div> })));
 
 // Loading fallback component
 const LoadingSpinner = () => (
@@ -89,18 +97,53 @@ const RouteErrorElement = () => {
 
 // Root layout component with error handling
 const RootLayout = () => {
+  const { isDarkMode } = useGlobalTheme();
+  
+  // Effect to adjust main content padding based on ContactRibbon visibility
+  React.useEffect(() => {
+    const adjustPadding = () => {
+      const mainContent = document.getElementById('main-content');
+      const contactRibbonVisible = localStorage.getItem('contactRibbonVisible') !== 'false';
+      
+      if (mainContent) {
+        if (contactRibbonVisible) {
+          mainContent.style.paddingTop = '6rem'; // Reduced padding when ContactRibbon is visible
+        } else {
+          mainContent.style.paddingTop = '4rem'; // Minimal padding when ContactRibbon is hidden
+        }
+      }
+    };
+
+    // Initial adjustment
+    adjustPadding();
+
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'contactRibbonVisible') {
+        adjustPadding();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically for immediate updates
+    const interval = setInterval(adjustPadding, 100);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ErrorBoundary>
-          <div className="min-h-screen">
-            <Suspense fallback={<LoadingSpinner />}>
-              <Outlet />
-            </Suspense>
-          </div>
-        </ErrorBoundary>
-      </AuthProvider>
-    </ThemeProvider>
+    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
+      <ContactRibbon />
+      <div className="pt-24" id="main-content"> {/* Reduced padding to account for fixed navbar */}
+        <Suspense fallback={<LoadingSpinner />}>
+          <Outlet />
+        </Suspense>
+      </div>
+    </div>
   );
 };
 
@@ -108,7 +151,15 @@ const RootLayout = () => {
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <RootLayout />,
+    element: (
+      <GlobalThemeProvider>
+        <AuthProvider>
+          <ErrorBoundary>
+            <RootLayout />
+          </ErrorBoundary>
+        </AuthProvider>
+      </GlobalThemeProvider>
+    ),
     errorElement: <RouteErrorElement />,
     children: [
       {
@@ -134,6 +185,16 @@ export const router = createBrowserRouter([
       {
         path: 'about',
         element: <About />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'theme-test',
+        element: <ThemeTest />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'test-hooks',
+        element: <TestHooks />,
         errorElement: <RouteErrorElement />
       },
     {
@@ -223,6 +284,21 @@ export const router = createBrowserRouter([
           {
             path: 'parents/add',
             element: <AddParentForm />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'admins',
+            element: <AllAdmins />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'admins/add',
+            element: <AddAdminForm />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'password-recovery',
+            element: <PasswordRecovery />,
             errorElement: <RouteErrorElement />
           },
           {

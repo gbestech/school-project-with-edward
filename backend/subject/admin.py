@@ -33,7 +33,6 @@ class SubjectAdmin(admin.ModelAdmin):
         "nursery_levels_display_admin",
         "ss_subject_type_display",
         "grade_levels_display",
-        "credit_hours",
         "practical_hours_display",
         "is_compulsory",
         "is_cross_cutting",
@@ -62,7 +61,6 @@ class SubjectAdmin(admin.ModelAdmin):
         "requires_specialist_teacher",
         "has_continuous_assessment",
         "has_final_exam",
-        "credit_hours",
         "pass_mark",
         "practical_hours",
         "introduced_year",
@@ -125,7 +123,6 @@ class SubjectAdmin(admin.ModelAdmin):
             "Academic Configuration",
             {
                 "fields": (
-                    "credit_hours",
                     "is_compulsory",
                     "is_core",
                     "is_cross_cutting",
@@ -406,7 +403,6 @@ class SubjectAdmin(admin.ModelAdmin):
                 "Education Levels",
                 "Nursery Levels",
                 "SS Subject Type",
-                "Credit Hours",
                 "Practical Hours",
                 "Is Compulsory",
                 "Is Cross Cutting",
@@ -432,7 +428,6 @@ class SubjectAdmin(admin.ModelAdmin):
                         if subject.ss_subject_type
                         else ""
                     ),
-                    subject.credit_hours,
                     subject.practical_hours if subject.has_practical else 0,
                     "Yes" if subject.is_compulsory else "No",
                     "Yes" if subject.is_cross_cutting else "No",
@@ -517,13 +512,11 @@ class SubjectInline(admin.TabularInline):
     fields = (
         "subject",
         "subject_category",
-        "subject_credit_hours",
         "subject_status",
         "subject_type",
     )
     readonly_fields = (
         "subject_category",
-        "subject_credit_hours",
         "subject_status",
         "subject_type",
     )
@@ -534,9 +527,7 @@ class SubjectInline(admin.TabularInline):
     def subject_category(self, obj):
         return obj.subject.get_category_display() if obj.subject else "-"
 
-    @admin.display(description="Credit Hours")
-    def subject_credit_hours(self, obj):
-        return obj.subject.credit_hours if obj.subject else "-"
+
 
     @admin.display(description="Type")
     def subject_type(self, obj):

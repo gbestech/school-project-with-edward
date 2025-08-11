@@ -18,7 +18,7 @@ def dashboard_stats(request):
         {
             "total_students": Student.objects.count(),
             "total_teachers": Teacher.objects.count(),
-            "total_classrooms": Classroom.objects.count(),
+            "total_classes": Classroom.objects.count(),
             "total_messages": Message.objects.count(),
             "total_parents": ParentProfile.objects.count(),
             "attendance_today": Attendance.objects.filter(

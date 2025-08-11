@@ -406,7 +406,7 @@ const ClassroomManagement = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center">
+            <div className="flex flex-col justify-center items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                 <School size={24} />
               </div>

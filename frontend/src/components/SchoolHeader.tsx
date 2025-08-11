@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { getAbsoluteUrl } from '../utils/urlUtils';
 
 const SchoolHeader: React.FC = () => {
   const { settings, loading } = useSettings();
@@ -25,7 +26,7 @@ const SchoolHeader: React.FC = () => {
         <div className="flex items-center space-x-3">
           {settings.logo_url && (
             <img 
-              src={settings.logo_url} 
+              src={getAbsoluteUrl(settings.logo_url)} 
               alt={`${settings.school_name} logo`}
               className="w-8 h-8 object-contain"
             />

@@ -950,12 +950,56 @@ def debug_login_function(request):
 @permission_classes([IsAdminUser])
 def activate_user(request, user_id):
     try:
+        print(f"🔍 activate_user called with user_id: {user_id}")
+        print(f"🔍 Request data: {request.data}")
+        print(f"🔍 Request user: {request.user}")
+        
         user = User.objects.get(pk=user_id)
+        print(f"🔍 Found user: {user.username} (ID: {user.id}), current is_active: {user.is_active}")
+        
         is_active = request.data.get('is_active')
+        print(f"🔍 Requested is_active value: {is_active}")
+        
         if is_active is not None:
             user.is_active = bool(is_active)
             user.save()
+            print(f"🔍 Updated user.is_active to: {user.is_active}")
             return Response({'success': True, 'is_active': user.is_active})
-        return Response({'error': 'Missing is_active field'}, status=400)
+        else:
+            print(f"🔍 Missing is_active field in request data")
+            return Response({'error': 'Missing is_active field'}, status=400)
     except User.DoesNotExist:
+        print(f"🔍 User with ID {user_id} not found")
         return Response({'error': 'User not found'}, status=404)
+    except Exception as e:
+        print(f"🔍 Unexpected error: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_reset_password(request):
+    """Reset user password (admin only)"""
+    try:
+        user_id = request.data.get('user_id')
+        new_password = request.data.get('new_password')
+        
+        if not user_id or not new_password:
+            return Response(
+                {"error": "user_id and new_password are required."}, 
+                status=400
+            )
+        
+        user = User.objects.get(id=user_id)
+        user.set_password(new_password)
+        user.save()
+        
+        return Response({
+            "message": f"Password for user {user.email} has been reset successfully.",
+            "username": user.username,
+            "email": user.email
+        })
+    except User.DoesNotExist:
+        return Response({"error": "User not found."}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

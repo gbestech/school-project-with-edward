@@ -40,9 +40,13 @@ class StudentMinimalSerializer(serializers.ModelSerializer):
 
 
 class ParentProfileSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)
+    user = serializers.SerializerMethodField(read_only=True)
     students = StudentMinimalSerializer(many=True, read_only=True)
     is_active = serializers.SerializerMethodField(read_only=True)
+    
+    # Read-only fields mapped to frontend names
+    parent_contact = serializers.CharField(source='phone', read_only=True)
+    parent_address = serializers.CharField(source='address', read_only=True)
 
     # Write-only field to update related students by their IDs
     student_ids = serializers.PrimaryKeyRelatedField(
@@ -57,8 +61,8 @@ class ParentProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(write_only=True, required=False)
     user_first_name = serializers.CharField(write_only=True, required=False)
     user_last_name = serializers.CharField(write_only=True, required=False)
-    parent_contact = serializers.CharField(write_only=True, required=False)
-    parent_address = serializers.CharField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False)
+    address = serializers.CharField(write_only=True, required=False)
 
     parent_username = serializers.CharField(read_only=True)
     parent_password = serializers.CharField(read_only=True)
@@ -69,6 +73,7 @@ class ParentProfileSerializer(serializers.ModelSerializer):
             "id", "user", "students", "student_ids",
             "user_email", "user_first_name", "user_last_name",
             "parent_contact", "parent_address",
+            "phone", "address",
             "parent_username", "parent_password",
             "is_active"
         ]
@@ -87,8 +92,8 @@ class ParentProfileSerializer(serializers.ModelSerializer):
         user_email = validated_data.pop("user_email", None)
         user_first_name = validated_data.pop("user_first_name", None)
         user_last_name = validated_data.pop("user_last_name", None)
-        parent_contact = validated_data.pop("parent_contact", None)
-        parent_address = validated_data.pop("parent_address", None)
+        phone = validated_data.pop("phone", None)
+        address = validated_data.pop("address", None)
         parent_username = None
         parent_password = None
         user = None
@@ -113,10 +118,10 @@ class ParentProfileSerializer(serializers.ModelSerializer):
             )
         print(f"Creating ParentProfile for user: {user} (username: {user.username})")
         validated_data["user"] = user
-        if parent_contact:
-            validated_data["phone"] = parent_contact
-        if parent_address:
-            validated_data["address"] = parent_address
+        if phone:
+            validated_data["phone"] = phone
+        if address:
+            validated_data["address"] = address
         parent_profile = super().create(validated_data)
         parent_profile.parent_username = parent_username or user.username
         parent_profile.parent_password = parent_password or ""
@@ -128,6 +133,19 @@ class ParentProfileSerializer(serializers.ModelSerializer):
         data["parent_username"] = getattr(instance, "parent_username", "")
         data["parent_password"] = getattr(instance, "parent_password", "")
         return data
+
+    def get_user(self, obj):
+        if obj.user:
+            return {
+                "id": obj.user.id,
+                "username": obj.user.username,
+                "email": obj.user.email,
+                "first_name": obj.user.first_name,
+                "last_name": obj.user.last_name,
+                "is_active": obj.user.is_active,
+                "date_joined": obj.user.date_joined,
+            }
+        return None
 
     def get_is_active(self, obj):
         return obj.user.is_active if obj.user else False

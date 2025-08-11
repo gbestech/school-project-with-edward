@@ -24,7 +24,8 @@ import {
   Sun,
   ChevronDown,
   Menu,
-  X
+  X,
+  Key
 } from 'lucide-react';
 import {
   UserProfile,  
@@ -47,12 +48,17 @@ import {
   DailyAttendance} from '@/types/types'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { useDesign } from '@/contexts/DesignContext';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { getAbsoluteUrl } from '@/utils/urlUtils';
 
 // Define proper typescript interface
 interface AdminDashboardProps {
   dashboardStats: DashboardStats | null;
   students: Student[] | null;
   teachers: Teacher[] | null;
+  parents: any[] | null;
   attendanceData: AttendanceData | null;
   classrooms: Classroom[] | null;
   messages: Message[] | null;
@@ -87,6 +93,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   dashboardStats,
   students,
   teachers,
+  parents,
   attendanceData,
   classrooms,
   messages,
@@ -100,11 +107,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   adminMethods,
   children
 }) => {
+  const { settings: designSettings } = useDesign();
+  const { isDarkMode, toggleTheme } = useGlobalTheme();
   const [activeItem, setActiveItem] = useState('Home');
   const [currentDate] = useState(new Date());
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [showMessageDropdown, setShowMessageDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+   const { settings } = useSettings();
   // Add state for dropdowns and selected subtab
   const [studentDropdownOpen, setStudentDropdownOpen] = useState(false);
   const [teacherDropdownOpen, setTeacherDropdownOpen] = useState(false);
@@ -133,12 +142,8 @@ console.log('Here is the userprofile', userProfile)
   console.log("Dashboard Stats:", dashboardStats);
   console.log("Students:", students);
   console.log("Teachers:", teachers);
+  console.log("Parents:", parents);
   console.log("Attendance Data:", attendanceData);
-
-  // Apply theme class to document
-  useEffect(() => {
-    document.documentElement.className = isDarkMode ? 'dark' : 'light';
-  }, [isDarkMode]);
 
   // Handle clicking outside dropdowns
   useEffect(() => {
@@ -155,10 +160,6 @@ console.log('Here is the userprofile', userProfile)
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
 
   // Get real data from props with proper validation
   const totalStudents = dashboardStats?.totalStudents || (Array.isArray(students) ? students.length : 0);
@@ -269,6 +270,8 @@ console.log("Total Students:", totalStudents);
     { name: 'Teachers', icon: Users, path: '/admin/teachers' },
     { name: 'Students', icon: GraduationCap, path: '/admin/students' },
     { name: 'Parents', icon: UserCheck, path: '/admin/parents' },
+    { name: 'Admins', icon: User, path: '/admin/admins' },
+    { name: 'Password Recovery', icon: Key, path: '/admin/password-recovery' },
     { name: 'Subjects', icon: BookOpen, path: '/admin/subjects' },
     { name: 'Classes', icon: School, path: '/admin/classes' },
     { name: 'Lessons', icon: Clock, path: '/admin/lessons' },
@@ -393,10 +396,18 @@ console.log("Total Students:", totalStudents);
               transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]
               ${isSidebarCollapsed ? 'h-14 px-2 py-2 justify-center' : 'h-14 px-3 py-2'}
               ${isActive 
-                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25' 
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-300'
+                ? 'text-white shadow-lg' 
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300'
               }
             `}
+            style={isActive ? {
+              background: designSettings?.theme === 'premium'
+                ? 'linear-gradient(135deg, #dc2626 0%, #1e3a8a 50%, #1e40af 100%)'
+                : `linear-gradient(135deg, ${designSettings?.primary_color || '#3B82F6'} 0%, ${designSettings?.primary_color || '#3B82F6'}80 100%)`,
+              boxShadow: designSettings?.theme === 'premium'
+                ? '0 10px 15px -3px rgba(220, 38, 38, 0.25)'
+                : `0 10px 15px -3px ${designSettings?.primary_color || '#3B82F6'}25`
+            } : {}}
             title={isSidebarCollapsed ? item.name : ''}
           >
             <div
@@ -406,7 +417,7 @@ console.log("Total Students:", totalStudents);
                 ${!isSidebarCollapsed ? 'mr-3' : ''}
                 ${isActive 
                   ? 'bg-white/20 text-white' 
-                  : 'bg-gray-100 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30'
+                  : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30'
                 }
               `}
             >
@@ -424,14 +435,14 @@ console.log("Total Students:", totalStudents);
           </button>
           {isDropdownOpen && !isSidebarCollapsed && (
             <div className="ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 duration-200">
-              <div className="pl-6 border-l-2 border-gray-200 dark:border-gray-700 space-y-1">
-                <button className="block w-full text-left px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200">
+              <div className="pl-6 border-l-2 border-slate-200 dark:border-slate-700 space-y-1">
+                <button className="block w-full text-left px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200">
                   View {item.name}
                 </button>
-                <button className="block w-full text-left px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                <button className="block w-full text-left px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200">
                   {item.name} Details
                 </button>
-                <button className="block w-full text-left px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200">
+                <button className="block w-full text-left px-4 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors duration-200">
                   Add {item.name.slice(0, -1)}
                 </button>
               </div>
@@ -449,10 +460,18 @@ console.log("Total Students:", totalStudents);
           transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]
           ${isSidebarCollapsed ? 'h-14 px-2 py-2 justify-center' : 'h-14 px-3 py-2'}
           ${isActive 
-            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25' 
-            : 'hover:bg-gray-100 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-300'
+            ? 'text-white shadow-lg' 
+            : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300'
           }
         `}
+        style={isActive ? {
+          background: designSettings?.theme === 'premium'
+            ? 'linear-gradient(135deg, #dc2626 0%, #1e3a8a 50%, #1e40af 100%)'
+            : `linear-gradient(135deg, ${designSettings?.primary_color || '#3B82F6'} 0%, ${designSettings?.primary_color || '#3B82F6'}80 100%)`,
+          boxShadow: designSettings?.theme === 'premium'
+            ? '0 10px 15px -3px rgba(220, 38, 38, 0.25)'
+            : `0 10px 15px -3px ${designSettings?.primary_color || '#3B82F6'}25`
+        } : {}}
         title={isSidebarCollapsed ? item.name : ''}
       >
         <div
@@ -462,7 +481,7 @@ console.log("Total Students:", totalStudents);
             ${!isSidebarCollapsed ? 'mr-3' : ''}
             ${isActive 
               ? 'bg-white/20 text-white' 
-              : 'bg-gray-100 dark:bg-gray-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30'
+              : 'bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30'
             }
           `}
         >
@@ -524,24 +543,42 @@ console.log("Total Students:", totalStudents);
   };
 
   return (
-    <div style={{
-      background: 'var(--background-secondary)',
-      color: 'var(--primary-text)',
-      minHeight: '100vh'
-    }}>
+    <div 
+      className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}
+      style={{
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+        minHeight: '100vh'
+      }}
+    >
       <div className="flex h-screen">
         {/* Sidebar */}
-        <div className={`transition-all duration-500 ease-out ${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-xl shadow-gray-200/50 dark:shadow-gray-900/50 overflow-y-auto h-full`}>
+        <div className={`transition-all duration-500 ease-out ${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-y-auto h-full`}>
           {/* Header */}
-          <div className="p-6 border-b relative" style={{ borderColor: 'var(--border)' }}>
+          <div className="p-6 border-b border-slate-200 dark:border-slate-700 relative">
             <div className="flex items-center overflow-hidden">
-              <div className={`w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg`}>
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
+                            {settings?.logo_url ? (
+                              <img 
+                                src={getAbsoluteUrl(settings.logo_url)} 
+                                alt={`${settings.school_name} logo`}
+                                className="w-6 h-6 object-contain"
+                                onError={(e) => {
+                                  console.error('Navbar logo failed to load:', getAbsoluteUrl(settings.logo_url));
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                                onLoad={() => {
+                                  console.log('Navbar logo loaded successfully:', getAbsoluteUrl(settings.logo_url));
+                                }}
+                              />
+                            ) : (
+                              <GraduationCap className="w-6 h-6 text-white" />
+                            )}
+                          </div>
               {!isSidebarCollapsed && (
                 <div className="ml-3 transition-all duration-300 overflow-hidden opacity-100 w-auto">
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Educo</h1>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Admin Portal</p>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">God's Treasure Schools</h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Admin Portal</p>
                 </div>
               )}
             </div>
@@ -555,7 +592,7 @@ console.log("Total Students:", totalStudents);
                 transition-all duration-300 hover:scale-110 active:scale-95
                 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700
                 text-white shadow-xl hover:shadow-2xl
-                border-2 border-white dark:border-gray-800
+                border-2 border-white dark:border-slate-800
               "
               title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -576,7 +613,7 @@ console.log("Total Students:", totalStudents);
               className={`
                 w-full flex items-center mb-1 rounded-xl text-left 
                 transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98] 
-                text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50
+                text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50
                 ${isSidebarCollapsed ? 'px-2 py-3 justify-center' : 'px-3 py-3'}
               `}
               title={isSidebarCollapsed ? 'Logout now' : ''}
@@ -587,7 +624,7 @@ console.log("Total Students:", totalStudents);
                   ? 'w-10 h-10' 
                   : 'w-10 h-10 mr-3'
                 }
-                bg-gray-100 dark:bg-gray-800 group-hover:bg-red-50 dark:group-hover:bg-red-900/30
+                bg-slate-100 dark:bg-slate-800 group-hover:bg-red-50 dark:group-hover:bg-red-900/30
               `}>
                 <LogOut className="w-5 h-5" />
               </div>
@@ -601,13 +638,29 @@ console.log("Total Students:", totalStudents);
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
           <div className="p-6">
             <div className="flex justify-between items-center mb-6">
             </div>
             {children}
           </div>
         </div>
+        
+        {/* Floating Action Button for Password Recovery */}
+        <button
+          onClick={() => navigate('/admin/password-recovery')}
+          className="
+            fixed bottom-6 right-6 z-50
+            w-14 h-14 flex items-center justify-center rounded-full 
+            transition-all duration-300 hover:scale-110 active:scale-95
+            bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600
+            text-white shadow-xl hover:shadow-2xl
+            border-2 border-white dark:border-slate-800
+          "
+          title="Password Recovery"
+        >
+          <Key className="w-6 h-6" strokeWidth={2} />
+        </button>
       </div>
     </div>
   );
