@@ -1,5 +1,36 @@
 import api from '@/services/api';
 
+export interface Teacher {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  employee_id: string;
+  level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary';
+  is_active: boolean;
+  assigned_subjects: Array<{
+    id: number;
+    name: string;
+  }>;
+}
+
+export interface Subject {
+  id: number;
+  name: string;
+  code: string;
+  description?: string;
+  is_core: boolean;
+  is_active: boolean;
+}
+
+export interface TeacherAssignment {
+  id: number;
+  teacher: Teacher;
+  subject: Subject;
+  assigned_date: string;
+  is_active: boolean;
+}
+
 export interface Classroom {
   id: number;
   name: string;
@@ -22,6 +53,7 @@ export interface Classroom {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  teacher_assignments?: TeacherAssignment[];
 }
 
 export interface ClassroomStats {
@@ -48,6 +80,16 @@ export interface CreateClassroomData {
 
 export interface UpdateClassroomData extends Partial<CreateClassroomData> {
   is_active?: boolean;
+}
+
+export interface AssignTeacherData {
+  teacher_id: number;
+  subject_id: number;
+}
+
+export interface RemoveTeacherAssignmentData {
+  teacher_id: number;
+  subject_id: number;
 }
 
 class ClassroomService {
@@ -107,47 +149,73 @@ class ClassroomService {
     return response;
   }
 
-  // Get subjects in a classroom
-  async getClassroomSubjects(classroomId: number) {
-    const response = await api.get(`/api/classrooms/classrooms/${classroomId}/subjects/`);
+  // Assign teacher to classroom
+  async assignTeacherToClassroom(classroomId: number, data: AssignTeacherData) {
+    const response = await api.post(`/api/classrooms/classrooms/${classroomId}/assign_teacher/`, data);
     return response;
   }
 
-  // Get schedule for a classroom
-  async getClassroomSchedule(classroomId: number) {
-    const response = await api.get(`/api/classrooms/classrooms/${classroomId}/schedule/`);
+  // Remove teacher assignment from classroom
+  async removeTeacherFromClassroom(classroomId: number, data: RemoveTeacherAssignmentData) {
+    const response = await api.post(`/api/classrooms/classrooms/${classroomId}/remove_teacher/`, data);
     return response;
   }
 
-  // Get sections for dropdown
-  async getSections() {
-    const response = await api.get('/api/classrooms/sections/');
+  // Get available teachers for assignment
+  async getAvailableTeachers(classroomId: number, subjectId?: number) {
+    const params = subjectId ? { subject_id: subjectId } : {};
+    const response = await api.get(`/api/classrooms/classrooms/${classroomId}/available-teachers/`, { params });
     return response;
   }
 
-  // Get academic years for dropdown
+  // Get available subjects for classroom
+  async getAvailableSubjects(classroomId: number) {
+    const response = await api.get(`/api/classrooms/classrooms/${classroomId}/available-subjects/`);
+    return response;
+  }
+
+  // Get all teachers (for assignment dropdowns)
+  async getAllTeachers() {
+    const response = await api.get('/api/teachers/teachers/');
+    return response;
+  }
+
+  // Get all subjects (for assignment dropdowns)
+  async getAllSubjects() {
+    const response = await api.get('/api/subjects/');
+    return response;
+  }
+
+  // Get grade levels
+  async getGradeLevels() {
+    const response = await api.get('/api/classrooms/grades/');
+    return response;
+  }
+
+  // Get sections for a grade level
+  async getSections(gradeLevelId: number) {
+    const response = await api.get(`/api/classrooms/grades/${gradeLevelId}/sections/`);
+    return response;
+  }
+
+  // Get academic years
   async getAcademicYears() {
     const response = await api.get('/api/classrooms/academic-years/');
     return response;
   }
 
-  // Get terms for dropdown
-  async getTerms() {
-    const response = await api.get('/api/classrooms/terms/');
+  // Get terms for an academic year
+  async getTerms(academicYearId: number) {
+    const response = await api.get(`/api/classrooms/academic-years/${academicYearId}/terms/`);
     return response;
   }
 
-  // Get teachers for dropdown
-  async getTeachers() {
-    const response = await api.get('/api/teachers/teachers/');
-    return response;
-  }
-
-  // Get subjects for dropdown
-  async getSubjects() {
-    const response = await api.get('/api/subjects/');
+  // Auto-assign teachers based on their qualifications
+  async autoAssignTeachers() {
+    const response = await api.post('/api/classrooms/classrooms/auto-assign/');
     return response;
   }
 }
 
-export const classroomService = new ClassroomService(); 
+export const classroomService = new ClassroomService();
+export default classroomService; 

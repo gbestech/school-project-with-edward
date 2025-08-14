@@ -4,6 +4,11 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 
+def get_current_date():
+    """Get current date for default values"""
+    return timezone.now().date()
+
+
 class GradeLevel(models.Model):
     """Educational grade levels (Nursery, Primary, Secondary)"""
 
@@ -203,7 +208,7 @@ class Classroom(models.Model):
 
     # Students
     students = models.ManyToManyField(
-        Student, through="StudentEnrollment", related_name="enrolled_classes"
+        "students.Student", through="StudentEnrollment", related_name="enrolled_classes"
     )
 
     # Classroom details
@@ -226,8 +231,9 @@ class Classroom(models.Model):
 
     @property
     def current_enrollment(self):
-        return self.students.filter(
-            studentenrollment__is_active=True, is_active=True
+        return self.studentenrollment_set.filter(
+            is_active=True,
+            student__is_active=True
         ).count()
 
     @property
@@ -246,8 +252,8 @@ class ClassroomTeacherAssignment(models.Model):
     teacher = models.ForeignKey(
         "teacher.Teacher", on_delete=models.CASCADE
     )  # Reference to teacher app's Teacher model
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    assigned_date = models.DateField(default=timezone.now)
+    subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
+    assigned_date = models.DateField(default=get_current_date)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -262,15 +268,15 @@ class ClassroomTeacherAssignment(models.Model):
 class StudentEnrollment(models.Model):
     """Student enrollment in classroom"""
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey("students.Student", on_delete=models.CASCADE)
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
-    enrollment_date = models.DateField(default=timezone.now)
+    enrollment_date = models.DateField(default=get_current_date)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ["student", "classroom"]
-        ordering = ["classroom", "student__first_name"]
+        ordering = ["classroom", "student__user__first_name"]
 
     def __str__(self):
         return f"{self.student} enrolled in {self.classroom}"
@@ -291,7 +297,7 @@ class ClassSchedule(models.Model):
     classroom = models.ForeignKey(
         Classroom, on_delete=models.CASCADE, related_name="schedules"
     )
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
     teacher = models.ForeignKey(
         "teacher.Teacher", on_delete=models.CASCADE
     )  # Reference to teacher app's Teacher model

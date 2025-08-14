@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
-  Plus, 
-  Phone, 
-  Mail, 
+  Plus,  
   Filter,
   MoreVertical,
   Edit,
   Trash2,
   Download,
-  User
+  User,
+  X,
+  AlertCircle
 } from 'lucide-react';
-import StudentService, { Student, CreateStudentData, UpdateStudentData } from '@/services/StudentService';
+import StudentService, { StudentService as StudentServiceClass, Student, CreateStudentData, UpdateStudentData, Parent } from '@/services/StudentService';
 import { useNavigate } from 'react-router-dom';
 
 // Helper for debounce
@@ -71,9 +71,14 @@ const StudentsComponent = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [deleteStudentId, setDeleteStudentId] = useState<number | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const debouncedSearch = useDebounce(searchTerm, 400);
 
+  // Debug viewStudent state changes (commented out for production)
+  // useEffect(() => {
+  //   console.log('🔄 viewStudent state changed:', viewStudent);
+  // }, [viewStudent]);
   // PDF Export Function
   const exportToPDF = async () => {
     try {
@@ -237,10 +242,19 @@ const StudentsComponent = () => {
   const handleViewStudent = async (studentId: number) => {
     setModalLoading(true);
     setViewError(null);
+    setViewStudent(null); // Reset viewStudent to null initially
+    
     try {
       const res = await StudentService.getStudent(studentId);
-      setViewStudent(res);
+      
+      if (res) {
+        setViewStudent(res);
+        setShowViewModal(true);
+      } else {
+        setViewError('No data received from server');
+      }
     } catch (err: any) {
+      console.error(`❌ Error in handleViewStudent for student ${studentId}:`, err);
       setViewError(err.response?.data?.detail || err.message || 'Failed to fetch student details');
       setViewStudent(null);
     } finally {
@@ -252,10 +266,13 @@ const StudentsComponent = () => {
   const handleEditStudent = async (studentId: number) => {
     setModalLoading(true);
     try {
+      console.log(`🔍 Editing student ${studentId}`);
       const res = await StudentService.getStudent(studentId);
+      console.log('✅ Edit student response:', res);
       setEditStudent(res);
       setEditForm(res);
     } catch (err: any) {
+      console.error('❌ Error fetching student for editing:', err);
       setError(err.message || 'Failed to fetch student for editing');
     } finally {
       setModalLoading(false);
@@ -308,8 +325,8 @@ const StudentsComponent = () => {
   // Handler: Toggle student active status
   const handleToggleActive = async (student: Student) => {
     try {
-      const res = await StudentService.toggleStudentStatus(student.id);
-      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, is_active: res.is_active } : s)));
+      const res = await StudentServiceClass.toggleStudentStatus(student.id);
+      setStudents((prev) => prev.map((s) => (s.id === student.id ? { ...s, is_active: !s.is_active } : s)));
     } catch (err: any) {
       setError(err.message || 'Failed to toggle student status');
     }
@@ -325,6 +342,8 @@ const StudentsComponent = () => {
   const filteredClassChoices = CLASS_CHOICES.filter(
     (c) => c.level === editForm.education_level
   );
+
+
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -473,7 +492,7 @@ const StudentsComponent = () => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {students.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={student.id} className="hover:bg-gray-200 transition-colors">
                     <td className="py-4 px-6">
                       <input
                         type="checkbox"
@@ -521,7 +540,7 @@ const StudentsComponent = () => {
                             <MoreVertical className="w-4 h-4" />
                           </button>
                           {actionMenuOpen === student.id && (
-                            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                            <div className="absolute right-0 mt-2 w-40 bg-gray-500 border border-gray-200 rounded-lg shadow-lg z-10">
                               <button className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" onClick={() => { handleViewStudent(student.id); setActionMenuOpen(null); }}>View</button>
                               <button className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" onClick={() => { handleEditStudent(student.id); setActionMenuOpen(null); }}>Edit</button>
                               <button className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100" onClick={() => { handleDeleteStudent(student.id); setActionMenuOpen(null); }}>Delete</button>
@@ -572,24 +591,250 @@ const StudentsComponent = () => {
         </div>
       </div>
       {/* View Modal */}
-      {viewStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={() => setViewStudent(null)}>&times;</button>
-            <h2 className="text-xl font-bold mb-4">Student Details</h2>
-            {modalLoading ? <div>Loading...</div> : viewError ? (
-              <div className="text-red-500">{viewError}</div>
+      {showViewModal && viewStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Student Profile</h2>
+                  <p className="text-indigo-100 mt-1">Detailed information and records</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setViewStudent(null);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-full transition-all duration-200 group"
+                >
+                  <X className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            {modalLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mx-auto mb-4"></div>
+                  <p className="text-gray-600 font-medium">Loading student details...</p>
+                </div>
+              </div>
+            ) : viewError ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="text-center">
+                  <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                  <p className="text-red-500 font-medium">{viewError}</p>
+                </div>
+              </div>
             ) : (
-              <div>
-                <p><b>Name:</b> {viewStudent.full_name}</p>
-                <p><b>Email:</b> {viewStudent.email}</p>
-                <p><b>Gender:</b> {viewStudent.gender}</p>
-                <p><b>Class:</b> {viewStudent.student_class_display}</p>
-                <p><b>Level:</b> {viewStudent.education_level_display}</p>
-                <p><b>Status:</b> {viewStudent.is_active ? 'Active' : 'Inactive'}</p>
-                <p><b>Parent Contact:</b> {viewStudent.parent_contact}</p>
-                <p><b>Admission Date:</b> {viewStudent.admission_date}</p>
-                {/* Add more fields as needed */}
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
+                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                  {/* Profile Section */}
+                  <div className="lg:w-1/3 lg:sticky lg:top-0 lg:self-start">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-4 sm:p-6 text-center">
+                      {/* Profile Picture */}
+                      <div className="relative mx-auto mb-6">
+                        {viewStudent.profile_picture ? (
+                          <img
+                            src={viewStudent.profile_picture.startsWith('http') ? viewStudent.profile_picture : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${viewStudent.profile_picture}`}
+                            alt={viewStudent.full_name}
+                            className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg ${viewStudent.profile_picture ? 'hidden' : ''}`}>
+                          <span className="text-4xl font-bold text-white">
+                            {getInitials(viewStudent.full_name || 'Student')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Student Name */}
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        {viewStudent.full_name}
+                      </h3>
+                      <p className="text-indigo-600 font-semibold text-lg mb-4">
+                        ID: {viewStudent.id}
+                      </p>
+
+                      {/* Status Badges */}
+                      <div className="flex flex-col gap-3 mb-6">
+                        <span className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${
+                          viewStudent.education_level === 'NURSERY' ? 'bg-pink-100 text-pink-800 border border-pink-200' :
+                          viewStudent.education_level === 'PRIMARY' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                          'bg-purple-100 text-purple-800 border border-purple-200'
+                        }`}>
+                          <div className={`w-2 h-2 rounded-full mr-2 ${
+                            viewStudent.education_level === 'NURSERY' ? 'bg-pink-500' :
+                            viewStudent.education_level === 'PRIMARY' ? 'bg-blue-500' :
+                            'bg-purple-500'
+                          }`}></div>
+                          {viewStudent.education_level_display || 'Unknown Level'}
+                        </span>
+                        <span className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${
+                          viewStudent.is_active 
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          <div className={`w-2 h-2 rounded-full mr-2 ${viewStudent.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          {viewStudent.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </div>
+
+                      {/* Quick Stats */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <div className="text-2xl font-bold text-indigo-600">{viewStudent.age || 'N/A'}</div>
+                          <div className="text-xs text-gray-500 uppercase tracking-wide">Age</div>
+                        </div>
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <div className="text-2xl font-bold text-indigo-600">{viewStudent.parents?.length || 0}</div>
+                          <div className="text-xs text-gray-500 uppercase tracking-wide">Parents</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Details Section */}
+                  <div className="lg:w-2/3">
+                    <div className="space-y-4 sm:space-y-6 pb-6">
+                      {/* Personal Information */}
+                      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <div className="w-1 h-6 bg-indigo-600 rounded-full mr-3"></div>
+                          Personal Information
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Email</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.email || 'No email'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Gender</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.gender || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Date of Birth</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.date_of_birth ? new Date(viewStudent.date_of_birth).toLocaleDateString() : 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Admission Date</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.admission_date ? new Date(viewStudent.admission_date).toLocaleDateString() : 'Not specified'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Academic Information */}
+                      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <div className="w-1 h-6 bg-blue-600 rounded-full mr-3"></div>
+                          Academic Information
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Class</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.student_class_display || 'Not assigned'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Education Level</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.education_level_display || 'Not specified'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contact Information */}
+                      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <div className="w-1 h-6 bg-green-600 rounded-full mr-3"></div>
+                          Contact Information
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Parent Contact</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.parent_contact || 'Not provided'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Emergency Contact</label>
+                            <p className="text-gray-900 font-medium">
+                              {viewStudent.emergency_contact || 
+                               (viewStudent.emergency_contacts && viewStudent.emergency_contacts.length > 0 
+                                ? viewStudent.emergency_contacts[0].number 
+                                : 'Not provided')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Parent Information */}
+                      {viewStudent.parents && viewStudent.parents.length > 0 && (
+                        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
+                          <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                            <div className="w-1 h-6 bg-yellow-600 rounded-full mr-3"></div>
+                            Parent Information
+                          </h4>
+                          <div className="space-y-4">
+                            {viewStudent.parents.map((parent: Parent, index: number) => (
+                              <div key={parent.id} className="bg-gray-50 rounded-xl p-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Parent Name</label>
+                                    <p className="text-gray-900 font-medium">{parent.full_name}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Relationship</label>
+                                    <p className="text-gray-900 font-medium">{parent.relationship}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Email</label>
+                                    <p className="text-gray-900 font-medium">{parent.email || 'Not provided'}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Phone</label>
+                                    <p className="text-gray-900 font-medium">{parent.phone || 'Not provided'}</p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Primary Contact</label>
+                                    <p className="text-gray-900 font-medium">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        parent.is_primary_contact 
+                                          ? 'bg-green-100 text-green-800' 
+                                          : 'bg-gray-100 text-gray-800'
+                                      }`}>
+                                        {parent.is_primary_contact ? 'Yes' : 'No'}
+                                      </span>
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Medical Information */}
+                      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                          <div className="w-1 h-6 bg-red-600 rounded-full mr-3"></div>
+                          Medical Information
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Medical Conditions</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.medical_conditions || 'None'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Special Requirements</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.special_requirements || 'None'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -597,78 +842,189 @@ const StudentsComponent = () => {
       )}
       {/* Edit Modal */}
       {editStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
-            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={() => setEditStudent(null)}>&times;</button>
-            <h2 className="text-xl font-bold mb-4">Edit Student</h2>
-            {modalLoading ? <div>Loading...</div> : (
-              <form onSubmit={e => { e.preventDefault(); handleEditSubmit(); }}>
-                <div className="mb-2">
-                  <label className="block text-sm font-medium">Full Name</label>
-                  <input type="text" className="w-full border rounded px-2 py-1" value={editForm.full_name || ''} onChange={e => setEditForm((f: any) => ({ ...f, full_name: e.target.value }))} disabled />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-y-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Edit Student</h2>
+                  <p className="text-blue-100 mt-1">Update student information</p>
                 </div>
-                <div className="mb-2">
-                  <label className="block text-sm font-medium">Date of Birth</label>
-                  <input
-                    type="date"
-                    className="w-full border rounded px-2 py-1"
-                    value={editForm.date_of_birth ? editForm.date_of_birth.slice(0, 10) : ''}
-                    onChange={e => setEditForm((f: any) => ({ ...f, date_of_birth: e.target.value }))}
-                  />
-                  {error && error.toLowerCase().includes('date_of_birth') && (
-                    <div className="text-red-500 text-xs mt-1">{error}</div>
-                  )}
+                <button
+                  onClick={() => {
+                    setEditStudent(null);
+                    setEditForm({});
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-full transition-all duration-200 group"
+                >
+                  <X className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 sm:p-6">
+              {modalLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+                    <p className="text-gray-600 font-medium">Loading student details...</p>
+                  </div>
                 </div>
-                <div className="mb-2">
-                  <label className="block text-sm font-medium">Education Level</label>
-                  <select
-                    className="w-full border rounded px-2 py-1"
-                    value={editForm.education_level || ''}
-                    onChange={e => setEditForm((f: any) => ({ ...f, education_level: e.target.value, student_class: '' }))}
-                  >
-                    <option value="">Select Level</option>
-                    {EDUCATION_LEVEL_CHOICES.map((level) => (
-                      <option key={level.value} value={level.value}>{level.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-2">
-                  <label className="block text-sm font-medium">Class</label>
-                  <select
-                    className="w-full border rounded px-2 py-1"
-                    value={editForm.student_class || ''}
-                    onChange={e => setEditForm((f: any) => ({ ...f, student_class: e.target.value }))}
-                    disabled={!editForm.education_level}
-                  >
-                    <option value="">Select Class</option>
-                    {filteredClassChoices.map((cls) => (
-                      <option key={cls.value} value={cls.value}>{cls.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-2">
-                  <label className="block text-sm font-medium">Parent Contact</label>
-                  <input type="text" className="w-full border rounded px-2 py-1" value={editForm.parent_contact || ''} onChange={e => setEditForm((f: any) => ({ ...f, parent_contact: e.target.value }))} />
-                </div>
-                {/* Add more fields as needed */}
-                <div className="flex justify-end mt-4">
-                  <button type="button" className="mr-2 px-4 py-2 bg-gray-200 rounded" onClick={() => setEditStudent(null)}>Cancel</button>
-                  <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
-                </div>
-              </form>
-            )}
+              ) : (
+                <form onSubmit={e => { e.preventDefault(); handleEditSubmit(); }} className="space-y-4 sm:space-y-6">
+                  {/* Personal Information */}
+                  <div className="bg-gray-50 rounded-xl p-4 sm:p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <div className="w-1 h-6 bg-blue-600 rounded-full mr-3"></div>
+                      Personal Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                        <input 
+                          type="text" 
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-100" 
+                          value={editForm.full_name || ''} 
+                          onChange={e => setEditForm((f: any) => ({ ...f, full_name: e.target.value }))} 
+                          disabled 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                        <input
+                          type="date"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          value={editForm.date_of_birth ? editForm.date_of_birth.slice(0, 10) : ''}
+                          onChange={e => setEditForm((f: any) => ({ ...f, date_of_birth: e.target.value }))}
+                        />
+                        {error && error.toLowerCase().includes('date_of_birth') && (
+                          <div className="text-red-500 text-sm mt-1">{error}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Academic Information */}
+                  <div className="bg-gray-50 rounded-xl p-4 sm:p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <div className="w-1 h-6 bg-green-600 rounded-full mr-3"></div>
+                      Academic Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Education Level</label>
+                        <select
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                          value={editForm.education_level || ''}
+                          onChange={e => setEditForm((f: any) => ({ ...f, education_level: e.target.value, student_class: '' }))}
+                        >
+                          <option value="">Select Level</option>
+                          {EDUCATION_LEVEL_CHOICES.map((level) => (
+                            <option key={level.value} value={level.value}>{level.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">Class</label>
+                        <select
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
+                          value={editForm.student_class || ''}
+                          onChange={e => setEditForm((f: any) => ({ ...f, student_class: e.target.value }))}
+                          disabled={!editForm.education_level}
+                        >
+                          <option value="">Select Class</option>
+                          {filteredClassChoices.map((cls) => (
+                            <option key={cls.value} value={cls.value}>{cls.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="bg-gray-50 rounded-xl p-4 sm:p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <div className="w-1 h-6 bg-purple-600 rounded-full mr-3"></div>
+                      Contact Information
+                    </h4>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Parent Contact</label>
+                      <input 
+                        type="text" 
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                        value={editForm.parent_contact || ''} 
+                        onChange={e => setEditForm((f: any) => ({ ...f, parent_contact: e.target.value }))} 
+                        placeholder="Enter parent contact number"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                    <button 
+                      type="button" 
+                      className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium" 
+                      onClick={() => {
+                        setEditStudent(null);
+                        setEditForm({});
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
       {/* Delete Confirmation Modal */}
       {deleteStudentId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm relative">
-            <h2 className="text-lg font-bold mb-4">Confirm Delete</h2>
-            <p>Are you sure you want to delete this student?</p>
-            <div className="flex justify-end mt-4">
-              <button className="mr-2 px-4 py-2 bg-gray-200 rounded" onClick={cancelDeleteStudent}>Cancel</button>
-              <button className="px-4 py-2 bg-red-600 text-white rounded" onClick={confirmDeleteStudent}>Delete</button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-pink-600 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mr-4">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Confirm Delete</h2>
+                  <p className="text-red-100 mt-1">This action cannot be undone</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Student</h3>
+                <p className="text-gray-600">Are you sure you want to permanently delete this student? This action cannot be undone and will remove all associated data.</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button 
+                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium" 
+                  onClick={cancelDeleteStudent}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg hover:from-red-700 hover:to-pink-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl" 
+                  onClick={confirmDeleteStudent}
+                >
+                  Delete Student
+                </button>
+              </div>
             </div>
           </div>
         </div>

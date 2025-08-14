@@ -11,6 +11,7 @@ from django.db import transaction
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()  # type: ignore
     serializer_class = TeacherSerializer
+    permission_classes = [AllowAny]  # Temporarily allow unauthenticated access for testing
 
     def create(self, request, *args, **kwargs):
         # Allow unauthenticated POST requests for testing

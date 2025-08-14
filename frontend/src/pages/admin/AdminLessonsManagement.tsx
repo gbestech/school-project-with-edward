@@ -1,10 +1,10 @@
 import React from 'react'
-import Lessons from '@/components/dashboards/admin/Lessons'
+import LessonManagement from './LessonManagement'
+
 const AdminLessonsManagement = () => {
   return (
     <div>
-      
-        <Lessons/>
+      <LessonManagement />
     </div>
   )
 }

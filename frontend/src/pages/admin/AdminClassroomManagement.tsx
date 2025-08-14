@@ -1,12 +1,10 @@
-import EnhancedClassroom from '@/components/dashboards/admin/EnhancedClassroom'
+import ClassroomManagement from '@/components/dashboards/admin/ClassroomManagement'
 import AuthCheck from '@/components/dashboards/admin/AuthCheck'
 
 const AdminClassroomManagement = () => {
   return (
     <AuthCheck>
-      <div>
-        <EnhancedClassroom/>
-      </div>
+      <ClassroomManagement />
     </AuthCheck>
   )
 }

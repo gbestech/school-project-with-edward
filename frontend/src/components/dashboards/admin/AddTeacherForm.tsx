@@ -136,7 +136,7 @@ const AddTeacherForm: React.FC = () => {
       const educationLevel = levelMap[formData.level];
       if (educationLevel) {
         // Fetch subjects for the selected level
-        fetch(`/api/subjects/?education_levels=${educationLevel}`)
+        fetch(`/api/subjects/?education_level=${educationLevel}`)
           .then(res => res.json())
           .then(data => {
             const subjects = Array.isArray(data.results) ? data.results : data;

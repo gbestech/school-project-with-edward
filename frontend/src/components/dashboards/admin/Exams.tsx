@@ -42,6 +42,11 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     date: '',
     duration: '',
     totalMarks: 0,
+    instructions: {
+      objectives: 'Answer all questions. Choose the correct option from A to D.',
+      theory: 'Answer all questions. Show your working clearly.',
+      sectionc: 'Read the passage carefully and answer the questions that follow.'
+    },
     questions: { objectives: [], theory: [], sectionc: [] },
     school: {
       name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
@@ -104,6 +109,11 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       date: '',
       duration: '',
       totalMarks: 0,
+      instructions: {
+        objectives: 'Answer all questions. Choose the correct option from A to D.',
+        theory: 'Answer all questions. Show your working clearly.',
+        sectionc: 'Read the passage carefully and answer the questions that follow.'
+      },
       questions: { objectives: [], theory: [], sectionc: [] },
       school: {
         name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
@@ -226,7 +236,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   </div>
   ${exam.questions.objectives.length > 0 ? `<div class="section">
     <h3>SECTION "A" OBJECTIVES</h3>
-    <div class="section-instruction">INSTRUCTION: ANSWER ALL THE QUESTIONS (${objectivesMarks} MARKS)</div>
+    <div class="section-instruction">INSTRUCTION: ${exam.instructions.objectives} (${objectivesMarks} MARKS)</div>
     ${exam.questions.objectives.map((q, index) => `<div class="question">
       ${index + 1}. ${q.question}
       <div class="options">
@@ -236,7 +246,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   </div>` : ''}
   ${exam.questions.theory.length > 0 ? `<div class="section">
     <h3>SECTION B: THEORY</h3>
-    <div class="section-instruction">INSTRUCTION: ANSWER ALL THE QUESTIONS IN THIS SECTION (${theoryMarks} MARKS)</div>
+    <div class="section-instruction">INSTRUCTION: ${exam.instructions.theory} (${theoryMarks} MARKS)</div>
     ${exam.questions.theory.map((q, index) => `<div class="question">
       ${index + 1}. ${q.question} (${q.marks} marks)
       ${q.subQuestions && q.subQuestions.length > 0 ? `<div class="sub-questions">
@@ -246,6 +256,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   </div>` : ''}
   ${sectionC && sectionC.length > 0 ? `<div class="section">
     <h3>SECTION C: LITERATURE</h3>
+    <div class="section-instruction">INSTRUCTION: ${exam.instructions.sectionc}</div>
     ${sectionC.map((c, idx) => `<div class="section-c-passage">
       <strong>Literature: ${c.title}${c.subtitle ? ': ' + c.subtitle : ''}</strong><br />
       ${c.text}
@@ -620,6 +631,44 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                     onChange={(e) => setNewExam({...newExam, totalMarks: parseInt(e.target.value) || 0})}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter total marks"
+                  />
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium">Exam Instructions</h4>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Objectives Section Instructions</label>
+                  <textarea
+                    value={newExam.instructions.objectives}
+                    onChange={(e) => setNewExam({...newExam, instructions: {...newExam.instructions, objectives: e.target.value}})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    rows={2}
+                    placeholder="Enter instructions for the objectives section"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Theory Section Instructions</label>
+                  <textarea
+                    value={newExam.instructions.theory}
+                    onChange={(e) => setNewExam({...newExam, instructions: {...newExam.instructions, theory: e.target.value}})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    rows={2}
+                    placeholder="Enter instructions for the theory section"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Section C Instructions</label>
+                  <textarea
+                    value={newExam.instructions.sectionc}
+                    onChange={(e) => setNewExam({...newExam, instructions: {...newExam.instructions, sectionc: e.target.value}})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    rows={2}
+                    placeholder="Enter instructions for section C"
                   />
                 </div>
               </div>

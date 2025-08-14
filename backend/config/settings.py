@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     "schoolterm",
     "invitations",
     "events",
+    "lesson",
 ]
 
 SITE_ID = 1

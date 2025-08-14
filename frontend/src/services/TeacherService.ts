@@ -159,13 +159,13 @@ class TeacherService {
 
   // Activate teacher
   async activateTeacher(id: number): Promise<{ status: string }> {
-    const response = await api.post(`/api/teachers/teachers/${id}/activate/`);
+    const response = await api.post(`/api/teachers/teachers/${id}/activate/`, {});
     return response;
   }
 
   // Deactivate teacher
   async deactivateTeacher(id: number): Promise<{ status: string }> {
-    const response = await api.post(`/api/teachers/teachers/${id}/deactivate/`);
+    const response = await api.post(`/api/teachers/teachers/${id}/deactivate/`, {});
     return response;
   }
 

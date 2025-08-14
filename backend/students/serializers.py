@@ -25,7 +25,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(required=False)
     parents = serializers.SerializerMethodField()
     emergency_contacts = serializers.SerializerMethodField()
-    profile_picture = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
+    profile_picture = serializers.SerializerMethodField()
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     class Meta:
@@ -110,18 +110,18 @@ class StudentDetailSerializer(serializers.ModelSerializer):
 
         return contacts
 
-    # profile_picture is now a URL string, just return it directly
-
-    # def get_profile_picture(self, obj):
-    #     # Prefer userprofile image, fallback to user.profile_picture
-    #     if hasattr(obj.user, "profile") and getattr(
-    #         obj.user.profile, "profile_picture", None
-    #     ):
-    #         try:
-    #             return obj.user.profile.profile_picture.url
-    #         except Exception:
-    #             pass
-    #     return getattr(obj.user, "profile_picture", None)
+    def get_profile_picture(self, obj):
+        """Returns the profile picture URL with proper handling for Cloudinary URLs"""
+        # Check if student has a profile picture
+        if obj.profile_picture:
+            return obj.profile_picture
+        
+        # Fallback to user profile picture if available
+        if hasattr(obj.user, "profile_picture") and obj.user.profile_picture:
+            return obj.user.profile_picture
+        
+        # Return null if no profile picture
+        return None
 
     def validate_student_class(self, value):
         """Validate that the student class is appropriate for the education level."""
@@ -205,7 +205,7 @@ class StudentListSerializer(serializers.ModelSerializer):
     )
     is_active = serializers.BooleanField()
     parent_count = serializers.SerializerMethodField()
-    profile_picture = serializers.CharField(read_only=True, allow_blank=True, allow_null=True)
+    profile_picture = serializers.SerializerMethodField()
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     class Meta:
@@ -235,9 +235,21 @@ class StudentListSerializer(serializers.ModelSerializer):
 
     def get_parent_count(self, obj):
         """Returns the number of registered parents."""
-        return obj.parents.count()
+        from parent.models import ParentStudentRelationship
+        return ParentStudentRelationship.objects.filter(student=obj).count()
 
-    # profile_picture is now a URL string, just return it directly
+    def get_profile_picture(self, obj):
+        """Returns the profile picture URL with proper handling for Cloudinary URLs"""
+        # Check if student has a profile picture
+        if obj.profile_picture:
+            return obj.profile_picture
+        
+        # Fallback to user profile picture if available
+        if hasattr(obj.user, "profile_picture") and obj.user.profile_picture:
+            return obj.user.profile_picture
+        
+        # Return null if no profile picture
+        return None
 
 
 class StudentCreateSerializer(serializers.ModelSerializer):

@@ -7,7 +7,7 @@ from django.db.models import Q, Prefetch, Count, Avg
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.core.cache import cache
-from django.db import transaction
+from django.db import transaction, connection
 from django.core.exceptions import ValidationError
 from .models import (
     Subject,
@@ -26,6 +26,30 @@ from .serializers import (
 # from classroom.models import GradeLevel  # Commented out to avoid circular import
 
 logger = logging.getLogger(__name__)
+
+
+def filter_by_json_field(queryset, field_name, value):
+    """
+    Database-agnostic JSON field filtering that works with both SQLite and PostgreSQL.
+    
+    Args:
+        queryset: The base queryset to filter
+        field_name: The JSON field name (e.g., 'education_levels', 'nursery_levels')
+        value: The value to search for in the JSON array
+    
+    Returns:
+        Filtered queryset
+    """
+    if connection.vendor == 'postgresql':
+        # Use PostgreSQL-specific JSON operators for better performance
+        return queryset.filter(**{f"{field_name}__contains": [value]})
+    else:
+        # Use Python-level filtering for SQLite and other databases
+        subject_ids = []
+        for subject in Subject.objects.all():
+            if value in getattr(subject, field_name, []):
+                subject_ids.append(subject.id)
+        return queryset.filter(id__in=subject_ids)
 
 
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -130,12 +154,12 @@ class SubjectViewSet(viewsets.ModelViewSet):
         # Education level filtering
         education_level = self.request.query_params.get("education_level")
         if education_level:
-            queryset = queryset.filter(education_levels__contains=[education_level])
+            queryset = filter_by_json_field(queryset, 'education_levels', education_level)
 
         # Nursery level filtering
         nursery_level = self.request.query_params.get("nursery_level")
         if nursery_level:
-            queryset = queryset.filter(nursery_levels__contains=[nursery_level])
+            queryset = filter_by_json_field(queryset, 'nursery_levels', nursery_level)
 
         # Grade level filtering (integration with GradeLevel model)
         grade_level = self.request.query_params.get("grade_level")
@@ -165,6 +189,36 @@ class SubjectViewSet(viewsets.ModelViewSet):
         requires_specialist = self.request.query_params.get("requires_specialist")
         if requires_specialist == "true":
             queryset = queryset.filter(requires_specialist_teacher=True)
+
+        # Teacher filtering - filter subjects by assigned teacher
+        teacher_id = self.request.query_params.get("teacher_id")
+        if teacher_id:
+            try:
+                from teacher.models import TeacherAssignment
+                teacher_assignments = TeacherAssignment.objects.filter(
+                    teacher_id=teacher_id
+                ).values_list('subject_id', flat=True)
+                queryset = queryset.filter(id__in=teacher_assignments)
+            except (ValueError, ImportError):
+                pass
+
+        # Teacher specialization filtering
+        teacher_specialization = self.request.query_params.get("teacher_specialization")
+        if teacher_specialization:
+            try:
+                from teacher.models import Teacher
+                teachers_with_specialization = Teacher.objects.filter(
+                    specialization__icontains=teacher_specialization,
+                    is_active=True
+                ).values_list('id', flat=True)
+                
+                from teacher.models import TeacherAssignment
+                teacher_assignments = TeacherAssignment.objects.filter(
+                    teacher_id__in=teachers_with_specialization
+                ).values_list('subject_id', flat=True)
+                queryset = queryset.filter(id__in=teacher_assignments)
+            except (ValueError, ImportError):
+                pass
 
         return queryset
 
@@ -746,10 +800,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
             # Statistics by education level
             for level_code, level_name in EDUCATION_LEVELS:
-                # Use a different approach for JSONField filtering
-                level_subjects = queryset.filter(
-                    education_levels__icontains=level_code
-                )
+                level_subjects = filter_by_json_field(queryset, 'education_levels', level_code)
                 result["by_education_level"][level_code] = {
                     "name": level_name,
                     "count": level_subjects.count(),
@@ -767,6 +818,93 @@ class SubjectViewSet(viewsets.ModelViewSet):
             cache.set(cache_key, result, 60 * 10)
 
         return Response(result)
+
+    @action(detail=False, methods=["get"])
+    def by_teacher(self, request):
+        """Get subjects assigned to a specific teacher"""
+        teacher_id = request.query_params.get("teacher_id")
+        teacher_specialization = request.query_params.get("teacher_specialization")
+        
+        if not teacher_id and not teacher_specialization:
+            return Response(
+                {"error": "Either teacher_id or teacher_specialization parameter is required"},
+                status=400
+            )
+        
+        try:
+            from teacher.models import Teacher, TeacherAssignment
+            
+            if teacher_id:
+                # Get subjects assigned to specific teacher
+                teacher_assignments = TeacherAssignment.objects.filter(
+                    teacher_id=teacher_id
+                ).select_related('subject', 'teacher', 'grade_level', 'section')
+                
+                subjects = [assignment.subject for assignment in teacher_assignments]
+                
+                # Get teacher info
+                teacher = Teacher.objects.get(id=teacher_id)
+                teacher_info = {
+                    "id": teacher.id,
+                    "name": teacher.user.full_name,
+                    "employee_id": teacher.employee_id,
+                    "specialization": teacher.specialization,
+                    "level": teacher.level
+                }
+                
+            else:
+                # Get subjects by teacher specialization
+                teachers_with_specialization = Teacher.objects.filter(
+                    specialization__icontains=teacher_specialization,
+                    is_active=True
+                )
+                
+                teacher_assignments = TeacherAssignment.objects.filter(
+                    teacher__in=teachers_with_specialization
+                ).select_related('subject', 'teacher', 'grade_level', 'section')
+                
+                subjects = [assignment.subject for assignment in teacher_assignments]
+                teacher_info = {
+                    "specialization": teacher_specialization,
+                    "teacher_count": teachers_with_specialization.count()
+                }
+            
+            # Remove duplicates while preserving order
+            seen_subjects = set()
+            unique_subjects = []
+            for subject in subjects:
+                if subject.id not in seen_subjects:
+                    seen_subjects.add(subject.id)
+                    unique_subjects.append(subject)
+            
+            serializer = SubjectListSerializer(unique_subjects, many=True)
+            
+            response_data = {
+                "teacher_info": teacher_info,
+                "subjects": serializer.data,
+                "total_subjects": len(unique_subjects),
+                "assignments": []
+            }
+            
+            # Add assignment details if requested
+            include_assignments = request.query_params.get("include_assignments", "false").lower() == "true"
+            if include_assignments:
+                for assignment in teacher_assignments:
+                    response_data["assignments"].append({
+                        "id": assignment.id,
+                        "subject": assignment.subject.name,
+                        "grade_level": assignment.grade_level.name if assignment.grade_level else None,
+                        "section": assignment.section.name if assignment.section else None,
+                        "teacher": assignment.teacher.user.full_name
+                    })
+            
+            return Response(response_data)
+            
+        except (ValueError, Teacher.DoesNotExist, ImportError) as e:
+            return Response(
+                {"error": f"Invalid teacher information: {str(e)}"},
+                status=400
+            )
 
     def _get_category_icon(self, category):
         """Get icon for category display"""

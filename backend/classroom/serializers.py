@@ -321,6 +321,12 @@ class ClassroomTeacherAssignmentSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(
         source="teacher.user.get_full_name", read_only=True
     )
+    teacher_email = serializers.CharField(
+        source="teacher.user.email", read_only=True
+    )
+    teacher_phone = serializers.CharField(
+        source="teacher.phone_number", read_only=True
+    )
     subject_name = serializers.CharField(source="subject.name", read_only=True)
     subject_code = serializers.CharField(source="subject.code", read_only=True)
 
@@ -330,6 +336,8 @@ class ClassroomTeacherAssignmentSerializer(serializers.ModelSerializer):
             "id",
             "teacher",
             "teacher_name",
+            "teacher_email",
+            "teacher_phone",
             "subject",
             "subject_name",
             "subject_code",
@@ -476,9 +484,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
 # Detailed Classroom Serializer with nested data
 class ClassroomDetailSerializer(ClassroomSerializer):
-    teacher_assignments = ClassroomTeacherAssignmentSerializer(
-        source="classroomteacherassignment_set", many=True, read_only=True
-    )
+    teacher_assignments = serializers.SerializerMethodField()
     student_enrollments = StudentEnrollmentSerializer(
         source="studentenrollment_set", many=True, read_only=True
     )
@@ -492,6 +498,11 @@ class ClassroomDetailSerializer(ClassroomSerializer):
             "student_enrollments",
             "class_schedules",
         ]
+
+    def get_teacher_assignments(self, obj):
+        """Get only active teacher assignments"""
+        active_assignments = obj.classroomteacherassignment_set.filter(is_active=True)
+        return ClassroomTeacherAssignmentSerializer(active_assignments, many=True).data
 
 
 # Simplified serializers for dropdowns/lists

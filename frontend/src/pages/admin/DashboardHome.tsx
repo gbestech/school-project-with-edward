@@ -122,6 +122,14 @@ const DashboardHome: React.FC = () => {
               specification = await fetchUserSpecification(user.user_data.id);
             } catch (error) {}
           }
+          // Debug gender data (commented out for production)
+          // console.log('🎯 Student Gender Debug:', {
+          //   userId: user.id,
+          //   studentName: `${user.user_data.first_name} ${user.user_data.last_name}`,
+          //   studentDataGender: studentData?.gender,
+          //   finalGender: studentData?.gender || 'not_specified'
+          // });
+
           const student: Student = {
             id: studentData?.id || user.id,
             user: user.user_data,
@@ -135,6 +143,10 @@ const DashboardHome: React.FC = () => {
             section: studentData?.section || 'A',
             grade: studentData?.grade || '1',
             class: studentData?.class || '1A',
+            // Add education level mapping
+            education_level: studentData?.education_level || 'PRIMARY',
+            education_level_display: studentData?.education_level_display || 'Primary',
+            student_class: studentData?.student_class || 'GRADE_1',
             roll_number: studentData?.roll_number || `R${user.id}`,
             academic_year: studentData?.academic_year || new Date().getFullYear().toString(),
             emergency_contact_name: studentData?.emergency_contact_name || '',
@@ -229,9 +241,47 @@ const DashboardHome: React.FC = () => {
             full_name: `${user.user_data.first_name} ${user.user_data.last_name}`,
             years_at_school: teacherData?.years_at_school || 0,
             created_at: user.user_data.created_at || new Date().toISOString(),
-            updated_at: user.user_data.updated_at || new Date().toISOString()
+            updated_at: user.user_data.updated_at || new Date().toISOString(),
+            // Pass is_active for activation status
+            is_active: user.user_data.is_active !== undefined ? user.user_data.is_active : true,
           };
           return teacher;
+        })
+    );
+  };
+
+  const mapToParentsEnhanced = async (adminUsers: AdminUserManagement[]): Promise<any[]> => {
+    return Promise.all(
+      adminUsers
+        .filter(user => user.user_data.role === UserRole.PARENT)
+        .map(async (user) => {
+          const parentData = (user.user_data as any).parent_data;
+          let specification = null;
+          if (typeof user.user_data.id === 'number') {
+            try {
+              specification = await fetchUserSpecification(user.user_data.id);
+            } catch (error) {}
+          }
+          const parent: any = {
+            id: parentData?.id || user.id,
+            user: user.user_data,
+            parent_id: parentData?.parent_id || `PAR${user.id}`,
+            occupation: parentData?.occupation || '',
+            relationship_to_student: parentData?.relationship_to_student || 'other',
+            children_ids: parentData?.children_ids || [],
+            emergency_contact: parentData?.emergency_contact || '',
+            work_address: parentData?.work_address || '',
+            annual_income: parentData?.annual_income || 0,
+            education_level: parentData?.education_level || '',
+            marital_status: parentData?.marital_status || 'not_specified',
+            children: parentData?.children || [],
+            full_name: `${user.user_data.first_name} ${user.user_data.last_name}`,
+            created_at: user.user_data.created_at || new Date().toISOString(),
+            updated_at: user.user_data.updated_at || new Date().toISOString(),
+            // Pass is_active for activation status
+            is_active: user.user_data.is_active !== undefined ? user.user_data.is_active : true,
+          };
+          return parent;
         })
     );
   };
@@ -243,8 +293,8 @@ const DashboardHome: React.FC = () => {
       totalClasses: adminStats.total_classes || 0,
       totalUsers: adminStats.total_users || 0,
       totalParents: adminStats.total_parents || 0,
-      activeUsers: adminStats.active_users || 0,
-      inactiveUsers: adminStats.inactive_users || 0,
+      activeUsers: adminStats.active_students || adminStats.active_users || 0,
+      inactiveUsers: adminStats.inactive_students || adminStats.inactive_users || 0,
       pendingVerifications: adminStats.pending_verifications || 0,
       recentRegistrations: adminStats.recent_registrations || 0
     };
@@ -469,7 +519,7 @@ const DashboardHome: React.FC = () => {
         dashboardStats: dashboardStats ? mapToDashboardStats(dashboardStats) : null,
         students: studentsData?.users ? await mapToStudentsEnhanced(studentsData.users) : null,
         teachers: teachersData?.users ? await mapToTeachersEnhanced(teachersData.users) : null,
-        parents: parentsData?.users || null,
+        parents: parentsData?.users ? await mapToParentsEnhanced(parentsData.users) : null,
         attendanceData: attendanceData,
         classrooms: classrooms,
         messages: messages,

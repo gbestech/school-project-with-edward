@@ -491,20 +491,18 @@ export function useAdminAuth() {
     }
   };
 
-  // Activate/deactivate a student (studentId, userId)
+  // Activate/deactivate a student (studentId, userId, isActive)
   const activateStudent = async (studentId: number, userId: number, isActive: boolean = true): Promise<void> => {
     try {
-      console.log(`🔄 Activating/deactivating student: ${userId}, isActive: ${isActive}`);
+      console.log(`🔄 Activating/deactivating student: ${studentId}, isActive: ${isActive}`);
       
-      // Activate/deactivate user account
-      const response = await api.patch(`/api/auth/users/${userId}/activate/`, { is_active: isActive });
+      // Use the new toggle_status endpoint that handles both user and student profile
+      const response = await api.post(`/api/students/${studentId}/toggle_status/`);
       console.log('✅ Student activation response:', response);
       
-      // Also update student profile if needed
-      try {
-        await api.patch(`/api/students/${studentId}/`, { is_active: isActive });
-      } catch (error) {
-        console.warn('Could not update student profile, but user account updated successfully');
+      // The endpoint returns the new status, so we can verify it worked
+      if (response.data && response.data.is_active !== isActive) {
+        console.warn('⚠️ Status mismatch - expected:', isActive, 'got:', response.data.is_active);
       }
     } catch (error) {
       console.error('❌ Error activating/deactivating student:', error);

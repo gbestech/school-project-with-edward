@@ -17,12 +17,18 @@ def dashboard_stats(request):
     return Response(
         {
             "total_students": Student.objects.count(),
+            "active_students": Student.objects.filter(is_active=True).count(),
+            "inactive_students": Student.objects.filter(is_active=False).count(),
             "total_teachers": Teacher.objects.count(),
+            "active_teachers": Teacher.objects.filter(is_active=True).count(),
+            "inactive_teachers": Teacher.objects.filter(is_active=False).count(),
             "total_classes": Classroom.objects.count(),
             "total_messages": Message.objects.count(),
             "total_parents": ParentProfile.objects.count(),
+            "active_parents": ParentProfile.objects.filter(user__is_active=True).count(),
+            "inactive_parents": ParentProfile.objects.filter(user__is_active=False).count(),
             "attendance_today": Attendance.objects.filter(
                 date=datetime.date.today()
-            ).count(),  # ✅ FIXED
+            ).count(),
         }
     )

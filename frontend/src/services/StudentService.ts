@@ -1,8 +1,24 @@
 import api from './api';
 
+export interface Parent {
+  id: number;
+  full_name: string;
+  email: string;
+  phone?: string;
+  relationship: string;
+  is_primary_contact: boolean;
+}
+
+export interface EmergencyContact {
+  type: string;
+  number: string;
+  is_primary: boolean;
+}
+
 export interface Student {
   id: number;
   full_name: string;
+  short_name?: string;
   age: number;
   gender: string;
   education_level: string;
@@ -10,10 +26,20 @@ export interface Student {
   student_class: string;
   student_class_display: string;
   parent_contact: string | null;
-  parent_count: number;
+  emergency_contact?: string | null;
+  emergency_contacts?: EmergencyContact[];
+  medical_conditions?: string | null;
+  special_requirements?: string | null;
+  parents?: Parent[];
+  parent_count?: number;
   admission_date: string;
+  date_of_birth?: string;
   is_active: boolean;
+  is_nursery_student?: boolean;
+  is_primary_student?: boolean;
+  is_secondary_student?: boolean;
   profile_picture: string | null;
+  classroom?: string | null;
   email?: string;
 }
 
@@ -38,7 +64,12 @@ export interface UpdateStudentData {
   is_active?: boolean;
 }
 
-class StudentService {
+export interface StudentActivationResponse {
+  status: string;
+  student: any;
+}
+
+export class StudentService {
   // Get all students with pagination and search
   async getStudents(params?: {
     page?: number;
@@ -58,9 +89,14 @@ class StudentService {
   async getStudent(id: number): Promise<Student> {
     try {
       const response = await api.get(`/api/students/${id}/`);
+      
+      if (!response) {
+        throw new Error('No response received from server');
+      }
+      
       return response;
-    } catch (error) {
-      console.log('Error fetching student:', error);
+    } catch (error: any) {
+      console.error('❌ Error in StudentService.getStudent:', error);
       throw error;
     }
   }
@@ -97,13 +133,47 @@ class StudentService {
     }
   }
 
-  // Toggle student active status
-  async toggleStudentStatus(id: number): Promise<Student> {
+  // Toggle student activation status
+  static async toggleStudentStatus(studentId: number): Promise<StudentActivationResponse> {
     try {
-      const response = await api.patch(`/api/students/${id}/toggle-status/`);
+      console.log(`🔄 Toggling student status: ${studentId}`);
+      
+      const response = await api.post(`/api/students/${studentId}/toggle_status/`, {});
+      console.log('✅ Student status toggle response:', response);
+      
       return response;
     } catch (error) {
-      console.log('Error toggling student status:', error);
+      console.error('❌ Error toggling student status:', error);
+      throw error;
+    }
+  }
+
+  // Activate a student
+  static async activateStudent(studentId: number): Promise<StudentActivationResponse> {
+    try {
+      console.log(`🔄 Activating student: ${studentId}`);
+      
+      const response = await api.post(`/api/students/${studentId}/activate/`, {});
+      console.log('✅ Student activation response:', response);
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Error activating student:', error);
+      throw error;
+    }
+  }
+
+  // Deactivate a student
+  static async deactivateStudent(studentId: number): Promise<StudentActivationResponse> {
+    try {
+      console.log(`🔄 Deactivating student: ${studentId}`);
+      
+      const response = await api.post(`/api/students/${studentId}/deactivate/`, {});
+      console.log('✅ Student deactivation response:', response);
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Error deactivating student:', error);
       throw error;
     }
   }
@@ -128,6 +198,22 @@ class StudentService {
       console.log('Error fetching student statistics:', error);
       return {};
     }
+  }
+
+  // Get student profile picture URL with fallback
+  static getProfilePictureUrl(student: any): string | null {
+    // Check if student has a profile picture
+    if (student.profile_picture) {
+      return student.profile_picture;
+    }
+    
+    // Fallback to user profile picture if available
+    if (student.user?.profile_picture) {
+      return student.user.profile_picture;
+    }
+    
+    // Return default avatar
+    return '/images/default-avatar.png';
   }
 }
 

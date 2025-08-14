@@ -1474,10 +1474,10 @@ export enum UserRole {
 }
 
 export enum Gender {
-  MALE = 'male',
-  FEMALE = 'female',
-  OTHER = 'other',
-  PREFER_NOT_TO_SAY = 'prefer_not_to_say'
+  MALE = 'M',
+  FEMALE = 'F',
+  OTHER = 'O',
+  PREFER_NOT_TO_SAY = 'P'
 }
 
 export enum ActivityType {
@@ -1856,6 +1856,10 @@ export interface Student extends BaseEntity {
   class: string;
   roll_number?: string;
   academic_year: string;
+  // Education level info
+  education_level?: string;
+  education_level_display?: string;
+  student_class?: string;
   
   // Contact info
   emergency_contact_name?: string;
@@ -1978,6 +1982,8 @@ export interface Teacher extends BaseEntity {
   // Computed properties
   readonly full_name?: string;
   readonly years_at_school?: number;
+  // Add is_active for dashboard activation status
+  is_active?: boolean;
 }
 
 export interface TeacherAssignment extends BaseEntity {
@@ -2465,8 +2471,14 @@ export interface UserUpdateData {
 export interface AdminDashboardStats {
   total_users?: number;
   total_students?: number;
+  active_students?: number;
+  inactive_students?: number;
   total_teachers?: number;
+  active_teachers?: number;
+  inactive_teachers?: number;
   total_parents?: number;
+  active_parents?: number;
+  inactive_parents?: number;
   total_admins?: number;
   active_users?: number;
   inactive_users?: number;
@@ -2949,6 +2961,8 @@ export interface Parent {
   children?: Student[];
   created_at: string;
   updated_at: string;
+  // Add is_active for dashboard activation status
+  is_active?: boolean;
 }
 
 // Enhanced AttendanceData interface

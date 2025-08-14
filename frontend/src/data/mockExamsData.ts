@@ -37,6 +37,11 @@ export interface Exam {
   date: string;
   duration: string;
   totalMarks: number;
+  instructions: {
+    objectives: string;
+    theory: string;
+    sectionc: string;
+  };
   questions: {
     objectives: ObjectiveQuestion[];
     theory: TheoryQuestion[];
@@ -56,6 +61,11 @@ export const mockExams: Exam[] = [
     date: '2025-07-28',
     duration: '45 Minutes',
     totalMarks: 60,
+    instructions: {
+      objectives: 'Answer all questions. Choose the correct option from A to D.',
+      theory: 'Answer all questions. Show your working clearly.',
+      sectionc: 'Read the passage carefully and answer the questions that follow.'
+    },
     questions: {
       objectives: [
         {

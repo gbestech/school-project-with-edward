@@ -34,6 +34,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { useAdminAuth } from '@/services/AuthServiceAdmin';
+import StudentService, { StudentService as StudentServiceClass } from '@/services/StudentService';
 import { toast } from 'react-toastify';
 
 interface EnhancedDashboardProps {
@@ -115,36 +116,86 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
     { month: 'Jun', revenue: 58000, expenses: 40000, profit: 18000 }
   ];
 
-  // Calculate real grade distribution from students data
+  // Calculate real educational level distribution from students data
   const calculateGradeDistribution = () => {
     if (!Array.isArray(_students) || _students.length === 0) {
       // Mock data fallback when no students exist
       return [
-        { name: 'Grade 1', value: 25, color: '#10b981' },
-        { name: 'Grade 2', value: 30, color: '#3b82f6' },
-        { name: 'Grade 3', value: 20, color: '#f59e0b' },
-        { name: 'Grade 4', value: 15, color: '#ef4444' },
-        { name: 'Grade 5', value: 10, color: '#8b5cf6' }
+        { name: 'Nursery', value: 25, color: '#10b981' },
+        { name: 'Primary', value: 30, color: '#3b82f6' },
+        { name: 'Junior Secondary', value: 20, color: '#f59e0b' },
+        { name: 'Senior Secondary', value: 15, color: '#ef4444' }
       ];
     }
 
-    const gradeCounts = _students.reduce((acc: any, student: any) => {
-      const grade = student.current_grade_level || student.grade || 'Unknown';
-      acc[grade] = (acc[grade] || 0) + 1;
+    // Define education level mapping and colors
+    const educationLevelMapping: { [key: string]: string } = {
+      'NURSERY': 'Nursery',
+      'PRIMARY': 'Primary',
+      'JUNIOR_SECONDARY': 'Junior Secondary',
+      'SENIOR_SECONDARY': 'Senior Secondary',
+      'SECONDARY': 'Secondary' // Fallback for older data
+    };
+
+    const colors = {
+      'Nursery': '#10b981',
+      'Primary': '#3b82f6', 
+      'Junior Secondary': '#f59e0b',
+      'Senior Secondary': '#ef4444',
+      'Secondary': '#8b5cf6',
+      'Unknown': '#6b7280'
+    };
+
+    const levelCounts = _students.reduce((acc: any, student: any) => {
+      try {
+        // Use education_level field from student data
+        const educationLevel = student.education_level || student.education_level_display || 'Unknown';
+        let displayName = educationLevelMapping[educationLevel] || educationLevel;
+        
+        // If it's secondary level, determine if it's junior or senior based on grade
+        if (educationLevel === 'SECONDARY' || displayName === 'Secondary') {
+          const studentClass = student.student_class || student.grade || '';
+          if (['GRADE_7', 'GRADE_8', 'GRADE_9'].includes(studentClass)) {
+            displayName = 'Junior Secondary';
+          } else if (['GRADE_10', 'GRADE_11', 'GRADE_12'].includes(studentClass)) {
+            displayName = 'Senior Secondary';
+          } else {
+            // Fallback to Secondary if we can't determine
+            displayName = 'Secondary';
+          }
+        }
+        
+        acc[displayName] = (acc[displayName] || 0) + 1;
+      } catch (error) {
+        console.error('Error processing student for grade distribution:', error, student);
+        acc['Unknown'] = (acc['Unknown'] || 0) + 1;
+      }
       return acc;
     }, {});
 
-    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
-    let colorIndex = 0;
-
-    return Object.entries(gradeCounts).map(([grade, count]) => ({
-      name: grade,
-      value: count as number,
-      color: colors[colorIndex++ % colors.length]
-    })).sort((a, b) => b.value - a.value); // Sort by count descending
+    return Object.entries(levelCounts)
+      .map(([level, count]) => ({
+        name: level,
+        value: count as number,
+        color: colors[level as keyof typeof colors] || '#6b7280'
+      }))
+      .sort((a, b) => b.value - a.value); // Sort by count descending
   };
 
   const gradeDistribution = calculateGradeDistribution();
+  
+  // Debug logging for grade distribution
+  console.log('🎯 Grade Distribution Data:', {
+    studentsCount: Array.isArray(_students) ? _students.length : 0,
+    studentsData: Array.isArray(_students) ? _students.slice(0, 3).map(s => ({
+      id: s.id,
+      education_level: s.education_level,
+      education_level_display: s.education_level_display,
+      student_class: s.student_class,
+      grade: s.grade
+    })) : [],
+    calculatedDistribution: gradeDistribution
+  });
 
   // Calculate real gender distribution from students data
   const calculateGenderDistribution = () => {
@@ -158,15 +209,31 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
 
     const genderCounts = _students.reduce((acc: any, student: any) => {
       const gender = student.gender || 'not_specified';
-      acc[gender] = (acc[gender] || 0) + 1;
+      // Handle both string and enum values
+      const genderKey = typeof gender === 'string' ? gender.toUpperCase() : gender;
+      acc[genderKey] = (acc[genderKey] || 0) + 1;
       return acc;
     }, {});
 
+    // Map backend gender values to display names
     const result = [
-      { name: 'Male', value: genderCounts.male || 0, color: '#3b82f6' },
-      { name: 'Female', value: genderCounts.female || 0, color: '#ec4899' },
-      { name: 'Not Specified', value: genderCounts.not_specified || 0, color: '#6b7280' }
+      { name: 'Male', value: genderCounts.M || genderCounts.MALE || 0, color: '#3b82f6' },
+      { name: 'Female', value: genderCounts.F || genderCounts.FEMALE || 0, color: '#ec4899' },
+      { name: 'Other', value: genderCounts.O || genderCounts.OTHER || 0, color: '#f59e0b' },
+      { name: 'Not Specified', value: genderCounts.NOT_SPECIFIED || genderCounts.not_specified || 0, color: '#6b7280' }
     ].filter(item => item.value > 0); // Only show categories with data
+
+    // Debug logging for gender distribution
+    console.log('🎯 Gender Distribution Data:', {
+      studentsCount: _students.length,
+      genderCounts: genderCounts,
+      calculatedResult: result,
+      sampleStudents: _students.slice(0, 3).map(s => ({
+        id: s.id,
+        name: s.full_name,
+        gender: s.gender
+      }))
+    });
 
     // If no real data, return mock data
     return result.length > 0 ? result : [
@@ -213,19 +280,32 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
   const handleActivateStudent = async (student: any) => {
     console.log('🎯 handleActivateStudent called with:', student);
     
-    if (!student?.id || !student?.user?.id) {
-      console.error('❌ Missing student ID or user ID:', student);
+    if (!student?.id) {
+      console.error('❌ Missing student ID:', student);
       toast.error('Invalid student data');
       return;
     }
     
-    const newStatus = !student.user.is_active;
-    console.log(`🔄 Toggling student ${student.user.id} to ${newStatus ? 'active' : 'inactive'}`);
-    
     setActivatingStudentId(student.id);
     try {
-      await activateStudent(student.id, student.user.id, newStatus);
-      toast.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
+      // Use the new StudentService
+      const result = await StudentServiceClass.toggleStudentStatus(student.id);
+      
+      console.log('✅ Student activation result:', result);
+      
+      // Update the student's status in the local state
+      if (student.user) {
+        student.user.is_active = !student.user.is_active;
+      }
+      student.is_active = !student.is_active;
+      
+      toast.success(`Student ${student.is_active ? 'activated' : 'deactivated'} successfully`);
+      
+      // Call the parent callback if provided
+      if (onUserStatusUpdate) {
+        onUserStatusUpdate(student.id, 'student', student.is_active);
+      }
+      
       // Refresh the data
       if (onRefresh) onRefresh();
     } catch (error: any) {
@@ -543,7 +623,7 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Students</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalStudents}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {Array.isArray(_students) ? `${_students.filter(s => s.user?.is_active).length} active` : '0 active'}
+                  {Array.isArray(_students) ? `${_students.filter(s => s.is_active).length} active` : '0 active'}
                 </p>
               </div>
               <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -558,7 +638,7 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Teachers</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalTeachers}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {Array.isArray(_teachers) ? `${_teachers.filter(t => t.user?.is_active).length} active` : '0 active'}
+                  {Array.isArray(_teachers) ? `${_teachers.filter(t => t.is_active).length} active` : '0 active'}
                 </p>
               </div>
               <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -573,7 +653,7 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                 <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Parents</p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalParents}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {Array.isArray(_parents) ? `${_parents.filter(p => p.user?.is_active).length} active` : '0 active'}
+                  {Array.isArray(_parents) ? `${_parents.filter(p => p.is_active).length} active` : '0 active'}
                 </p>
               </div>
               <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -604,7 +684,7 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
               <Award className="w-5 h-5 mr-2 text-blue-600" />
-              Grade Distribution
+              Educational Level Distribution
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -813,23 +893,40 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
               {recentStudents.map((student, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                    {(() => {
+                      const profileUrl = StudentServiceClass.getProfilePictureUrl(student);
+                      return profileUrl ? (
+                        <img 
+                          src={profileUrl} 
+                          alt={`${student?.full_name}`}
+                          className="w-8 h-8 rounded-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null;
+                    })()}
+                    <div className={`w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center ${(() => {
+                      const profileUrl = StudentServiceClass.getProfilePictureUrl(student);
+                      return profileUrl ? 'hidden' : '';
+                    })()}`}>
                       <User className="w-4 h-4 text-blue-600" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {student.user?.first_name} {student.user?.last_name}
+                        {student?.full_name}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{student.user?.email}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{student?.parent_contact}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      student.user?.is_active 
+                      student.is_active 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' 
                         : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
                     }`}>
-                      {student.user?.is_active ? 'Active' : 'Inactive'}
+                      {student.is_active ? 'Active' : 'Inactive'}
                     </span>
                     <button
                       onClick={() => handleActivateStudent(student)}
@@ -837,26 +934,26 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                       className={`px-2 py-1.5 rounded-lg font-medium text-xs transition-all duration-200 whitespace-nowrap ${
                         activatingStudentId === student.id
                           ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                          : student.user?.is_active
+                          : student.is_active
                           ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30'
                           : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30'
                       }`}
-                      title={student.user?.is_active ? "Deactivate student" : "Activate student"}
+                      title={student.is_active ? "Deactivate student" : "Activate student"}
                     >
                       {activatingStudentId === student.id ? (
                         <div className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />
                           <span>Processing...</span>
                         </div>
-                      ) : student.user?.is_active ? (
+                      ) : student.is_active ? (
                         <div className="flex items-center space-x-1">
                           <EyeOff className="w-3 h-3" />
-                          <span>Deactivate</span>
+                         
                         </div>
                       ) : (
                         <div className="flex items-center space-x-1">
                           <Eye className="w-3 h-3" />
-                          <span>Activate</span>
+                          
                         </div>
                       )}
                     </button>
@@ -919,12 +1016,12 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                       ) : (teacher.user?.is_active ?? teacher?.is_active ?? true) ? (
                         <div className="flex items-center space-x-1">
                           <EyeOff className="w-3 h-3" />
-                          <span>Deactivate</span>
+                         
                         </div>
                       ) : (
                         <div className="flex items-center space-x-1">
                           <Eye className="w-3 h-3" />
-                          <span>Activate</span>
+                          
                         </div>
                       )}
                     </button>
@@ -987,12 +1084,12 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                       ) : (parent.user?.is_active ?? parent?.is_active ?? true) ? (
                         <div className="flex items-center space-x-1">
                           <EyeOff className="w-3 h-3" />
-                          <span>Deactivate</span>
+                          
                         </div>
                       ) : (
                         <div className="flex items-center space-x-1">
                           <Eye className="w-3 h-3" />
-                          <span>Activate</span>
+                         
                         </div>
                       )}
                     </button>

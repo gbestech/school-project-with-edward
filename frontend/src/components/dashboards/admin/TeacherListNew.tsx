@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-import TeacherService, { Teacher as TeacherType } from '@/services/TeacherService';
+import TeacherService, { Teacher as TeacherType, UpdateTeacherData } from '@/services/TeacherService';
 import { toast } from 'react-toastify';
 
 interface Teacher {
@@ -35,24 +35,47 @@ interface Teacher {
   phone_number: string;
   address: string;
   staff_type: 'teaching' | 'non-teaching';
-  level: 'nursery' | 'primary' | 'secondary' | '' | null;
+  level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary' | '' | null;
   hire_date: string;
   qualification: string;
   specialization: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  photo?: string; // Profile picture URL
+  photo?: string | null; // Profile picture URL
   assigned_subjects: Array<{
     id: number;
     name: string;
   }>;
+  subjects?: string[]; // For update operations
+  user?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  }; // For update operations
   teacher_assignments?: Array<{
     id: number;
     grade_level_name: string;
     section_name: string;
     subject_name: string;
     education_level: string; // Added for detailed assignments
+  }>;
+  classroom_assignments?: Array<{
+    id: number;
+    classroom_name: string;
+    classroom_id: number;
+    section_name: string;
+    grade_level_name: string;
+    education_level: string;
+    academic_year: string;
+    term: string;
+    subject_name: string;
+    subject_code: string;
+    assigned_date: string;
+    room_number: string;
+    student_count: number;
+    max_capacity: number;
+    is_class_teacher: boolean;
   }>;
 }
 
@@ -107,30 +130,31 @@ const TeacherList = () => {
     actionDelete: isDark ? 'bg-red-900 hover:bg-red-800 text-red-300' : 'bg-red-50 hover:bg-red-100 text-red-700',
   };
 
+  // Load teachers data function
+  const loadTeachers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await TeacherService.getTeachers();
+      console.log('TeacherService response:', response);
+      const teachersData = Array.isArray(response.results) ? response.results : 
+                         Array.isArray(response) ? response : [];
+      console.log('Processed teachers data:', teachersData);
+      setTeachers(teachersData);
+      setFilteredTeachers(teachersData);
+    } catch (err: any) {
+      console.error('Error loading teachers:', err);
+      setError(err.response?.data?.message || 'Failed to load teachers');
+      toast.error('Failed to load teachers');
+      setTeachers([]);
+      setFilteredTeachers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load teachers data
   useEffect(() => {
-    const loadTeachers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await TeacherService.getTeachers();
-        console.log('TeacherService response:', response);
-        const teachersData = Array.isArray(response.results) ? response.results : 
-                           Array.isArray(response) ? response : [];
-        console.log('Processed teachers data:', teachersData);
-        setTeachers(teachersData);
-        setFilteredTeachers(teachersData);
-      } catch (err: any) {
-        console.error('Error loading teachers:', err);
-        setError(err.response?.data?.message || 'Failed to load teachers');
-        toast.error('Failed to load teachers');
-        setTeachers([]);
-        setFilteredTeachers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadTeachers();
   }, []);
 
@@ -213,23 +237,20 @@ const TeacherList = () => {
     setShowEditModal(true);
   };
 
-  const handleUpdateTeacher = async (updatedData: Partial<Teacher>) => {
+  const handleUpdateTeacher = async (updatedData: UpdateTeacherData) => {
     if (!teacherToEdit) return;
     
     try {
       // Convert level to the expected type
       const processedData = {
         ...updatedData,
-        level: updatedData.level === '' ? undefined : updatedData.level
+        level: updatedData.level === null ? undefined : updatedData.level
       };
       
       const updatedTeacher = await TeacherService.updateTeacher(teacherToEdit.id, processedData);
       
-      // Update the teachers list with the updated teacher
-      const teachersArray = Array.isArray(teachers) ? teachers : [];
-      setTeachers(teachersArray.map(t => 
-        t.id === teacherToEdit.id ? { ...t, ...updatedTeacher } : t
-      ));
+      // Refresh the entire teachers list to get fresh data
+      await loadTeachers();
       
       setShowEditModal(false);
       setTeacherToEdit(null);
@@ -259,19 +280,23 @@ const TeacherList = () => {
     }
   };
 
-  const getLevelIcon = (level: 'nursery' | 'primary' | 'secondary' | null) => {
+  const getLevelIcon = (level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary' | null) => {
     switch(level) {
       case 'nursery': return <Baby size={14} className="mr-1" />;
       case 'primary': return <BookOpen size={14} className="mr-1" />;
+      case 'junior_secondary':
+      case 'senior_secondary':
       case 'secondary': return <School size={14} className="mr-1" />;
       default: return <GraduationCap size={14} className="mr-1" />;
     }
   };
 
-  const getLevelColor = (level: 'nursery' | 'primary' | 'secondary' | null) => {
+  const getLevelColor = (level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary' | null) => {
     switch(level) {
       case 'nursery': return themeClasses.levelNursery;
       case 'primary': return themeClasses.levelPrimary;
+      case 'junior_secondary':
+      case 'senior_secondary':
       case 'secondary': return themeClasses.levelSecondary;
       default: return isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800';
     }
@@ -282,7 +307,7 @@ const TeacherList = () => {
     const nursery = teachersArray.filter(t => t.level === 'nursery' && t.is_active).length;
     const primary = teachersArray.filter(t => t.level === 'primary' && t.is_active).length;
     const secondary = teachersArray.filter(t => t.level === 'secondary' && t.is_active).length;
-    return { nursery, primary, secondary };
+    return { nursery, primary, secondary, juniorSecondary: 0, seniorSecondary: 0 };
   };
 
   const levelStats = getLevelStats();
@@ -389,7 +414,7 @@ const TeacherList = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border transition-all duration-300 hover:shadow-xl`}>
-            <div className="flex items-center">
+            <div className="flex flex-col justify-center text-center items-center">
               <div className={`p-3 rounded-full ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
                 <Users size={24} />
               </div>
@@ -401,52 +426,44 @@ const TeacherList = () => {
           </div>
           
           <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border transition-all duration-300 hover:shadow-xl`}>
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${isDark ? 'bg-pink-900 text-pink-300' : 'bg-pink-100 text-pink-600'}`}>
+            <div className="flex flex-col items-center text-center">
+              <div className={`p-3 rounded-full mb-3 ${isDark ? 'bg-pink-900 text-pink-300' : 'bg-pink-100 text-pink-600'}`}>
                 <Baby size={24} />
               </div>
-              <div className="ml-4">
-                <p className={`${themeClasses.textSecondary} text-sm`}>Nursery</p>
-                <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.nursery}</p>
-              </div>
+              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Nursery</p>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.nursery}</p>
             </div>
           </div>
 
           <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border transition-all duration-300 hover:shadow-xl`}>
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
+            <div className="flex flex-col items-center text-center">
+              <div className={`p-3 rounded-full mb-3 ${isDark ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
                 <BookOpen size={24} />
               </div>
-              <div className="ml-4">
-                <p className={`${themeClasses.textSecondary} text-sm`}>Primary</p>
-                <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.primary}</p>
-              </div>
+              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Primary</p>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.primary}</p>
             </div>
           </div>
 
           <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border transition-all duration-300 hover:shadow-xl`}>
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${isDark ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-600'}`}>
+            <div className="flex flex-col items-center text-center">
+              <div className={`p-3 rounded-full mb-3 ${isDark ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-600'}`}>
                 <School size={24} />
               </div>
-              <div className="ml-4">
-                <p className={`${themeClasses.textSecondary} text-sm`}>Secondary</p>
-                <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.secondary}</p>
-              </div>
+              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Secondary</p>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.secondary}</p>
             </div>
           </div>
 
           <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border transition-all duration-300 hover:shadow-xl`}>
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${isDark ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-600'}`}>
+            <div className="flex flex-col items-center text-center">
+              <div className={`p-3 rounded-full mb-3 ${isDark ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-600'}`}>
                 <Check size={24} />
               </div>
-              <div className="ml-4">
-                <p className={`${themeClasses.textSecondary} text-sm`}>Active</p>
-                <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
-                  {teachers.filter(t => t.is_active).length}
-                </p>
-              </div>
+              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Active</p>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
+                {teachers.filter(t => t.is_active).length}
+              </p>
             </div>
           </div>
         </div>
@@ -563,8 +580,8 @@ const TeacherList = () => {
                 <div className="px-6 pb-4 flex-1">
                   <div className="space-y-3">
                     <div className={`flex items-center ${themeClasses.textSecondary}`}>
-                      <Mail size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary}`} />
-                      <span className="text-sm break-all leading-relaxed">{teacher.email}</span>
+                      <Users size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary}`} />
+                      <span className="text-sm break-all leading-relaxed">{teacher.first_name} {teacher.last_name}</span>
                     </div>
                     
                     <div className={`flex items-center ${themeClasses.textSecondary}`}>
@@ -706,7 +723,7 @@ const TeacherList = () => {
                               {teacher.first_name} {teacher.last_name}
                             </div>
                             <div className={`text-sm ${themeClasses.textTertiary}`}>
-                              {teacher.email}
+                              {teacher.phone_number || 'No phone'}
                             </div>
                           </div>
                         </div>
@@ -877,6 +894,10 @@ const TeacherList = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Name</label>
+                    <p className={themeClasses.textPrimary}>{selectedTeacher.first_name} {selectedTeacher.last_name}</p>
+                  </div>
+                  <div>
                     <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Email</label>
                     <p className={themeClasses.textPrimary}>{selectedTeacher.email}</p>
                   </div>
@@ -909,10 +930,73 @@ const TeacherList = () => {
                     </div>
                   )}
 
-                  {/* Detailed Assignments */}
-                  {selectedTeacher.teacher_assignments && selectedTeacher.teacher_assignments.length > 0 && (
+                  {/* Classroom Assignments */}
+                  {selectedTeacher.classroom_assignments && selectedTeacher.classroom_assignments.length > 0 && (
                     <div className="md:col-span-2">
-                      <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Detailed Assignments</label>
+                      <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Classroom Assignments</label>
+                      <div className="space-y-3">
+                        {selectedTeacher.classroom_assignments.map((assignment, idx) => (
+                          <div key={idx} className={`p-3 rounded-lg border ${assignment.is_class_teacher ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  assignment.education_level === 'SENIOR_SECONDARY' ? 'bg-purple-100 text-purple-800' :
+                                  assignment.education_level === 'JUNIOR_SECONDARY' ? 'bg-blue-100 text-blue-800' :
+                                  assignment.education_level === 'PRIMARY' ? 'bg-green-100 text-green-800' :
+                                  'bg-pink-100 text-pink-800'
+                                }`}>
+                                  {assignment.grade_level_name} {assignment.section_name}
+                                </span>
+                                {assignment.is_class_teacher && (
+                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                                    Class Teacher
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {assignment.education_level.replace('_', ' ')}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <span className="font-medium text-gray-700">Classroom:</span>
+                                <span className="ml-1 text-gray-600">{assignment.classroom_name}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Subject:</span>
+                                <span className="ml-1 text-gray-600">{assignment.subject_name} ({assignment.subject_code})</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Academic Year:</span>
+                                <span className="ml-1 text-gray-600">{assignment.academic_year} - {assignment.term}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Students:</span>
+                                <span className="ml-1 text-gray-600">{assignment.student_count}/{assignment.max_capacity}</span>
+                              </div>
+                              {assignment.room_number && (
+                                <div>
+                                  <span className="font-medium text-gray-700">Room:</span>
+                                  <span className="ml-1 text-gray-600">{assignment.room_number}</span>
+                                </div>
+                              )}
+                              <div>
+                                <span className="font-medium text-gray-700">Assigned:</span>
+                                <span className="ml-1 text-gray-600">{new Date(assignment.assigned_date).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legacy Teacher Assignments (if no classroom assignments) */}
+                  {(!selectedTeacher.classroom_assignments || selectedTeacher.classroom_assignments.length === 0) && 
+                   selectedTeacher.teacher_assignments && selectedTeacher.teacher_assignments.length > 0 && (
+                    <div className="md:col-span-2">
+                      <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Subject Assignments</label>
                       <div className="space-y-2">
                         {selectedTeacher.teacher_assignments.map((assignment, idx) => (
                           <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -992,7 +1076,7 @@ const TeacherList = () => {
 // Edit Teacher Form Component
 interface EditTeacherFormProps {
   teacher: Teacher;
-  onSave: (data: Partial<Teacher>) => void;
+  onSave: (data: UpdateTeacherData) => void;
   onCancel: () => void;
   themeClasses: any;
   isDark: boolean;
@@ -1009,9 +1093,9 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     qualification: teacher.qualification || '',
     specialization: teacher.specialization || '',
     staff_type: teacher.staff_type,
-    level: teacher.level || '',
+    level: teacher.level || undefined,
     is_active: teacher.is_active,
-    photo: teacher.photo || null
+    photo: teacher.photo || undefined
   });
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(teacher.photo || null);
@@ -1027,22 +1111,41 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
   // Load subjects when level changes
   useEffect(() => {
     if (formData.staff_type === 'teaching' && formData.level) {
-      const levelMap: Record<string, string> = { 
-        nursery: 'NURSERY', 
-        primary: 'PRIMARY', 
-        secondary: 'JUNIOR_SECONDARY' 
-      };
+      let educationLevels: string[] = [];
       
-      fetch(`/api/subjects/?education_levels=${levelMap[formData.level]}`)
-        .then(res => res.json())
-        .then(data => {
-          const subjects = Array.isArray(data.results) ? data.results : data;
-          setSubjectOptions(subjects.map((s: any) => ({ id: s.id, name: s.name })));
-        })
-        .catch(error => {
+      if (formData.level === 'nursery') {
+        educationLevels = ['NURSERY'];
+      } else if (formData.level === 'primary') {
+        educationLevels = ['PRIMARY'];
+      } else if (formData.level === 'secondary') {
+        educationLevels = ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+      }
+      
+      // Fetch subjects for each education level and combine them
+      const fetchSubjects = async () => {
+        try {
+          const allSubjects = new Map();
+          
+          for (const level of educationLevels) {
+            const response = await fetch(`/api/subjects/?education_level=${level}`);
+            const data = await response.json();
+            const subjects = Array.isArray(data.results) ? data.results : data;
+            
+            subjects.forEach((subject: any) => {
+              if (!allSubjects.has(subject.id)) {
+                allSubjects.set(subject.id, { id: subject.id, name: subject.name });
+              }
+            });
+          }
+          
+          setSubjectOptions(Array.from(allSubjects.values()));
+        } catch (error) {
           console.error('Error fetching subjects:', error);
           setSubjectOptions([]);
-        });
+        }
+      };
+      
+      fetchSubjects();
     } else {
       setSubjectOptions([]);
     }
@@ -1050,8 +1153,15 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
 
   // Load current teacher's subjects
   useEffect(() => {
-    if (teacher.assigned_subjects) {
-      setSelectedSubjects(teacher.assigned_subjects.map(s => s.id.toString()));
+    console.log('Teacher assigned subjects effect triggered:', teacher.assigned_subjects);
+    if (teacher.assigned_subjects && teacher.assigned_subjects.length > 0) {
+      console.log('Loading teacher assigned subjects:', teacher.assigned_subjects);
+      const subjectIds = teacher.assigned_subjects.map(s => s.id.toString());
+      console.log('Setting selected subjects:', subjectIds);
+      setSelectedSubjects(subjectIds);
+    } else {
+      console.log('No assigned subjects found for teacher');
+      setSelectedSubjects([]);
     }
   }, [teacher.assigned_subjects]);
 
@@ -1095,15 +1205,24 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
   };
 
   const removePhoto = () => {
-    setFormData(prev => ({ ...prev, photo: null }));
+    setFormData(prev => ({ ...prev, photo: undefined }));
     setPhotoPreview(null);
   };
 
   const handleSubjectChange = (subjectId: string, checked: boolean) => {
+    console.log('Subject change:', subjectId, checked);
     if (checked) {
-      setSelectedSubjects(prev => [...prev, subjectId]);
+      setSelectedSubjects(prev => {
+        const newSubjects = [...prev, subjectId];
+        console.log('Added subject, new list:', newSubjects);
+        return newSubjects;
+      });
     } else {
-      setSelectedSubjects(prev => prev.filter(id => id !== subjectId));
+      setSelectedSubjects(prev => {
+        const newSubjects = prev.filter(id => id !== subjectId);
+        console.log('Removed subject, new list:', newSubjects);
+        return newSubjects;
+      });
     }
   };
 
@@ -1111,8 +1230,9 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     e.preventDefault();
     
     // Prepare data for backend
-    const updateData = {
+    const updateData: UpdateTeacherData = {
       ...formData,
+      level: formData.level === 'junior_secondary' || formData.level === 'senior_secondary' ? 'secondary' : formData.level,
       subjects: selectedSubjects,
       // Map frontend fields to backend expected fields
       user: {
@@ -1346,6 +1466,36 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
             Assigned Subjects
           </label>
+          
+          {/* Show currently selected subjects */}
+          {selectedSubjects.length > 0 && (
+            <div className="mb-3">
+              <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
+                Currently Selected ({selectedSubjects.length})
+              </label>
+              <div className="bg-blue-50 p-3 rounded border">
+                <div className="flex flex-wrap gap-2">
+                  {selectedSubjects.map(subjectId => {
+                    const subject = subjectOptions.find(s => s.id === subjectId);
+                    return subject ? (
+                      <span key={subjectId} className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                        {subject.name}
+                        <button
+                          type="button"
+                          onClick={() => handleSubjectChange(subjectId, false)}
+                          className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Available subjects */}
           {subjectOptions.length === 0 ? (
             <div className="bg-gray-50 p-3 rounded border">
               <span className="text-gray-500">No subjects found for this level.</span>

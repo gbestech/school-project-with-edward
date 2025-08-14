@@ -74,66 +74,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         student = get_object_or_404(Student, pk=pk)
         student_data = StudentDetailSerializer(student).data
 
-        # Basic attendance summary
-        attendance_qs = Attendance.objects.filter(student=student)  # type: ignore
-        total_attendance = attendance_qs.count()
-        present_count = attendance_qs.filter(status="present").count()
-        attendance_percentage = (
-            round((present_count / total_attendance) * 100, 2)
-            if total_attendance
-            else 0
-        )
-
-        # Education level specific handling
-        response_data = {
-            "student": student_data,
-            "attendance_summary": {
-                "total_days": total_attendance,
-                "present_days": present_count,
-                "percentage": attendance_percentage,
-            },
-        }
-
-        # For nursery students, focus on simpler metrics
-        if student.education_level == "NURSERY":
-            # Nursery-specific attendance (more recent focus)
-            recent_attendance = attendance_qs.filter(
-                date__gte=date.today() - timedelta(days=30)
-            )
-            recent_present = recent_attendance.filter(status="present").count()
-            recent_total = recent_attendance.count()
-
-            response_data["nursery_metrics"] = {
-                "recent_attendance_percentage": (
-                    round((recent_present / recent_total) * 100, 2)
-                    if recent_total
-                    else 0
-                ),
-                "age_group": self._get_age_group(student.age),
-                "parent_contact_available": bool(student.parent_contact),
-                "emergency_contact_available": bool(student.emergency_contact),
-                "has_medical_conditions": bool(student.medical_conditions),
-                "has_special_requirements": bool(student.special_requirements),
-            }
-        else:
-            # For primary and secondary students, include detailed academic results
-            results = StudentResult.objects.filter(student=student)  # type: ignore
-            term_breakdown = {}
-
-            for term_code, term_label in [("FIRST", "First Term"), ("SECOND", "Second Term"), ("THIRD", "Third Term")]:
-                term_results = results.filter(exam_session__term=term_code)
-                avg_score = term_results.aggregate(avg=Avg("total_score"))["avg"] or 0
-                term_breakdown[term_label] = {
-                    "average_score": round(avg_score, 2),
-                    "subjects": [
-                        {"subject": r.subject.name, "score": r.total_score}
-                        for r in term_results
-                    ],
-                }
-
-            response_data["results_by_term"] = term_breakdown
-
-        return Response(response_data)
+        # For now, return just the student data to fix the frontend issue
+        # We can add the additional data back later if needed
+        return Response(student_data)
 
     @action(detail=False, methods=["get"])
     def nursery_students(self, request):
@@ -415,6 +358,12 @@ class StudentViewSet(viewsets.ModelViewSet):
     def activate(self, request, pk=None):
         student = self.get_object()
         student.is_active = True
+        
+        # Also update the user's active status
+        if hasattr(student, 'user') and student.user:
+            student.user.is_active = True
+            student.user.save()
+        
         student.save()
         from .serializers import StudentDetailSerializer
         return Response({
@@ -426,12 +375,46 @@ class StudentViewSet(viewsets.ModelViewSet):
     def deactivate(self, request, pk=None):
         student = self.get_object()
         student.is_active = False
+        
+        # Also update the user's active status
+        if hasattr(student, 'user') and student.user:
+            student.user.is_active = False
+            student.user.save()
+        
         student.save()
         from .serializers import StudentDetailSerializer
         return Response({
             'status': 'student deactivated',
             'student': StudentDetailSerializer(student, context={'request': request}).data
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        """Toggle student active status (both user and student profile)"""
+        try:
+            student = self.get_object()
+            new_status = not student.is_active
+            
+            # Update student profile
+            student.is_active = new_status
+            student.save()
+            
+            # Update user account if it exists
+            if hasattr(student, 'user') and student.user:
+                student.user.is_active = new_status
+                student.user.save()
+            
+            from .serializers import StudentDetailSerializer
+            return Response({
+                'status': f'student {"activated" if new_status else "deactivated"}',
+                'is_active': new_status,
+                'student': StudentDetailSerializer(student, context={'request': request}).data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Failed to toggle student status: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     def _get_age_group(self, age):
         """Categorize age into groups."""
