@@ -88,7 +88,10 @@ export class StudentService {
   // Get a single student by ID
   async getStudent(id: number): Promise<Student> {
     try {
-      const response = await api.get(`/api/students/${id}/`);
+      const endpoint = `/api/students/${id}/`;
+      console.log('DEBUG: StudentService.getStudent calling', endpoint);
+      const response = await api.get(endpoint);
+      console.log('DEBUG: StudentService.getStudent response', response);
       
       if (!response) {
         throw new Error('No response received from server');
@@ -197,6 +200,17 @@ export class StudentService {
     } catch (error) {
       console.log('Error fetching student statistics:', error);
       return {};
+    }
+  }
+
+  // Fetch student dashboard data
+  async getStudentDashboard(): Promise<any> {
+    try {
+      const response = await api.get('/api/fee/studentfee/dashboard/');
+      return response;
+    } catch (error) {
+      console.error('Error fetching student dashboard:', error);
+      throw error;
     }
   }
 

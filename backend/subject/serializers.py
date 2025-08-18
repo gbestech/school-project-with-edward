@@ -120,43 +120,64 @@ class SubjectSerializer(serializers.ModelSerializer):
 
     def get_grade_levels_info(self, obj):
         """Return detailed information about grade levels"""
-        grade_levels = obj.grade_levels.all().order_by("order")
-        return [
-            {
-                "id": grade.id,
-                "name": grade.name,
-                "order": grade.order,
-            }
-            for grade in grade_levels
-        ]
+        grade_levels = getattr(obj, 'grade_levels', None)
+        if grade_levels is None:
+            return []
+        
+        try:
+            grade_levels = grade_levels.all().order_by("order")
+            return [
+                {
+                    "id": grade.id,
+                    "name": grade.name,
+                    "order": grade.order,
+                }
+                for grade in grade_levels
+            ]
+        except (AttributeError, Exception):
+            return []
 
     def get_prerequisite_subjects(self, obj):
         """Return list of prerequisite subjects"""
-        prerequisites = obj.get_prerequisite_subjects()
-        return [
-            {
-                "id": subject.id,
-                "name": subject.name,
-                "short_name": subject.short_name,
-                "code": subject.code,
-                "display_name": subject.display_name,
-            }
-            for subject in prerequisites
-        ]
+        try:
+            if hasattr(obj, 'get_prerequisite_subjects'):
+                prerequisites = obj.get_prerequisite_subjects()
+            else:
+                prerequisites = getattr(obj, 'prerequisites', []).filter(is_active=True) if hasattr(obj, 'prerequisites') else []
+            
+            return [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "short_name": subject.short_name,
+                    "code": subject.code,
+                    "display_name": subject.display_name,
+                }
+                for subject in prerequisites
+            ]
+        except (AttributeError, Exception):
+            return []
 
     def get_dependent_subjects(self, obj):
         """Return list of subjects that depend on this subject"""
-        dependents = obj.get_dependent_subjects()
-        return [
-            {
-                "id": subject.id,
-                "name": subject.name,
-                "short_name": subject.short_name,
-                "code": subject.code,
-                "display_name": subject.display_name,
-            }
-            for subject in dependents
-        ]
+        try:
+            if hasattr(obj, 'get_dependent_subjects'):
+                dependents = obj.get_dependent_subjects()
+            else:
+                dependents = getattr(obj, 'unlocks_subjects', []).filter(is_active=True) if hasattr(obj, 'unlocks_subjects') else []
+            
+            return [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "short_name": subject.short_name,
+                    "code": subject.code,
+                    "display_name": subject.display_name,
+                }
+                for subject in dependents
+            ]
+        except (AttributeError, Exception):
+            return []
 
     def get_education_level_details(self, obj):
         """Return detailed education level information"""
@@ -164,27 +185,29 @@ class SubjectSerializer(serializers.ModelSerializer):
             "applicable_levels": [],
             "nursery_specific": [],
             "level_compatibility": {
-                "nursery": obj.is_nursery_subject,
-                "primary": obj.is_primary_subject,
-                "junior_secondary": obj.is_junior_secondary_subject,
-                "senior_secondary": obj.is_senior_secondary_subject,
+                "nursery": getattr(obj, 'is_nursery_subject', False),
+                "primary": getattr(obj, 'is_primary_subject', False),
+                "junior_secondary": getattr(obj, 'is_junior_secondary_subject', False),
+                "senior_secondary": getattr(obj, 'is_senior_secondary_subject', False),
             },
         }
 
         # Add applicable education levels
-        if obj.education_levels:
+        education_levels = getattr(obj, 'education_levels', [])
+        if education_levels:
             level_dict = dict(EDUCATION_LEVELS)
             details["applicable_levels"] = [
                 {"code": level, "name": level_dict.get(level, level)}
-                for level in obj.education_levels
+                for level in education_levels
             ]
 
         # Add nursery specific levels
-        if obj.nursery_levels:
+        nursery_levels = getattr(obj, 'nursery_levels', [])
+        if nursery_levels:
             nursery_dict = dict(NURSERY_LEVELS)
             details["nursery_specific"] = [
                 {"code": level, "name": nursery_dict.get(level, level)}
-                for level in obj.nursery_levels
+                for level in nursery_levels
             ]
 
         return details
@@ -193,49 +216,51 @@ class SubjectSerializer(serializers.ModelSerializer):
         """Return comprehensive subject summary"""
         return {
             "basic_info": {
-                "display_name": obj.display_name,
-
-                "total_practical_hours": obj.practical_hours,
-                "total_weekly_hours": obj.total_weekly_hours,
+                "display_name": getattr(obj, 'display_name', getattr(obj, 'name', 'Unknown')),
+                "total_practical_hours": getattr(obj, 'practical_hours', 0),
+                "total_weekly_hours": getattr(obj, 'total_weekly_hours', getattr(obj, 'practical_hours', 0)),
             },
             "classification": {
-                "category": obj.get_category_display(),
-                "is_compulsory": obj.is_compulsory,
-                "is_core": obj.is_core,
-                "is_cross_cutting": obj.is_cross_cutting,
-                "is_activity_based": obj.is_activity_based,
+                "category": getattr(obj, 'get_category_display', lambda: 'Unknown')(),
+                "is_compulsory": getattr(obj, 'is_compulsory', False),
+                "is_core": getattr(obj, 'is_core', False),
+                "is_cross_cutting": getattr(obj, 'is_cross_cutting', False),
+                "is_activity_based": getattr(obj, 'is_activity_based', False),
                 "ss_subject_type": (
-                    obj.get_ss_subject_type_display() if obj.ss_subject_type else None
+                    getattr(obj, 'get_ss_subject_type_display', lambda: None)() if getattr(obj, 'ss_subject_type', None) else None
                 ),
             },
             "relationships": {
-                "has_prerequisites": obj.prerequisites.exists(),
-                "prerequisite_count": obj.prerequisites.count(),
-                "dependent_count": obj.unlocks_subjects.count(),
-                "grade_level_count": obj.grade_levels.count(),
+                "has_prerequisites": getattr(obj, 'prerequisites', []).exists() if hasattr(obj, 'prerequisites') else False,
+                "prerequisite_count": getattr(obj, 'prerequisites', []).count() if hasattr(obj, 'prerequisites') else 0,
+                "dependent_count": getattr(obj, 'unlocks_subjects', []).count() if hasattr(obj, 'unlocks_subjects') else 0,
+                "grade_level_count": getattr(obj, 'grade_levels', []).count() if hasattr(obj, 'grade_levels') else 0,
             },
             "assessment": {
                 "assessment_type": self._get_assessment_type(obj),
-                "pass_mark": obj.pass_mark,
+                "pass_mark": getattr(obj, 'pass_mark', 50),
             },
             "resources": {
                 "resource_requirements": self._get_resource_requirements(obj),
-                "requires_specialist": obj.requires_specialist_teacher,
+                "requires_specialist": getattr(obj, 'requires_specialist_teacher', False),
             },
             "status": {
                 "status": self._get_status_summary(obj),
-                "introduced_year": obj.introduced_year,
-                "curriculum_version": obj.curriculum_version,
+                "introduced_year": getattr(obj, 'introduced_year', None),
+                "curriculum_version": getattr(obj, 'curriculum_version', None),
             },
         }
 
     def _get_assessment_type(self, obj):
         """Helper method to determine assessment type"""
-        if obj.has_continuous_assessment and obj.has_final_exam:
+        has_continuous = getattr(obj, 'has_continuous_assessment', False)
+        has_final = getattr(obj, 'has_final_exam', False)
+        
+        if has_continuous and has_final:
             return "Both Continuous and Final"
-        elif obj.has_continuous_assessment:
+        elif has_continuous:
             return "Continuous Assessment Only"
-        elif obj.has_final_exam:
+        elif has_final:
             return "Final Exam Only"
         else:
             return "No Standard Assessment"
@@ -243,19 +268,19 @@ class SubjectSerializer(serializers.ModelSerializer):
     def _get_resource_requirements(self, obj):
         """Helper method to get resource requirements"""
         requirements = []
-        if obj.requires_lab:
+        if getattr(obj, 'requires_lab', False):
             requirements.append("Laboratory")
-        if obj.requires_special_equipment:
+        if getattr(obj, 'requires_special_equipment', False):
             requirements.append("Special Equipment")
-        if obj.has_practical:
+        if getattr(obj, 'has_practical', False):
             requirements.append("Practical Facilities")
         return requirements if requirements else ["Standard Classroom"]
 
     def _get_status_summary(self, obj):
         """Helper method to get status summary"""
-        if obj.is_discontinued:
+        if getattr(obj, 'is_discontinued', False):
             return "Discontinued"
-        elif not obj.is_active:
+        elif not getattr(obj, 'is_active', True):
             return "Inactive"
         else:
             return "Active"
@@ -445,12 +470,12 @@ class SubjectSerializer(serializers.ModelSerializer):
         if request and hasattr(request, "user"):
             if hasattr(request.user, "is_staff") and request.user.is_staff:
                 data["admin_info"] = {
-                    "last_updated": instance.updated_at,
-                    "requires_attention": instance.is_discontinued
-                    or (not instance.is_active and instance.is_compulsory),
-                    "has_resource_requirements": instance.requires_lab
-                    or instance.requires_special_equipment,
-                    "curriculum_alignment": instance.curriculum_version
+                    "last_updated": getattr(instance, 'updated_at', None),
+                    "requires_attention": getattr(instance, 'is_discontinued', False)
+                    or (not getattr(instance, 'is_active', True) and getattr(instance, 'is_compulsory', False)),
+                    "has_resource_requirements": getattr(instance, 'requires_lab', False)
+                    or getattr(instance, 'requires_special_equipment', False),
+                    "curriculum_alignment": getattr(instance, 'curriculum_version', None)
                     or "Not specified",
                 }
 
@@ -500,9 +525,9 @@ class SubjectListSerializer(serializers.ModelSerializer):
 
     def get_status_summary(self, obj):
         """Get concise status summary"""
-        if obj.is_discontinued:
+        if getattr(obj, 'is_discontinued', False):
             return "Discontinued"
-        elif not obj.is_active:
+        elif not getattr(obj, 'is_active', True):
             return "Inactive"
         else:
             return "Active"
@@ -740,8 +765,11 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
         """Get formatted education levels"""
         result = []
 
-        if obj.education_levels:
-            for level in obj.education_levels:
+        education_levels = getattr(obj, 'education_levels', [])
+        nursery_levels = getattr(obj, 'nursery_levels', [])
+        
+        if education_levels:
+            for level in education_levels:
                 level_dict = dict(EDUCATION_LEVELS)
                 level_info = {
                     "code": level,
@@ -750,14 +778,14 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
                 }
 
                 # Add nursery sub-levels if applicable
-                if level == "NURSERY" and obj.nursery_levels:
+                if level == "NURSERY" and nursery_levels:
                     nursery_dict = dict(NURSERY_LEVELS)
                     level_info["sub_levels"] = [
                         {
                             "code": sub_level,
                             "name": nursery_dict.get(sub_level, sub_level),
                         }
-                        for sub_level in obj.nursery_levels
+                        for sub_level in nursery_levels
                     ]
 
                 result.append(level_info)
@@ -773,11 +801,11 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
     def get_education_level_compatibility(self, obj):
         """Check compatibility with different education levels"""
         return {
-            "nursery_compatible": obj.is_nursery_subject,
-            "primary_compatible": obj.is_primary_subject,
-            "junior_secondary_compatible": obj.is_junior_secondary_subject,
-            "senior_secondary_compatible": obj.is_senior_secondary_subject,
-            "all_levels": not obj.education_levels,
+            "nursery_compatible": getattr(obj, 'is_nursery_subject', False),
+            "primary_compatible": getattr(obj, 'is_primary_subject', False),
+            "junior_secondary_compatible": getattr(obj, 'is_junior_secondary_subject', False),
+            "senior_secondary_compatible": getattr(obj, 'is_senior_secondary_subject', False),
+            "all_levels": not getattr(obj, 'education_levels', []),
             "cross_cutting": obj.is_cross_cutting,
             "activity_based": obj.is_activity_based,
         }
@@ -792,14 +820,14 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
         }
 
         # Add nursery-specific info
-        if obj.is_nursery_subject:
+        if getattr(obj, 'is_nursery_subject', False):
             info["nursery"] = {
                 "is_activity_based": obj.is_activity_based,
-                "applicable_levels": obj.nursery_levels_display,
+                "applicable_levels": getattr(obj, 'nursery_levels_display', ''),
             }
 
         # Add Senior Secondary specific info
-        if obj.is_senior_secondary_subject:
+        if getattr(obj, 'is_senior_secondary_subject', False):
             info["senior_secondary"] = {
                 "subject_type": (
                     obj.get_ss_subject_type_display() if obj.ss_subject_type else None

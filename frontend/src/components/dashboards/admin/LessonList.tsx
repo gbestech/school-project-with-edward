@@ -283,11 +283,12 @@ const LessonList: React.FC<LessonListProps> = ({
     );
   }
 
-  return (
-    <div className={`${themeClasses.bgCard} rounded-xl shadow-lg border ${themeClasses.border} overflow-hidden`}>
-      {/* Table Header */}
-      <div className={`px-6 py-4 border-b ${themeClasses.border} ${themeClasses.bgSecondary}`}>
-        <div className="grid grid-cols-12 gap-4 items-center">
+    return (
+    <div className={`${themeClasses.bgCard} rounded-xl shadow-lg border ${themeClasses.border} overflow-hidden w-full`}>
+      <div className="overflow-x-auto">
+        {/* Table Header */}
+        <div className={`px-6 py-4 border-b ${themeClasses.border} ${themeClasses.bgSecondary}`}>
+          <div className="grid grid-cols-12 gap-4 items-center min-w-[1200px]">
           <div className="col-span-3">
             <SortableHeader field="title" label="Lesson" />
           </div>
@@ -318,21 +319,21 @@ const LessonList: React.FC<LessonListProps> = ({
       {/* Table Body */}
       <div className="divide-y divide-gray-200">
         {sortedLessons.map((lesson) => (
-          <div key={lesson.id} className="hover:bg-gray-50 transition-colors">
+          <div key={lesson.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group`}>
             {/* Main Row */}
             <div className="px-6 py-4">
-              <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="grid grid-cols-12 gap-4 items-center min-w-[1200px]">
                 {/* Lesson Title */}
                 <div className="col-span-3">
                   <div className="flex items-center space-x-3">
-                    <span className={`text-lg ${LessonService.getLessonTypeIcon(lesson.lesson_type)}`}>
+                    <span className="text-lg">
                       {LessonService.getLessonTypeIcon(lesson.lesson_type)}
                     </span>
                     <div>
-                      <h3 className={`font-medium ${themeClasses.textPrimary} hover:text-blue-600 cursor-pointer`}>
+                      <h3 className={`font-medium ${themeClasses.textPrimary} hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer`}>
                         {lesson.title}
                       </h3>
-                      <p className={`text-sm ${themeClasses.textTertiary} truncate`}>
+                      <p className={`text-sm ${themeClasses.textTertiary} group-hover:text-gray-700 dark:group-hover:text-gray-300 truncate`}>
                         {lesson.lesson_type_display} • {lesson.difficulty_level_display}
                       </p>
                     </div>
@@ -343,7 +344,7 @@ const LessonList: React.FC<LessonListProps> = ({
                 <div className="col-span-2">
                   <div className="flex items-center space-x-2">
                     <Users size={16} className={themeClasses.iconSecondary} />
-                    <span className={`${themeClasses.textSecondary} truncate`}>
+                    <span className={`${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white truncate`}>
                       {lesson.teacher_name}
                     </span>
                   </div>
@@ -351,14 +352,14 @@ const LessonList: React.FC<LessonListProps> = ({
 
                 {/* Classroom */}
                 <div className="col-span-2">
-                  <span className={`${themeClasses.textSecondary} truncate`}>
+                  <span className={`${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white truncate`}>
                     {lesson.classroom_name}
                   </span>
                 </div>
 
                 {/* Subject */}
                 <div className="col-span-1">
-                  <span className={`${themeClasses.textSecondary} truncate`}>
+                  <span className={`${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white truncate`}>
                     {lesson.subject_name}
                   </span>
                 </div>
@@ -366,7 +367,7 @@ const LessonList: React.FC<LessonListProps> = ({
                 {/* Date */}
                 <div className="col-span-1">
                   <div className="flex flex-col">
-                    <span className={`text-sm ${themeClasses.textSecondary}`}>
+                    <span className={`text-sm ${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white`}>
                       {new Date(lesson.date).toLocaleDateString()}
                     </span>
                     {getPriorityIndicator(lesson)}
@@ -376,10 +377,10 @@ const LessonList: React.FC<LessonListProps> = ({
                 {/* Time */}
                 <div className="col-span-1">
                   <div className="flex flex-col">
-                    <span className={`text-sm ${themeClasses.textSecondary}`}>
+                    <span className={`text-sm ${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white`}>
                       {lesson.time_slot}
                     </span>
-                    <span className={`text-xs ${themeClasses.textTertiary}`}>
+                    <span className={`text-xs ${themeClasses.textTertiary} group-hover:text-gray-700 dark:group-hover:text-gray-300`}>
                       {lesson.duration_formatted}
                     </span>
                   </div>
@@ -387,7 +388,17 @@ const LessonList: React.FC<LessonListProps> = ({
 
                 {/* Status */}
                 <div className="col-span-1">
-                  {getStatusBadge(lesson)}
+                  <div className="space-y-2">
+                    {getStatusBadge(lesson)}
+                    {lesson.status === 'in_progress' && (
+                      <div className="w-full bg-gray-200 rounded-full h-1">
+                        <div 
+                          className="bg-orange-500 h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${lesson.completion_percentage}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Actions */}
@@ -506,6 +517,7 @@ const LessonList: React.FC<LessonListProps> = ({
             )}
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

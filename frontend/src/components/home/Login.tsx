@@ -23,6 +23,7 @@ interface LoginProps {
   onCreateAccount?: () => void;
   isLoading?: boolean;
   errors?: Record<string, string>;
+  hideRoleSelect?: boolean;
 }
 
 const Login: React.FC<LoginProps> = ({ 
@@ -32,7 +33,8 @@ const Login: React.FC<LoginProps> = ({
   onForgotPassword,
   onCreateAccount,
   isLoading: externalLoading = false,
-  errors: externalErrors = {}
+  errors: externalErrors = {},
+  hideRoleSelect = false
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState<LoginCredentials>({
@@ -425,28 +427,30 @@ const Login: React.FC<LoginProps> = ({
                 </div>
 
                 {/* Role Selection */}
-                <div className="space-y-1">
-                  <label className="block text-sm font-semibold text-white/90 flex items-center space-x-2">
-                    <UserCheck size={14} />
-                    <span>Account Type</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={form.role}
-                      onChange={(e) => handleInputChange('role', e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-300 backdrop-blur-xl appearance-none cursor-pointer"
-                      disabled={isLoading}
-                    >
-                      <option value="student" className="bg-slate-800">Student</option>
-                      <option value="teacher" className="bg-slate-800">Teacher</option>
-                      <option value="parent" className="bg-slate-800">Parent</option>
-                      <option value="admin" className="bg-slate-800">Admin</option>
-                    </select>
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 pointer-events-none">
-                      <RoleIcon size={16} />
+                {!hideRoleSelect && (
+                  <div className="space-y-1">
+                    <label className="block text-sm font-semibold text-white/90 flex items-center space-x-2">
+                      <UserCheck size={14} />
+                      <span>Account Type</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={form.role}
+                        onChange={(e) => handleInputChange('role', e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-300 backdrop-blur-xl appearance-none cursor-pointer"
+                        disabled={isLoading}
+                      >
+                        <option value="student" className="bg-slate-800">Student</option>
+                        <option value="teacher" className="bg-slate-800">Teacher</option>
+                        <option value="parent" className="bg-slate-800">Parent</option>
+                        <option value="admin" className="bg-slate-800">Admin</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 pointer-events-none">
+                        <RoleIcon size={16} />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Remember Me & Forgot Password */}
                 <div className="flex items-center justify-between text-sm">

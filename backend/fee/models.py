@@ -116,6 +116,7 @@ class AcademicSession(models.Model):
 
 class FeeStructure(models.Model):
     """Fee structure model"""
+    FEE_TYPE_CHOICES = FEE_TYPE_CHOICES
     name = models.CharField(max_length=100)
     fee_type = models.CharField(max_length=20, choices=FEE_TYPE_CHOICES)
     education_level = models.CharField(max_length=20, choices=EDUCATION_LEVEL_CHOICES)
@@ -138,6 +139,7 @@ class FeeStructure(models.Model):
 
 class StudentFee(models.Model):
     """Student fee model"""
+    PAYMENT_STATUS_CHOICES = PAYMENT_STATUS_CHOICES
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="fees")
     fee_structure = models.ForeignKey(FeeStructure, on_delete=models.CASCADE)
     academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
@@ -251,6 +253,7 @@ class PaymentReminder(models.Model):
     sent_date = models.DateTimeField(auto_now_add=True)
     is_sent = models.BooleanField(default=False)
     message = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "Payment Reminder"

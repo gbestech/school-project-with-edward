@@ -80,6 +80,7 @@ urlpatterns = [
     path("api/", include("schoolSettings.urls")),
     path("api/", include("events.urls")),
     path("api/lessons/", include("lesson.urls")),
+      path("api/fee/", include("fee.urls")),
     # Social account routes (optional, mainly for admin)
     path("api/socialaccounts/", include("allauth.socialaccount.urls")),
     # Social provider routes (if needed for direct provider integration)

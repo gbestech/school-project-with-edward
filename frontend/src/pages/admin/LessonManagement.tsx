@@ -25,6 +25,7 @@ const LessonManagement: React.FC = () => {
   const [statistics, setStatistics] = useState<LessonStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
   
   // UI State
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'statistics'>('list');
@@ -158,9 +159,17 @@ const LessonManagement: React.FC = () => {
     setShowViewModal(true);
   };
 
-  const handleEditLesson = (lesson: Lesson) => {
-    setSelectedLesson(lesson);
-    setShowEditForm(true);
+  const handleEditLesson = async (lesson: Lesson) => {
+    setEditLoading(true);
+    try {
+      const latestLesson = await LessonService.getLesson(lesson.id);
+      setSelectedLesson(latestLesson);
+      setShowEditForm(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch lesson for editing');
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   const handleAddLesson = () => {
@@ -295,82 +304,81 @@ const LessonManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Controls */}
-      <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border ${themeClasses.border} mb-6`}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-6">
-          {/* View Mode Toggle */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                viewMode === 'list' ? themeClasses.buttonPrimary : themeClasses.buttonSecondary
-              }`}
-            >
-              <BookOpen size={16} />
-              <span>List</span>
-            </button>
-            
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                viewMode === 'calendar' ? themeClasses.buttonPrimary : themeClasses.buttonSecondary
-              }`}
-            >
-              <CalendarDays size={16} />
-              <span>Calendar</span>
-            </button>
-            
-            <button
-              onClick={() => setViewMode('statistics')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
-                viewMode === 'statistics' ? themeClasses.buttonPrimary : themeClasses.buttonSecondary
-              }`}
-            >
-              <BarChart3 size={16} />
-              <span>Statistics</span>
-            </button>
+      {/* Navigation Tabs */}
+      <div className={`${themeClasses.bgCard} rounded-xl p-4 shadow-lg border ${themeClasses.border} mb-4`}>
+        <div className="flex items-center justify-center space-x-2">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              viewMode === 'list' ? themeClasses.buttonPrimary : themeClasses.buttonSecondary
+            }`}
+          >
+            <BookOpen size={16} />
+            <span>List</span>
+          </button>
+          
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              viewMode === 'calendar' ? themeClasses.buttonPrimary : themeClasses.buttonSecondary
+            }`}
+          >
+            <CalendarDays size={16} />
+            <span>Calendar</span>
+          </button>
+          
+          <button
+            onClick={() => setViewMode('statistics')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              viewMode === 'statistics' ? themeClasses.buttonPrimary : themeClasses.buttonSecondary
+            }`}
+          >
+            <BarChart3 size={16} />
+            <span>Statistics</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className={`${themeClasses.bgCard} rounded-xl p-4 shadow-lg border ${themeClasses.border} mb-6`}>
+        <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+          {/* Search */}
+          <div className="relative">
+            <Search size={20} className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${themeClasses.iconSecondary}`} />
+            <input
+              type="text"
+              placeholder="Search lessons..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`pl-10 pr-4 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+            />
           </div>
 
-          {/* Search and Filters */}
-          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-            {/* Search */}
-            <div className="relative">
-              <Search size={20} className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${themeClasses.iconSecondary}`} />
-              <input
-                type="text"
-                placeholder="Search lessons..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={`pl-10 pr-4 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-              />
-            </div>
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          >
+            {statusOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
 
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-            >
-              {statusOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            {/* Date Filter */}
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-            >
-              {dateOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Date Filter */}
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          >
+            {dateOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -421,12 +429,20 @@ const LessonManagement: React.FC = () => {
         />
       )}
 
-      {showEditForm && selectedLesson && (
+      {showEditForm && selectedLesson && !editLoading && (
         <EditLessonForm
           lesson={selectedLesson}
           onClose={handleFormClose}
           onSuccess={handleFormSuccess}
         />
+      )}
+      {editLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-lg font-medium text-gray-700 dark:text-gray-200">Loading lesson...</p>
+          </div>
+        </div>
       )}
 
       {showViewModal && selectedLesson && (
@@ -436,6 +452,11 @@ const LessonManagement: React.FC = () => {
           onEdit={() => {
             setShowViewModal(false);
             handleEditLesson(selectedLesson);
+          }}
+          onLessonUpdate={(updatedLesson) => {
+            // Update the selected lesson and refresh the list
+            setSelectedLesson(updatedLesson);
+            loadData();
           }}
         />
       )}

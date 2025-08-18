@@ -50,7 +50,7 @@ from .serializers import (
 )
 from .filters import StudentFeeFilter, PaymentFilter
 from .permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
-from .services import PaymentService, FeeService, ReportService
+from .services.services import PaymentService, FeeService, ReportService
 from students.models import Student
 
 

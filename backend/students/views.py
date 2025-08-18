@@ -31,6 +31,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         "user__last_name",
         "user__email",
         "parent_contact",
+        "registration_number",
+        "user__username",
     ]
     ordering_fields = ["user__first_name", "admission_date", "date_of_birth"]
     ordering = ["education_level", "student_class", "user__first_name"]

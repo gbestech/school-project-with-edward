@@ -168,6 +168,71 @@ class Lesson(models.Model):
     def can_cancel(self):
         """Check if lesson can be cancelled"""
         return self.status in ['scheduled', 'in_progress']
+    
+    def calculate_progress_percentage(self):
+        """Calculate progress percentage based on current time vs lesson duration"""
+        if self.status != 'in_progress' or not self.actual_start_time:
+            return self.completion_percentage
+        
+        now = timezone.now().time()
+        lesson_date = self.date
+        
+        # If lesson is not today, return current completion percentage
+        if lesson_date != timezone.now().date():
+            return self.completion_percentage
+        
+        # Calculate progress based on time elapsed since actual start
+        start_dt = datetime.combine(lesson_date, self.actual_start_time)
+        end_dt = datetime.combine(lesson_date, self.end_time)
+        current_dt = datetime.combine(lesson_date, now)
+        
+        # If current time is before start time, return 0
+        if current_dt < start_dt:
+            return 0
+        
+        # If current time is after end time, return 100
+        if current_dt >= end_dt:
+            return 100
+        
+        # Calculate percentage
+        total_duration = (end_dt - start_dt).total_seconds()
+        elapsed_duration = (current_dt - start_dt).total_seconds()
+        
+        if total_duration > 0:
+            percentage = min(100, int((elapsed_duration / total_duration) * 100))
+            return percentage
+        
+        return self.completion_percentage
+    
+    def start_lesson(self):
+        """Start the lesson and set actual start time"""
+        if self.status == 'scheduled':
+            self.status = 'in_progress'
+            self.actual_start_time = timezone.now().time()
+            self.completion_percentage = 0
+            self.save()
+            return True
+        return False
+    
+    def complete_lesson(self):
+        """Complete the lesson and set actual end time"""
+        if self.status in ['scheduled', 'in_progress']:
+            self.status = 'completed'
+            self.actual_end_time = timezone.now().time()
+            self.completion_percentage = 100
+            self.save()
+            return True
+        return False
+    
+    def update_progress(self):
+        """Update progress percentage automatically"""
+        if self.status == 'in_progress':
+            new_percentage = self.calculate_progress_percentage()
+            if new_percentage != self.completion_percentage:
+                self.completion_percentage = new_percentage
+                self.save()
+            return new_percentage
+        return self.completion_percentage
 
 
 class LessonAttendance(models.Model):

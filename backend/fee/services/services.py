@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import StudentFee, Payment, FeeStructure, StudentDiscount
+from ..models import StudentFee, Payment, FeeStructure, StudentDiscount
 from .paystack_service import PaystackService
 from students.models import Student
 

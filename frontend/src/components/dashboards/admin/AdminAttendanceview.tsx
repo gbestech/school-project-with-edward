@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Users, Calendar, Filter, Download, Eye } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Users, Calendar, Download, Eye } from 'lucide-react';
+import {
+  getAttendance,
+  addAttendance,
+  updateAttendance,
+  deleteAttendance,
+  AttendanceStatusMap,
+  AttendanceRecordBackend,
+  AttendanceCodeToStatusMap,
+} from '@/services/AttendanceService';
+import StudentService, { Student } from '@/services/StudentService';
 
 interface AttendanceRecord {
   id: number;
@@ -16,76 +26,8 @@ interface AttendanceRecord {
 }
 
 const AttendanceDashboard = () => {
-  // Sample data structure
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([
-    {
-      id: 1,
-      name: 'John Smith',
-      type: 'student',
-      level: 'primary',
-      class: 'Primary 3A',
-      section: 'Blue',
-      date: '2025-07-22',
-      status: 'present',
-      timeIn: '08:00',
-      timeOut: '14:00',
-      term: 'Second Term'
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      type: 'student',
-      level: 'secondary',
-      class: 'SS2B',
-      section: 'Red',
-      date: '2025-07-22',
-      status: 'absent',
-      timeIn: '',
-      timeOut: '',
-      term: 'Second Term'
-    },
-    {
-      id: 3,
-      name: 'Mrs. Adams',
-      type: 'teacher',
-      level: 'all',
-      class: 'Mathematics Dept',
-      section: 'Staff',
-      date: '2025-07-22',
-      status: 'present',
-      timeIn: '07:30',
-      timeOut: '16:00',
-      term: 'Second Term'
-    },
-    {
-      id: 4,
-      name: 'Mr. Security',
-      type: 'staff',
-      level: 'all',
-      class: 'Security Dept',
-      section: 'Support',
-      date: '2025-07-22',
-      status: 'present',
-      timeIn: '06:00',
-      timeOut: '18:00',
-      term: 'Second Term'
-    },
-    {
-      id: 5,
-      name: 'Emma Wilson',
-      type: 'student',
-      level: 'nursery',
-      class: 'Nursery 2',
-      section: 'Green',
-      date: '2025-07-22',
-      status: 'late',
-      timeIn: '09:15',
-      timeOut: '12:00',
-      term: 'Second Term'
-    }
-  ]);
-
-  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(attendanceRecords);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
   const [filters, setFilters] = useState<{
     level: string;
     class: string;
@@ -98,12 +40,14 @@ const AttendanceDashboard = () => {
     class: 'all',
     type: 'all',
     period: 'daily',
-    date: '2025-07-22',
-    section: 'all'
+    date: new Date().toISOString().slice(0, 10),
+    section: 'all',
   });
   const [showModal, setShowModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const levels = ['all', 'nursery', 'primary', 'secondary'];
   const types = ['all', 'student', 'teacher', 'staff'];
@@ -111,7 +55,32 @@ const AttendanceDashboard = () => {
   const sections = ['all', 'Blue', 'Red', 'Green', 'Staff', 'Support'];
   const statuses = ['present', 'absent', 'late', 'excused'];
 
-  // Filter records based on current filters
+  // Fetch attendance from backend
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    getAttendance({ date: filters.date })
+      .then((data) => {
+        // Map backend data to AttendanceRecord[]
+        const mapped: AttendanceRecord[] = (data.results || data).map((rec: AttendanceRecordBackend) => ({
+          id: rec.id,
+          name: rec.student || rec.teacher ? `ID ${rec.student || rec.teacher}` : 'Unknown',
+          type: rec.student ? 'student' : rec.teacher ? 'teacher' : 'staff',
+          level: '', // You may fetch student/teacher/class info for richer display
+          class: '',
+          section: '',
+          date: rec.date,
+          status: AttendanceCodeToStatusMap[rec.status],
+          timeIn: '',
+          timeOut: '',
+          term: '',
+        }));
+        setAttendanceRecords(mapped);
+      })
+      .catch((err) => setError('Failed to load attendance'))
+      .finally(() => setLoading(false));
+  }, [filters.date]);
+
   useEffect(() => {
     let filtered = attendanceRecords.filter(record => {
       return (
@@ -138,30 +107,54 @@ const AttendanceDashboard = () => {
     setShowModal(true);
   };
 
-  const handleDelete = (id: number): void => {
+  const handleDelete = async (id: number): Promise<void> => {
     if (window.confirm('Are you sure you want to delete this record?')) {
-      setAttendanceRecords(prev => prev.filter(record => record.id !== id));
+      setLoading(true);
+      try {
+        await deleteAttendance(id);
+        setAttendanceRecords(prev => prev.filter(record => record.id !== id));
+      } catch (err) {
+        setError('Failed to delete record');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleSave = (formData: Omit<AttendanceRecord, 'id' | 'date'> & { date?: string }): void => {
-    if (editingRecord) {
-      // Update existing record
-      setAttendanceRecords(prev =>
-        prev.map(record =>
-          record.id === editingRecord.id ? { ...record, ...formData } : record
-        )
-      );
-    } else {
+  const handleSave = async (formData: any): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { selectedStudent, ...rest } = formData;
+      if (!selectedStudent) {
+        setError('Please select a student.');
+        setLoading(false);
+        return;
+      }
       // Add new record
-      const newRecord = {
-        id: Date.now(),
-        ...formData,
-        date: filters.date
-      };
-      setAttendanceRecords(prev => [...prev, newRecord]);
+      const newRec = await addAttendance({
+        student: selectedStudent.id,
+        section: selectedStudent.section_id, // Use section_id PK
+        date: filters.date,
+        status: AttendanceStatusMap[rest.status as keyof typeof AttendanceStatusMap],
+        // Optionally add timeIn/timeOut if your backend supports it
+      });
+      setAttendanceRecords(prev => [...prev, {
+        ...rest,
+        id: newRec.id,
+        date: filters.date,
+        name: selectedStudent.full_name,
+        type: 'student',
+        level: selectedStudent.education_level_display || '',
+        class: selectedStudent.student_class_display || '',
+        section: selectedStudent.classroom || '',
+      } as AttendanceRecord]);
+      setShowModal(false);
+    } catch (err) {
+      setError('Failed to save record');
+    } finally {
+      setLoading(false);
     }
-    setShowModal(false);
   };
 
   const getStatusColor = (status: string): string => {
@@ -169,7 +162,7 @@ const AttendanceDashboard = () => {
       present: 'bg-green-100 text-green-800',
       absent: 'bg-red-100 text-red-800',
       late: 'bg-yellow-100 text-yellow-800',
-      excused: 'bg-blue-100 text-blue-800'
+      excused: 'bg-blue-100 text-blue-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -179,7 +172,6 @@ const AttendanceDashboard = () => {
     const present = filteredRecords.filter(r => r.status === 'present').length;
     const absent = filteredRecords.filter(r => r.status === 'absent').length;
     const late = filteredRecords.filter(r => r.status === 'late').length;
-    
     return { total, present, absent, late, rate: total > 0 ? ((present / total) * 100).toFixed(1) : 0 };
   };
 
@@ -191,6 +183,8 @@ const AttendanceDashboard = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Attendance Dashboard</h1>
         <p className="text-gray-600">Manage student, teacher, and staff attendance</p>
       </div>
+      {loading && <div className="text-blue-600 mb-2">Loading...</div>}
+      {error && <div className="text-red-600 mb-2">{error}</div>}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -414,6 +408,38 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
     timeOut: record?.timeOut || '',
     term: record?.term || 'Second Term',
   });
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentOptions, setStudentOptions] = useState<Student[]>([]);
+  const [studentLoading, setStudentLoading] = useState(false);
+
+  // Autocomplete student search
+  useEffect(() => {
+    if (studentQuery.length < 2) {
+      setStudentOptions([]);
+      return;
+    }
+    setStudentLoading(true);
+    StudentService.searchStudents(studentQuery).then((students) => {
+      setStudentOptions(students);
+      setStudentLoading(false);
+    });
+  }, [studentQuery]);
+
+  // When a student is selected, auto-populate fields and store the student object
+  const handleStudentSelect = (student: Student) => {
+    setFormData(prev => ({
+      ...prev,
+      name: student.full_name,
+      type: 'student',
+      level: student.education_level_display || '',
+      class: student.student_class_display || '',
+      section: student.classroom || '',
+    }));
+    setSelectedStudent(student);
+    setStudentQuery(student.full_name);
+    setStudentOptions([]);
+  };
 
   const handleChange = (key: string, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -421,7 +447,8 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    // Pass selectedStudent along with formData
+    onSave({ ...formData, selectedStudent });
   };
 
   return (
@@ -431,70 +458,68 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
           <h3 className="text-lg font-semibold mb-4">
             {record ? 'Edit Attendance Record' : 'Add Attendance Record'}
           </h3>
-          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Student Username</label>
               <input
                 type="text"
-                required
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
+                value={studentQuery}
+                onChange={e => setStudentQuery(e.target.value)}
+                placeholder="Search by username..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="off"
               />
+              {studentLoading && <div className="text-xs text-gray-400">Searching...</div>}
+              {studentOptions.length > 0 && (
+                <ul className="border rounded bg-white mt-1 max-h-40 overflow-y-auto z-10">
+                  {studentOptions.map(student => (
+                    <li
+                      key={student.id}
+                      className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
+                      onClick={() => handleStudentSelect(student)}
+                    >
+                      {student.full_name} ({student.email || student.id})
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <select
+              <input
+                type="text"
                 value={formData.type}
-                onChange={(e) => handleChange('type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {types.map(type => (
-                  <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
-                ))}
-              </select>
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+              />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
-              <select
+              <input
+                type="text"
                 value={formData.level}
-                onChange={(e) => handleChange('level', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={formData.type !== 'student'}
-              >
-                {formData.type === 'student' ? levels.map(level => (
-                  <option key={level} value={level}>{level.charAt(0).toUpperCase() + level.slice(1)}</option>
-                )) : <option value="all">All</option>}
-              </select>
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+              />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
               <input
                 type="text"
-                required
                 value={formData.class}
-                onChange={(e) => handleChange('class', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
-              <select
+              <input
+                type="text"
                 value={formData.section}
-                onChange={(e) => handleChange('section', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {sections.map(section => (
-                  <option key={section} value={section}>{section}</option>
-                ))}
-              </select>
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+              />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
@@ -507,7 +532,6 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
                 ))}
               </select>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Time In</label>
@@ -528,7 +552,6 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
                 />
               </div>
             </div>
-
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"

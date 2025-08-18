@@ -7,6 +7,7 @@ from teacher.models import Teacher
 class AttendanceSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     teacher_name = serializers.SerializerMethodField()
+    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = Attendance
@@ -17,7 +18,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
             "teacher",
             "teacher_name",
             "section",
-            "attendance_date",
+            "date",
             "status",
         ]
 

@@ -8,6 +8,9 @@ import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { GlobalThemeProvider } from '@/contexts/GlobalThemeContext';
 import { lazy, Suspense } from "react";
 import ContactRibbon from './../components/home/ContactRibbon';
+import MainLayout from '@/components/layout/MainLayout';
+import Navbar from '@/components/home/Nav';
+import Footer from '@/components/home/Footer';
 
 // Lazy load all components with consistent import paths and error handling
 const Home = lazy(() => import('./../pages/Landing').catch(() => ({ default: () => <div>Error loading Home</div> })));
@@ -42,6 +45,10 @@ const AdminDashboardContentLoader = lazy(() => import('./../pages/admin/AdminDas
 const SettingsPage = lazy(() => import('./../pages/admin/Settings').catch(() => ({ default: () => <div>Error loading Settings</div> })));
 const ThemeTest = lazy(() => import('./../pages/ThemeTestPage').catch(() => ({ default: () => <div>Error loading Theme Test</div> })));
 const TestHooks = lazy(() => import('./../components/TestHooks').catch(() => ({ default: () => <div>Error loading Test Hooks</div> })));
+const StudentLoginPage = lazy(() => import('./../pages/StudentLoginPage').catch(() => ({ default: () => <div>Error loading Student Login</div> })));
+const TeacherLoginPage = lazy(() => import('./../pages/TeacherLoginPage').catch(() => ({ default: () => <div>Error loading Teacher Login</div> })));
+const ParentLoginPage = lazy(() => import('./../pages/ParentLoginPage').catch(() => ({ default: () => <div>Error loading Parent Login</div> })));
+const AdminLoginPage = lazy(() => import('./../pages/AdminLoginPage').catch(() => ({ default: () => <div>Error loading Admin Login</div> })));
 
 // Loading fallback component
 const LoadingSpinner = () => (
@@ -147,6 +154,15 @@ const RootLayout = () => {
   );
 };
 
+// MainLayout definition
+const MainLayout = () => (
+  <>
+    <Navbar />
+    <Outlet />
+    <Footer />
+  </>
+);
+
 // Create the router configuration
 export const router = createBrowserRouter([
   {
@@ -155,7 +171,7 @@ export const router = createBrowserRouter([
       <GlobalThemeProvider>
         <AuthProvider>
           <ErrorBoundary>
-            <RootLayout />
+            <MainLayout />
           </ErrorBoundary>
         </AuthProvider>
       </GlobalThemeProvider>
@@ -213,102 +229,6 @@ export const router = createBrowserRouter([
         ]
       },
       {
-        path: 'admin',
-        element: <AdminDashboardLayout />,
-        children: [
-          {
-            path: 'dashboard',
-            element: <AdminDashboardContentLoader />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'students',
-            element: <StudentList />,
-            errorElement: <RouteErrorElement />
-          },
-
-          {
-            path: 'results',
-            element: <AdminResultManagement />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'classes',
-            element: <AdminClassroomManagement />,
-            errorElement: <RouteErrorElement />
-          },
-
-           {
-            path: 'subjects',
-            element: <AdminSubjectManagement />,
-            errorElement: <RouteErrorElement />
-           },
-
-           {
-            path: 'exams',
-            element: <AdminExamsManagement />,
-            errorElement: <RouteErrorElement />
-           },
-           {
-            path: 'lessons',
-            element: <AdminLessonsManagement />,
-            errorElement: <RouteErrorElement />
-           },
-
-           {
-            path: 'attendance',
-            element: <AdminAtendanceMangement />,
-            errorElement: <RouteErrorElement />
-           },
-
-          {
-            path: 'students/add',
-            element: <AddStudentForm />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'teachers',
-            element: <AllTeachers />,
-            errorElement: <RouteErrorElement />
-          },
-       {
-            path: 'teachers/add',
-            element: <AddTeacherForm />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'parents',
-            element: <AllParents />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'parents/add',
-            element: <AddParentForm />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'admins',
-            element: <AllAdmins />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'admins/add',
-            element: <AddAdminForm />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'password-recovery',
-            element: <PasswordRecovery />,
-            errorElement: <RouteErrorElement />
-          },
-          {
-            path: 'settings',
-            element: <SettingsPage />, 
-            errorElement: <RouteErrorElement />
-          },
-        ]
-      },
-      {
         path: 'teacher',
         children: [
           {
@@ -328,11 +248,135 @@ export const router = createBrowserRouter([
           }
         ]
       },
+      {
+        path: 'student-login',
+        element: <StudentLoginPage />, 
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'teacher-login',
+        element: <TeacherLoginPage />, 
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'parent-login',
+        element: <ParentLoginPage />, 
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'admin-login',
+        element: <AdminLoginPage />, 
+        errorElement: <RouteErrorElement />
+      },
       
       {
         path: '*',
         element: <NotFound />,
       }
+    ]
+  },
+  {
+    path: '/admin',
+    element: (
+      <GlobalThemeProvider>
+        <AuthProvider>
+          <ErrorBoundary>
+            <AdminDashboardLayout />
+          </ErrorBoundary>
+        </AuthProvider>
+      </GlobalThemeProvider>
+    ),
+    children: [
+      {
+        path: 'dashboard',
+        element: <AdminDashboardContentLoader />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'students',
+        element: <StudentList />,
+        errorElement: <RouteErrorElement />
+      },
+
+      {
+        path: 'results',
+        element: <AdminResultManagement />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'classes',
+        element: <AdminClassroomManagement />,
+        errorElement: <RouteErrorElement />
+      },
+
+       {
+        path: 'subjects',
+        element: <AdminSubjectManagement />,
+        errorElement: <RouteErrorElement />
+       },
+
+       {
+        path: 'exams',
+        element: <AdminExamsManagement />,
+        errorElement: <RouteErrorElement />
+       },
+       {
+        path: 'lessons',
+        element: <AdminLessonsManagement />,
+        errorElement: <RouteErrorElement />
+       },
+
+       {
+        path: 'attendance',
+        element: <AdminAtendanceMangement />,
+        errorElement: <RouteErrorElement />
+       },
+
+      {
+        path: 'students/add',
+        element: <AddStudentForm />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'teachers',
+        element: <AllTeachers />,
+        errorElement: <RouteErrorElement />
+      },
+   {
+        path: 'teachers/add',
+        element: <AddTeacherForm />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'parents',
+        element: <AllParents />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'parents/add',
+        element: <AddParentForm />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'admins',
+        element: <AllAdmins />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'admins/add',
+        element: <AddAdminForm />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'password-recovery',
+        element: <PasswordRecovery />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'settings',
+        element: <SettingsPage />, 
+        errorElement: <RouteErrorElement />
+      },
     ]
   }
 ]);

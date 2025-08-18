@@ -4,6 +4,9 @@ from teacher.serializers import TeacherSerializer
 from classroom.serializers import ClassroomSerializer
 from subject.serializers import SubjectSerializer
 from classroom.serializers import StudentSerializer
+from teacher.models import Teacher
+from classroom.models import Classroom
+from subject.models import Subject
 from django.utils import timezone
 from datetime import datetime, timedelta
 
@@ -168,19 +171,34 @@ class LessonListSerializer(serializers.ModelSerializer):
         ]
 
 
-class LessonCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating lessons with validation"""
+class LessonCreateSerializer(serializers.Serializer):
+    """Simple serializer for creating lessons"""
     
-    class Meta:
-        model = Lesson
-        fields = [
-            'title', 'description', 'lesson_type', 'difficulty_level',
-            'teacher_id', 'classroom_id', 'subject_id', 'date', 'start_time',
-            'end_time', 'duration_minutes', 'learning_objectives', 'key_concepts',
-            'materials_needed', 'assessment_criteria', 'teacher_notes',
-            'is_recurring', 'recurring_pattern', 'requires_special_equipment',
-            'is_online_lesson'
-        ]
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True)
+    lesson_type = serializers.ChoiceField(choices=Lesson.LESSON_TYPE_CHOICES, default='lecture')
+    difficulty_level = serializers.ChoiceField(choices=Lesson.DIFFICULTY_CHOICES, default='intermediate')
+    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all())
+    classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all())
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
+    date = serializers.DateField()
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    duration_minutes = serializers.IntegerField(min_value=15, max_value=480)
+    learning_objectives = serializers.JSONField(required=False, default=list)
+    key_concepts = serializers.JSONField(required=False, default=list)
+    materials_needed = serializers.JSONField(required=False, default=list)
+    assessment_criteria = serializers.JSONField(required=False, default=list)
+    teacher_notes = serializers.CharField(required=False, allow_blank=True)
+    is_recurring = serializers.BooleanField(required=False, default=False)
+    recurring_pattern = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    requires_special_equipment = serializers.BooleanField(required=False, default=False)
+    is_online_lesson = serializers.BooleanField(required=False, default=False)
+    
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        validated_data['last_modified_by'] = self.context['request'].user
+        return Lesson.objects.create(**validated_data)
     
     def validate(self, data):
         """Enhanced validation for lesson creation"""
@@ -205,7 +223,9 @@ class LessonUpdateSerializer(serializers.ModelSerializer):
             'learning_objectives', 'key_concepts', 'materials_needed',
             'assessment_criteria', 'teacher_notes', 'lesson_notes',
             'student_feedback', 'admin_notes', 'attendance_count',
-            'participation_score', 'resources', 'attachments'
+            'participation_score', 'resources', 'attachments',
+            'requires_special_equipment', 'is_online_lesson', 'is_recurring',
+            'recurring_pattern'
         ]
     
     def validate_status(self, value):

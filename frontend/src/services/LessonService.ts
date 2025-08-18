@@ -79,9 +79,9 @@ export interface LessonCreateData {
   description?: string;
   lesson_type: string;
   difficulty_level: string;
-  teacher_id: number;
-  classroom_id: number;
-  subject_id: number;
+  teacher: number;
+  classroom: number;
+  subject: number;
   date: string;
   start_time: string;
   end_time: string;
@@ -177,7 +177,7 @@ export class LessonService {
       });
 
       const response = await api.get(`${this.baseUrl}/lessons/?${params.toString()}`);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error fetching lessons:', error);
       throw new Error('Failed to fetch lessons');
@@ -190,7 +190,7 @@ export class LessonService {
   static async getLesson(id: number): Promise<Lesson> {
     try {
       const response = await api.get(`${this.baseUrl}/lessons/${id}/`);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error fetching lesson:', error);
       throw new Error('Failed to fetch lesson');
@@ -203,7 +203,7 @@ export class LessonService {
   static async createLesson(data: LessonCreateData): Promise<Lesson> {
     try {
       const response = await api.post(`${this.baseUrl}/lessons/`, data);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error creating lesson:', error);
       if (error.response?.data) {
@@ -219,7 +219,7 @@ export class LessonService {
   static async updateLesson(id: number, data: LessonUpdateData): Promise<Lesson> {
     try {
       const response = await api.patch(`${this.baseUrl}/lessons/${id}/`, data);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error updating lesson:', error);
       if (error.response?.data) {
@@ -286,10 +286,36 @@ export class LessonService {
         status,
         ...data
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error updating lesson status:', error);
       throw new Error('Failed to update lesson status');
+    }
+  }
+
+  /**
+   * Get lesson progress
+   */
+  static async getLessonProgress(id: number): Promise<{ progress: number; lesson: Lesson }> {
+    try {
+      const response = await api.get(`${this.baseUrl}/lessons/${id}/get_progress/`);
+      return response;
+    } catch (error) {
+      console.error('Error getting lesson progress:', error);
+      throw new Error('Failed to get lesson progress');
+    }
+  }
+
+  /**
+   * Update lesson progress
+   */
+  static async updateLessonProgress(id: number): Promise<{ progress: number; lesson: Lesson }> {
+    try {
+      const response = await api.post(`${this.baseUrl}/lessons/${id}/update_progress/`);
+      return response;
+    } catch (error) {
+      console.error('Error updating lesson progress:', error);
+      throw new Error('Failed to update lesson progress');
     }
   }
 
@@ -299,7 +325,7 @@ export class LessonService {
   static async getStatistics(): Promise<LessonStatistics> {
     try {
       const response = await api.get(`${this.baseUrl}/lessons/statistics/`);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error fetching lesson statistics:', error);
       throw new Error('Failed to fetch lesson statistics');
@@ -311,10 +337,8 @@ export class LessonService {
    */
   static async getCalendarLessons(startDate: string, endDate: string): Promise<Lesson[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/lessons/calendar/`, {
-        params: { start_date: startDate, end_date: endDate }
-      });
-      return response.data;
+      const response = await api.get(`${this.baseUrl}/lessons/calendar/?start_date=${startDate}&end_date=${endDate}`);
+      return response;
     } catch (error) {
       console.error('Error fetching calendar lessons:', error);
       throw new Error('Failed to fetch calendar lessons');
@@ -344,7 +368,7 @@ export class LessonService {
       }
 
       const response = await api.get(`${this.baseUrl}/lessons/conflicts/?${params.toString()}`);
-      return response.data.conflicts;
+      return response.conflicts;
     } catch (error) {
       console.error('Error checking conflicts:', error);
       throw new Error('Failed to check scheduling conflicts');
@@ -359,7 +383,7 @@ export class LessonService {
       const response = await api.post(`${this.baseUrl}/lessons/bulk_create/`, {
         lessons
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Error bulk creating lessons:', error);
       if (error.response?.data) {
@@ -478,4 +502,30 @@ export class LessonService {
     };
     return icons[lessonType as keyof typeof icons] || '📖';
   }
+}
+
+// --- Lesson Attendance Service ---
+export interface LessonAttendanceRecordBackend {
+  id: number;
+  lesson: number;
+  student: number;
+  status: 'present' | 'absent' | 'late' | 'excused' | 'sick';
+  arrival_time: string | null;
+  notes: string;
+}
+
+export async function getLessonAttendance(params?: Record<string, any>) {
+  return api.get('/lesson-attendances/', params);
+}
+
+export async function addLessonAttendance(data: Partial<LessonAttendanceRecordBackend>) {
+  return api.post('/lesson-attendances/', data);
+}
+
+export async function updateLessonAttendance(id: number, data: Partial<LessonAttendanceRecordBackend>) {
+  return api.patch(`/lesson-attendances/${id}/`, data);
+}
+
+export async function deleteLessonAttendance(id: number) {
+  return api.delete(`/lesson-attendances/${id}/`);
 }

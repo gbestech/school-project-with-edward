@@ -232,6 +232,31 @@ class ResultService {
     return api.put(`/results/student-results/${resultId}/`, data);
   }
 
+  // Delete a student result
+  async deleteStudentResult(resultId: string) {
+    return api.delete(`/results/student-results/${resultId}/`);
+  }
+
+  // Approve a student result
+  async approveStudentResult(resultId: string) {
+    return api.post(`/results/student-results/${resultId}/approve/`);
+  }
+
+  // Publish a student result
+  async publishStudentResult(resultId: string) {
+    return api.post(`/results/student-results/${resultId}/publish/`);
+  }
+
+  // Get result summary statistics
+  async getResultSummary() {
+    return api.get('/results/student-results/summary/');
+  }
+
+  // Bulk create results
+  async bulkCreateResults(results: any[]) {
+    return api.post('/results/student-results/bulk_create/', { results });
+  }
+
   // Create a new term result
   async createTermResult(data: {
     student: string;

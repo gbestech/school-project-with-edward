@@ -154,7 +154,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
         // Upload logo to backend
         const token = localStorage.getItem('authToken');
-        const response = await fetch('/api/upload-logo/', {
+        const response = await fetch('/api/school-settings/upload-logo/', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -216,7 +216,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
         // Upload favicon to backend
         const token = localStorage.getItem('authToken');
-        const response = await fetch('/api/upload-favicon/', {
+        const response = await fetch('/api/school-settings/upload-favicon/', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`

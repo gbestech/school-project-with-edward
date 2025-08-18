@@ -44,6 +44,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """Complete user profile serializer"""
 
     user = UserBasicSerializer(read_only=True)
+    # Add student_data field
+    student_data = serializers.SerializerMethodField()
 
     # Read-only computed fields from the model
     display_name = serializers.ReadOnlyField()
@@ -81,6 +83,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "profile_image_url",
             "created_at",
             "updated_at",
+            "student_data",  # <-- add here
         ]
         read_only_fields = [
             "id",
@@ -93,6 +96,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "profile_image_url",
             "created_at",
             "updated_at",
+            "student_data",
         ]
 
     def validate_phone_number(self, value):
@@ -128,6 +132,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if value and len(value) > 500:
             raise serializers.ValidationError("Bio cannot exceed 500 characters.")
         return value
+
+    def get_student_data(self, obj):
+        # Return student id and full_name if user is a student
+        user = obj.user
+        # Find the Student object linked to this user
+        try:
+            student = getattr(user, "student_profile", None)
+            if student:
+                return {
+                    "id": student.id,  # This is the correct student ID
+                    "full_name": getattr(student, "full_name", None),
+                }
+        except Exception:
+            pass
+        return None
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):

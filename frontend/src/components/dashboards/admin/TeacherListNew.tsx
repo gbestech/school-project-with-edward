@@ -333,7 +333,8 @@ const TeacherList = () => {
         <img
           src={imageUrl}
           alt={`${teacher.first_name} ${teacher.last_name}`}
-          className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+          className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 bg-gray-100"
+          style={{objectPosition: 'center'}}
           onError={(e) => {
             console.error(`❌ Failed to load image for ${teacher.first_name} ${teacher.last_name}:`, imageUrl);
             // Hide the broken image and show initials instead
@@ -705,7 +706,8 @@ const TeacherList = () => {
                               <img
                                 src={teacher.photo.startsWith('http') ? teacher.photo : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${teacher.photo}`}
                                 alt={`${teacher.first_name} ${teacher.last_name}`}
-                                className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 bg-gray-100"
+                                style={{objectPosition: 'center'}}
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -854,7 +856,8 @@ const TeacherList = () => {
                     <img
                       src={selectedTeacher.photo.startsWith('http') ? selectedTeacher.photo : `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${selectedTeacher.photo}`}
                       alt={`${selectedTeacher.first_name} ${selectedTeacher.last_name}`}
-                      className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                      className="w-32 h-32 rounded-full object-cover border-4 border-gray-200 bg-gray-100"
+                      style={{objectPosition: 'center'}}
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         e.currentTarget.nextElementSibling?.classList.remove('hidden');

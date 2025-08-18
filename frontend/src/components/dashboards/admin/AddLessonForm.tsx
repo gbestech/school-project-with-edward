@@ -20,9 +20,9 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
     description: '',
     lesson_type: 'lecture',
     difficulty_level: 'beginner',
-    teacher_id: 0,
-    classroom_id: 0,
-    subject_id: 0,
+    teacher: 0,
+    classroom: 0,
+    subject: 0,
     date: '',
     start_time: '',
     end_time: '',
@@ -44,8 +44,13 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
 
   // Data for dropdowns
   const [teachers, setTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
-  const [classrooms, setClassrooms] = useState<Array<{ id: number; name: string; section: { name: string; grade_level: { name: string } }; grade_level_name?: string }>>([]);
+  const [classrooms, setClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string }>>([]);
   const [subjects, setSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
+  const [sections, setSections] = useState<Array<{ id: number; name: string; grade_level_name: string }>>([]);
+  const [filteredTeachers, setFilteredTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
+  const [filteredSubjects, setFilteredSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
+  const [filteredClassrooms, setFilteredClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string }>>([]);
+  const [selectedSection, setSelectedSection] = useState<number>(0);
   const [loadingData, setLoadingData] = useState(true);
 
   const themeClasses = {
@@ -68,7 +73,7 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
         
         // Load teachers
         console.log('Loading teachers...');
-        const teachersData = await api.get('/api/teachers/');
+        const teachersData = await api.get('/api/teachers/teachers/');
         console.log('Teachers data:', teachersData);
         setTeachers(Array.isArray(teachersData?.results) ? teachersData.results : Array.isArray(teachersData) ? teachersData : []);
 
@@ -83,6 +88,17 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
         const subjectsData = await api.get('/api/subjects/');
         console.log('Subjects data:', subjectsData);
         setSubjects(Array.isArray(subjectsData?.results) ? subjectsData.results : Array.isArray(subjectsData) ? subjectsData : []);
+
+        // Load sections
+        console.log('Loading sections...');
+        const sectionsData = await api.get('/api/lessons/lessons/classroom_sections/');
+        console.log('Sections data:', sectionsData);
+        setSections(Array.isArray(sectionsData) ? sectionsData : []);
+
+        // Initialize filtered arrays with all data
+        setFilteredTeachers(Array.isArray(teachersData?.results) ? teachersData.results : Array.isArray(teachersData) ? teachersData : []);
+        setFilteredSubjects(Array.isArray(subjectsData?.results) ? subjectsData.results : Array.isArray(subjectsData) ? subjectsData : []);
+        setFilteredClassrooms(Array.isArray(classroomsData?.results) ? classroomsData.results : Array.isArray(classroomsData) ? classroomsData : []);
       } catch (error) {
         console.error('Error loading dropdown data:', error);
         setError('Failed to load form data. Please make sure you are logged in and try again.');
@@ -108,6 +124,100 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
 
   const handleInputChange = (field: keyof LessonCreateData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Handle dependencies
+    if (field === 'teacher') {
+      handleTeacherChange(value);
+    } else if (field === 'subject') {
+      handleSubjectChange(value);
+    } else if (field === 'classroom') {
+      handleClassroomChange(value);
+    }
+  };
+
+  const handleTeacherChange = async (teacherId: number) => {
+    if (teacherId === 0) {
+      // Reset to all options
+      setFilteredSubjects(subjects);
+      setFilteredClassrooms(classrooms);
+      return;
+    }
+
+    try {
+      // Get subjects for this teacher
+      const teacherSubjects = await api.get(`/api/lessons/lessons/teacher_subjects/?teacher_id=${teacherId}`);
+      setFilteredSubjects(Array.isArray(teacherSubjects) ? teacherSubjects : []);
+
+      // Get classrooms for this teacher
+      const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${teacherId}`);
+      setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
+    } catch (error) {
+      console.error('Error loading teacher dependencies:', error);
+    }
+  };
+
+  const handleSubjectChange = async (subjectId: number) => {
+    if (subjectId === 0) {
+      // Reset to all options
+      setFilteredTeachers(teachers);
+      return;
+    }
+
+    try {
+      // Get teachers for this subject
+      const subjectTeachers = await api.get(`/api/lessons/lessons/subject_teachers/?subject_id=${subjectId}`);
+      setFilteredTeachers(Array.isArray(subjectTeachers) ? subjectTeachers : []);
+    } catch (error) {
+      console.error('Error loading subject dependencies:', error);
+    }
+  };
+
+  const handleSectionChange = (sectionId: number) => {
+    setSelectedSection(sectionId);
+    // Reset classroom, subject, and teacher when section changes
+    setFormData(prev => ({ ...prev, classroom: 0, subject: 0, teacher: 0 }));
+    setFilteredTeachers(teachers);
+    setFilteredSubjects(subjects);
+    if (sectionId === 0) {
+      setFilteredClassrooms(classrooms);
+    } else {
+      const filtered = classrooms.filter(classroom => classroom.section?.id === sectionId);
+      setFilteredClassrooms(filtered);
+    }
+  };
+
+  const handleClassroomChange = async (classroomId: number) => {
+    if (classroomId === 0) {
+      // Reset to all subjects
+      setFilteredSubjects(subjects);
+      return;
+    }
+
+    try {
+      // Find the selected classroom to get its grade level
+      const selectedClassroom = classrooms.find(c => c.id === classroomId);
+      if (!selectedClassroom) return;
+
+      // Determine education level based on grade level name
+      let educationLevel = 'PRIMARY'; // default
+      const gradeLevelName = selectedClassroom.section?.grade_level?.name || '';
+      
+      if (gradeLevelName.startsWith('JSS')) {
+        educationLevel = 'JUNIOR_SECONDARY';
+      } else if (gradeLevelName.startsWith('SS')) {
+        educationLevel = 'SENIOR_SECONDARY';
+      } else if (gradeLevelName.includes('Nursery')) {
+        educationLevel = 'NURSERY';
+      }
+
+      // Get subjects for this education level
+      const levelSubjects = await api.get(`/api/lessons/lessons/subjects_by_level/?education_level=${educationLevel}`);
+      setFilteredSubjects(Array.isArray(levelSubjects) ? levelSubjects : []);
+    } catch (error) {
+      console.error('Error loading subjects for education level:', error);
+      // Fallback to all subjects
+      setFilteredSubjects(subjects);
+    }
   };
 
   const addArrayItem = (field: 'learning_objectives' | 'key_concepts' | 'materials_needed' | 'assessment_criteria', value: string) => {
@@ -129,7 +239,7 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim() || !formData.teacher_id || !formData.classroom_id || !formData.subject_id || !formData.date || !formData.start_time || !formData.end_time) {
+    if (!formData.title.trim() || !formData.teacher || !formData.classroom || !formData.subject || !formData.date || !formData.start_time || !formData.end_time) {
       setError('Please fill in all required fields');
       return;
     }
@@ -198,96 +308,63 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} flex items-center space-x-2`}>
-                <BookOpen size={20} className={themeClasses.iconPrimary} />
-                <span>Basic Information</span>
-              </h3>
-
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Lesson Title *</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  placeholder="Enter lesson title"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  rows={3}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  placeholder="Enter lesson description"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Lesson Type</label>
-                  <select
-                    value={formData.lesson_type}
-                    onChange={(e) => handleInputChange('lesson_type', e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  >
-                    {Array.isArray(LessonService.getLessonTypes()) && LessonService.getLessonTypes().map(type => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Difficulty Level</label>
-                  <select
-                    value={formData.difficulty_level}
-                    onChange={(e) => handleInputChange('difficulty_level', e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  >
-                    {Array.isArray(LessonService.getDifficultyLevels()) && LessonService.getDifficultyLevels().map(level => (
-                      <option key={level.value} value={level.value}>{level.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            {/* Lesson Title/Topic - always first */}
+            <div className="col-span-2">
+              <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Lesson Title / Topic <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Enter the topic to be treated in this lesson"
+                required
+              />
+              <span className="text-xs text-gray-400">This is the topic or main focus of the lesson (e.g., 'Algebraic Expressions', 'Photosynthesis').</span>
             </div>
-
-            {/* Assignment */}
+            {/* Short Description under title */}
+            <div className="col-span-2">
+              <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Short Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                rows={2}
+                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                placeholder="Briefly describe the lesson topic or focus (e.g., 'Introduction to basic algebraic concepts')"
+              />
+              <span className="text-xs text-gray-400">Provide a brief summary or context for the lesson topic.</span>
+            </div>
+            {/* Assignment Order: Section -> Classroom -> Subject -> Teacher */}
             <div className="space-y-4">
               <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} flex items-center space-x-2`}>
                 <Users size={20} className={themeClasses.iconPrimary} />
-                <span>Assignment</span>
+                <span>Assignment (Follow the order below)</span>
               </h3>
 
+              {/* 1. Section/Grade Level */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Teacher *</label>
+                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Section / Grade Level <span className="text-xs text-gray-400">(Start here)</span></label>
                 <select
-                  value={formData.teacher_id}
-                  onChange={(e) => handleInputChange('teacher_id', parseInt(e.target.value))}
+                  value={selectedSection}
+                  onChange={(e) => handleSectionChange(parseInt(e.target.value))}
                   className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  required
                   disabled={loadingData}
                 >
-                  <option value={0}>
-                    {loadingData ? 'Loading teachers...' : 'Select a teacher'}
-                  </option>
-                  {Array.isArray(teachers) && teachers.map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.user.full_name || `${teacher.user.first_name} ${teacher.user.last_name}`}
+                  <option value={0}>All Sections</option>
+                  {Array.isArray(sections) && sections.map(section => (
+                    <option key={section.id} value={section.id}>
+                      {section.name} - {section.grade_level_name}
                     </option>
                   ))}
                 </select>
+                <span className="text-xs text-gray-400">Select a section to filter classrooms. <span className="text-orange-500">Changing section/grade will reset classroom, subject, and teacher selections.</span></span>
               </div>
 
+              {/* 2. Classroom */}
               <div>
                 <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Classroom *</label>
                 <select
-                  value={formData.classroom_id}
-                  onChange={(e) => handleInputChange('classroom_id', parseInt(e.target.value))}
+                  value={formData.classroom}
+                  onChange={(e) => handleInputChange('classroom', parseInt(e.target.value))}
                   className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   required
                   disabled={loadingData}
@@ -295,19 +372,21 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
                   <option value={0}>
                     {loadingData ? 'Loading classrooms...' : 'Select a classroom'}
                   </option>
-                  {Array.isArray(classrooms) && classrooms.map(classroom => (
+                  {Array.isArray(filteredClassrooms) && filteredClassrooms.map(classroom => (
                     <option key={classroom.id} value={classroom.id}>
                       {classroom.name} - {classroom.grade_level_name || classroom.section?.grade_level?.name || 'Unknown Grade'}
                     </option>
                   ))}
                 </select>
+                <span className="text-xs text-gray-400">Select a classroom to filter subjects.</span>
               </div>
 
+              {/* 3. Subject */}
               <div>
                 <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Subject *</label>
                 <select
-                  value={formData.subject_id}
-                  onChange={(e) => handleInputChange('subject_id', parseInt(e.target.value))}
+                  value={formData.subject}
+                  onChange={(e) => handleInputChange('subject', parseInt(e.target.value))}
                   className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   required
                   disabled={loadingData}
@@ -315,17 +394,41 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
                   <option value={0}>
                     {loadingData ? 'Loading subjects...' : 'Select a subject'}
                   </option>
-                  {Array.isArray(subjects) && subjects.map(subject => (
+                  {Array.isArray(filteredSubjects) && filteredSubjects.map(subject => (
                     <option key={subject.id} value={subject.id}>
                       {subject.name} ({subject.code})
                     </option>
                   ))}
                 </select>
+                <span className="text-xs text-gray-400">Select a subject to filter teachers.</span>
+              </div>
+
+              {/* 4. Teacher */}
+              <div>
+                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Teacher *</label>
+                <select
+                  value={formData.teacher}
+                  onChange={(e) => handleInputChange('teacher', parseInt(e.target.value))}
+                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  required
+                  disabled={loadingData}
+                >
+                  <option value={0}>
+                    {loadingData ? 'Loading teachers...' : 'Select a teacher'}
+                  </option>
+                  {Array.isArray(filteredTeachers) && filteredTeachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.user.full_name || `${teacher.user.first_name} ${teacher.user.last_name}`}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">Choose a teacher for this subject and classroom.</span>
               </div>
             </div>
 
-            {/* Scheduling */}
+            {/* Scheduling and Details (unchanged) */}
             <div className="space-y-4">
+              {/* Scheduling */}
               <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} flex items-center space-x-2`}>
                 <Calendar size={20} className={themeClasses.iconPrimary} />
                 <span>Scheduling</span>

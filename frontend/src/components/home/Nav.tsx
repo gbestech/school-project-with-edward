@@ -145,20 +145,6 @@ const Nav: React.FC = () => {
 
           {/* Desktop Navigation */}
           <div ref={navRef} className="hidden lg:flex items-center space-x-8">
-            {/* Home */}
-            <NavLink 
-              to="/" 
-              className={({ isActive }: { isActive: boolean }) => 
-                `text-sm font-medium transition-colors duration-200 flex items-center space-x-1 ${
-                  isActive 
-                    ? 'text-blue-600 dark:text-blue-400' 
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
-                }`
-              }
-            >
-              <Home className="w-4 h-4" />
-              <span>Home</span>
-            </NavLink>
 
             {/* About Dropdown */}
             <div className="relative">
@@ -327,7 +313,7 @@ const Nav: React.FC = () => {
                       <span>Prospective Students</span>
                     </NavLink>
                     <NavLink
-                      to="/portal/parents"
+                      to="/parent-login"
                       className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                       onClick={closeAllDropdowns}
                     >
@@ -335,7 +321,7 @@ const Nav: React.FC = () => {
                       <span>Parents</span>
                     </NavLink>
                     <NavLink
-                      to="/portal/staff"
+                      to="/teacher-login"
                       className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                       onClick={closeAllDropdowns}
                     >
@@ -343,7 +329,7 @@ const Nav: React.FC = () => {
                       <span>Staff</span>
                     </NavLink>
                     <NavLink
-                      to="/portal/returning-students"
+                      to="/student-login"
                       className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                       onClick={closeAllDropdowns}
                     >
@@ -351,7 +337,7 @@ const Nav: React.FC = () => {
                       <span>Returning Students</span>
                     </NavLink>
                     <NavLink
-                      to="/portal/admin"
+                      to="/admin-login"
                       className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                       onClick={closeAllDropdowns}
                     >
@@ -362,6 +348,9 @@ const Nav: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Login Dropdown */}
+            
           </div>
 
           {/* Right Side Actions */}
@@ -447,12 +436,12 @@ const Nav: React.FC = () => {
                 >
                   Login
                 </NavLink>
-                <NavLink
+                {/* <NavLink
                   to="/register"
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105 border border-blue-500/20"
                 >
                   Sign Up
-                </NavLink>
+                </NavLink> */}
               </div>
             )}
 
@@ -574,7 +563,7 @@ const Nav: React.FC = () => {
                   <span>Prospective Students</span>
                 </NavLink>
                 <NavLink
-                  to="/portal/parents"
+                  to="/parent-login"
                   className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -582,7 +571,7 @@ const Nav: React.FC = () => {
                   <span>Parents</span>
                 </NavLink>
                 <NavLink
-                  to="/portal/staff"
+                  to="/teacher-login"
                   className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -590,7 +579,7 @@ const Nav: React.FC = () => {
                   <span>Staff</span>
                 </NavLink>
                 <NavLink
-                  to="/portal/returning-students"
+                  to="/student-login"
                   className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -598,7 +587,7 @@ const Nav: React.FC = () => {
                   <span>Returning Students</span>
                 </NavLink>
                 <NavLink
-                  to="/portal/admin"
+                  to="/admin-login"
                   className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >

@@ -18,7 +18,7 @@ class Attendance(models.Model):
         Student, on_delete=models.CASCADE, related_name="attendances"
     )
     teacher = models.ForeignKey(
-        Teacher, on_delete=models.CASCADE, related_name="attendances"
+        Teacher, on_delete=models.CASCADE, related_name="attendances", null=True, blank=True
     )
     section = models.ForeignKey(
         Section, on_delete=models.CASCADE, related_name="attendances"

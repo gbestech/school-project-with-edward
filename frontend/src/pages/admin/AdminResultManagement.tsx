@@ -1,9 +1,10 @@
 import React from 'react'
-import ResultManagement from '@/components/dashboards/admin/AdminResult'
+import ResultManagement from '@/components/dashboards/admin/ResultManagement'
+
 const AdminResultManagement = () => {
   return (
     <div>
-      <ResultManagement/>
+      <ResultManagement />
     </div>
   )
 }

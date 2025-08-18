@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Avg, Count, Max, Min
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from .models import (
     StudentResult, 
@@ -84,6 +85,55 @@ class StudentResultViewSet(viewsets.ModelViewSet):
             'student', 'subject', 'exam_session', 'grading_system'
         ).prefetch_related('assessment_scores', 'comments')
 
+    def create(self, request, *args, **kwargs):
+        """Create a new student result with automatic calculations"""
+        try:
+            # Set the user who is creating the result
+            request.data['entered_by'] = request.user.id
+            
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            result = serializer.save()
+            
+            # Return detailed response
+            detailed_serializer = DetailedStudentResultSerializer(result)
+            return Response(detailed_serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to create result: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def update(self, request, *args, **kwargs):
+        """Update a student result with automatic recalculations"""
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            result = serializer.save()
+            
+            # Return detailed response
+            detailed_serializer = DetailedStudentResultSerializer(result)
+            return Response(detailed_serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to update result: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a student result"""
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response({'message': 'Result deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to delete result: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
     @action(detail=False, methods=['get'])
     def by_student(self, request):
         """Get all results for a specific student"""
@@ -143,6 +193,87 @@ class StudentResultViewSet(viewsets.ModelViewSet):
         )
         
         return Response(stats)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """Approve a student result"""
+        try:
+            result = self.get_object()
+            result.status = 'APPROVED'
+            result.approved_by = request.user
+            result.approved_date = timezone.now()
+            result.save()
+            
+            serializer = DetailedStudentResultSerializer(result)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to approve result: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        """Publish a student result"""
+        try:
+            result = self.get_object()
+            result.status = 'PUBLISHED'
+            result.save()
+            
+            serializer = DetailedStudentResultSerializer(result)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to publish result: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_create(self, request):
+        """Create multiple results at once"""
+        try:
+            results_data = request.data.get('results', [])
+            created_results = []
+            
+            for result_data in results_data:
+                result_data['entered_by'] = request.user.id
+                serializer = self.get_serializer(data=result_data)
+                serializer.is_valid(raise_exception=True)
+                result = serializer.save()
+                created_results.append(result)
+            
+            detailed_serializer = DetailedStudentResultSerializer(created_results, many=True)
+            return Response(detailed_serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to create results: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """Get summary statistics for all results"""
+        try:
+            queryset = self.get_queryset()
+            
+            summary = {
+                'total_results': queryset.count(),
+                'approved_results': queryset.filter(status='APPROVED').count(),
+                'published_results': queryset.filter(status='PUBLISHED').count(),
+                'draft_results': queryset.filter(status='DRAFT').count(),
+                'passed_results': queryset.filter(is_passed=True).count(),
+                'failed_results': queryset.filter(is_passed=False).count(),
+                'average_score': queryset.aggregate(Avg('total_score'))['total_score__avg'] or 0,
+                'highest_score': queryset.aggregate(Max('total_score'))['total_score__max'] or 0,
+                'lowest_score': queryset.aggregate(Min('total_score'))['total_score__min'] or 0,
+            }
+            
+            return Response(summary)
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to get summary: {str(e)}'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class StudentTermResultViewSet(viewsets.ModelViewSet):

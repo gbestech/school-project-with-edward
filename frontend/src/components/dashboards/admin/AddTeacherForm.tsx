@@ -112,7 +112,7 @@ const AddTeacherForm: React.FC = () => {
             const [teacherUsername, setTeacherUsername] = useState<string | null>(null);
           const [teacherPassword, setTeacherPassword] = useState<string | null>(null);
           const [showPasswordModal, setShowPasswordModal] = useState(false);
-          const [subjectOptions, setSubjectOptions] = useState<Array<{ id: string; name: string }>>([]);
+          const [subjectOptions, setSubjectOptions] = useState<Array<{ id: string; name: string; education_levels?: string[] }>>([]);
           const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
           const [gradeLevelOptions, setGradeLevelOptions] = useState<Array<{ id: string | number; name: string; education_level: string }>>([]);
           const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string; grade_level_id: string | number }>>([]);
@@ -140,7 +140,7 @@ const AddTeacherForm: React.FC = () => {
           .then(res => res.json())
           .then(data => {
             const subjects = Array.isArray(data.results) ? data.results : data;
-            setSubjectOptions(subjects.map((s: any) => ({ id: s.id, name: s.name })));
+            setSubjectOptions(subjects.map((s: any) => ({ id: s.id, name: s.name, education_levels: s.education_levels })));
             // For nursery/primary, auto-select all
             if (formData.level === 'nursery' || formData.level === 'primary') {
               setFormData(prev => ({ ...prev, subjects: subjects.map((s: any) => s.id) }));
@@ -693,17 +693,41 @@ const AddTeacherForm: React.FC = () => {
             ) : (
               <div className="bg-gray-50 p-4 rounded border border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {subjectOptions.map(subj => (
-                    <label key={subj.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-100 p-3 rounded-lg transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={formData.subjects.includes(subj.id)}
-                        onChange={(e) => handleSubjectChange(subj.id, e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-sm text-gray-700 font-medium">{subj.name}</span>
-                    </label>
-                  ))}
+                  {subjectOptions
+                    // Filter: Only show subjects that include the selected education level
+                    .filter(subj => {
+                      const levelMap: Record<string, string> = { nursery: 'NURSERY', primary: 'PRIMARY', junior_secondary: 'JUNIOR_SECONDARY', senior_secondary: 'SENIOR_SECONDARY' };
+                      const levelKey = formData.level as keyof typeof levelMap;
+                      const educationLevel = levelMap[levelKey] || formData.level;
+                      return subj.education_levels && subj.education_levels.includes(educationLevel);
+                    })
+                    // Remove duplicates by name+education_levels
+                    .filter((subj, idx, arr) =>
+                      arr.findIndex(s => s.name === subj.name && JSON.stringify(s.education_levels) === JSON.stringify(subj.education_levels)) === idx
+                    )
+                    .map(subj => (
+                      <label key={subj.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-100 p-3 rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.subjects.includes(subj.id)}
+                          onChange={(e) => handleSubjectChange(subj.id, e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                        />
+                        <span className="text-sm text-gray-700 font-medium">{subj.name}</span>
+                        {/* Show education level badge */}
+                        <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700">
+                          {subj.education_levels && subj.education_levels.length > 0
+                            ? subj.education_levels.map(lvl => {
+                                if (lvl === 'NURSERY') return 'Nursery';
+                                if (lvl === 'PRIMARY') return 'Primary';
+                                if (lvl === 'JUNIOR_SECONDARY') return 'Jnr Sec.';
+                                if (lvl === 'SENIOR_SECONDARY') return 'Snr Sec.';
+                                return lvl;
+                              }).join(', ')
+                            : 'Unknown'}
+                        </span>
+                      </label>
+                    ))}
                 </div>
                 {subjectOptions.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-200">

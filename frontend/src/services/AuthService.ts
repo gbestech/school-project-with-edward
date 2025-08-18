@@ -497,11 +497,10 @@ export class AuthService {
   async login(credentials: LoginCredentials): Promise<ApiResponse> {
     try {
        console.log('Sending login request with:', credentials);
-      const response = await fetch(`${this.baseUrl}/auth/login/`, {
+      const response = await fetch(`${this.baseUrl}/auth/token/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': this.getCSRFToken(),
         },
         body: JSON.stringify({
           username: credentials.username,
@@ -580,12 +579,17 @@ export class AuthService {
 
   // Authentication success handler
   private handleAuthSuccess(data: any): void {
-    const token = data.access_token || data.access || data.token || data.key;
+    const token = data.access || data.access_token || data.token || data.key;
     
     if (token) {
       this.storeToken(token);
+      console.log('Token stored successfully');
+    } else {
+      console.warn('No token found in response:', data);
     }
     
+    // For JWT, we might need to decode the token to get user info
+    // or make a separate call to get user data
     const userData = data.user || data.data?.user;
     if (userData) {
       try {

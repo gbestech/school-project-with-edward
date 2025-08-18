@@ -60,6 +60,9 @@ ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN echo "Building with VITE_API_URL: $VITE_API_URL"
 RUN echo "Building with VITE_GOOGLE_CLIENT_ID: $VITE_GOOGLE_CLIENT_ID"
 
+# Debug: List contents of /app/src/services before build
+RUN ls -l /app/src/services
+
 # build Vite
 RUN pnpm run build
 

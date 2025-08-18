@@ -27,6 +27,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     emergency_contacts = serializers.SerializerMethodField()
     profile_picture = serializers.SerializerMethodField()
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    section_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -55,6 +56,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             "parents",
             "profile_picture",
             "classroom",
+            "section_id",
         ]
         read_only_fields = ["id", "admission_date", "education_level"]
 
@@ -121,6 +123,17 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             return obj.user.profile_picture
         
         # Return null if no profile picture
+        return None
+
+    def get_section_id(self, obj):
+        # Try to get the section PK from the classroom or enrollment
+        if obj.classroom:
+            from classroom.models import Classroom
+            try:
+                classroom = Classroom.objects.get(name=obj.classroom)
+                return classroom.section_id
+            except Classroom.DoesNotExist:
+                return None
         return None
 
     def validate_student_class(self, value):
@@ -207,6 +220,7 @@ class StudentListSerializer(serializers.ModelSerializer):
     parent_count = serializers.SerializerMethodField()
     profile_picture = serializers.SerializerMethodField()
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    section_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -225,6 +239,7 @@ class StudentListSerializer(serializers.ModelSerializer):
             "admission_date",
             "profile_picture",
             "classroom",
+            "section_id",
         ]
 
     def get_full_name(self, obj):
@@ -249,6 +264,16 @@ class StudentListSerializer(serializers.ModelSerializer):
             return obj.user.profile_picture
         
         # Return null if no profile picture
+        return None
+
+    def get_section_id(self, obj):
+        if obj.classroom:
+            from classroom.models import Classroom
+            try:
+                classroom = Classroom.objects.get(name=obj.classroom)
+                return classroom.section_id
+            except Classroom.DoesNotExist:
+                return None
         return None
 
 

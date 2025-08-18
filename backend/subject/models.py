@@ -108,7 +108,15 @@ class Subject(models.Model):
         help_text="Specific grade levels where this subject is taught",
     )
 
-
+    # Parent subject for component subjects (e.g., Basic Science is a component of Basic Science and Technology)
+    parent_subject = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="component_subjects",
+        help_text="Parent subject for component subjects (e.g., Basic Science and Technology for Basic Science)",
+    )
 
     # Subject requirements and classification
     is_compulsory = models.BooleanField(
@@ -504,3 +512,127 @@ class Subject(models.Model):
             "nursery_activities": "🎈",
         }
         return f"{icons.get(self.category, '📖')} {self.get_category_display()}"
+
+    # Enhanced backend identification methods
+    def get_education_level_from_code(self):
+        """Extract education level from subject code"""
+        code_suffixes = {
+            '-NUR': 'NURSERY',
+            '-PRI': 'PRIMARY',
+            '-JSS': 'JUNIOR_SECONDARY',
+            '-SSS': 'SENIOR_SECONDARY'
+        }
+        
+        for suffix, level in code_suffixes.items():
+            if self.code.endswith(suffix):
+                return level
+        return None
+
+    def is_component_subject(self):
+        """Check if this is a component subject (has parent)"""
+        return self.parent_subject is not None
+
+    def is_parent_subject(self):
+        """Check if this is a parent subject (has components)"""
+        return self.component_subjects.exists()
+
+    def get_component_subjects_for_level(self, education_level):
+        """Get component subjects for a specific education level"""
+        if not self.is_parent_subject():
+            return []
+        
+        return self.component_subjects.filter(
+            education_levels__contains=[education_level],
+            is_active=True
+        )
+
+    def get_display_name_for_level(self, education_level):
+        """Get appropriate display name for specific education level"""
+        if education_level == 'JUNIOR_SECONDARY' and self.is_component_subject():
+            # For JSS, show component name
+            return self.name
+        elif self.is_parent_subject():
+            # For other levels, show parent name
+            return self.name
+        else:
+            return self.name
+
+    def get_unique_identifier(self):
+        """Get a unique identifier combining name and education level"""
+        level = self.get_education_level_from_code()
+        if level:
+            return f"{self.name}_{level}"
+        return f"{self.name}_{self.code}"
+
+    @classmethod
+    def get_subjects_by_education_level(cls, education_level):
+        """Get all subjects for a specific education level with proper filtering"""
+        # Use code suffix for better backend differentiation
+        code_suffixes = {
+            'NURSERY': '-NUR',
+            'PRIMARY': '-PRI',
+            'JUNIOR_SECONDARY': '-JSS',
+            'SENIOR_SECONDARY': '-SSS'
+        }
+        
+        suffix = code_suffixes.get(education_level)
+        if not suffix:
+            return []
+        
+        subjects = cls.objects.filter(
+            code__endswith=suffix,
+            is_active=True
+        )
+        
+        if education_level == 'JUNIOR_SECONDARY':
+            # For JSS, show component subjects instead of parent subjects
+            parent_subjects = subjects.filter(component_subjects__isnull=False).distinct()
+            component_subjects = cls.objects.filter(
+                parent_subject__in=parent_subjects,
+                is_active=True
+            )
+            # Add regular subjects (non-components)
+            regular_subjects = subjects.filter(parent_subject__isnull=True)
+            return list(component_subjects) + list(regular_subjects)
+        else:
+            # For other levels, exclude component subjects
+            return subjects.filter(parent_subject__isnull=True)
+
+    @classmethod
+    def get_parent_subjects_by_level(cls, education_level):
+        """Get only parent subjects for a specific education level"""
+        code_suffixes = {
+            'NURSERY': '-NUR',
+            'PRIMARY': '-PRI',
+            'JUNIOR_SECONDARY': '-JSS',
+            'SENIOR_SECONDARY': '-SSS'
+        }
+        
+        suffix = code_suffixes.get(education_level)
+        if not suffix:
+            return cls.objects.none()
+        
+        return cls.objects.filter(
+            code__endswith=suffix,
+            component_subjects__isnull=False,
+            is_active=True
+        ).distinct()
+
+    @classmethod
+    def get_component_subjects_by_level(cls, education_level):
+        """Get only component subjects for a specific education level"""
+        code_suffixes = {
+            'NURSERY': '-NUR',
+            'PRIMARY': '-PRI',
+            'JUNIOR_SECONDARY': '-JSS',
+            'SENIOR_SECONDARY': '-SSS'
+        }
+        
+        suffix = code_suffixes.get(education_level)
+        if not suffix:
+            return cls.objects.none()
+        
+        return cls.objects.filter(
+            parent_subject__code__endswith=suffix,
+            is_active=True
+        )

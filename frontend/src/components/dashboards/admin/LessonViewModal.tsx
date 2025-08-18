@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Calendar, 
@@ -8,11 +8,9 @@ import {
   Target, 
   FileText, 
   Package,
-  Wifi,
   AlertTriangle,
   CheckCircle,
   Play,
-  Pause,
   StopCircle,
   ChevronRight,
   ChevronDown,
@@ -20,34 +18,62 @@ import {
   TrendingUp,
   BarChart3,
   Download,
-  Share2,
   Edit,
   Eye,
-  Bookmark,
   MessageCircle,
-  Award,
-  Zap,
-  Lightbulb,
-  GraduationCap,
   Trophy,
   Heart,
-  Sparkles
+  Sparkles,
+  Lightbulb,
+  Zap
 } from 'lucide-react';
 import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, LessonService } from '../../../services/LessonService';
+import { Lesson, getLessonAttendance, updateLessonAttendance, LessonAttendanceRecordBackend } from '../../../services/LessonService';
+import LessonProgressTracker from './LessonProgressTracker';
 
 interface LessonViewModalProps {
   lesson: Lesson;
   onClose: () => void;
   onEdit: () => void;
+  onLessonUpdate?: (lesson: Lesson) => void;
 }
 
-type TabType = 'overview' | 'details' | 'progress' | 'resources';
+type TabType = 'overview' | 'details' | 'progress' | 'resources' | 'attendance';
 
-const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEdit }) => {
+const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEdit, onLessonUpdate }) => {
   const { isDarkMode } = useGlobalTheme();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [expandedSections, setExpandedSections] = useState<string[]>(['overview']);
+  const [attendanceTabLoading, setAttendanceTabLoading] = useState(false);
+  const [attendanceTabError, setAttendanceTabError] = useState<string | null>(null);
+  const [lessonAttendance, setLessonAttendance] = useState<LessonAttendanceRecordBackend[]>([]);
+
+  // Fetch lesson attendance when attendance tab is active
+  useEffect(() => {
+    if (activeTab === 'attendance') {
+      setAttendanceTabLoading(true);
+      setAttendanceTabError(null);
+      getLessonAttendance({ lesson_id: lesson.id })
+        .then((data) => setLessonAttendance(data.results || data))
+        .catch(() => setAttendanceTabError('Failed to load attendance'))
+        .finally(() => setAttendanceTabLoading(false));
+    }
+  }, [activeTab, lesson.id]);
+
+  const handleAttendanceStatusChange = async (record: LessonAttendanceRecordBackend, newStatus: string) => {
+    setAttendanceTabLoading(true);
+    setAttendanceTabError(null);
+    try {
+      await updateLessonAttendance(record.id, { status: newStatus as LessonAttendanceRecordBackend['status'] });
+      setLessonAttendance((prev) => prev.map((r) => r.id === record.id ? { ...r, status: newStatus as LessonAttendanceRecordBackend['status'] } : r));
+    } catch {
+      setAttendanceTabError('Failed to update attendance');
+    } finally {
+      setAttendanceTabLoading(false);
+    }
+  };
+
+  const attendanceStatuses = ['present', 'absent', 'late', 'excused', 'sick'];
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -105,6 +131,7 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
     { id: 'details', label: 'Details', icon: <FileText size={16} /> },
     { id: 'progress', label: 'Progress', icon: <TrendingUp size={16} /> },
     { id: 'resources', label: 'Resources', icon: <Package size={16} /> },
+    { id: 'attendance', label: 'Attendance', icon: <Users size={16} /> },
   ];
 
   return (
@@ -432,6 +459,21 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
 
           {activeTab === 'progress' && (
             <div className="space-y-6">
+              {/* Progress Tracker */}
+              <LessonProgressTracker
+                lesson={lesson}
+                onProgressUpdate={(updatedLesson) => {
+                  if (onLessonUpdate) {
+                    onLessonUpdate(updatedLesson);
+                  }
+                }}
+                onStatusChange={(updatedLesson) => {
+                  if (onLessonUpdate) {
+                    onLessonUpdate(updatedLesson);
+                  }
+                }}
+              />
+
               {/* Progress Overview */}
               <div className={`${themeClasses.bgSecondary} rounded-2xl p-6 border ${themeClasses.border}`}>
                 <div className="flex items-center space-x-2 mb-6">
@@ -534,6 +576,54 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
                     <div className="text-sm text-purple-700">Attendance</div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'attendance' && (
+            <div className="space-y-6">
+              <div className="flex items-center mb-4">
+                <Users size={20} className={themeClasses.iconPrimary} />
+                <h3 className="text-lg font-semibold ml-2">Lesson Attendance</h3>
+              </div>
+              {attendanceTabLoading && <div className="text-blue-600">Loading attendance...</div>}
+              {attendanceTabError && <div className="text-red-600">{attendanceTabError}</div>}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arrival Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {lessonAttendance.map((record) => (
+                      <tr key={record.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.student}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <select
+                            value={record.status}
+                            onChange={(e) => handleAttendanceStatusChange(record, e.target.value)}
+                            className="px-2 py-1 border rounded"
+                            disabled={attendanceTabLoading}
+                          >
+                            {attendanceStatuses.map((status) => (
+                              <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.arrival_time || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.notes || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {/* Optionally add delete/edit buttons here */}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

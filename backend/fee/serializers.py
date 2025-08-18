@@ -539,8 +539,8 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
     education_level_display = serializers.CharField(
         source="get_education_level_display", read_only=True
     )
-
-    # Fee summary
+    profile_picture = serializers.CharField(read_only=True)
+    admission_date = serializers.DateField(read_only=True)
     total_fees = serializers.SerializerMethodField()
     total_paid = serializers.SerializerMethodField()
     total_balance = serializers.SerializerMethodField()
@@ -548,6 +548,11 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
     pending_count = serializers.SerializerMethodField()
     recent_payments = serializers.SerializerMethodField()
     active_payment_plans = serializers.SerializerMethodField()
+    upcoming_assignments = serializers.SerializerMethodField()
+    recent_grades = serializers.SerializerMethodField()
+    today_schedule = serializers.SerializerMethodField()
+    notifications = serializers.SerializerMethodField()
+    attendance_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
@@ -556,6 +561,8 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
             "student_name",
             "student_class_display",
             "education_level_display",
+            "profile_picture",
+            "admission_date",
             "total_fees",
             "total_paid",
             "total_balance",
@@ -563,6 +570,11 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
             "pending_count",
             "recent_payments",
             "active_payment_plans",
+            "upcoming_assignments",
+            "recent_grades",
+            "today_schedule",
+            "notifications",
+            "attendance_summary",
         ]
 
     def get_current_session(self):
@@ -620,6 +632,104 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
             student_fee__student=obj, is_active=True, is_completed=False
         )
         return PaymentPlanSerializer(active_plans, many=True).data
+
+    def get_upcoming_assignments(self, obj):
+        from lesson.models import LessonAssessment
+        from datetime import datetime
+        now = datetime.now()
+        # Get assignments for lessons in the student's classes, due in the future
+        return [
+            {
+                "id": a.id,
+                "title": a.title,
+                "description": a.description,
+                "due_date": a.due_date,
+                "lesson": str(a.lesson),
+                "assessment_type": a.assessment_type,
+            }
+            for a in LessonAssessment.objects.filter(
+                lesson__classroom__students=obj,
+                due_date__gte=now
+            ).order_by("due_date")[:5]
+        ]
+
+    def get_recent_grades(self, obj):
+        from result.models import StudentResult
+        # Get the 5 most recent results for this student
+        return [
+            {
+                "id": r.id,
+                "subject": str(r.subject),
+                "exam_session": str(r.exam_session),
+                "total_score": r.total_score,
+                "grade": r.grade,
+                "status": r.status,
+                "created_at": r.created_at,
+            }
+            for r in StudentResult.objects.filter(student=obj).order_by("-created_at")[:5]
+        ]
+
+    def get_today_schedule(self, obj):
+        from lesson.models import Lesson
+        from datetime import date
+        today = date.today()
+        # Lessons for today in the student's classes
+        return [
+            {
+                "id": l.id,
+                "title": l.title,
+                "subject": str(l.subject),
+                "start_time": l.start_time,
+                "end_time": l.end_time,
+                "teacher": str(l.teacher),
+            }
+            for l in Lesson.objects.filter(
+                classroom__students=obj,
+                date=today
+            ).order_by("start_time")
+        ]
+
+    def get_notifications(self, obj):
+        from schoolSettings.models import SchoolAnnouncement
+        from django.utils import timezone
+        now = timezone.now()
+        # Announcements targeted to students, active, and current
+        return [
+            {
+                "id": n.id,
+                "title": n.title,
+                "content": n.content,
+                "announcement_type": n.announcement_type,
+                "start_date": n.start_date,
+                "end_date": n.end_date,
+            }
+            for n in SchoolAnnouncement.objects.filter(
+                is_active=True,
+                start_date__lte=now,
+            ).filter(
+                end_date__isnull=True
+            ) | SchoolAnnouncement.objects.filter(
+                is_active=True,
+                start_date__lte=now,
+                end_date__gte=now
+            )
+            if "student" in (n.target_audience or [])
+        ][:5]
+
+    def get_attendance_summary(self, obj):
+        from attendance.models import Attendance
+        total = Attendance.objects.filter(student=obj).count()
+        present = Attendance.objects.filter(student=obj, status="P").count()
+        absent = Attendance.objects.filter(student=obj, status="A").count()
+        late = Attendance.objects.filter(student=obj, status="L").count()
+        excused = Attendance.objects.filter(student=obj, status="E").count()
+        return {
+            "total": total,
+            "present": present,
+            "absent": absent,
+            "late": late,
+            "excused": excused,
+        }
 
 
 class FeeDiscountSerializer(serializers.ModelSerializer):

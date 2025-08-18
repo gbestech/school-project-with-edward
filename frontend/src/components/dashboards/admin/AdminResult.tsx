@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import ResultService, { StudentTermResult, ExamSession } from '../../../services/ResultService';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAbsoluteUrl } from '@/utils/urlUtils';
+import { Eye, Edit, Trash2, Download, Printer } from 'lucide-react';
 
 interface SubjectResult {
   id: string;
@@ -90,6 +91,13 @@ const SchoolResultTemplate = () => {
   const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null);
   const [showModal, setShowModal] = useState(false);
 
+  // Edit/Delete states
+  const [editingResult, setEditingResult] = useState<StudentResult | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [resultToDelete, setResultToDelete] = useState<StudentResult | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   // Load data from API
   useEffect(() => {
     const loadData = async () => {
@@ -136,6 +144,14 @@ const SchoolResultTemplate = () => {
     );
   }, [studentResults, classFilter, yearFilter, termFilter, sectionFilter, search]);
 
+  // Safe average score calculation
+  const getSafeAverageScore = (student: StudentResult): string => {
+    if (student.average_score === null || student.average_score === undefined || isNaN(student.average_score)) {
+      return 'N/A';
+    }
+    return student.average_score.toFixed(1) + '%';
+  };
+
   const handleRowClick = (student: StudentResult): void => {
     setSelectedStudent(student);
     setShowModal(true);
@@ -146,8 +162,43 @@ const SchoolResultTemplate = () => {
     setSelectedStudent(null);
   };
 
+  const handleEdit = (student: StudentResult) => {
+    setEditingResult(student);
+    setShowEditModal(true);
+  };
+
+  const handleDelete = (student: StudentResult) => {
+    setResultToDelete(student);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!resultToDelete) return;
+    
+    try {
+      setActionLoading('delete');
+      await ResultService.deleteStudentResult(resultToDelete.id);
+      
+      // Remove from local state
+      setStudentResults(prev => prev.filter(r => r.id !== resultToDelete.id));
+      setShowDeleteModal(false);
+      setResultToDelete(null);
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      alert('Failed to delete result. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownload = (student: StudentResult) => {
+    // Implement PDF download functionality
+    console.log('Downloading result for:', student.student.full_name);
+    // You can implement PDF generation here
   };
 
   const getGradeColor = (grade: string) => {
@@ -255,7 +306,7 @@ const SchoolResultTemplate = () => {
               <th className="px-4 py-3 border text-left font-semibold">Year</th>
               <th className="px-4 py-3 border text-left font-semibold">Average</th>
               <th className="px-4 py-3 border text-left font-semibold">Grade</th>
-              <th className="px-4 py-3 border text-left font-semibold">Action</th>
+              <th className="px-4 py-3 border text-left font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -270,19 +321,43 @@ const SchoolResultTemplate = () => {
                   <td className="border px-4 py-3">{student.student.student_class}</td>
                   <td className="border px-4 py-3">{getTermDisplay(student.term)}</td>
                   <td className="border px-4 py-3">{student.academic_session.name}</td>
-                  <td className="border px-4 py-3 text-center font-semibold">{student.average_score.toFixed(1)}%</td>
+                  <td className="border px-4 py-3 text-center font-semibold">{getSafeAverageScore(student)}</td>
                   <td className="border px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${getGradeColor(student.subject_results[0]?.grade || 'F')}`}>
                       {student.subject_results[0]?.grade || 'N/A'}
                     </span>
                   </td>
                   <td className="border px-4 py-3">
-                    <button 
-                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition-colors text-sm"
-                      onClick={() => handleRowClick(student)}
-                    >
-                      View Result
-                    </button>
+                    <div className="flex space-x-2">
+                      <button 
+                        className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition-colors"
+                        onClick={() => handleRowClick(student)}
+                        title="View Result"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors"
+                        onClick={() => handleEdit(student)}
+                        title="Edit Result"
+                      >
+                        <Edit size={16} />
+                      </button>
+                      <button 
+                        className="bg-red-600 text-white p-2 rounded hover:bg-red-700 transition-colors"
+                        onClick={() => handleDelete(student)}
+                        title="Delete Result"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <button 
+                        className="bg-purple-600 text-white p-2 rounded hover:bg-purple-700 transition-colors"
+                        onClick={() => handleDownload(student)}
+                        title="Download Result"
+                      >
+                        <Download size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -298,226 +373,148 @@ const SchoolResultTemplate = () => {
             
             {/* Close button */}
             <button 
-              onClick={handleCloseModal} 
-              className="absolute top-4 right-4 z-10 text-gray-500 hover:text-red-600 text-2xl font-bold print:hidden bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+              onClick={handleCloseModal}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 print:hidden"
             >
-              ×
+              ✕
             </button>
 
-            {/* Result Sheet Content */}
-            <div className="p-8 print:p-4">
-              
-              {/* Header */}
-              <div className="text-center mb-6 border-b-2 border-black pb-4">
-                <div className="flex items-center justify-center gap-4 mb-2">
-                  <div className="text-4xl">
-                    {getSchoolData(settings).logo && getSchoolData(settings).logo !== "🏫" ? (
-                      <img 
-                        src={getSchoolData(settings).logo} 
-                        alt={`${getSchoolData(settings).name} logo`}
-                        className="w-16 h-16 object-contain"
-                      />
-                    ) : (
-                      <span>{getSchoolData(settings).logo}</span>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h1 className="text-xl font-bold uppercase tracking-wider">{getSchoolData(settings).name}</h1>
-                    <p className="text-sm mt-1">{getSchoolData(settings).address}</p>
-                  </div>
+            {/* Header */}
+            <div className="p-6 border-b print:border-none">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-4">
+                  <div className="text-2xl">{getSchoolData(settings).logo}</div>
                   <div>
-                    <img 
-                      src={selectedStudent.student.profile_picture || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"} 
-                      alt="Student" 
-                      className="w-20 h-20 rounded border-2 border-gray-300 object-cover" 
-                    />
+                    <h1 className="text-xl font-bold">{getSchoolData(settings).name}</h1>
+                    <p className="text-sm text-gray-600">{getSchoolData(settings).address}</p>
                   </div>
                 </div>
-                <div className="flex justify-between items-center mt-4 text-sm">
-                  <div className="border border-black px-4 py-1">
-                    <strong>{getTermDisplay(selectedStudent.term)}</strong>
-                  </div>
-                  <div>
-                    <strong>Next Term Begins:</strong> {selectedStudent.next_term_begins || getSchoolData(settings).nextTermBegins}
-                  </div>
+                <div className="text-right">
+                  <h2 className="text-lg font-semibold">STUDENT'S REPORT CARD</h2>
+                  <p className="text-sm text-gray-600">Next Term Begins: {selectedStudent.next_term_begins || getSchoolData(settings).nextTermBegins}</p>
                 </div>
               </div>
+            </div>
 
-              {/* Student Information */}
-              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-                <div className="space-y-2">
-                  <div className="flex">
-                    <span className="font-semibold w-20">Name:</span>
-                    <span className="border-b border-dotted border-black flex-1 px-2">{selectedStudent.student.full_name}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="font-semibold w-16">Class:</span>
-                    <span className="border-b border-dotted border-black w-20 px-2">{selectedStudent.student.student_class}</span>
-                    <span className="font-semibold ml-4 w-16">Year:</span>
-                    <span className="border-b border-dotted border-black flex-1 px-2">{selectedStudent.academic_session.name}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="font-semibold w-32">Average Score:</span>
-                    <span className="border-b border-dotted border-black w-20 px-2">{selectedStudent.average_score.toFixed(1)}</span>
-                    <span className="font-semibold ml-4 w-16">G.P:</span>
-                    <span className="border-b border-dotted border-black w-16 px-2">{selectedStudent.gpa.toFixed(2)}</span>
-                  </div>
+            {/* Student Information */}
+            <div className="p-6 border-b print:border-none">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p><strong>Name:</strong> {selectedStudent.student.full_name}</p>
+                  <p><strong>Class:</strong> {selectedStudent.student.student_class}</p>
+                  <p><strong>Term:</strong> {getTermDisplay(selectedStudent.term)}</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex">
-                    <span className="font-semibold w-24">Total Subjects:</span>
-                    <span className="border-b border-dotted border-black w-16 px-2">{selectedStudent.total_subjects}</span>
-                    <span className="font-semibold ml-4 w-28">Subjects Passed:</span>
-                    <span className="border-b border-dotted border-black w-16 px-2">{selectedStudent.subjects_passed}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="font-semibold w-16">Grade:</span>
-                    <span className="border-b border-dotted border-black w-16 px-2">{selectedStudent.subject_results[0]?.grade || 'N/A'}</span>
-                    <span className="font-semibold ml-4 w-20">Status:</span>
-                    <span className="border-b border-dotted border-black flex-1 px-2 font-bold">{selectedStudent.status}</span>
-                  </div>
-                  <div className="flex">
-                    <span className="font-semibold w-32">Class Position:</span>
-                                         <span className="border-b border-dotted border-black w-16 px-2">{selectedStudent.class_position ? selectedStudent.class_position.toString() : 'N/A'}</span>
-                    <span className="font-semibold ml-4 w-24">Total Students:</span>
-                    <span className="border-b border-dotted border-black w-16 px-2">{selectedStudent.total_students}</span>
-                  </div>
+                <div>
+                  <p><strong>Academic Session:</strong> {selectedStudent.academic_session.name}</p>
+                  <p><strong>Total Subjects:</strong> {selectedStudent.total_subjects}</p>
+                  <p><strong>Position:</strong> {selectedStudent.class_position ? `${selectedStudent.class_position} of ${selectedStudent.total_students}` : 'N/A'}</p>
                 </div>
               </div>
+            </div>
 
-              {/* Academic Report Title */}
-              <div className="text-center mb-4">
-                <h2 className="text-lg font-bold border-2 border-black inline-block px-4 py-2">
-                  TERMLY ACADEMIC REPORT
-                </h2>
-                <p className="text-sm mt-2 font-semibold">CONTINUOUS ASSESSMENT DOSSIER FOR {getEducationLevelDisplay(selectedStudent.student.education_level)}</p>
-              </div>
-
-              {/* Subjects Table */}
-              <div className="overflow-x-auto mb-6">
-                <table className="w-full border-collapse border-2 border-black text-xs">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-black p-2 text-left w-8">S/N</th>
-                      <th className="border border-black p-2 text-left">Subject</th>
-                      <th className="border border-black p-2 text-center" colSpan={4}>Test/Examination Score = 100%</th>
-                      <th className="border border-black p-2 text-center">Term Total</th>
-                      <th className="border border-black p-2 text-center">Percentage</th>
-                      <th className="border border-black p-2 text-center">Grade</th>
-                      <th className="border border-black p-2 text-center">Subject Teacher's Remark</th>
+            {/* Results Table */}
+            <div className="p-6">
+              <table className="w-full border-collapse border border-black text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-black p-2 text-center font-semibold">S/N</th>
+                    <th className="border border-black p-2 text-center font-semibold">Subject</th>
+                    <th className="border border-black p-2 text-center font-semibold">CA</th>
+                    <th className="border border-black p-2 text-center font-semibold">Exam</th>
+                    <th className="border border-black p-2 text-center font-semibold">Total</th>
+                    <th className="border border-black p-2 text-center font-semibold">Percentage</th>
+                    <th className="border border-black p-2 text-center font-semibold">Grade</th>
+                    <th className="border border-black p-2 text-center font-semibold">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedStudent.subject_results.map((subject, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="border border-black p-2 text-center font-semibold">{index + 1}</td>
+                      <td className="border border-black p-2">{subject.subject.name}</td>
+                      <td className="border border-black p-2 text-center">{subject.ca_score}</td>
+                      <td className="border border-black p-2 text-center">{subject.exam_score}</td>
+                      <td className="border border-black p-2 text-center font-semibold">{subject.total_score}</td>
+                      <td className="border border-black p-2 text-center">{subject.percentage.toFixed(1)}%</td>
+                      <td className="border border-black p-2 text-center font-semibold">{subject.grade}</td>
+                      <td className="border border-black p-2 text-center">{subject.remarks}</td>
                     </tr>
-                    <tr className="bg-gray-50">
-                      <th className="border border-black p-1"></th>
-                      <th className="border border-black p-1 font-semibold">Core Subjects</th>
-                      <th className="border border-black p-1 text-center">CA (30)</th>
-                      <th className="border border-black p-1 text-center">Exam (70)</th>
-                      <th className="border border-black p-1"></th>
-                      <th className="border border-black p-1"></th>
-                      <th className="border border-black p-1"></th>
-                      <th className="border border-black p-1"></th>
-                      <th className="border border-black p-1"></th>
-                      <th className="border border-black p-1 text-center">(Learning Attitude)</th>
+                  ))}
+                  {/* Empty rows for additional subjects */}
+                  {Array.from({ length: Math.max(0, 15 - selectedStudent.subject_results.length) }, (_, i) => (
+                    <tr key={`empty-${i}`}>
+                      <td className="border border-black p-2 text-center">{selectedStudent.subject_results.length + i + 1}</td>
+                      <td className="border border-black p-2"></td>
+                      <td className="border border-black p-2"></td>
+                      <td className="border border-black p-2"></td>
+                      <td className="border border-black p-2"></td>
+                      <td className="border border-black p-2"></td>
+                      <td className="border border-black p-2"></td>
+                      <td className="border border-black p-2"></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {selectedStudent.subject_results.map((subject, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="border border-black p-2 text-center font-semibold">{index + 1}</td>
-                        <td className="border border-black p-2">{subject.subject.name}</td>
-                        <td className="border border-black p-2 text-center">{subject.ca_score}</td>
-                        <td className="border border-black p-2 text-center">{subject.exam_score}</td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2 text-center font-semibold">{subject.total_score}</td>
-                        <td className="border border-black p-2 text-center">{subject.percentage.toFixed(1)}%</td>
-                        <td className="border border-black p-2 text-center font-semibold">{subject.grade}</td>
-                        <td className="border border-black p-2 text-center">{subject.remarks}</td>
-                      </tr>
-                    ))}
-                    {/* Empty rows for additional subjects */}
-                    {Array.from({ length: Math.max(0, 15 - selectedStudent.subject_results.length) }, (_, i) => (
-                      <tr key={`empty-${i}`}>
-                        <td className="border border-black p-2 text-center">{selectedStudent.subject_results.length + i + 1}</td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                        <td className="border border-black p-2"></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              {/* Summary Statistics */}
-              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-                <div>
-                  <div className="flex">
-                    <span className="font-semibold w-32">Total Score:</span>
-                    <span className="border-b border-dotted border-black flex-1 px-2">{selectedStudent.total_score.toFixed(2)}</span>
-                  </div>
+            {/* Summary Statistics */}
+            <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+              <div>
+                <div className="flex">
+                  <span className="font-semibold w-32">Total Score:</span>
+                  <span>{selectedStudent.total_score}</span>
                 </div>
-                <div>
-                  <div className="flex">
-                    <span className="font-semibold w-48">Average Score:</span>
-                    <span className="border-b border-dotted border-black flex-1 px-2">{selectedStudent.average_score.toFixed(2)}</span>
-                  </div>
+                <div className="flex">
+                  <span className="font-semibold w-32">Average Score:</span>
+                  <span>{getSafeAverageScore(selectedStudent)}</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold w-32">GPA:</span>
+                  <span>{selectedStudent.gpa.toFixed(2)}</span>
                 </div>
               </div>
-
-              {/* Remarks Section */}
-              <div className="space-y-4 mb-6">
-                <div>
-                  <div className="flex items-start">
-                    <span className="font-semibold w-32 mt-1">Form Master's Remark:</span>
-                    <div className="flex-1 border-b border-dotted border-black min-h-16 px-2 py-1">
-                      {selectedStudent.remarks || "Student shows good academic performance and maintains consistent attendance."}
-                    </div>
-                  </div>
+              <div>
+                <div className="flex">
+                  <span className="font-semibold w-32">Subjects Passed:</span>
+                  <span>{selectedStudent.subjects_passed}</span>
                 </div>
-                <div>
-                  <div className="flex items-start">
-                    <span className="font-semibold w-32 mt-1">Principal's Remarks:</span>
-                    <div className="flex-1 border-b border-dotted border-black min-h-16 px-2 py-1">
-                      {selectedStudent.comments.find(c => c.comment_type === 'PRINCIPAL')?.comment || "A promising student who demonstrates good character and academic potential. Continue to work hard and maintain good study habits."}
-                    </div>
-                  </div>
+                <div className="flex">
+                  <span className="font-semibold w-32">Subjects Failed:</span>
+                  <span>{selectedStudent.subjects_failed}</span>
+                </div>
+                <div className="flex">
+                  <span className="font-semibold w-32">Status:</span>
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${selectedStudent.status === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {selectedStudent.status}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              {/* Footer */}
-              <div className="flex justify-between items-end">
-                <div className="text-center">
-                  <div className="border-t border-black w-48 mb-2"></div>
-                  <p className="text-sm font-semibold">Principal's Signature, Stamp & Date</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-bold mb-2">
-                    {selectedStudent.subjects_passed >= selectedStudent.total_subjects * 0.5 ? "PROMOTED" : "NOT PROMOTED"}
-                  </p>
-                  <div className="border border-black px-4 py-2">
-                    <span className="font-semibold">Status: {selectedStudent.subjects_passed >= selectedStudent.total_subjects * 0.5 ? "PROMOTED" : "NOT PROMOTED"}</span>
-                  </div>
-                </div>
+            {/* Remarks */}
+            {selectedStudent.remarks && (
+              <div className="p-6 border-t print:border-none">
+                <h3 className="font-semibold mb-2">Remarks:</h3>
+                <p className="text-sm">{selectedStudent.remarks}</p>
               </div>
+            )}
 
-              {/* Print Button */}
-              <div className="text-center mt-8 print:hidden">
-                <button 
-                  onClick={handlePrint} 
-                  className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors mr-4"
+            {/* Action Buttons */}
+            <div className="p-6 border-t print:hidden">
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={handlePrint}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
-                  Print Result
+                  <Printer size={16} />
+                  <span>Print</span>
                 </button>
-                <button 
-                  onClick={handleCloseModal} 
-                  className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition-colors"
+                <button
+                  onClick={() => handleDownload(selectedStudent)}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors flex items-center space-x-2"
                 >
-                  Close
+                  <Download size={16} />
+                  <span>Download</span>
                 </button>
               </div>
             </div>
@@ -525,47 +522,60 @@ const SchoolResultTemplate = () => {
         </div>
       )}
 
-      <style>{`
-        @media print {
-          .print\\:hidden {
-            display: none !important;
-          }
-          .print\\:w-full {
-            width: 100% !important;
-          }
-          .print\\:max-w-none {
-            max-width: none !important;
-          }
-          .print\\:shadow-none {
-            box-shadow: none !important;
-          }
-          .print\\:rounded-none {
-            border-radius: 0 !important;
-          }
-          .print\\:p-4 {
-            padding: 1rem !important;
-          }
-          .print\\:max-h-none {
-            max-height: none !important;
-          }
-          .print\\:overflow-visible {
-            overflow: visible !important;
-          }
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          .fixed {
-            position: static !important;
-          }
-          .bg-black {
-            background-color: transparent !important;
-          }
-          .bg-opacity-50 {
-            background-color: transparent !important;
-          }
-        }
-      `}</style>
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && resultToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete the result for <strong>{resultToDelete.student.full_name}</strong>? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setResultToDelete(null);
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                disabled={actionLoading === 'delete'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                disabled={actionLoading === 'delete'}
+              >
+                {actionLoading === 'delete' ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal - Placeholder for future implementation */}
+      {showEditModal && editingResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
+            <h3 className="text-lg font-semibold mb-4">Edit Result</h3>
+            <p className="text-gray-600 mb-6">
+              Edit functionality will be implemented here for {editingResult.student.full_name}
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingResult(null);
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
