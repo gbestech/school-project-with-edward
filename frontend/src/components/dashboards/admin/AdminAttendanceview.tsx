@@ -64,15 +64,15 @@ const AttendanceDashboard = () => {
         // Map backend data to AttendanceRecord[]
         const mapped: AttendanceRecord[] = (data.results || data).map((rec: AttendanceRecordBackend) => ({
           id: rec.id,
-          name: rec.student || rec.teacher ? `ID ${rec.student || rec.teacher}` : 'Unknown',
+          name: rec.student_name || rec.teacher_name || `ID ${rec.student || rec.teacher}` || 'Unknown',
           type: rec.student ? 'student' : rec.teacher ? 'teacher' : 'staff',
           level: '', // You may fetch student/teacher/class info for richer display
           class: '',
           section: '',
           date: rec.date,
           status: AttendanceCodeToStatusMap[rec.status],
-          timeIn: '',
-          timeOut: '',
+          timeIn: rec.time_in || '',
+          timeOut: rec.time_out || '',
           term: '',
         }));
         setAttendanceRecords(mapped);
@@ -98,8 +98,10 @@ const AttendanceDashboard = () => {
   };
 
   const handleAdd = (): void => {
+    console.log('Add Record button clicked');
     setEditingRecord(null);
     setShowModal(true);
+    console.log('Modal should be visible now, showModal:', true);
   };
 
   const handleEdit = (record: AttendanceRecord): void => {
@@ -122,36 +124,89 @@ const AttendanceDashboard = () => {
   };
 
   const handleSave = async (formData: any): Promise<void> => {
+    console.log('handleSave called with formData:', formData);
     setLoading(true);
     setError(null);
     try {
       const { selectedStudent, ...rest } = formData;
+      console.log('Extracted selectedStudent:', selectedStudent);
+      console.log('Extracted rest:', rest);
+      
       if (!selectedStudent) {
+        console.log('No selectedStudent found, setting error');
         setError('Please select a student.');
         setLoading(false);
         return;
       }
-      // Add new record
-      const newRec = await addAttendance({
+      
+      // Validate required fields
+      if (!selectedStudent.section_id) {
+        console.log('No section_id found for student:', selectedStudent);
+        setError(`Student "${selectedStudent.full_name}" does not have a valid section assignment. Please ensure the student is properly enrolled in a classroom section.`);
+        setLoading(false);
+        return;
+      }
+      
+      const attendanceData = {
         student: selectedStudent.id,
-        section: selectedStudent.section_id, // Use section_id PK
-        date: filters.date,
+        section: selectedStudent.section_id,
+        date: rest.date || filters.date,
         status: AttendanceStatusMap[rest.status as keyof typeof AttendanceStatusMap],
-        // Optionally add timeIn/timeOut if your backend supports it
-      });
-      setAttendanceRecords(prev => [...prev, {
-        ...rest,
-        id: newRec.id,
-        date: filters.date,
-        name: selectedStudent.full_name,
-        type: 'student',
-        level: selectedStudent.education_level_display || '',
-        class: selectedStudent.student_class_display || '',
-        section: selectedStudent.classroom || '',
-      } as AttendanceRecord]);
+        time_in: rest.timeIn || null,
+        time_out: rest.timeOut || null,
+      };
+      
+      console.log('Prepared attendanceData:', attendanceData);
+      
+      if (editingRecord) {
+        // Update existing record
+        console.log('Updating existing record:', editingRecord.id);
+        await updateAttendance(editingRecord.id, attendanceData);
+        setAttendanceRecords(prev => prev.map(record => 
+          record.id === editingRecord.id 
+            ? { ...record, ...rest, timeIn: rest.timeIn || '', timeOut: rest.timeOut || '' }
+            : record
+        ));
+      } else {
+        // Check if attendance record already exists for this student on this date
+        const existingRecords = attendanceRecords.filter(record => 
+          record.name.includes(selectedStudent.full_name) && record.date === (rest.date || filters.date)
+        );
+        
+        console.log('Existing records found:', existingRecords.length);
+        
+        if (existingRecords.length > 0) {
+          console.log('Duplicate record found, setting error');
+          setError(`Attendance record already exists for ${selectedStudent.full_name} on ${rest.date || filters.date}. Please edit the existing record instead.`);
+          setLoading(false);
+          return;
+        }
+        
+        // Add new record
+        console.log('Calling addAttendance API...');
+        const newRec = await addAttendance(attendanceData);
+        console.log('API response:', newRec);
+        setAttendanceRecords(prev => [...prev, {
+          ...rest,
+          id: newRec.id,
+          date: rest.date || filters.date,
+          name: selectedStudent.full_name,
+          type: 'student',
+          level: selectedStudent.education_level_display || '',
+          class: selectedStudent.student_class_display || '',
+          section: selectedStudent.classroom || '',
+        } as AttendanceRecord]);
+      }
       setShowModal(false);
-    } catch (err) {
-      setError('Failed to save record');
+    } catch (err: any) {
+      console.error('Attendance creation error:', err);
+      if (err.response?.data?.detail) {
+        setError(`Failed to save record: ${err.response.data.detail}`);
+      } else if (err.message) {
+        setError(`Failed to save record: ${err.message}`);
+      } else {
+        setError('Failed to save record. Attendance record may already exist for this student on this date.');
+      }
     } finally {
       setLoading(false);
     }
@@ -178,7 +233,7 @@ const AttendanceDashboard = () => {
   const stats = getAttendanceStats();
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="bg-gray-50">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Attendance Dashboard</h1>
         <p className="text-gray-600">Manage student, teacher, and staff attendance</p>
@@ -372,15 +427,21 @@ const AttendanceDashboard = () => {
 
       {/* Modal for Add/Edit */}
       {showModal && (
-        <AttendanceModal
-          record={editingRecord}
-          onClose={() => setShowModal(false)}
-          onSave={handleSave}
-          levels={levels.slice(1)}
-          sections={sections.slice(1)}
-          statuses={statuses}
-          types={types.slice(1)}
-        />
+        <div>
+          {console.log('Rendering AttendanceModal, showModal:', showModal)}
+          <AttendanceModal
+            record={editingRecord}
+            onClose={() => {
+              console.log('Modal close clicked');
+              setShowModal(false);
+            }}
+            onSave={handleSave}
+            levels={levels.slice(1)}
+            sections={sections.slice(1)}
+            statuses={statuses}
+            types={types.slice(1)}
+          />
+        </div>
       )}
     </div>
   );
@@ -397,6 +458,9 @@ interface AttendanceModalProps {
 }
 
 const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSave, levels, sections, statuses, types }) => {
+  console.log('AttendanceModal component rendered');
+  console.log('Modal props:', { record, levels, sections, statuses, types });
+  
   const [formData, setFormData] = useState<Omit<AttendanceRecord, 'id' | 'date'> & { date?: string }>({
     name: record?.name || '',
     type: (record?.type as 'student' | 'teacher' | 'staff') || 'student',
@@ -447,6 +511,9 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted');
+    console.log('Form data:', formData);
+    console.log('Selected student:', selectedStudent);
     // Pass selectedStudent along with formData
     onSave({ ...formData, selectedStudent });
   };
@@ -483,6 +550,16 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
                   ))}
                 </ul>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={formData.date || new Date().toISOString().slice(0, 10)}
+                onChange={(e) => handleChange('date', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>

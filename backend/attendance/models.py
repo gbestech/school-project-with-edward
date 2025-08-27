@@ -24,6 +24,8 @@ class Attendance(models.Model):
         Section, on_delete=models.CASCADE, related_name="attendances"
     )
     status = models.CharField(max_length=1, choices=STATUS_CHOICES)
+    time_in = models.TimeField(null=True, blank=True, help_text="Time when student/teacher arrived")
+    time_out = models.TimeField(null=True, blank=True, help_text="Time when student/teacher left")
 
     class Meta:
         unique_together = ("date", "student", "section")

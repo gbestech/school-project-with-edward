@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 from .models import UserProfile
 from .serializers import (
     UserProfileSerializer,
@@ -20,6 +21,8 @@ from .permissions import (
     CanUpdateProfile,
     SecureProfilePermission,
 )
+
+User = get_user_model()
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -101,6 +104,41 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 }
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        permission_classes=[IsAuthenticated],
+    )
+    def all_users(self, request):
+        """Get all users for admin purposes (teachers, staff, admins only)"""
+        # Check if user is admin or has admin privileges
+        if not (request.user.role == 'admin' or request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"detail": "You don't have permission to view all users."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get users with roles: admin, teacher, staff (excluding students and parents)
+        users = User.objects.filter(
+            role__in=['admin', 'teacher'],
+            is_active=True
+        ).exclude(
+            role__in=['student', 'parent']
+        )
+        
+        user_data = []
+        for user in users:
+            user_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.full_name,
+                'role': user.role.title(),  # Capitalize role name
+                'is_active': user.is_active
+            })
+        
+        return Response(user_data)
 
     @action(detail=False, methods=["get"])
     def verification_status(self, request):

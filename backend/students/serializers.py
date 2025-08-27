@@ -126,14 +126,50 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         return None
 
     def get_section_id(self, obj):
-        # Try to get the section PK from the classroom or enrollment
+        # Try to get the section PK based on student's class and classroom section
         if obj.classroom:
-            from classroom.models import Classroom
-            try:
-                classroom = Classroom.objects.get(name=obj.classroom)
-                return classroom.section_id
-            except Classroom.DoesNotExist:
-                return None
+            from classroom.models import Section, GradeLevel
+            
+            # Extract section letter from classroom (e.g., "Nursery 1 A" -> "A")
+            classroom_parts = obj.classroom.split()
+            if len(classroom_parts) >= 2:
+                section_letter = classroom_parts[-1]  # Last part should be the section
+                
+                # Map student class to grade level
+                class_to_grade = {
+                    'NURSERY_1': 'Nursery 1',
+                    'NURSERY_2': 'Nursery 2',
+                    'PRE_K': 'Pre-K',
+                    'KINDERGARTEN': 'Kindergarten',
+                    'GRADE_1': 'Primary 1',
+                    'GRADE_2': 'Primary 2',
+                    'GRADE_3': 'Primary 3',
+                    'GRADE_4': 'Primary 4',
+                    'GRADE_5': 'Primary 5',
+                    'GRADE_6': 'Primary 6',
+                    'GRADE_7': 'JSS 1',
+                    'GRADE_8': 'JSS 2',
+                    'GRADE_9': 'JSS 3',
+                    'GRADE_10': 'SS 1',
+                    'GRADE_11': 'SS 2',
+                    'GRADE_12': 'SS 3',
+                    # Add direct mappings for the actual class names used in database
+                    'SS1': 'SS 1',
+                    'SS2': 'SS 2',
+                    'SS3': 'SS 3',
+                    'JSS1': 'JSS 1',
+                    'JSS2': 'JSS 2',
+                    'JSS3': 'JSS 3',
+                }
+                
+                grade_name = class_to_grade.get(obj.student_class)
+                if grade_name:
+                    try:
+                        grade_level = GradeLevel.objects.get(name=grade_name)
+                        section = Section.objects.get(name=section_letter, grade_level=grade_level)
+                        return section.id
+                    except (GradeLevel.DoesNotExist, Section.DoesNotExist):
+                        return None
         return None
 
     def validate_student_class(self, value):
@@ -267,13 +303,50 @@ class StudentListSerializer(serializers.ModelSerializer):
         return None
 
     def get_section_id(self, obj):
+        # Try to get the section PK based on student's class and classroom section
         if obj.classroom:
-            from classroom.models import Classroom
-            try:
-                classroom = Classroom.objects.get(name=obj.classroom)
-                return classroom.section_id
-            except Classroom.DoesNotExist:
-                return None
+            from classroom.models import Section, GradeLevel
+            
+            # Extract section letter from classroom (e.g., "Nursery 1 A" -> "A")
+            classroom_parts = obj.classroom.split()
+            if len(classroom_parts) >= 2:
+                section_letter = classroom_parts[-1]  # Last part should be the section
+                
+                # Map student class to grade level
+                class_to_grade = {
+                    'NURSERY_1': 'Nursery 1',
+                    'NURSERY_2': 'Nursery 2',
+                    'PRE_K': 'Pre-K',
+                    'KINDERGARTEN': 'Kindergarten',
+                    'GRADE_1': 'Primary 1',
+                    'GRADE_2': 'Primary 2',
+                    'GRADE_3': 'Primary 3',
+                    'GRADE_4': 'Primary 4',
+                    'GRADE_5': 'Primary 5',
+                    'GRADE_6': 'Primary 6',
+                    'GRADE_7': 'JSS 1',
+                    'GRADE_8': 'JSS 2',
+                    'GRADE_9': 'JSS 3',
+                    'GRADE_10': 'SS 1',
+                    'GRADE_11': 'SS 2',
+                    'GRADE_12': 'SS 3',
+                    # Add direct mappings for the actual class names used in database
+                    'SS1': 'SS 1',
+                    'SS2': 'SS 2',
+                    'SS3': 'SS 3',
+                    'JSS1': 'JSS 1',
+                    'JSS2': 'JSS 2',
+                    'JSS3': 'JSS 3',
+                }
+                
+                grade_name = class_to_grade.get(obj.student_class)
+                if grade_name:
+                    try:
+                        grade_level = GradeLevel.objects.get(name=grade_name)
+                        section = Section.objects.get(name=section_letter, grade_level=grade_level)
+                        return section.id
+                    except (GradeLevel.DoesNotExist, Section.DoesNotExist):
+                        return None
         return None
 
 

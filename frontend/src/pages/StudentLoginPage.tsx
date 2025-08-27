@@ -5,7 +5,6 @@ import { useAuth } from './../hooks/useAuth';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import { useDocumentTitle } from './../hooks/useDocumentTitle';
-import Footer from './../components/home/Footer';
 import Navbar from './../components/home/Nav';
 import { AuthService } from '../services/AuthService';
 import type { LoginCredentials } from '@/types/types';
@@ -99,7 +98,6 @@ const StudentLoginPage: React.FC = () => {
         initialRole="student"
         hideRoleSelect={true}
       />
-      <Footer />
     </>
   );
 };

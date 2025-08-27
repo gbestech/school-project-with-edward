@@ -20,14 +20,22 @@ class AttendanceSerializer(serializers.ModelSerializer):
             "section",
             "date",
             "status",
+            "time_in",
+            "time_out",
         ]
+        extra_kwargs = {
+            'student': {'required': True},
+            'section': {'required': True},
+            'date': {'required': True},
+            'status': {'required': True},
+        }
 
     def get_student_name(self, obj):
         return (
-            f"{obj.student.first_name} {obj.student.last_name}" if obj.student else None
+            f"{obj.student.user.first_name} {obj.student.user.last_name}" if obj.student and obj.student.user else None
         )
 
     def get_teacher_name(self, obj):
         return (
-            f"{obj.teacher.first_name} {obj.teacher.last_name}" if obj.teacher else None
+            f"{obj.teacher.user.first_name} {obj.teacher.user.last_name}" if obj.teacher and obj.teacher.user else None
         )

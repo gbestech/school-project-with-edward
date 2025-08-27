@@ -171,7 +171,7 @@ const LessonAttendanceDashboard = () => {
   const stats = getAttendanceStats();
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="bg-gray-50">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Lesson/Class Attendance Dashboard</h1>
         <p className="text-gray-600">Manage lesson/class attendance</p>

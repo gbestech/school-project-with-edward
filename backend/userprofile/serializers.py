@@ -46,6 +46,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     user = UserBasicSerializer(read_only=True)
     # Add student_data field
     student_data = serializers.SerializerMethodField()
+    # Add teacher_data field
+    teacher_data = serializers.SerializerMethodField()
 
     # Read-only computed fields from the model
     display_name = serializers.ReadOnlyField()
@@ -83,7 +85,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "profile_image_url",
             "created_at",
             "updated_at",
-            "student_data",  # <-- add here
+            "student_data",
+            "teacher_data",
         ]
         read_only_fields = [
             "id",
@@ -97,6 +100,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "student_data",
+            "teacher_data",
         ]
 
     def validate_phone_number(self, value):
@@ -148,6 +152,31 @@ class UserProfileSerializer(serializers.ModelSerializer):
             pass
         return None
 
+    def get_teacher_data(self, obj):
+        # Return teacher data if user is a teacher
+        user = obj.user
+        try:
+            # Check if user has a teacher profile
+            if hasattr(user, 'teacher'):
+                teacher = user.teacher
+                return {
+                    "id": teacher.id,
+                    "employee_id": teacher.employee_id,
+                    "staff_type": teacher.staff_type,
+                    "level": teacher.level,
+                    "phone_number": teacher.phone_number,
+                    "address": teacher.address,
+                    "hire_date": teacher.hire_date,
+                    "qualification": teacher.qualification,
+                    "specialization": teacher.specialization,
+                    "photo": teacher.photo,  # This is the profile picture URL
+                    "is_active": teacher.is_active,
+                }
+        except Exception as e:
+            print(f"Error getting teacher data: {e}")
+            pass
+        return None
+
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating profile information only"""
@@ -192,23 +221,68 @@ class UserProfileSummarySerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(source="user.is_active", read_only=True)
     date_joined = serializers.DateTimeField(source="user.date_joined", read_only=True)
     last_login = serializers.DateTimeField(source="user.last_login", read_only=True)
+    # Add student_data and teacher_data fields
+    student_data = serializers.SerializerMethodField()
+    teacher_data = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = [
             "display_name",
             "short_name",
-            "email",
             "user_role",
             "is_verified",
             "primary_phone",
             "profile_image_url",
+            "email",
             "is_active",
             "date_joined",
             "last_login",
             "bio",
             "address",
+            "student_data",
+            "teacher_data",
         ]
+
+    def get_student_data(self, obj):
+        # Return student id and full_name if user is a student
+        user = obj.user
+        # Find the Student object linked to this user
+        try:
+            student = getattr(user, "student_profile", None)
+            if student:
+                return {
+                    "id": student.id,  # This is the correct student ID
+                    "full_name": getattr(student, "full_name", None),
+                }
+        except Exception:
+            pass
+        return None
+
+    def get_teacher_data(self, obj):
+        # Return teacher data if user is a teacher
+        user = obj.user
+        try:
+            # Check if user has a teacher profile
+            if hasattr(user, 'teacher'):
+                teacher = user.teacher
+                return {
+                    "id": teacher.id,
+                    "employee_id": teacher.employee_id,
+                    "staff_type": teacher.staff_type,
+                    "level": teacher.level,
+                    "phone_number": teacher.phone_number,
+                    "address": teacher.address,
+                    "hire_date": teacher.hire_date,
+                    "qualification": teacher.qualification,
+                    "specialization": teacher.specialization,
+                    "photo": teacher.photo,  # This is the profile picture URL
+                    "is_active": teacher.is_active,
+                }
+        except Exception as e:
+            print(f"Error getting teacher data: {e}")
+            pass
+        return None
 
 
 class UserProfileContactSerializer(serializers.ModelSerializer):

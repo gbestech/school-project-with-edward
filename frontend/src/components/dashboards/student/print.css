@@ -1,0 +1,29 @@
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .result-print-area,
+  .result-print-area * {
+    visibility: visible !important;
+  }
+  
+  .result-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Hide the close button when printing */
+  .modal-close-button {
+    display: none !important;
+  }
+}
+
+/* Styles for the print preview */
+.print-preview {
+  background: white;
+  padding: 10px;
+  margin: 0 auto;
+}

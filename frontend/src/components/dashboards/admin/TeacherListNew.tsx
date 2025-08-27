@@ -363,7 +363,7 @@ const TeacherList = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${themeClasses.bgPrimary} p-6 transition-colors duration-300`}>
+      <div className={`${themeClasses.bgPrimary} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -376,7 +376,7 @@ const TeacherList = () => {
 
   if (error) {
     return (
-      <div className={`min-h-screen ${themeClasses.bgPrimary} p-6 transition-colors duration-300`}>
+      <div className={`${themeClasses.bgPrimary} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <AlertCircle size={48} className={`mx-auto ${themeClasses.textMuted} mb-4`} />
@@ -395,7 +395,7 @@ const TeacherList = () => {
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.bgPrimary} p-6 transition-colors duration-300`}>
+    <div className={`${themeClasses.bgPrimary} transition-colors duration-300`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

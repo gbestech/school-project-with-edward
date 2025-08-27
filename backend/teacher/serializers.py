@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Teacher, TeacherAssignment
+from .models import Teacher, TeacherAssignment, AssignmentRequest, TeacherSchedule
 from classroom.models import GradeLevel, Section
 from subject.models import Subject
 
@@ -16,6 +16,58 @@ class TeacherAssignmentSerializer(serializers.ModelSerializer):
             'id', 'teacher', 'grade_level', 'section', 'subject',
             'grade_level_name', 'section_name', 'subject_name', 'education_level'
         ]
+
+
+class AssignmentRequestSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.full_name', read_only=True)
+    teacher_id = serializers.IntegerField(source='teacher.id', read_only=True)
+    requested_subjects_names = serializers.SerializerMethodField()
+    requested_grade_levels_names = serializers.SerializerMethodField()
+    requested_sections_names = serializers.SerializerMethodField()
+    reviewed_by_name = serializers.CharField(source='reviewed_by.full_name', read_only=True)
+    days_since_submitted = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = AssignmentRequest
+        fields = [
+            'id', 'teacher', 'teacher_name', 'teacher_id', 'request_type', 'title', 'description',
+            'requested_subjects', 'requested_subjects_names', 'requested_grade_levels', 
+            'requested_grade_levels_names', 'requested_sections', 'requested_sections_names',
+            'preferred_schedule', 'reason', 'status', 'admin_notes', 'submitted_at', 
+            'reviewed_at', 'reviewed_by', 'reviewed_by_name', 'days_since_submitted'
+        ]
+        read_only_fields = ['teacher', 'submitted_at', 'reviewed_at', 'reviewed_by']
+    
+    def get_requested_subjects_names(self, obj):
+        return [subject.name for subject in obj.requested_subjects.all()]
+    
+    def get_requested_grade_levels_names(self, obj):
+        return [grade.name for grade in obj.requested_grade_levels.all()]
+    
+    def get_requested_sections_names(self, obj):
+        return [section.name for section in obj.requested_sections.all()]
+    
+    def get_days_since_submitted(self, obj):
+        from django.utils import timezone
+        delta = timezone.now() - obj.submitted_at
+        return delta.days
+
+
+class TeacherScheduleSerializer(serializers.ModelSerializer):
+    subject_name = serializers.CharField(source='subject.name', read_only=True)
+    grade_level_name = serializers.CharField(source='grade_level.name', read_only=True)
+    section_name = serializers.CharField(source='section.name', read_only=True)
+    teacher_name = serializers.CharField(source='teacher.user.full_name', read_only=True)
+    
+    class Meta:
+        model = TeacherSchedule
+        fields = [
+            'id', 'teacher', 'teacher_name', 'day_of_week', 'start_time', 'end_time',
+            'subject', 'subject_name', 'grade_level', 'grade_level_name', 'section', 
+            'section_name', 'room_number', 'is_active', 'academic_year', 'term',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class TeacherSerializer(serializers.ModelSerializer):
@@ -53,6 +105,12 @@ class TeacherSerializer(serializers.ModelSerializer):
     assigned_subjects = serializers.SerializerMethodField(read_only=True)
     teacher_assignments = TeacherAssignmentSerializer(many=True, read_only=True)
     classroom_assignments = serializers.SerializerMethodField(read_only=True)
+    assignment_requests = AssignmentRequestSerializer(many=True, read_only=True)
+    schedules = TeacherScheduleSerializer(many=True, read_only=True)
+    
+    # User profile fields - writable for updates, read_only for responses
+    bio = serializers.CharField(required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = Teacher
@@ -77,11 +135,15 @@ class TeacherSerializer(serializers.ModelSerializer):
             "assigned_subjects",
             "teacher_assignments",
             "classroom_assignments",
+            "assignment_requests",
+            "schedules",
             "employee_id",
             "hire_date",
             "qualification",
             "specialization",
             "photo",
+            "bio",
+            "date_of_birth",
         ]
 
     def create(self, validated_data):
@@ -191,8 +253,40 @@ class TeacherSerializer(serializers.ModelSerializer):
         return teacher
 
     def update(self, instance, validated_data):
+        print(f"🔍 TeacherSerializer.update called for teacher {instance.id}")
+        print(f"🔍 Validated data keys: {list(validated_data.keys())}")
+        
         assignments = validated_data.pop("assignments", None)
         subjects = validated_data.pop("subjects", [])
+        
+        # Handle user profile updates (bio and date_of_birth)
+        bio = validated_data.pop("bio", None)
+        date_of_birth = validated_data.pop("date_of_birth", None)
+        
+        print(f"🔍 Extracted bio: {bio}")
+        print(f"🔍 Extracted date_of_birth: {date_of_birth}")
+        
+        # Update user profile if bio or date_of_birth is provided
+        if bio is not None or date_of_birth is not None:
+            print(f"🔍 Attempting to update user profile...")
+            try:
+                user_profile = instance.user.profile
+                print(f"🔍 Found user profile: {user_profile}")
+                if bio is not None:
+                    user_profile.bio = bio
+                    print(f"🔍 Set bio to: {bio}")
+                if date_of_birth is not None:
+                    user_profile.date_of_birth = date_of_birth
+                    print(f"🔍 Set date_of_birth to: {date_of_birth}")
+                user_profile.save()
+                print(f"✅ Updated user profile for teacher {instance.id}: bio={bio}, date_of_birth={date_of_birth}")
+            except Exception as e:
+                print(f"❌ Error updating user profile for teacher {instance.id}: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"🔍 No bio or date_of_birth provided for update")
+        
         teacher = super().update(instance, validated_data)
         
         # Update subject assignments if provided
@@ -352,8 +446,22 @@ class TeacherSerializer(serializers.ModelSerializer):
         return None
 
     def to_representation(self, instance):
-        """Add generated credentials to the response for newly created teachers"""
+        """Custom representation to include bio and date_of_birth from user profile"""
         data = super().to_representation(instance)
+        
+        # Add bio and date_of_birth from user profile
+        try:
+            if hasattr(instance.user, 'profile'):
+                data['bio'] = instance.user.profile.bio
+                data['date_of_birth'] = instance.user.profile.date_of_birth
+                print(f"🔍 to_representation: bio={data['bio']}, date_of_birth={data['date_of_birth']}")
+            else:
+                data['bio'] = None
+                data['date_of_birth'] = None
+        except Exception as e:
+            print(f"Error getting user profile data: {e}")
+            data['bio'] = None
+            data['date_of_birth'] = None
         
         # Add generated credentials if they exist (for newly created teachers)
         if hasattr(self, '_generated_teacher_username') and hasattr(self, '_generated_teacher_password'):

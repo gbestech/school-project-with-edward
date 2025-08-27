@@ -17,7 +17,8 @@ import {
   Calendar,
   Building,
   FileText,
-  UserCheck
+  UserCheck,
+  LayoutDashboard
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -102,6 +103,22 @@ const Nav: React.FC = () => {
     setUserDropdownOpen(false);
   };
 
+  // Get dashboard route based on user role
+  const getDashboardRoute = () => {
+    switch (user?.role) {
+      case 'admin':
+        return '/admin/dashboard';
+      case 'teacher':
+        return '/teacher/dashboard';
+      case 'student':
+        return '/student/dashboard';
+      case 'parent':
+        return '/parent/dashboard';
+      default:
+        return '/';
+    }
+  };
+
   // Calculate top position based on ContactRibbon visibility
   const topPosition = contactRibbonVisible ? 'top-16' : 'top-0';
 
@@ -119,13 +136,13 @@ const Nav: React.FC = () => {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between h-16">
           {/* Logo and School Name */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300">
+          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
               {settings?.logo_url ? (
                 <img 
                   src={getAbsoluteUrl(settings.logo_url)} 
                   alt={`${settings.school_name} logo`}
-                  className="w-6 h-6 object-contain"
+                  className="w-12 h-12 object-cover"
                   onError={(e) => {
                     console.error('Navbar logo failed to load:', getAbsoluteUrl(settings.logo_url));
                     e.currentTarget.style.display = 'none';
@@ -135,13 +152,13 @@ const Nav: React.FC = () => {
                   }}
                 />
               ) : (
-                <GraduationCap className="w-6 h-6 text-white" />
+                <GraduationCap className="w-12 h-12 text-white" />
               )}
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="hidden md:block text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {settings?.school_name || 'Gods Treasure Schools'}
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div ref={navRef} className="hidden lg:flex items-center space-x-8">
@@ -204,7 +221,7 @@ const Nav: React.FC = () => {
                 <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 backdrop-blur-xl z-50">
                   <div className="py-2">
                     <NavLink
-                      to="/admissions/how-to-apply"
+                      to="/how-to-apply"
                       className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                       onClick={closeAllDropdowns}
                     >
@@ -400,23 +417,14 @@ const Nav: React.FC = () => {
                         <span>Profile</span>
                       </NavLink>
                       <NavLink
-                        to="/settings"
+                        to={getDashboardRoute()}
                         className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                         onClick={() => setUserDropdownOpen(false)}
                       >
-                        <Settings className="w-4 h-4" />
-                        <span>Settings</span>
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Dashboard</span>
                       </NavLink>
-                      {user.role === 'admin' && (
-                        <NavLink
-                          to="/admin/dashboard"
-                          className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
-                          onClick={() => setUserDropdownOpen(false)}
-                        >
-                          <Settings className="w-4 h-4" />
-                          <span>Admin Dashboard</span>
-                        </NavLink>
-                      )}
+
                       <button
                         onClick={handleLogout}
                         className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200 w-full"
@@ -431,7 +439,7 @@ const Nav: React.FC = () => {
             ) : (
               <div className="flex items-center space-x-2">
                 <NavLink
-                  to="/login"
+                  to="/student-login"
                   className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200"
                 >
                   Login
@@ -502,7 +510,7 @@ const Nav: React.FC = () => {
                   Admissions
                 </div>
                 <NavLink
-                  to="/admissions/how-to-apply"
+                  to="/how-to-apply"
                   className="flex items-center space-x-3 px-4 py-3 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >

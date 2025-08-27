@@ -1,11 +1,5 @@
 from django.db import models
 from django.conf import settings
-from classroom.models import GradeLevel, Section
-from subject.models import Subject
-
-
-from django.db import models
-from django.conf import settings
 from django.utils import timezone
 from classroom.models import GradeLevel, Section
 from subject.models import Subject
@@ -55,3 +49,83 @@ class TeacherAssignment(models.Model):
 
     def __str__(self):
         return f"{self.teacher} - {self.subject} ({self.grade_level}) {self.section}"
+
+
+class AssignmentRequest(models.Model):
+    """Model for teacher assignment requests"""
+    
+    REQUEST_TYPE_CHOICES = [
+        ("subject", "Subject Assignment"),
+        ("class", "Class Assignment"),
+        ("schedule", "Schedule Change"),
+        ("additional", "Additional Assignment"),
+    ]
+    
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+        ("cancelled", "Cancelled"),
+    ]
+    
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='assignment_requests')
+    request_type = models.CharField(max_length=20, choices=REQUEST_TYPE_CHOICES)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    requested_subjects = models.ManyToManyField(Subject, blank=True)
+    requested_grade_levels = models.ManyToManyField(GradeLevel, blank=True)
+    requested_sections = models.ManyToManyField(Section, blank=True)
+    preferred_schedule = models.TextField(blank=True, help_text="Preferred teaching schedule")
+    reason = models.TextField(help_text="Reason for the request")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    admin_notes = models.TextField(blank=True, help_text="Admin notes on the request")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='reviewed_requests'
+    )
+    
+    class Meta:
+        ordering = ['-submitted_at']
+    
+    def __str__(self):
+        return f"{self.teacher} - {self.title} ({self.status})"
+
+
+class TeacherSchedule(models.Model):
+    """Model for teacher weekly schedules"""
+    
+    DAY_CHOICES = [
+        ("monday", "Monday"),
+        ("tuesday", "Tuesday"),
+        ("wednesday", "Wednesday"),
+        ("thursday", "Thursday"),
+        ("friday", "Friday"),
+        ("saturday", "Saturday"),
+        ("sunday", "Sunday"),
+    ]
+    
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='schedules')
+    day_of_week = models.CharField(max_length=10, choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE)
+    section = models.ForeignKey(Section, on_delete=models.CASCADE)
+    room_number = models.CharField(max_length=20, blank=True)
+    is_active = models.BooleanField(default=True)
+    academic_year = models.CharField(max_length=10, blank=True)
+    term = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ("teacher", "day_of_week", "start_time", "end_time", "academic_year", "term")
+        ordering = ['day_of_week', 'start_time']
+    
+    def __str__(self):
+        return f"{self.teacher} - {self.subject} ({self.day_of_week} {self.start_time}-{self.end_time})"

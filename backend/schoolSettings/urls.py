@@ -1,7 +1,15 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import views
 
 app_name = 'schoolSettings'
+
+# Create router for ViewSets
+router = DefaultRouter()
+router.register(r'announcements', views.SchoolAnnouncementViewSet, basename='announcement')
+router.register(r'permissions', views.PermissionViewSet, basename='permission')
+router.register(r'roles', views.RoleViewSet, basename='role')
+router.register(r'user-roles', views.UserRoleViewSet, basename='user-role')
 
 urlpatterns = [
     # Main settings endpoints
@@ -10,11 +18,23 @@ urlpatterns = [
     # Payment gateway testing
     path('payment-gateways/<str:gateway>/test/', views.test_payment_gateway, name='test-payment-gateway'),
     
+    # Communication settings
+    path('communication-settings/', views.CommunicationSettingsDetail.as_view(), name='communication-settings'),
+    
     # Notification testing
     path('notifications/email/test/', views.test_email_connection, name='test-email'),
     path('notifications/sms/test/', views.test_sms_connection, name='test-sms'),
     
+    # Brevo and Twilio testing
+    path('notifications/brevo/test/', views.test_brevo_connection, name='test-brevo'),
+    path('notifications/twilio/test/', views.test_twilio_connection, name='test-twilio'),
+    path('notifications/brevo/send-test/', views.send_test_email, name='send-test-email'),
+    path('notifications/twilio/send-test/', views.send_test_sms, name='send-test-sms'),
+    
     # File uploads
     path('school-settings/upload-logo/', views.FileUploadView.as_view(), {'file_type': 'logo'}, name='upload-logo'),
     path('school-settings/upload-favicon/', views.FileUploadView.as_view(), {'file_type': 'favicon'}, name='upload-favicon'),
+    
+    # Include router URLs
+    path('', include(router.urls)),
 ] 

@@ -247,7 +247,7 @@ const EmailVerification: React.FC = () => {
           <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/')}
               className="text-sm text-blue-600 hover:text-blue-500"
             >
               Back to Login

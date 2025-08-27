@@ -2,12 +2,14 @@ from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from schoolSettings.permissions import HasStudentsPermission, HasStudentsPermissionOrReadOnly
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 import csv
 from datetime import date, timedelta
+from django.utils import timezone
 from .models import Student
 from .serializers import (
     StudentDetailSerializer,
@@ -16,10 +18,13 @@ from .serializers import (
 )
 from attendance.models import Attendance
 from result.models import StudentResult
+from schoolSettings.models import SchoolAnnouncement
+from events.models import Event
+from academics.models import AcademicCalendar
 
 
 class StudentViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasStudentsPermissionOrReadOnly]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -418,6 +423,219 @@ class StudentViewSet(viewsets.ModelViewSet):
                 'error': f'Failed to toggle student status: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=["get"])
+    def dashboard(self, request):
+        """Get comprehensive dashboard data for the logged-in student."""
+        print(f"Dashboard request from user: {request.user.username}")
+        print(f"User has student_profile: {hasattr(request.user, 'student_profile')}")
+        
+        if not hasattr(request.user, 'student_profile'):
+            # Try to get student profile directly
+            try:
+                student = Student.objects.get(user=request.user)
+                print(f"Found student profile: {student}")
+            except Student.DoesNotExist:
+                print(f"No student profile found for user: {request.user.username}")
+                return Response(
+                    {"error": "User is not a student", "username": request.user.username}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            student = request.user.student_profile
+        today = date.today()
+        
+        # Get attendance statistics
+        total_attendance = Attendance.objects.filter(student=student).count()
+        present_attendance = Attendance.objects.filter(
+            student=student, 
+            status='P'
+        ).count()
+        attendance_rate = (present_attendance / total_attendance * 100) if total_attendance > 0 else 0
+        
+        # Get recent attendance (last 30 days)
+        thirty_days_ago = today - timedelta(days=30)
+        recent_attendance = Attendance.objects.filter(
+            student=student,
+            date__gte=thirty_days_ago
+        ).order_by('-date')[:10]
+        
+        # Get academic performance
+        results = StudentResult.objects.filter(student=student)
+        total_subjects = results.values('subject').distinct().count()
+        
+        # Calculate average score if results exist
+        if results.exists():
+            # Calculate average percentage from all results
+            average_score = sum(result.percentage for result in results if result.percentage) / results.count()
+        else:
+            average_score = 0
+        
+        # Get today's classes (you might need to implement this based on your timetable model)
+        today_classes = 0  # Placeholder - implement based on your timetable structure
+        
+        # Get recent activities (recent results, attendance, etc.)
+        recent_activities = []
+        
+        # Add recent results
+        recent_results = results.order_by('-created_at')[:5]
+        for result in recent_results:
+            recent_activities.append({
+                'type': 'result',
+                'title': f'{result.subject.name} Result',
+                'description': f'Score: {result.total_score} ({result.percentage}%)',
+                'date': result.created_at.strftime('%Y-%m-%d'),
+                'time_ago': self._get_time_ago(result.created_at)
+            })
+        
+        # Add recent attendance
+        for attendance in recent_attendance[:5]:
+            recent_activities.append({
+                'type': 'attendance',
+                'title': f'Attendance - {attendance.get_status_display()}',
+                'description': f'Section: {attendance.section.name}',
+                'date': attendance.date.strftime('%Y-%m-%d'),
+                'time_ago': self._get_time_ago(attendance.date)
+            })
+        
+        # Sort activities by date
+        recent_activities.sort(key=lambda x: x['date'], reverse=True)
+        recent_activities = recent_activities[:5]  # Limit to 5 most recent
+        
+        # Get announcements for students
+        all_announcements = SchoolAnnouncement.objects.filter(
+            is_active=True,
+            start_date__lte=timezone.now(),
+            end_date__gte=timezone.now()
+        ).order_by('-is_pinned', '-created_at')
+        
+        # Filter for student announcements in Python
+        announcements = [
+            announcement for announcement in all_announcements 
+            if 'student' in announcement.target_audience
+        ][:5]
+        
+        announcements_data = []
+        for announcement in announcements:
+            announcements_data.append({
+                'id': announcement.id,
+                'title': announcement.title,
+                'content': announcement.content,
+                'type': announcement.announcement_type,
+                'is_pinned': announcement.is_pinned,
+                'created_at': announcement.created_at.strftime('%Y-%m-%d %H:%M'),
+                'time_ago': self._get_time_ago(announcement.created_at)
+            })
+        
+        # Get upcoming events
+        upcoming_events = Event.objects.filter(
+            is_active=True,
+            is_published=True,
+            start_date__gte=timezone.now()
+        ).order_by('start_date')[:5]
+        
+        events_data = []
+        for event in upcoming_events:
+            events_data.append({
+                'id': event.id,
+                'title': event.title,
+                'subtitle': event.subtitle,
+                'description': event.description,
+                'type': event.event_type,
+                'start_date': event.start_date.strftime('%Y-%m-%d') if event.start_date else None,
+                'end_date': event.end_date.strftime('%Y-%m-%d') if event.end_date else None,
+                'days_until': (event.start_date.date() - today).days if event.start_date else None
+            })
+        
+        # Get academic calendar events
+        academic_calendar = AcademicCalendar.objects.filter(
+            is_active=True,
+            start_date__gte=today
+        ).order_by('start_date')[:10]
+        
+        calendar_data = []
+        for event in academic_calendar:
+            calendar_data.append({
+                'id': event.id,
+                'title': event.title,
+                'description': event.description,
+                'type': event.event_type,
+                'start_date': event.start_date.strftime('%Y-%m-%d'),
+                'end_date': event.end_date.strftime('%Y-%m-%d') if event.end_date else None,
+                'location': event.location,
+                'days_until': (event.start_date - today).days
+            })
+        
+        dashboard_data = {
+            'student_info': {
+                'name': student.full_name,
+                'class': student.get_student_class_display(),
+                'education_level': student.get_education_level_display(),
+                'registration_number': student.registration_number,
+                'admission_date': student.admission_date.strftime('%Y-%m-%d') if student.admission_date else None,
+            },
+            'statistics': {
+                'performance': {
+                    'average_score': round(average_score, 1),
+                    'label': 'Average Score'
+                },
+                'attendance': {
+                    'rate': round(attendance_rate, 1),
+                    'present': present_attendance,
+                    'total': total_attendance,
+                    'label': 'Present Rate'
+                },
+                'subjects': {
+                    'count': total_subjects,
+                    'label': 'Total Subjects'
+                },
+                'schedule': {
+                    'classes_today': today_classes,
+                    'label': 'Classes Today'
+                }
+            },
+            'recent_activities': recent_activities,
+            'announcements': announcements_data,
+            'upcoming_events': events_data,
+            'academic_calendar': calendar_data,
+            'quick_stats': {
+                'total_results': results.count(),
+                'this_term_results': results.filter(
+                    created_at__month=today.month
+                ).count(),
+                'attendance_this_month': Attendance.objects.filter(
+                    student=student,
+                    date__month=today.month
+                ).count(),
+            }
+        }
+        
+        return Response(dashboard_data)
+
+    def _get_time_ago(self, date_obj):
+        """Helper method to get human-readable time ago."""
+        from datetime import datetime
+        if isinstance(date_obj, date):
+            date_obj = datetime.combine(date_obj, datetime.min.time())
+        
+        now = datetime.now()
+        diff = now - date_obj
+        
+        if diff.days > 0:
+            if diff.days == 1:
+                return "Yesterday"
+            elif diff.days < 7:
+                return f"{diff.days} days ago"
+            else:
+                weeks = diff.days // 7
+                return f"{weeks} week{'s' if weeks > 1 else ''} ago"
+        else:
+            hours = diff.seconds // 3600
+            if hours > 0:
+                return f"{hours} hour{'s' if hours > 1 else ''} ago"
+            else:
+                minutes = (diff.seconds % 3600) // 60
+                return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+
     def _get_age_group(self, age):
         """Categorize age into groups."""
         if age <= 3:
@@ -459,3 +677,58 @@ class StudentViewSet(viewsets.ModelViewSet):
 
         total_age = sum(student.age for student in queryset)
         return round(total_age / queryset.count(), 1)
+
+    @action(detail=False, methods=["get"])
+    def profile(self, request):
+        """Get detailed profile information for the logged-in student."""
+        try:
+            # Get the student profile for the current user
+            if hasattr(request.user, 'student_profile'):
+                student = request.user.student_profile
+            else:
+                student = Student.objects.get(user=request.user)
+            
+            # Use the detailed serializer to get comprehensive profile data
+            serializer = StudentDetailSerializer(student, context={'request': request})
+            profile_data = serializer.data
+            
+            # Add additional profile-specific data
+            profile_data.update({
+                'user_info': {
+                    'username': student.user.username,
+                    'email': student.user.email,
+                    'first_name': student.user.first_name,
+                    'last_name': student.user.last_name,
+                    'middle_name': student.user.middle_name,
+                    'is_active': student.user.is_active,
+                    'date_joined': student.user.date_joined,
+                },
+                'academic_info': {
+                    'class': student.get_student_class_display(),
+                    'education_level': student.get_education_level_display(),
+                    'admission_date': student.admission_date,
+                    'registration_number': student.registration_number,
+                    'classroom': student.classroom,
+                },
+                'contact_info': {
+                    'parent_contact': student.parent_contact,
+                    'emergency_contact': student.emergency_contact,
+                },
+                'medical_info': {
+                    'medical_conditions': student.medical_conditions,
+                    'special_requirements': student.special_requirements,
+                }
+            })
+            
+            return Response(profile_data)
+            
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student profile not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to fetch profile: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

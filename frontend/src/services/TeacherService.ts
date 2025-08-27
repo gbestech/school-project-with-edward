@@ -32,6 +32,71 @@ export interface Teacher {
     subject_name: string;
     education_level: string;
   }>;
+  classroom_assignments?: Array<{
+    id: number;
+    classroom_name: string;
+    classroom_id: number;
+    section_name: string;
+    grade_level_name: string;
+    education_level: string;
+    academic_year: string;
+    term: string;
+    subject_name: string;
+    subject_code: string;
+    assigned_date: string;
+    room_number: string;
+    student_count: number;
+    max_capacity: number;
+    is_class_teacher: boolean;
+  }>;
+  assignment_requests?: AssignmentRequest[];
+  schedules?: TeacherSchedule[];
+}
+
+export interface AssignmentRequest {
+  id: number;
+  teacher: number;
+  teacher_name: string;
+  teacher_id: number;
+  request_type: 'subject' | 'class' | 'schedule' | 'additional';
+  title: string;
+  description: string;
+  requested_subjects: number[];
+  requested_subjects_names: string[];
+  requested_grade_levels: number[];
+  requested_grade_levels_names: string[];
+  requested_sections: number[];
+  requested_sections_names: string[];
+  preferred_schedule: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  admin_notes: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewed_by?: number;
+  reviewed_by_name?: string;
+  days_since_submitted: number;
+}
+
+export interface TeacherSchedule {
+  id: number;
+  teacher: number;
+  teacher_name: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  subject: number;
+  subject_name: string;
+  grade_level: number;
+  grade_level_name: string;
+  section: number;
+  section_name: string;
+  room_number: string;
+  is_active: boolean;
+  academic_year: string;
+  term: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateTeacherData {
@@ -71,6 +136,7 @@ export interface UpdateTeacherData {
   phone_number?: string;
   address?: string;
   date_of_birth?: string;
+  bio?: string;
   hire_date?: string;
   qualification?: string;
   specialization?: string;
@@ -82,6 +148,29 @@ export interface UpdateTeacherData {
   }>;
   photo?: string;
   is_active?: boolean;
+}
+
+export interface CreateAssignmentRequestData {
+  request_type: 'subject' | 'class' | 'schedule' | 'additional';
+  title: string;
+  description: string;
+  requested_subjects?: number[];
+  requested_grade_levels?: number[];
+  requested_sections?: number[];
+  preferred_schedule?: string;
+  reason: string;
+}
+
+export interface CreateScheduleData {
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  subject: number;
+  grade_level: number;
+  section: number;
+  room_number?: string;
+  academic_year?: string;
+  term?: string;
 }
 
 class TeacherService {
@@ -148,7 +237,17 @@ class TeacherService {
       updateData.subjects = data.subjects.map(s => parseInt(s, 10));
     }
     
+    // Ensure bio and date_of_birth are included if they exist
+    if (data.bio !== undefined) {
+      updateData.bio = data.bio;
+    }
+    if (data.date_of_birth !== undefined) {
+      updateData.date_of_birth = data.date_of_birth;
+    }
+    
+    console.log('🔍 TeacherService.updateTeacher - Sending data:', updateData);
     const response = await api.patch(`/api/teachers/teachers/${id}/`, updateData);
+    console.log('🔍 TeacherService.updateTeacher - Response:', response);
     return response;
   }
 
@@ -200,6 +299,120 @@ class TeacherService {
     };
 
     return { total, active, inactive, by_level };
+  }
+
+  // Assignment Request Management
+  async getAssignmentRequests(params?: {
+    teacher_id?: number;
+    status?: string;
+    request_type?: string;
+  }): Promise<AssignmentRequest[]> {
+    const response = await api.get('/api/teachers/assignment-requests/', { params });
+    return response;
+  }
+
+  async createAssignmentRequest(data: CreateAssignmentRequestData): Promise<AssignmentRequest> {
+    const response = await api.post('/api/teachers/assignment-requests/', data);
+    return response;
+  }
+
+  async updateAssignmentRequest(id: number, data: Partial<AssignmentRequest>): Promise<AssignmentRequest> {
+    const response = await api.patch(`/api/teachers/assignment-requests/${id}/`, data);
+    return response;
+  }
+
+  async deleteAssignmentRequest(id: number): Promise<void> {
+    await api.delete(`/api/teachers/assignment-requests/${id}/`);
+  }
+
+  async approveAssignmentRequest(id: number): Promise<{ status: string }> {
+    const response = await api.post(`/api/teachers/assignment-requests/${id}/approve/`, {});
+    return response;
+  }
+
+  async rejectAssignmentRequest(id: number, admin_notes?: string): Promise<{ status: string }> {
+    const response = await api.post(`/api/teachers/assignment-requests/${id}/reject/`, { admin_notes });
+    return response;
+  }
+
+  async cancelAssignmentRequest(id: number): Promise<{ status: string }> {
+    const response = await api.post(`/api/teachers/assignment-requests/${id}/cancel/`, {});
+    return response;
+  }
+
+  // Teacher Schedule Management
+  async getTeacherSchedules(params?: {
+    teacher_id?: number;
+    academic_year?: string;
+    term?: string;
+    day_of_week?: string;
+  }): Promise<TeacherSchedule[]> {
+    const response = await api.get('/api/teachers/teacher-schedules/', { params });
+    return response;
+  }
+
+  async getWeeklySchedule(teacher_id: number): Promise<{
+    weekly_schedule: any;
+    schedules: TeacherSchedule[];
+  }> {
+    const response = await api.get('/api/teachers/teacher-schedules/weekly_schedule/', {
+      params: { teacher_id }
+    });
+    return response;
+  }
+
+  async createTeacherSchedule(data: CreateScheduleData): Promise<TeacherSchedule> {
+    const response = await api.post('/api/teachers/teacher-schedules/', data);
+    return response;
+  }
+
+  async updateTeacherSchedule(id: number, data: Partial<TeacherSchedule>): Promise<TeacherSchedule> {
+    const response = await api.patch(`/api/teachers/teacher-schedules/${id}/`, data);
+    return response;
+  }
+
+  async deleteTeacherSchedule(id: number): Promise<void> {
+    await api.delete(`/api/teachers/teacher-schedules/${id}/`);
+  }
+
+  async bulkCreateSchedules(teacher_id: number, schedules: CreateScheduleData[]): Promise<{
+    message: string;
+    schedules: TeacherSchedule[];
+  }> {
+    const response = await api.post('/api/teachers/teacher-schedules/bulk_create/', {
+      teacher_id,
+      schedules
+    });
+    return response;
+  }
+
+  // Assignment Management Utilities
+  async getAvailableSubjects(): Promise<Array<{ id: number; name: string; code: string }>> {
+    const response = await api.get('/api/teachers/assignment-management/available_subjects/');
+    return response.subjects;
+  }
+
+  async getAvailableGradeLevels(): Promise<Array<{ id: number; name: string; education_level: string }>> {
+    const response = await api.get('/api/teachers/assignment-management/available_grade_levels/');
+    return response.grade_levels;
+  }
+
+  async getAvailableSections(): Promise<Array<{ id: number; name: string; grade_level: string }>> {
+    const response = await api.get('/api/teachers/assignment-management/available_sections/');
+    return response.sections;
+  }
+
+  async getTeacherAssignmentsSummary(teacher_id: number): Promise<{
+    total_subjects: number;
+    total_classes: number;
+    total_students: number;
+    pending_requests: number;
+    teaching_hours: number;
+  }> {
+    const response = await api.get('/api/teachers/assignment-management/teacher_assignments_summary/', {
+      params: { teacher_id }
+    });
+    return response;
   }
 }
 

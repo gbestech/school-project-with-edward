@@ -41,6 +41,7 @@ export interface Student {
   profile_picture: string | null;
   classroom?: string | null;
   email?: string;
+  section_id?: number | null;
 }
 
 export interface CreateStudentData {
@@ -203,13 +204,12 @@ export class StudentService {
     }
   }
 
-  // Fetch student dashboard data
-  async getStudentDashboard(): Promise<any> {
+  async getDashboardData(): Promise<any> {
     try {
-      const response = await api.get('/api/fee/studentfee/dashboard/');
+      const response = await api.get('/students/dashboard/');
       return response;
     } catch (error) {
-      console.error('Error fetching student dashboard:', error);
+      console.error('Error fetching student dashboard data:', error);
       throw error;
     }
   }

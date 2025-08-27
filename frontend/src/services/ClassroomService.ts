@@ -176,7 +176,7 @@ class ClassroomService {
 
   // Get all teachers (for assignment dropdowns)
   async getAllTeachers() {
-    const response = await api.get('/api/teachers/teachers/');
+          const response = await api.get('/api/teachers/teachers/');
     return response;
   }
 

@@ -1,6 +1,7 @@
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Attendance
 from .serializers import AttendanceSerializer
@@ -12,11 +13,13 @@ from students.models import Student
 from teacher.models import Teacher
 from classroom.models import Section
 from parent.models import ParentProfile
+from schoolSettings.permissions import HasAttendancePermission, HasAttendancePermissionOrReadOnly
 
 
 class AttendanceViewSet(viewsets.ModelViewSet):
     serializer_class = AttendanceSerializer
     queryset = Attendance.objects.all()
+    permission_classes = [HasAttendancePermissionOrReadOnly]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

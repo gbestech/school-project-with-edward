@@ -25,7 +25,8 @@ import {
   ChevronDown,
   Menu,
   X,
-  Key
+  Key,
+  AlertTriangle
 } from 'lucide-react';
 import {
   UserProfile,  
@@ -52,6 +53,15 @@ import { useDesign } from '@/contexts/DesignContext';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAbsoluteUrl } from '@/utils/urlUtils';
+import { usePermissions } from '@/hooks/usePermissions';
+import { useAuth } from '@/hooks/useAuth';
+import { useAuthLostContext } from '@/components/common/AuthLostProvider';
+import { 
+  StudentsPermissionGate, 
+  TeachersPermissionGate, 
+  AttendancePermissionGate,
+  SettingsPermissionGate 
+} from '@/components/common/PermissionGate';
 
 // Define proper typescript interface
 interface AdminDashboardProps {
@@ -134,6 +144,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     'Advanced',
   ];
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { canViewStudents, canViewTeachers, canViewAttendance, canViewSettings } = usePermissions();
+  const { user } = useAuth();
+  const { showAuthLost } = useAuthLostContext();
+  
+  // Super admin access check
+  const isSuperAdmin = user?.is_superuser && user?.is_staff;
+  
+
 
 const navigate = useNavigate();
 console.log('Here is the userprofile', userProfile)
@@ -265,10 +283,20 @@ console.log("Total Students:", totalStudents);
     }
   ];
 
+
+  
   const navigationItems = [
     { name: 'Home', icon: Home, active: true, path: '/admin/dashboard' },
-    { name: 'Teachers', icon: Users, path: '/admin/teachers' },
-    { name: 'Students', icon: GraduationCap, path: '/admin/students' },
+    // Show all items for super admins, or filter based on permissions for regular users
+    ...(isSuperAdmin ? [
+      { name: 'Teachers', icon: Users, path: '/admin/teachers' },
+      { name: 'Students', icon: GraduationCap, path: '/admin/students' },
+      { name: 'Attendance', icon: CheckSquare, path: '/admin/attendance' }
+    ] : [
+      ...(canViewTeachers() ? [{ name: 'Teachers', icon: Users, path: '/admin/teachers' }] : []),
+      ...(canViewStudents() ? [{ name: 'Students', icon: GraduationCap, path: '/admin/students' }] : []),
+      ...(canViewAttendance() ? [{ name: 'Attendance', icon: CheckSquare, path: '/admin/attendance' }] : [])
+    ]),
     { name: 'Parents', icon: UserCheck, path: '/admin/parents' },
     { name: 'Admins', icon: User, path: '/admin/admins' },
     { name: 'Password Recovery', icon: Key, path: '/admin/password-recovery' },
@@ -277,11 +305,15 @@ console.log("Total Students:", totalStudents);
     { name: 'Lessons', icon: Clock, path: '/admin/lessons' },
     { name: 'Exams', icon: FileText, path: '/admin/exams' },
     { name: 'Results', icon: BarChart3, path: '/admin/results' },
-    { name: 'Attendance', icon: CheckSquare, path: '/admin/attendance' },
     { name: 'Messages', icon: MessageSquare, path: '/admin/messages' },
     { name: 'Announcements', icon: Bell, path: '/admin/announcements' },
+    // Show Settings second to last for super admins, or based on permissions for regular users
+    ...(isSuperAdmin ? [
+      { name: 'Settings', icon: Settings, path: '/admin/settings' }
+    ] : [
+      ...(canViewSettings() ? [{ name: 'Settings', icon: Settings, path: '/admin/settings' }] : [])
+    ]),
     { name: 'Profile', icon: User, path: '/admin/profile' },
-    { name: 'Settings', icon: Settings, path: '/admin/settings' },
     // { name: 'Logout', icon: LogOut, path: '/logout' }
   ];
 
@@ -340,15 +372,36 @@ console.log("Total Students:", totalStudents);
 
   // Handle logout
   const handleLogout = async () => {
-    console.log('Logging out...');
-    if (onLogout) {
-      await onLogout();
-    } else {
-      // Fallback logout
+    console.log('🔄 Admin Dashboard: Starting logout process...');
+    
+    try {
+      if (onLogout) {
+        console.log('🔄 Admin Dashboard: Using provided logout function');
+        await onLogout();
+        console.log('✅ Admin Dashboard: Logout function completed successfully');
+      } else {
+        console.log('🔄 Admin Dashboard: Using fallback logout');
+        // Fallback logout
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('userProfile');
+        console.log('✅ Admin Dashboard: Fallback logout completed');
+      }
+      
+      console.log('🔄 Admin Dashboard: Navigating to home page...');
+      navigate('/', { replace: true });
+      console.log('✅ Admin Dashboard: Navigation to home page completed');
+      
+    } catch (error) {
+      console.error('❌ Admin Dashboard: Logout failed:', error);
+      // Even if logout fails, clear local data and redirect
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userProfile');
+      navigate('/', { replace: true });
     }
-    navigate('/login', { replace: true });
   };
 
   // Handle navigation item click
@@ -634,14 +687,14 @@ console.log("Total Students:", totalStudents);
                 </div>
               )}
             </button>
+            
+
           </nav>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-            </div>
+          <div className="p-6 pt-8">
             {children}
           </div>
         </div>

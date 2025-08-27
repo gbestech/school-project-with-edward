@@ -1,9 +1,11 @@
 import DashboardMainContent from '../../components/dashboards/admin/DashboardMainContent';
 import { Student, Teacher, Classroom, AttendanceData, DashboardStats, Parent } from '../../types/types';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import api from '@/services/api';
 
 const AdminDashboardContentLoader = () => {
+  const { user } = useAuth();
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>({} as DashboardStats);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -99,7 +101,14 @@ const AdminDashboardContentLoader = () => {
   }, []);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading dashboard...</div>;
+    return (
+      <div className="flex justify-center items-center h-full min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+          <div className="text-sm text-gray-600">Loading dashboard content...</div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -111,6 +120,10 @@ const AdminDashboardContentLoader = () => {
       classrooms={classrooms}
       parents={parents}
       onUserStatusUpdate={handleUserStatusUpdate}
+      user={user}
+      activateStudent={async () => {}}
+      activateTeacher={async () => {}}
+      activateParent={async () => {}}
     />
   );
 };

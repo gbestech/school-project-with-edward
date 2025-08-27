@@ -182,6 +182,58 @@ class SystemPreferences(models.Model):
         return "System Preferences"
 
 
+class CommunicationSettings(models.Model):
+    """Communication settings for email and SMS providers"""
+    # Brevo (Email) Settings
+    brevo_api_key = models.CharField(max_length=255, blank=True, null=True, help_text="Brevo API key for email delivery")
+    brevo_sender_email = models.EmailField(blank=True, null=True, help_text="Default sender email address")
+    brevo_sender_name = models.CharField(max_length=100, blank=True, null=True, help_text="Default sender name")
+    brevo_test_mode = models.BooleanField(default=True, help_text="Enable test mode to prevent actual email sending")
+    
+    # Twilio (SMS) Settings
+    twilio_account_sid = models.CharField(max_length=255, blank=True, null=True, help_text="Twilio Account SID")
+    twilio_auth_token = models.CharField(max_length=255, blank=True, null=True, help_text="Twilio Auth Token")
+    twilio_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Twilio phone number for sending SMS")
+    twilio_test_mode = models.BooleanField(default=True, help_text="Enable test mode to prevent actual SMS sending")
+    
+    # Notification Preferences
+    email_notifications_enabled = models.BooleanField(default=True, help_text="Enable email notifications")
+    sms_notifications_enabled = models.BooleanField(default=False, help_text="Enable SMS notifications")
+    in_app_notifications_enabled = models.BooleanField(default=True, help_text="Enable in-app notifications")
+    digest_frequency = models.CharField(
+        max_length=20, 
+        default='daily',
+        choices=[
+            ('realtime', 'Real-time'),
+            ('hourly', 'Hourly'),
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly')
+        ],
+        help_text="Frequency for digest notifications"
+    )
+    
+    # Connection Status
+    brevo_configured = models.BooleanField(default=False, help_text="Brevo is properly configured")
+    twilio_configured = models.BooleanField(default=False, help_text="Twilio is properly configured")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    class Meta:
+        verbose_name = "Communication Setting"
+        verbose_name_plural = "Communication Settings"
+    
+    def __str__(self):
+        return "Communication Settings"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one communication settings instance exists
+        if not self.pk and CommunicationSettings.objects.exists():
+            return
+        super().save(*args, **kwargs)
+
+
 class SchoolHoliday(models.Model):
     """School holidays and breaks"""
     name = models.CharField(max_length=100)
@@ -200,6 +252,156 @@ class SchoolHoliday(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
+
+
+class Permission(models.Model):
+    """Granular permissions for different modules"""
+    MODULE_CHOICES = [
+        ('dashboard', 'Dashboard'),
+        ('students', 'Students'),
+        ('teachers', 'Teachers'),
+        ('parents', 'Parents'),
+        ('attendance', 'Attendance'),
+        ('results', 'Results'),
+        ('exams', 'Exams'),
+        ('messaging', 'Messaging'),
+        ('finance', 'Finance'),
+        ('reports', 'Reports'),
+        ('settings', 'Settings'),
+        ('announcements', 'Announcements'),
+        ('events', 'Events'),
+        ('library', 'Library'),
+        ('timetable', 'Timetable'),
+        ('subjects', 'Subjects'),
+        ('classes', 'Classes'),
+    ]
+    
+    PERMISSION_TYPE_CHOICES = [
+        ('read', 'Read'),
+        ('write', 'Write'),
+        ('delete', 'Delete'),
+        ('admin', 'Admin'),
+    ]
+    
+    SECTION_CHOICES = [
+        ('all', 'All Sections'),
+        ('primary', 'Primary Section'),
+        ('secondary', 'Secondary Section'),
+        ('nursery', 'Nursery Section'),
+    ]
+    
+    module = models.CharField(max_length=20, choices=MODULE_CHOICES)
+    permission_type = models.CharField(max_length=10, choices=PERMISSION_TYPE_CHOICES)
+    section = models.CharField(max_length=15, choices=SECTION_CHOICES, default='all')
+    granted = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Permission"
+        verbose_name_plural = "Permissions"
+        unique_together = ['module', 'permission_type', 'section']
+        ordering = ['module', 'permission_type', 'section']
+    
+    def __str__(self):
+        return f"{self.get_module_display()} - {self.get_permission_type_display()} - {self.get_section_display()}"
+
+
+class Role(models.Model):
+    """Custom roles with specific permissions"""
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    color = models.CharField(max_length=7, default='#3B82F6', help_text="Hex color for role display")
+    is_system = models.BooleanField(default=False, help_text="System roles cannot be deleted")
+    is_active = models.BooleanField(default=True)
+    
+    # Permissions
+    permissions = models.ManyToManyField(Permission, blank=True, related_name='roles')
+    
+    # Section restrictions
+    primary_section_access = models.BooleanField(default=True)
+    secondary_section_access = models.BooleanField(default=True)
+    nursery_section_access = models.BooleanField(default=True)
+    
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='roles_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Role"
+        verbose_name_plural = "Roles"
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+    
+    @property
+    def user_count(self):
+        """Get the number of users with this role"""
+        from users.models import CustomUser
+        return CustomUser.objects.filter(role=self.name).count()
+    
+    def has_permission(self, module, permission_type, section='all'):
+        """Check if role has specific permission"""
+        return self.permissions.filter(
+            module=module,
+            permission_type=permission_type,
+            section__in=[section, 'all']
+        ).exists()
+
+
+class UserRole(models.Model):
+    """User-specific role assignments with section restrictions"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_roles')
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='user_assignments')
+    
+    # Section-specific permissions
+    primary_section_access = models.BooleanField(default=True)
+    secondary_section_access = models.BooleanField(default=True)
+    nursery_section_access = models.BooleanField(default=True)
+    
+    # Custom permissions override
+    custom_permissions = models.ManyToManyField(Permission, blank=True, related_name='user_role_assignments')
+    
+    # Assignment details
+    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='user_role_assignments_made')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = "User Role Assignment"
+        verbose_name_plural = "User Role Assignments"
+        unique_together = ['user', 'role']
+        ordering = ['-assigned_at']
+    
+    def __str__(self):
+        return f"{self.user.full_name} - {self.role.name}"
+    
+    def is_expired(self):
+        """Check if role assignment has expired"""
+        if self.expires_at:
+            return timezone.now() > self.expires_at
+        return False
+    
+    def has_permission(self, module, permission_type, section='all'):
+        """Check if user has specific permission through this role"""
+        if not self.is_active or self.is_expired():
+            return False
+        
+        # Check custom permissions first
+        custom_perm = self.custom_permissions.filter(
+            module=module,
+            permission_type=permission_type,
+            section__in=[section, 'all']
+        ).first()
+        
+        if custom_perm:
+            return custom_perm.granted
+        
+        # Check role permissions
+        return self.role.has_permission(module, permission_type, section)
 
 
 class SchoolAnnouncement(models.Model):

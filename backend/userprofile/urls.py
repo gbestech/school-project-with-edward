@@ -46,6 +46,11 @@ urlpatterns = [
         views.UserProfileViewSet.as_view({"get": "contact_info"}),
         name="profile-contact-info",
     ),
+    path(
+        "all_users/",
+        views.UserProfileViewSet.as_view({"get": "all_users"}),
+        name="profile-all-users",
+    ),
 ]
 
 # Alternative URL patterns using path parameters

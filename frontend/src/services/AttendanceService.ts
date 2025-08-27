@@ -7,9 +7,13 @@ export interface AttendanceRecordBackend {
   id: number;
   date: string;
   student: number | null;
+  student_name?: string | null;
   teacher: number | null;
+  teacher_name?: string | null;
   section: number | null;
   status: 'P' | 'A' | 'L' | 'E'; // Present, Absent, Late, Excused
+  time_in?: string | null;
+  time_out?: string | null;
 }
 
 export const AttendanceStatusMap: Record<'present' | 'absent' | 'late' | 'excused', 'P' | 'A' | 'L' | 'E'> = {

@@ -326,7 +326,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${themeClasses.bgPrimary} p-6`}>
+      <div className={`${themeClasses.bgPrimary}`}>
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className={themeClasses.textSecondary}>Loading classrooms...</p>
@@ -336,7 +336,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.bgPrimary} p-6`}>
+    <div className={`${themeClasses.bgPrimary}`}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

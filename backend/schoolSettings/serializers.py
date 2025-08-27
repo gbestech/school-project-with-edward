@@ -4,7 +4,11 @@ from .models import (
     NotificationSettings, 
     SystemPreferences, 
     SchoolHoliday, 
-    SchoolAnnouncement
+    SchoolAnnouncement,
+    CommunicationSettings,
+    Permission,
+    Role,
+    UserRole
 )
 
 
@@ -30,18 +34,11 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
         """Custom representation to include logo and favicon URLs"""
         data = super().to_representation(instance)
         
-        # Only try to build absolute URLs if we have a request context
-        if hasattr(self, 'context') and 'request' in self.context:
-            if instance.logo:
-                data['logo_url'] = self.context['request'].build_absolute_uri(instance.logo.url)
-            if instance.favicon:
-                data['favicon_url'] = self.context['request'].build_absolute_uri(instance.favicon.url)
-        else:
-            # Fallback to relative URLs
-            if instance.logo:
-                data['logo_url'] = instance.logo.url if instance.logo else None
-            if instance.favicon:
-                data['favicon_url'] = instance.favicon.url if instance.favicon else None
+        # Always return relative URLs so frontend can handle them properly
+        if instance.logo:
+            data['logo_url'] = instance.logo.url if instance.logo else None
+        if instance.favicon:
+            data['favicon_url'] = instance.favicon.url if instance.favicon else None
         
         return data
 
@@ -89,7 +86,7 @@ class SchoolHolidaySerializer(serializers.ModelSerializer):
 
 class SchoolAnnouncementSerializer(serializers.ModelSerializer):
     """Serializer for school announcements"""
-    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
     
     class Meta:
         model = SchoolAnnouncement
@@ -192,4 +189,293 @@ class SettingsSummarySerializer(serializers.Serializer):
     maintenance_mode = serializers.BooleanField()
     logo_url = serializers.CharField(allow_null=True)
     favicon_url = serializers.CharField(allow_null=True)
-    last_updated = serializers.DateTimeField() 
+    last_updated = serializers.DateTimeField()
+
+
+class CommunicationSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for communication settings"""
+    
+    class Meta:
+        model = CommunicationSettings
+        fields = [
+            'id',
+            # Brevo Settings
+            'brevo_api_key', 'brevo_sender_email', 'brevo_sender_name', 'brevo_test_mode',
+            # Twilio Settings
+            'twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number', 'twilio_test_mode',
+            # Notification Preferences
+            'email_notifications_enabled', 'sms_notifications_enabled', 'in_app_notifications_enabled', 'digest_frequency',
+            # Connection Status
+            'brevo_configured', 'twilio_configured',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def to_representation(self, instance):
+        """Custom representation to mask sensitive data"""
+        data = super().to_representation(instance)
+        
+        # Mask sensitive API keys and tokens
+        if data.get('brevo_api_key'):
+            data['brevo_api_key'] = data['brevo_api_key'][:8] + '...' + data['brevo_api_key'][-4:]
+        if data.get('twilio_auth_token'):
+            data['twilio_auth_token'] = data['twilio_auth_token'][:8] + '...' + data['twilio_auth_token'][-4:]
+        
+        return data
+
+
+class PermissionSerializer(serializers.ModelSerializer):
+    """Serializer for permissions"""
+    module_display = serializers.CharField(source='get_module_display', read_only=True)
+    permission_type_display = serializers.CharField(source='get_permission_type_display', read_only=True)
+    section_display = serializers.CharField(source='get_section_display', read_only=True)
+    
+    class Meta:
+        model = Permission
+        fields = [
+            "id", 
+            "module", 
+            "module_display",
+            "permission_type", 
+            "permission_type_display",
+            "section",
+            "section_display",
+            "granted",
+            "created_at",
+            "updated_at"
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    """Serializer for roles"""
+    permissions = PermissionSerializer(many=True, read_only=True)
+    user_count = serializers.ReadOnlyField()
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+
+    # Nested permissions structure for frontend compatibility
+    permissions_dict = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Role
+        fields = [
+            "id",
+            "name",
+            "description",
+            "color",
+            "is_system",
+            "is_active",
+            "user_count",
+            "permissions",
+            "permissions_dict",
+            "primary_section_access",
+            "secondary_section_access",
+            "nursery_section_access",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at"
+        ]
+        read_only_fields = ['id', 'user_count', 'created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        """Custom representation to handle ManyRelatedManager properly"""
+        data = super().to_representation(instance)
+        
+        # Handle permissions field properly
+        if hasattr(instance, 'permissions'):
+            if instance.pk:  # If the instance is saved
+                data['permissions'] = PermissionSerializer(instance.permissions.all(), many=True).data
+            else:
+                data['permissions'] = []
+        
+        return data
+
+    def get_permissions_dict(self, obj):
+        """
+        Convert permissions to nested dictionary structure
+        matching the frontend format
+        """
+        permissions_dict = {}
+
+        # Initialize all modules with default permissions
+        modules = [
+            "dashboard",
+            "students",
+            "teachers",
+            "parents",
+            "attendance",
+            "results",
+            "exams",
+            "messaging",
+            "finance",
+            "reports",
+            "settings",
+            "announcements",
+            "events",
+            "library",
+            "timetable",
+            "subjects",
+            "classes",
+        ]
+
+        for module in modules:
+            permissions_dict[module] = {
+                "read": False,
+                "write": False,
+                "delete": False,
+                "admin": False,
+            }
+
+        # Set actual permissions only if the object is saved
+        if obj.pk and hasattr(obj, 'permissions'):
+            for permission in obj.permissions.all():
+                if permission.module in permissions_dict:
+                    permissions_dict[permission.module][
+                        permission.permission_type
+                    ] = permission.granted
+
+        return permissions_dict
+
+
+class RoleCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating roles"""
+    permissions = serializers.ListField(child=serializers.IntegerField(), required=False)
+    
+    class Meta:
+        model = Role
+        fields = [
+            "id",
+            "name",
+            "description",
+            "color",
+            "is_active",
+            "permissions",
+            "primary_section_access",
+            "secondary_section_access",
+            "nursery_section_access",
+        ]
+        read_only_fields = ['id']
+    
+    def create(self, validated_data):
+        permissions_data = validated_data.pop('permissions', [])
+        role = Role.objects.create(**validated_data)
+        
+        if permissions_data:
+            permissions = Permission.objects.filter(id__in=permissions_data)
+            role.permissions.set(permissions)
+        
+        return role
+    
+    def update(self, instance, validated_data):
+        permissions_data = validated_data.pop('permissions', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if permissions_data is not None:
+            permissions = Permission.objects.filter(id__in=permissions_data)
+            instance.permissions.set(permissions)
+        
+        return instance
+
+
+class UserRoleSerializer(serializers.ModelSerializer):
+    """Serializer for user role assignments"""
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    role_name = serializers.CharField(source='role.name', read_only=True)
+    role_color = serializers.CharField(source='role.color', read_only=True)
+    assigned_by_name = serializers.CharField(source='assigned_by.full_name', read_only=True)
+    custom_permissions = PermissionSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = UserRole
+        fields = [
+            'id',
+            'user',
+            'user_name',
+            'user_email',
+            'role',
+            'role_name',
+            'role_color',
+            'primary_section_access',
+            'secondary_section_access',
+            'nursery_section_access',
+            'custom_permissions',
+            'assigned_by',
+            'assigned_by_name',
+            'assigned_at',
+            'expires_at',
+            'is_active',
+        ]
+        read_only_fields = ['id', 'assigned_at']
+
+    def to_representation(self, instance):
+        """Custom representation to handle ManyRelatedManager properly"""
+        data = super().to_representation(instance)
+        
+        # Handle custom_permissions field properly
+        if hasattr(instance, 'custom_permissions'):
+            if instance.pk:  # If the instance is saved
+                data['custom_permissions'] = PermissionSerializer(instance.custom_permissions.all(), many=True).data
+            else:
+                data['custom_permissions'] = []
+        
+        return data
+
+
+class UserRoleCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating user role assignments"""
+    custom_permissions = serializers.ListField(child=serializers.IntegerField(), required=False, write_only=True)
+    expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    
+    class Meta:
+        model = UserRole
+        fields = [
+            'user',
+            'role',
+            'primary_section_access',
+            'secondary_section_access',
+            'nursery_section_access',
+            'custom_permissions',
+            'expires_at',
+            'is_active',
+        ]
+    
+    def create(self, validated_data):
+        custom_permissions_data = validated_data.pop('custom_permissions', [])
+        user_role = UserRole.objects.create(**validated_data)
+        
+        if custom_permissions_data:
+            permissions = Permission.objects.filter(id__in=custom_permissions_data)
+            user_role.custom_permissions.set(permissions)
+        
+        return user_role
+    
+    def update(self, instance, validated_data):
+        custom_permissions_data = validated_data.pop('custom_permissions', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        if custom_permissions_data is not None:
+            permissions = Permission.objects.filter(id__in=custom_permissions_data)
+            instance.custom_permissions.set(permissions)
+        
+        return instance
+
+    def to_representation(self, instance):
+        """Custom representation to handle ManyRelatedManager properly"""
+        data = super().to_representation(instance)
+        
+        # Handle custom_permissions field properly
+        if hasattr(instance, 'custom_permissions'):
+            if instance.pk:  # If the instance is saved
+                data['custom_permissions'] = PermissionSerializer(instance.custom_permissions.all(), many=True).data
+            else:
+                data['custom_permissions'] = []
+        
+        return data 

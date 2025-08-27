@@ -1047,8 +1047,8 @@ const HeroSection: React.FC = () => {
     return (
       <div className={`relative z-10 flex flex-col min-h-screen ${topPadding}`}>
         {/* Ribbon */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-4 overflow-hidden">
-          <div className={`whitespace-nowrap ${speedClass}`}>
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-6 overflow-hidden">
+          <div className={`whitespace-nowrap ${speedClass} flex items-center justify-center h-full`}>
             <span className="text-lg font-semibold px-8">{activeEvent.ribbon_text}</span>
           </div>
         </div>

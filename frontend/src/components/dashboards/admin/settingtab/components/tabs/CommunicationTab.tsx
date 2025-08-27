@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, Mail, Phone, Settings, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 
 // TypeScript interfaces
@@ -88,115 +88,297 @@ const CommunicationTab = () => {
   const [showBrevoKey, setShowBrevoKey] = useState(false);
   const [showTwilioToken, setShowTwilioToken] = useState(false);
   const [activeTab, setActiveTab] = useState('notifications');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [testPhoneNumber, setTestPhoneNumber] = useState('');
+
+  // Load communication settings on component mount
+  useEffect(() => {
+    loadCommunicationSettings();
+  }, []);
+
+  const loadCommunicationSettings = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/school-settings/communication-settings/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update notification settings
+        setSettings({
+          emailNotifications: data.email_notifications_enabled ?? true,
+          smsNotifications: data.sms_notifications_enabled ?? false,
+          inAppNotifications: data.in_app_notifications_enabled ?? true,
+          digestFrequency: data.digest_frequency ?? 'daily'
+        });
+
+        // Update Brevo config
+        setBrevoConfig({
+          apiKey: data.brevo_api_key || '',
+          senderEmail: data.brevo_sender_email || '',
+          senderName: data.brevo_sender_name || '',
+          isConfigured: data.brevo_configured || false,
+          testMode: data.brevo_test_mode ?? true
+        });
+
+        // Update Twilio config
+        setTwilioConfig({
+          accountSid: data.twilio_account_sid || '',
+          authToken: data.twilio_auth_token || '',
+          phoneNumber: data.twilio_phone_number || '',
+          isConfigured: data.twilio_configured || false,
+          testMode: data.twilio_test_mode ?? true
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load communication settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveCommunicationSettings = async () => {
+    try {
+      setSaving(true);
+      setErrorMessage(null);
+      
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/school-settings/communication-settings/', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email_notifications_enabled: settings.emailNotifications,
+          sms_notifications_enabled: settings.smsNotifications,
+          in_app_notifications_enabled: settings.inAppNotifications,
+          digest_frequency: settings.digestFrequency,
+          brevo_api_key: brevoConfig.apiKey,
+          brevo_sender_email: brevoConfig.senderEmail,
+          brevo_sender_name: brevoConfig.senderName,
+          brevo_test_mode: brevoConfig.testMode,
+          twilio_account_sid: twilioConfig.accountSid,
+          twilio_auth_token: twilioConfig.authToken,
+          twilio_phone_number: twilioConfig.phoneNumber,
+          twilio_test_mode: twilioConfig.testMode
+        })
+      });
+
+      if (response.ok) {
+        setSuccessMessage('Communication settings saved successfully!');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        const errorData = await response.json();
+        setErrorMessage(errorData.error || 'Failed to save settings');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
+    } catch (error) {
+      setErrorMessage('Failed to save communication settings');
+      setTimeout(() => setErrorMessage(null), 5000);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Test connection functions
   const testBrevoConnection = async () => {
     try {
-      // Simulate API call to Brevo
-      console.log('Testing Brevo connection...');
-      // In real implementation, you would make an API call to Brevo
-      // const response = await fetch('https://api.brevo.com/v3/account', {
-      //   headers: {
-      //     'api-key': brevoConfig.apiKey,
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
+      setLoading(true);
+      setErrorMessage(null);
       
-      setBrevoConfig({ ...brevoConfig, isConfigured: true });
-      alert('Brevo connection successful!');
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/school-settings/notifications/brevo/test/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          apiKey: brevoConfig.apiKey,
+          senderEmail: brevoConfig.senderEmail
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setBrevoConfig({ ...brevoConfig, isConfigured: true });
+        setSuccessMessage('Brevo connection successful!');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setErrorMessage(data.message || 'Brevo connection failed');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
     } catch (error) {
-      alert('Brevo connection failed. Please check your API key.');
+      setErrorMessage('Brevo connection failed. Please check your API key.');
+      setTimeout(() => setErrorMessage(null), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
   const testTwilioConnection = async () => {
     try {
-      // Simulate API call to Twilio
-      console.log('Testing Twilio connection...');
-      // In real implementation, you would make an API call to Twilio
-      // const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioConfig.accountSid}.json`, {
-      //   method: 'GET',
-      //   headers: {
-      //     'Authorization': `Basic ${btoa(twilioConfig.accountSid + ':' + twilioConfig.authToken)}`
-      //   }
-      // });
+      setLoading(true);
+      setErrorMessage(null);
       
-      setTwilioConfig({ ...twilioConfig, isConfigured: true });
-      alert('Twilio connection successful!');
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/school-settings/notifications/twilio/test/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          accountSid: twilioConfig.accountSid,
+          authToken: twilioConfig.authToken,
+          phoneNumber: twilioConfig.phoneNumber
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setTwilioConfig({ ...twilioConfig, isConfigured: true });
+        setSuccessMessage('Twilio connection successful!');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setErrorMessage(data.message || 'Twilio connection failed');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
     } catch (error) {
-      alert('Twilio connection failed. Please check your credentials.');
+      setErrorMessage('Twilio connection failed. Please check your credentials.');
+      setTimeout(() => setErrorMessage(null), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
   const sendTestEmail = async () => {
     if (!brevoConfig.isConfigured) {
-      alert('Please configure Brevo first');
+      setErrorMessage('Please configure Brevo first');
+      setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
     
     try {
-      // Simulate sending test email via Brevo
-      console.log('Sending test email via Brevo...');
-      // In real implementation:
-      // const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      //   method: 'POST',
-      //   headers: {
-      //     'api-key': brevoConfig.apiKey,
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: JSON.stringify({
-      //     sender: { name: brevoConfig.senderName, email: brevoConfig.senderEmail },
-      //     to: [{ email: 'test@example.com' }],
-      //     subject: 'Test Email from School Management System',
-      //     htmlContent: '<p>This is a test email from your school management system.</p>'
-      //   })
-      // });
+      setLoading(true);
+      setErrorMessage(null);
       
-      alert('Test email sent successfully!');
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/school-settings/notifications/brevo/send-test/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSuccessMessage(data.message || 'Test email sent successfully!');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setErrorMessage(data.message || 'Failed to send test email');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
     } catch (error) {
-      alert('Failed to send test email.');
+      setErrorMessage('Failed to send test email');
+      setTimeout(() => setErrorMessage(null), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
   const sendTestSMS = async () => {
     if (!twilioConfig.isConfigured) {
-      alert('Please configure Twilio first');
+      setErrorMessage('Please configure Twilio first');
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+    
+    if (!testPhoneNumber.trim()) {
+      setErrorMessage('Please enter a test phone number');
+      setTimeout(() => setErrorMessage(null), 5000);
       return;
     }
     
     try {
-      // Simulate sending test SMS via Twilio
-      console.log('Sending test SMS via Twilio...');
-      // In real implementation:
-      // const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${twilioConfig.accountSid}/Messages.json`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Basic ${btoa(twilioConfig.accountSid + ':' + twilioConfig.authToken)}`,
-      //     'Content-Type': 'application/x-www-form-urlencoded'
-      //   },
-      //   body: new URLSearchParams({
-      //     From: twilioConfig.phoneNumber,
-      //     To: '+1234567890', // Test number
-      //     Body: 'Test SMS from School Management System'
-      //   })
-      // });
+      setLoading(true);
+      setErrorMessage(null);
       
-      alert('Test SMS sent successfully!');
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('/api/school-settings/notifications/twilio/send-test/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          testNumber: testPhoneNumber.trim()
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setSuccessMessage(data.message || 'Test SMS sent successfully!');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setErrorMessage(data.message || 'Failed to send test SMS');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
     } catch (error) {
-      alert('Failed to send test SMS.');
+      setErrorMessage('Failed to send test SMS');
+      setTimeout(() => setErrorMessage(null), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="space-y-8">
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-green-800 text-sm">{successMessage}</p>
+        </div>
+      )}
+      {errorMessage && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">{errorMessage}</p>
+        </div>
+      )}
+
       {/* Header with Tabs */}
       <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
-            <MessageSquare className="w-4 h-4 text-white" />
-          </div>
-          Communication Settings
-        </h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-semibold text-slate-900 flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-white" />
+            </div>
+            Communication Settings
+          </h3>
+          
+          <button
+            onClick={saveCommunicationSettings}
+            disabled={saving || loading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </div>
         
         {/* Tab Navigation */}
         <div className="flex space-x-1 bg-slate-100 rounded-lg p-1 mb-6">
@@ -480,18 +662,32 @@ const CommunicationTab = () => {
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="twilio-test-mode"
-                  checked={twilioConfig.testMode}
-                  onChange={(e) => setTwilioConfig({ ...twilioConfig, testMode: e.target.checked })}
-                  className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                />
-                <label htmlFor="twilio-test-mode" className="text-sm text-slate-700">
-                  Enable test mode (SMS won't be sent to actual numbers)
-                </label>
-              </div>
+                             <div className="flex items-center gap-2">
+                 <input
+                   type="checkbox"
+                   id="twilio-test-mode"
+                   checked={twilioConfig.testMode}
+                   onChange={(e) => setTwilioConfig({ ...twilioConfig, testMode: e.target.checked })}
+                   className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                 />
+                 <label htmlFor="twilio-test-mode" className="text-sm text-slate-700">
+                   Enable test mode (SMS won't be sent to actual numbers)
+                 </label>
+               </div>
+
+               <div>
+                 <label className="block text-sm font-medium text-slate-700 mb-2">
+                   Test Phone Number
+                 </label>
+                 <input
+                   type="tel"
+                   value={testPhoneNumber}
+                   onChange={(e) => setTestPhoneNumber(e.target.value)}
+                   placeholder="+1234567890"
+                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200"
+                 />
+                 <p className="text-xs text-slate-500 mt-1">Enter the phone number to send test SMS to</p>
+               </div>
 
               <div className="flex gap-3">
                 <button

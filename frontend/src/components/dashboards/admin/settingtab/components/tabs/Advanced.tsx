@@ -24,30 +24,24 @@ import {
   Play,
   Globe,
   Image as ImageIcon,
-  GripVertical
+  GripVertical,
+  Loader2
 } from 'lucide-react';
 import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
 import { eventManagementService, EnhancedEvent } from '@/services/eventService';
 import { EventType, DisplayType, ThemeType, RibbonSpeed } from '@/types/eventTypes';
 import DefaultCarouselManager from '@/components/dashboards/admin/DefaultCarouselManager';
+import AnnouncementService, { Announcement as ApiAnnouncement, CreateAnnouncementData } from '@/services/AnnouncementService';
 
 // TypeScript interfaces
-interface Announcement {
-  id: number;
-  title: string;
-  content: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  scheduledDate: string;
-  isPinned: boolean;
-  isActive: boolean;
-}
-
 interface AnnouncementForm {
   title: string;
   content: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  scheduledDate: string;
-  isPinned: boolean;
+  announcement_type: 'general' | 'academic' | 'event' | 'emergency';
+  start_date: string;
+  end_date: string;
+  target_audience: string[];
+  is_pinned: boolean;
 }
 
 interface PortalSettings {
@@ -94,26 +88,9 @@ interface HeroContent {
 }
 
 const Advanced: React.FC = () => {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: 1,
-      title: 'System Maintenance Scheduled',
-      content: 'The system will be under maintenance on Sunday, 2-4 AM EST.',
-      type: 'warning',
-      scheduledDate: '2025-08-03',
-      isPinned: true,
-      isActive: true
-    },
-    {
-      id: 2,
-      title: 'New Features Available',
-      content: 'Check out the new gradebook features in the teacher portal.',
-      type: 'info',
-      scheduledDate: '2025-07-28',
-      isPinned: false,
-      isActive: true
-    }
-  ]);
+  const [announcements, setAnnouncements] = useState<ApiAnnouncement[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [portalSettings, setPortalSettings] = useState<PortalSettingsState>({
     studentPortal: {
@@ -149,6 +126,25 @@ const Advanced: React.FC = () => {
 
     return unsubscribe;
   }, []);
+
+  // Load announcements from API
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      try {
+        setLoadingAnnouncements(true);
+        setError(null);
+        const data = await AnnouncementService.getAllAnnouncements();
+        setAnnouncements(data);
+      } catch (error) {
+        console.error('Error loading announcements:', error);
+        setError('Failed to load announcements');
+      } finally {
+        setLoadingAnnouncements(false);
+      }
+    };
+
+    loadAnnouncements();
+  }, []);
   const [newEvent, setNewEvent] = useState<Partial<AdminEvent>>({
     title: '',
     subtitle: '',
@@ -172,13 +168,15 @@ const Advanced: React.FC = () => {
   });
 
   const [showAnnouncementForm, setShowAnnouncementForm] = useState<boolean>(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<ApiAnnouncement | null>(null);
   const [announcementForm, setAnnouncementForm] = useState<AnnouncementForm>({
     title: '',
     content: '',
-    type: 'info',
-    scheduledDate: '',
-    isPinned: false
+    announcement_type: 'general',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: '',
+    target_audience: ['student'],
+    is_pinned: false
   });
 
   // Image upload state
@@ -427,47 +425,87 @@ const Advanced: React.FC = () => {
   const currentContent = getCurrentContent();
   const currentTheme = themes[currentContent.backgroundTheme as keyof typeof themes] || themes.default;
 
-  const handleAnnouncementSubmit = (e: React.FormEvent): void => {
+  const handleAnnouncementSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (editingAnnouncement) {
-      setAnnouncements(prev => prev.map(ann => 
-        ann.id === editingAnnouncement.id 
-          ? { ...ann, ...announcementForm }
-          : ann
-      ));
-      setEditingAnnouncement(null);
-    } else {
-      const newAnnouncement: Announcement = {
-        ...announcementForm,
-        id: Date.now(),
-        isActive: true
-      };
-      setAnnouncements(prev => [...prev, newAnnouncement]);
+    try {
+      if (editingAnnouncement) {
+        // Update existing announcement
+        const updatedAnnouncement = await AnnouncementService.updateAnnouncement(
+          editingAnnouncement.id,
+          {
+            ...announcementForm,
+            end_date: announcementForm.end_date || undefined
+          }
+        );
+        setAnnouncements(prev => prev.map(ann => 
+          ann.id === editingAnnouncement.id ? updatedAnnouncement : ann
+        ));
+        setEditingAnnouncement(null);
+      } else {
+        // Create new announcement
+        const createData: CreateAnnouncementData = {
+          ...announcementForm,
+          end_date: announcementForm.end_date || undefined,
+          is_active: true
+        };
+        const newAnnouncement = await AnnouncementService.createAnnouncement(createData);
+        setAnnouncements(prev => [...prev, newAnnouncement]);
+      }
+      
+      // Reset form
+      setAnnouncementForm({
+        title: '',
+        content: '',
+        announcement_type: 'general',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '',
+        target_audience: ['student'],
+        is_pinned: false
+      });
+      setShowAnnouncementForm(false);
+      setError(null);
+    } catch (error) {
+      console.error('Error saving announcement:', error);
+      setError('Failed to save announcement');
     }
-    setAnnouncementForm({ title: '', content: '', type: 'info', scheduledDate: '', isPinned: false });
-    setShowAnnouncementForm(false);
   };
 
-  const handleEditAnnouncement = (announcement: Announcement): void => {
+  const handleEditAnnouncement = (announcement: ApiAnnouncement): void => {
     setEditingAnnouncement(announcement);
     setAnnouncementForm({
       title: announcement.title,
       content: announcement.content,
-      type: announcement.type,
-      scheduledDate: announcement.scheduledDate,
-      isPinned: announcement.isPinned
+      announcement_type: announcement.announcement_type,
+      start_date: announcement.start_date.split('T')[0],
+      end_date: announcement.end_date ? announcement.end_date.split('T')[0] : '',
+      target_audience: announcement.target_audience,
+      is_pinned: announcement.is_pinned
     });
     setShowAnnouncementForm(true);
   };
 
-  const handleDeleteAnnouncement = (id: number): void => {
-    setAnnouncements(prev => prev.filter(ann => ann.id !== id));
+  const handleDeleteAnnouncement = async (id: number): Promise<void> => {
+    try {
+      await AnnouncementService.deleteAnnouncement(id);
+      setAnnouncements(prev => prev.filter(ann => ann.id !== id));
+      setError(null);
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      setError('Failed to delete announcement');
+    }
   };
 
-  const toggleAnnouncementStatus = (id: number): void => {
-    setAnnouncements(prev => prev.map(ann => 
-      ann.id === id ? { ...ann, isActive: !ann.isActive } : ann
-    ));
+  const toggleAnnouncementStatus = async (id: number): Promise<void> => {
+    try {
+      const updatedAnnouncement = await AnnouncementService.toggleActive(id);
+      setAnnouncements(prev => prev.map(ann => 
+        ann.id === id ? updatedAnnouncement : ann
+      ));
+      setError(null);
+    } catch (error) {
+      console.error('Error toggling announcement status:', error);
+      setError('Failed to update announcement status');
+    }
   };
 
   const updatePortalSetting = (portal: string, setting: keyof PortalSettings, value: any): void => {
@@ -482,10 +520,11 @@ const Advanced: React.FC = () => {
 
   const getTypeColor = (type: string): string => {
     switch (type) {
-      case 'warning': return 'bg-amber-50 border-amber-200 text-amber-800';
-      case 'success': return 'bg-green-50 border-green-200 text-green-800';
-      case 'error': return 'bg-red-50 border-red-200 text-red-800';
-      default: return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'emergency': return 'bg-red-50 border-red-200 text-red-800';
+      case 'academic': return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'event': return 'bg-green-50 border-green-200 text-green-800';
+      case 'general':
+      default: return 'bg-gray-50 border-gray-200 text-gray-800';
     }
   };
 
@@ -1130,6 +1169,13 @@ const Advanced: React.FC = () => {
             </button>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
           {/* Announcement Form */}
           {showAnnouncementForm && (
             <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
@@ -1163,32 +1209,62 @@ const Advanced: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">Type</label>
                     <select
-                      value={announcementForm.type}
-                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, type: e.target.value as any }))}
+                      value={announcementForm.announcement_type}
+                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, announcement_type: e.target.value as any }))}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     >
-                      <option value="info">Info</option>
-                      <option value="warning">Warning</option>
-                      <option value="success">Success</option>
-                      <option value="error">Error</option>
+                      <option value="general">General</option>
+                      <option value="academic">Academic</option>
+                      <option value="event">Event</option>
+                      <option value="emergency">Emergency</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Scheduled Date</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Start Date</label>
                     <input
                       type="date"
-                      value={announcementForm.scheduledDate}
-                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, scheduledDate: e.target.value }))}
+                      value={announcementForm.start_date}
+                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, start_date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">End Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={announcementForm.end_date}
+                      onChange={(e) => setAnnouncementForm(prev => ({ ...prev, end_date: e.target.value }))}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Target Audience</label>
+                    <select
+                      multiple
+                      value={announcementForm.target_audience}
+                      onChange={(e) => setAnnouncementForm(prev => ({ 
+                        ...prev, 
+                        target_audience: Array.from(e.target.selectedOptions, option => option.value)
+                      }))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                      size={3}
+                    >
+                      <option value="student">Students</option>
+                      <option value="parent">Parents</option>
+                      <option value="teacher">Teachers</option>
+                      <option value="admin">Administrators</option>
+                    </select>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     id="isPinned"
-                    checked={announcementForm.isPinned}
-                    onChange={(e) => setAnnouncementForm(prev => ({ ...prev, isPinned: e.target.checked }))}
+                    checked={announcementForm.is_pinned}
+                    onChange={(e) => setAnnouncementForm(prev => ({ ...prev, is_pinned: e.target.checked }))}
                     className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                   />
                   <label htmlFor="isPinned" className="text-sm text-slate-700">Pin to top</label>
@@ -1205,7 +1281,16 @@ const Advanced: React.FC = () => {
                     onClick={() => {
                       setShowAnnouncementForm(false);
                       setEditingAnnouncement(null);
-                      setAnnouncementForm({ title: '', content: '', type: 'info', scheduledDate: '', isPinned: false });
+                      setAnnouncementForm({
+                        title: '',
+                        content: '',
+                        announcement_type: 'general',
+                        start_date: new Date().toISOString().split('T')[0],
+                        end_date: '',
+                        target_audience: ['student'],
+                        is_pinned: false
+                      });
+                      setError(null);
                     }}
                     className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
                   >
@@ -1218,55 +1303,78 @@ const Advanced: React.FC = () => {
 
           {/* Announcements List */}
           <div className="space-y-3">
-            {announcements.map(announcement => (
-              <div
-                key={announcement.id}
-                className={`p-4 rounded-lg border ${getTypeColor(announcement.type)}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h5 className="font-semibold">{announcement.title}</h5>
-                      {announcement.isPinned && (
-                        <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
-                          Pinned
+            {loadingAnnouncements ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-600" />
+                <span className="ml-2 text-slate-600">Loading announcements...</span>
+              </div>
+            ) : announcements.length > 0 ? (
+              announcements.map(announcement => (
+                <div
+                  key={announcement.id}
+                  className={`p-4 rounded-lg border ${getTypeColor(announcement.announcement_type)}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h5 className="font-semibold">{announcement.title}</h5>
+                        {announcement.is_pinned && (
+                          <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                            Pinned
+                          </span>
+                        )}
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          announcement.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {announcement.is_active ? 'Active' : 'Inactive'}
                         </span>
-                      )}
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        announcement.isActive ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {announcement.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full capitalize">
+                          {announcement.announcement_type}
+                        </span>
+                      </div>
+                      <p className="text-sm mb-2">{announcement.content}</p>
+                      <div className="text-xs opacity-75 space-y-1">
+                        <p>Start: {new Date(announcement.start_date).toLocaleDateString()}</p>
+                        {announcement.end_date && (
+                          <p>End: {new Date(announcement.end_date).toLocaleDateString()}</p>
+                        )}
+                        <p>Target: {announcement.target_audience.join(', ')}</p>
+                        <p>Created by: {announcement.created_by_name}</p>
+                      </div>
                     </div>
-                    <p className="text-sm mb-2">{announcement.content}</p>
-                    <p className="text-xs opacity-75">Scheduled: {announcement.scheduledDate}</p>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => handleEditAnnouncement(announcement)}
-                      className="p-1 text-slate-600 hover:text-slate-800 transition-colors"
-                      aria-label="Edit announcement"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => toggleAnnouncementStatus(announcement.id)}
-                      className="p-1 text-slate-600 hover:text-slate-800 transition-colors"
-                      aria-label="Toggle announcement status"
-                    >
-                      {announcement.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteAnnouncement(announcement.id)}
-                      className="p-1 text-red-600 hover:text-red-800 transition-colors"
-                      aria-label="Delete announcement"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => handleEditAnnouncement(announcement)}
+                        className="p-1 text-slate-600 hover:text-slate-800 transition-colors"
+                        aria-label="Edit announcement"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => toggleAnnouncementStatus(announcement.id)}
+                        className="p-1 text-slate-600 hover:text-slate-800 transition-colors"
+                        aria-label="Toggle announcement status"
+                      >
+                        {announcement.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAnnouncement(announcement.id)}
+                        className="p-1 text-red-600 hover:text-red-800 transition-colors"
+                        aria-label="Delete announcement"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <Megaphone className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No announcements yet</p>
+                <p className="text-sm">Create your first announcement to get started</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 

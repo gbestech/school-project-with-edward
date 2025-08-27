@@ -28,11 +28,11 @@ const AuthCheck: React.FC<AuthCheckProps> = ({ children, fallback }) => {
             You need to be logged in to access this page. Please log in to continue.
           </p>
           <a
-            href="/login"
+            href="/"
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
           >
             <LogIn size={20} />
-            Go to Login
+            Go to Home
           </a>
         </div>
       </div>

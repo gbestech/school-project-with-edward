@@ -21,20 +21,31 @@ const clearAuthData = () => {
 
 // Helper function to map server role to enum
 const mapServerRoleToEnum = (rawRole: any): UserRole => {
+  console.log('🔍 mapServerRoleToEnum: Raw role received:', rawRole);
+  console.log('🔍 mapServerRoleToEnum: Raw role type:', typeof rawRole);
+  
   if (!rawRole) {
+    console.error('🔍 mapServerRoleToEnum: No role provided by server');
     throw new Error('No role provided by server');
   }
 
   const roleString = rawRole.toString().toUpperCase();
+  console.log('🔍 mapServerRoleToEnum: Role string after toUpperCase:', roleString);
+  
   const roleMapping: { [key: string]: UserRole } = {
     'ADMIN': UserRole.ADMIN,
     'TEACHER': UserRole.TEACHER,
     'STUDENT': UserRole.STUDENT,
-    'PARENT': UserRole.PARENT || UserRole.ADMIN, // fallback if PARENT doesn't exist
+    'PARENT': UserRole.PARENT,
   };
 
+  console.log('🔍 mapServerRoleToEnum: Available role mappings:', Object.keys(roleMapping));
+  
   const finalRole = roleMapping[roleString];
+  console.log('🔍 mapServerRoleToEnum: Final mapped role:', finalRole);
+  
   if (!finalRole) {
+    console.error('🔍 mapServerRoleToEnum: Invalid role received:', rawRole);
     throw new Error(`Invalid role received: ${rawRole}. Expected one of: ${Object.values(UserRole).join(', ')}`);
   }
 
@@ -166,15 +177,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     if (response.user) {
       rawUserData = response;
+      console.log('🔍 useAuth login: Response has user data:', rawUserData);
+      console.log('🔍 useAuth login: User role from response:', rawUserData.user.role || rawUserData.role);
       role = mapServerRoleToEnum(rawUserData.user.role || rawUserData.role);
     } else {
-      console.log('No user data in login response, fetching from profile...');
+      console.log('🔍 useAuth login: No user data in login response, fetching from profile...');
       const profileResponse = await api.get('/api/profiles/me/');
       rawUserData = profileResponse;
+      console.log('🔍 useAuth login: Profile response:', rawUserData);
+      console.log('🔍 useAuth login: Role from profile:', rawUserData.role || rawUserData.user?.role);
       role = mapServerRoleToEnum(rawUserData.role || rawUserData.user?.role);
     }
 
-    console.log('User role determined:', role);
+    console.log('🔍 useAuth login: User role determined:', role);
 
     switch (role) {
       case UserRole.STUDENT:
@@ -184,6 +199,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
           last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
           role: UserRole.STUDENT,
+          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
+          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
+          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
           student_data: rawUserData.student_data || {},
         };
         break;
@@ -194,6 +212,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
           last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
           role: UserRole.TEACHER,
+          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
+          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
+          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
           teacher_data: rawUserData.teacher_data || {},
         };
         break;
@@ -204,6 +225,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
           last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
           role: UserRole.ADMIN,
+          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
+          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
+          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
         };
         break;
       case UserRole.PARENT:
@@ -213,6 +237,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
           last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
           role: UserRole.PARENT,
+          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
+          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
+          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
           parent_data: rawUserData.parent_data || {},
         };
         break;
@@ -245,7 +272,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('userData', JSON.stringify(userData));
     setUser(userData);
 
-    console.log('✅ Login successful, user state updated');
+    console.log('🔍 useAuth login: ✅ Login successful, user state updated');
+    console.log('🔍 useAuth login: User data:', userData);
+    console.log('🔍 useAuth login: User role:', userData.role);
+    console.log('🔍 useAuth login: About to return user data');
     return userData; // ✅ FIXED: Return actual user data
   } catch (error) {
     console.error('Login failed:', error);

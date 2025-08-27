@@ -82,7 +82,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
             {/* Brand */}
             <div className="flex items-center space-x-3 group">
               {settings?.logo_url ? (
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
                   <img 
                     src={getAbsoluteUrl(settings.logo_url)} 
                     alt={`${settings.school_name} logo`}

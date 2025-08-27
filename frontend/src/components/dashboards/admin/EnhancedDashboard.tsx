@@ -4,8 +4,6 @@ import {
   Users,
   UserCheck,
   School,
-  Plus,
-  MoreHorizontal,
   ChevronLeft,
   ChevronRight,
   Sun,
@@ -13,17 +11,12 @@ import {
   Bell,
   MessageSquare,
   User,
-  RefreshCw,
   CheckSquare,
-  FileText,
   Calendar,
-  DollarSign,
   TrendingUp,
   Filter,
   Eye,
   EyeOff,
-  CheckCircle,
-  XCircle,
   Clock,
   BookOpen,
   Award,
@@ -33,9 +26,13 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-import { useAdminAuth } from '@/services/AuthServiceAdmin';
-import StudentService, { StudentService as StudentServiceClass } from '@/services/StudentService';
+import { StudentService as StudentServiceClass } from '@/services/StudentService';
 import { toast } from 'react-toastify';
+// import { usePermissions } from '@/hooks/usePermissions';
+import { 
+  StudentsPermissionGate, 
+  TeachersPermissionGate
+} from '@/components/common/PermissionGate';
 
 interface EnhancedDashboardProps {
   dashboardStats: any;
@@ -46,6 +43,10 @@ interface EnhancedDashboardProps {
   parents: any;
   onRefresh?: () => void;
   onUserStatusUpdate?: (userId: number, userType: 'student' | 'teacher' | 'parent', isActive: boolean) => void;
+  user?: any;
+  activateStudent?: (studentId: number) => Promise<void>;
+  activateTeacher?: (teacherId: number) => Promise<void>;
+  activateParent?: (parentId: number) => Promise<void>;
 }
 
 const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
@@ -56,11 +57,28 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
   classrooms: _classrooms,
   parents: _parents,
   onRefresh,
-  onUserStatusUpdate
+  onUserStatusUpdate,
+  user,
+  activateTeacher,
+  activateParent
 }) => {
-  const { user, activateStudent, activateTeacher, activateParent } = useAdminAuth();
   const [currentDate] = useState(new Date());
   const { isDarkMode, toggleTheme } = useGlobalTheme();
+  // const { canViewStudents, canViewTeachers } = usePermissions();
+  
+  // Use provided user or fallback to null
+  const currentUser = user || null;
+  
+  // Create fallback activation functions if not provided
+  const fallbackActivateTeacher = activateTeacher || (async (_teacherId: number) => {
+    console.warn('activateTeacher function not provided');
+    return Promise.resolve();
+  });
+  
+  const fallbackActivateParent = activateParent || (async (_parentId: number) => {
+    console.warn('activateParent function not provided');
+    return Promise.resolve();
+  });
   
   // Debug logging for received props
   console.log('🎯 EnhancedDashboard: Received props:', {
@@ -82,7 +100,7 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
   const [activatingTeacherId, setActivatingTeacherId] = useState<number | null>(null);
   const [activatingParentId, setActivatingParentId] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [selectedYear] = useState(currentDate.getFullYear());
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const messageRef = useRef<HTMLDivElement>(null);
@@ -146,7 +164,7 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
       'Unknown': '#6b7280'
     };
 
-    const levelCounts = _students.reduce((acc: any, student: any) => {
+    const levelCounts = _students.reduce((acc: Record<string, number>, student: any) => {
       try {
         // Use education_level field from student data
         const educationLevel = student.education_level || student.education_level_display || 'Unknown';
@@ -207,13 +225,13 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
       ];
     }
 
-    const genderCounts = _students.reduce((acc: any, student: any) => {
+    const genderCounts = _students.reduce((acc: Record<string, number>, student: any) => {
       const gender = student.gender || 'not_specified';
       // Handle both string and enum values
       const genderKey = typeof gender === 'string' ? gender.toUpperCase() : gender;
       acc[genderKey] = (acc[genderKey] || 0) + 1;
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
     // Map backend gender values to display names
     const result = [
@@ -259,23 +277,23 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Helper function to get auth headers
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
-    };
-  };
+  // Helper function to get auth headers (unused but kept for future use)
+  // const getAuthHeaders = () => {
+  //   const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  //   return {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': token ? `Bearer ${token}` : '',
+  //   };
+  // };
 
   const getUserDisplayName = () => {
-    if (user?.first_name || user?.last_name) {
-      return `${user.first_name || ''} ${user.last_name || ''}`.trim();
+    if (currentUser?.first_name || currentUser?.last_name) {
+      return `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim();
     }
-    return user?.email || user?.username || 'Admin User';
+    return currentUser?.email || currentUser?.username || 'Admin User';
   };
 
-  const getUserRole = () => user?.role || 'Admin';
+  const getUserRole = () => currentUser?.role || 'Admin';
 
   const handleActivateStudent = async (student: any) => {
     console.log('🎯 handleActivateStudent called with:', student);
@@ -308,9 +326,9 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
       
       // Refresh the data
       if (onRefresh) onRefresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error toggling student status:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to update student status';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update student status';
       toast.error(errorMessage);
     } finally {
       setActivatingStudentId(null);
@@ -346,16 +364,16 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
     
     setActivatingTeacherId(teacherId);
     try {
-      await activateTeacher(userId, newStatus);
+      await fallbackActivateTeacher(userId);
       toast.success(`Teacher ${newStatus ? 'activated' : 'deactivated'} successfully`);
       
       // Update the parent component's state immediately
       if (onUserStatusUpdate) {
         onUserStatusUpdate(userId, 'teacher', newStatus);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error toggling teacher status:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to update teacher status';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update teacher status';
       toast.error(errorMessage);
     } finally {
       setActivatingTeacherId(null);
@@ -391,16 +409,16 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
     
     setActivatingParentId(parentId);
     try {
-      await activateParent(userId, newStatus);
+      await fallbackActivateParent(userId);
       toast.success(`Parent ${newStatus ? 'activated' : 'deactivated'} successfully`);
       
       // Update the parent component's state immediately
       if (onUserStatusUpdate) {
         onUserStatusUpdate(userId, 'parent', newStatus);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error toggling parent status:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to update parent status';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update parent status';
       toast.error(errorMessage);
     } finally {
       setActivatingParentId(null);
@@ -617,35 +635,39 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
       <div className="p-6">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Students</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalStudents}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {Array.isArray(_students) ? `${_students.filter(s => s.is_active).length} active` : '0 active'}
-                </p>
-              </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <GraduationCap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <StudentsPermissionGate permission="read">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Students</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalStudents}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {Array.isArray(_students) ? `${_students.filter(s => s.is_active).length} active` : '0 active'}
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                  <GraduationCap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
             </div>
-          </div>
+          </StudentsPermissionGate>
 
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Teachers</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalTeachers}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {Array.isArray(_teachers) ? `${_teachers.filter(t => t.is_active).length} active` : '0 active'}
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <TeachersPermissionGate permission="read">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Teachers</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{totalTeachers}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {Array.isArray(_teachers) ? `${_teachers.filter(t => t.is_active).length} active` : '0 active'}
+                  </p>
+                </div>
+                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                  <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
               </div>
             </div>
-          </div>
+          </TeachersPermissionGate>
 
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">

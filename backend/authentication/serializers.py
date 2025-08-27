@@ -428,6 +428,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "role": user.role,
+                "is_superuser": user.is_superuser,
+                "is_staff": user.is_staff,
+                "is_active": user.is_active,
             },
         }
         return data

@@ -35,10 +35,10 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
           ${sizeClasses[size]}
           rounded-full transition-all duration-300 hover:scale-110
           ${isDarkMode 
-            ? 'bg-yellow-500 hover:bg-yellow-600 text-yellow-900' 
-            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+            ? 'bg-gradient-to-br from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white shadow-lg hover:shadow-xl' 
+            : 'bg-gradient-to-br from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 text-slate-700 dark:text-slate-300 shadow-md hover:shadow-lg border border-slate-200 dark:border-slate-600'
           }
-          shadow-md hover:shadow-lg
+          backdrop-blur-sm
         `}
         title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
       >
@@ -50,7 +50,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
       </button>
       
       {showLabel && (
-        <span className="text-sm font-medium">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
           {isDarkMode ? 'Light' : 'Dark'} Mode
         </span>
       )}
@@ -58,7 +58,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({
       {isUserOverride && (
         <button
           onClick={resetToAdminDefault}
-          className="text-xs text-blue-500 hover:text-blue-700 underline"
+          className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline transition-colors duration-200"
           title="Reset to Admin Default"
         >
           Reset
