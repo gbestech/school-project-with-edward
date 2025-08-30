@@ -18,6 +18,36 @@ class TeacherViewSet(viewsets.ModelViewSet):
     serializer_class = TeacherSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        """Override create to include generated credentials in response"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        teacher = serializer.save()
+        
+        # Get the response data
+        response_serializer = self.get_serializer(teacher)
+        response_data = response_serializer.data
+        
+        # Add generated credentials if available
+        if hasattr(serializer, 'context') and 'user_password' in serializer.context:
+            response_data['user_password'] = serializer.context['user_password']
+            response_data['user_username'] = serializer.context['user_username']
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to return a proper JSON response"""
+        teacher = self.get_object()
+        teacher_name = f"{teacher.user.first_name} {teacher.user.last_name}" if teacher.user else teacher.employee_id
+        
+        # Delete the teacher
+        teacher.delete()
+        
+        return Response({
+            'message': f'Teacher {teacher_name} has been successfully deleted',
+            'status': 'success'
+        }, status=status.HTTP_200_OK)
+
     def get_queryset(self):
         queryset = Teacher.objects.all()
         
@@ -59,6 +89,19 @@ class TeacherViewSet(viewsets.ModelViewSet):
         teacher.is_active = False
         teacher.save()
         return Response({'status': 'Teacher deactivated'})
+
+    @action(detail=False, methods=['get'], url_path='by-user/(?P<user_id>[^/.]+)')
+    def by_user(self, request, user_id=None):
+        """Get teacher by user ID"""
+        try:
+            teacher = Teacher.objects.get(user_id=user_id)
+            serializer = self.get_serializer(teacher)
+            return Response(serializer.data)
+        except Teacher.DoesNotExist:
+            return Response(
+                {'error': 'Teacher not found for this user'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class AssignmentRequestViewSet(viewsets.ModelViewSet):

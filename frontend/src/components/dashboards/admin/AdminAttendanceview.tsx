@@ -23,6 +23,11 @@ interface AttendanceRecord {
   timeIn: string;
   timeOut: string;
   term: string;
+  stream?: string;
+  stream_type?: string;
+  education_level?: string;
+  education_level_display?: string;
+  class_display?: string;
 }
 
 const AttendanceDashboard = () => {
@@ -48,38 +53,72 @@ const AttendanceDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
-  const levels = ['all', 'nursery', 'primary', 'secondary'];
+  const levels = ['all', 'nursery', 'primary', 'junior_secondary', 'senior_secondary', 'secondary'];
   const types = ['all', 'student', 'teacher', 'staff'];
   const periods = ['daily', 'weekly', 'termly'];
   const sections = ['all', 'Blue', 'Red', 'Green', 'Staff', 'Support'];
   const statuses = ['present', 'absent', 'late', 'excused'];
 
-  // Fetch attendance from backend
-  useEffect(() => {
+  // Function to load attendance data
+  const loadAttendanceData = async () => {
     setLoading(true);
     setError(null);
-    getAttendance({ date: filters.date })
-      .then((data) => {
-        // Map backend data to AttendanceRecord[]
-        const mapped: AttendanceRecord[] = (data.results || data).map((rec: AttendanceRecordBackend) => ({
+    console.log('🔍 Fetching attendance data...');
+    try {
+      const data = await getAttendance({});
+      console.log('📊 Raw attendance data received:', data);
+      console.log('📊 Data type:', typeof data);
+      console.log('📊 Is array:', Array.isArray(data));
+      
+      // Map backend data to AttendanceRecord[]
+      const attendanceData = data.results || data;
+      console.log('📊 Attendance data to map:', attendanceData);
+      
+      if (!Array.isArray(attendanceData)) {
+        console.error('❌ Attendance data is not an array:', attendanceData);
+        setError('Invalid data format received from server');
+        return;
+      }
+      
+      const mapped: AttendanceRecord[] = attendanceData.map((rec: AttendanceRecordBackend) => {
+        console.log('🔍 Mapping record:', rec);
+        return {
           id: rec.id,
           name: rec.student_name || rec.teacher_name || `ID ${rec.student || rec.teacher}` || 'Unknown',
           type: rec.student ? 'student' : rec.teacher ? 'teacher' : 'staff',
-          level: '', // You may fetch student/teacher/class info for richer display
-          class: '',
+          level: rec.student_education_level_display || '',
+          class: rec.student_class_display || '',
           section: '',
           date: rec.date,
           status: AttendanceCodeToStatusMap[rec.status],
           timeIn: rec.time_in || '',
           timeOut: rec.time_out || '',
           term: '',
-        }));
-        setAttendanceRecords(mapped);
-      })
-      .catch((err) => setError('Failed to load attendance'))
-      .finally(() => setLoading(false));
-  }, [filters.date]);
+          stream: rec.student_stream_name || '',
+          stream_type: rec.student_stream_type || '',
+          education_level: rec.student_education_level || '',
+          education_level_display: rec.student_education_level_display || '',
+          class_display: rec.student_class_display || '',
+        };
+      });
+      
+      console.log('✅ Mapped attendance records:', mapped);
+      setAttendanceRecords(mapped);
+    } catch (err) {
+      console.error('❌ Error fetching attendance:', err);
+      setError('Failed to load attendance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch attendance from backend
+  useEffect(() => {
+    loadAttendanceData();
+  }, []); // Load once on component mount
 
   useEffect(() => {
     let filtered = attendanceRecords.filter(record => {
@@ -114,8 +153,12 @@ const AttendanceDashboard = () => {
       setLoading(true);
       try {
         await deleteAttendance(id);
+        // Remove from local state immediately
         setAttendanceRecords(prev => prev.filter(record => record.id !== id));
+        // Also refresh the data to ensure consistency
+        loadAttendanceData();
       } catch (err) {
+        console.error('Delete error:', err);
         setError('Failed to delete record');
       } finally {
         setLoading(false);
@@ -142,7 +185,8 @@ const AttendanceDashboard = () => {
       // Validate required fields
       if (!selectedStudent.section_id) {
         console.log('No section_id found for student:', selectedStudent);
-        setError(`Student "${selectedStudent.full_name}" does not have a valid section assignment. Please ensure the student is properly enrolled in a classroom section.`);
+        console.log('Student classroom:', selectedStudent.classroom);
+        setError(`Student "${selectedStudent.full_name}" does not have a valid section assignment. Please ensure the student is properly enrolled in a classroom section. You may need to assign the student to a classroom first.`);
         setLoading(false);
         return;
       }
@@ -162,11 +206,8 @@ const AttendanceDashboard = () => {
         // Update existing record
         console.log('Updating existing record:', editingRecord.id);
         await updateAttendance(editingRecord.id, attendanceData);
-        setAttendanceRecords(prev => prev.map(record => 
-          record.id === editingRecord.id 
-            ? { ...record, ...rest, timeIn: rest.timeIn || '', timeOut: rest.timeOut || '' }
-            : record
-        ));
+        // Refresh the data to ensure consistency
+        loadAttendanceData();
       } else {
         // Check if attendance record already exists for this student on this date
         const existingRecords = attendanceRecords.filter(record => 
@@ -186,16 +227,8 @@ const AttendanceDashboard = () => {
         console.log('Calling addAttendance API...');
         const newRec = await addAttendance(attendanceData);
         console.log('API response:', newRec);
-        setAttendanceRecords(prev => [...prev, {
-          ...rest,
-          id: newRec.id,
-          date: rest.date || filters.date,
-          name: selectedStudent.full_name,
-          type: 'student',
-          level: selectedStudent.education_level_display || '',
-          class: selectedStudent.student_class_display || '',
-          section: selectedStudent.classroom || '',
-        } as AttendanceRecord]);
+        // Refresh the data to ensure consistency
+        loadAttendanceData();
       }
       setShowModal(false);
     } catch (err: any) {
@@ -228,6 +261,16 @@ const AttendanceDashboard = () => {
     const absent = filteredRecords.filter(r => r.status === 'absent').length;
     const late = filteredRecords.filter(r => r.status === 'late').length;
     return { total, present, absent, late, rate: total > 0 ? ((present / total) * 100).toFixed(1) : 0 };
+  };
+
+  // Export functionality
+  const handleExport = () => {
+    setShowExportModal(true);
+  };
+
+  // Report view functionality
+  const handleViewReport = () => {
+    setShowReportModal(true);
   };
 
   const stats = getAttendanceStats();
@@ -360,11 +403,17 @@ const AttendanceDashboard = () => {
           </button>
           
           <div className="flex gap-2">
-            <button className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+            <button 
+              onClick={handleExport}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
+            >
               <Download className="h-4 w-4" />
               Export
             </button>
-            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center gap-2">
+            <button 
+              onClick={handleViewReport}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
+            >
               <Eye className="h-4 w-4" />
               View Report
             </button>
@@ -382,6 +431,7 @@ const AttendanceDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stream</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time In</th>
@@ -396,6 +446,7 @@ const AttendanceDashboard = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{record.type}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{record.level}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.class}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.stream || '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.section}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
@@ -441,6 +492,142 @@ const AttendanceDashboard = () => {
             statuses={statuses}
             types={types.slice(1)}
           />
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Export Attendance Data</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Export Format</label>
+                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="csv">CSV</option>
+                    <option value="excel">Excel</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="date"
+                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => setShowExportModal(false)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // TODO: Implement export functionality
+                      alert('Export functionality will be implemented here');
+                      setShowExportModal(false);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Export
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report View Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Attendance Report</h3>
+              <div className="space-y-6">
+                {/* Summary Statistics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-600">Total Records</h4>
+                    <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-green-600">Present</h4>
+                    <p className="text-2xl font-bold text-green-900">{stats.present}</p>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-red-600">Absent</h4>
+                    <p className="text-2xl font-bold text-red-900">{stats.absent}</p>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-purple-600">Attendance Rate</h4>
+                    <p className="text-2xl font-bold text-purple-900">{stats.rate}%</p>
+                  </div>
+                </div>
+
+                {/* Detailed Report Table */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="text-md font-semibold mb-3">Detailed Report</h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredRecords.slice(0, 10).map((record) => (
+                          <tr key={record.id}>
+                            <td className="px-4 py-2 text-sm text-gray-900">{record.name}</td>
+                            <td className="px-4 py-2 text-sm text-gray-500 capitalize">{record.type}</td>
+                            <td className="px-4 py-2 text-sm">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
+                                {record.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-500">{record.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredRecords.length > 10 && (
+                    <p className="text-sm text-gray-500 mt-2">Showing first 10 records of {filteredRecords.length} total records</p>
+                  )}
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      // TODO: Implement print functionality
+                      window.print();
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Print Report
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -499,6 +686,8 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
       level: student.education_level_display || '',
       class: student.student_class_display || '',
       section: student.classroom || '',
+      stream: student.stream_name || '',
+      education_level: student.education_level || '',
     }));
     setSelectedStudent(student);
     setStudentQuery(student.full_name);
@@ -588,6 +777,17 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ record, onClose, onSa
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
               />
             </div>
+            {formData.education_level === 'SENIOR_SECONDARY' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stream</label>
+                <input
+                  type="text"
+                  value={formData.stream || 'Not assigned'}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
               <input

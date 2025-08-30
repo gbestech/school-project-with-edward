@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Plus, Users, Mail, Phone } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '@/services/api';
+import { triggerDashboardRefresh } from '@/hooks/useDashboardRefresh';
 
 interface Parent {
   id: number;
@@ -46,6 +47,7 @@ const AddStudentToParentModal: React.FC<AddStudentToParentModalProps> = ({
     date_of_birth: '',
     education_level: '',
     student_class: '',
+    stream: '',
     emergency_contact: '',
     medical_conditions: '',
     special_requirements: '',
@@ -55,26 +57,26 @@ const AddStudentToParentModal: React.FC<AddStudentToParentModalProps> = ({
   const educationLevels = [
     { value: 'NURSERY', label: 'Nursery' },
     { value: 'PRIMARY', label: 'Primary' },
-    { value: 'SECONDARY', label: 'Secondary' },
+    { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
+    { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
   ];
 
   const studentClasses = [
+    { value: 'PRE_NURSERY', label: 'Pre-nursery' },
     { value: 'NURSERY_1', label: 'Nursery 1' },
     { value: 'NURSERY_2', label: 'Nursery 2' },
-    { value: 'PRE_K', label: 'Pre-K' },
-    { value: 'KINDERGARTEN', label: 'Kindergarten' },
-    { value: 'GRADE_1', label: 'Grade 1' },
-    { value: 'GRADE_2', label: 'Grade 2' },
-    { value: 'GRADE_3', label: 'Grade 3' },
-    { value: 'GRADE_4', label: 'Grade 4' },
-    { value: 'GRADE_5', label: 'Grade 5' },
-    { value: 'GRADE_6', label: 'Grade 6' },
-    { value: 'GRADE_7', label: 'Grade 7' },
-    { value: 'GRADE_8', label: 'Grade 8' },
-    { value: 'GRADE_9', label: 'Grade 9' },
-    { value: 'GRADE_10', label: 'Grade 10' },
-    { value: 'GRADE_11', label: 'Grade 11' },
-    { value: 'GRADE_12', label: 'Grade 12' },
+    { value: 'PRIMARY_1', label: 'Primary 1' },
+    { value: 'PRIMARY_2', label: 'Primary 2' },
+    { value: 'PRIMARY_3', label: 'Primary 3' },
+    { value: 'PRIMARY_4', label: 'Primary 4' },
+    { value: 'PRIMARY_5', label: 'Primary 5' },
+    { value: 'PRIMARY_6', label: 'Primary 6' },
+    { value: 'JSS_1', label: 'Junior Secondary 1 (JSS1)' },
+    { value: 'JSS_2', label: 'Junior Secondary 2 (JSS2)' },
+    { value: 'JSS_3', label: 'Junior Secondary 3 (JSS3)' },
+    { value: 'SS_1', label: 'Senior Secondary 1 (SS1)' },
+    { value: 'SS_2', label: 'Senior Secondary 2 (SS2)' },
+    { value: 'SS_3', label: 'Senior Secondary 3 (SS3)' },
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -91,6 +93,10 @@ const AddStudentToParentModal: React.FC<AddStudentToParentModalProps> = ({
       const response = await api.post(`/api/parents/${parent.id}/add_student/`, formData);
       
       toast.success('Student added successfully!');
+      
+      // Trigger dashboard refresh to update recent students
+      triggerDashboardRefresh();
+      
       if (response.data.student_password) {
         toast.info(`Student password: ${response.data.student_password}`);
       }
@@ -104,6 +110,7 @@ const AddStudentToParentModal: React.FC<AddStudentToParentModalProps> = ({
         date_of_birth: '',
         education_level: '',
         student_class: '',
+        stream: '',
         emergency_contact: '',
         medical_conditions: '',
         special_requirements: '',
@@ -256,6 +263,27 @@ const AddStudentToParentModal: React.FC<AddStudentToParentModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Stream Selection for Senior Secondary */}
+          {formData.education_level === 'SENIOR_SECONDARY' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Stream (Optional)
+              </label>
+              <select
+                name="stream"
+                value={formData.stream}
+                onChange={handleInputChange}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              >
+                <option value="">Select Stream (Optional)</option>
+                <option value="1">Science</option>
+                <option value="2">Arts</option>
+                <option value="3">Commercial</option>
+                <option value="4">Technical</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

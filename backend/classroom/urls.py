@@ -6,6 +6,7 @@ from .views import (
     SectionViewSet,
     AcademicYearViewSet,
     TermViewSet,
+    StreamViewSet,
     # People Management ViewSets
     TeacherViewSet,
     StudentViewSet,
@@ -39,6 +40,7 @@ router.register(r"academic-years", AcademicYearViewSet, basename="academicyear")
 router.register(r"terms", TermViewSet, basename="term")
 router.register(r"grades", GradeLevelViewSet, basename="gradelevel")
 router.register(r"sections", SectionViewSet, basename="section")
+router.register(r"streams", StreamViewSet, basename="stream")
 
 # ============================================================================
 # ENHANCED SUBJECT MANAGEMENT ROUTES

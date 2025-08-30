@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import StudentService, { StudentService as StudentServiceClass, Student, CreateStudentData, UpdateStudentData, Parent } from '@/services/StudentService';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 // Helper for debounce
 function useDebounce<T>(value: T, delay: number): T {
@@ -28,28 +29,30 @@ function useDebounce<T>(value: T, delay: number): T {
 const EDUCATION_LEVEL_CHOICES = [
   { value: 'NURSERY', label: 'Nursery' },
   { value: 'PRIMARY', label: 'Primary' },
-  { value: 'SECONDARY', label: 'Secondary' },
+  { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
+  { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
+  { value: 'SECONDARY', label: 'Secondary (Legacy)' },
 ];
 const CLASS_CHOICES = [
   // Nursery
+  { value: 'PRE_NURSERY', label: 'Pre-nursery', level: 'NURSERY' },
   { value: 'NURSERY_1', label: 'Nursery 1', level: 'NURSERY' },
   { value: 'NURSERY_2', label: 'Nursery 2', level: 'NURSERY' },
-  { value: 'PRE_K', label: 'Pre-K', level: 'NURSERY' },
-  { value: 'KINDERGARTEN', label: 'Kindergarten', level: 'NURSERY' },
   // Primary
-  { value: 'GRADE_1', label: 'Grade 1', level: 'PRIMARY' },
-  { value: 'GRADE_2', label: 'Grade 2', level: 'PRIMARY' },
-  { value: 'GRADE_3', label: 'Grade 3', level: 'PRIMARY' },
-  { value: 'GRADE_4', label: 'Grade 4', level: 'PRIMARY' },
-  { value: 'GRADE_5', label: 'Grade 5', level: 'PRIMARY' },
-  { value: 'GRADE_6', label: 'Grade 6', level: 'PRIMARY' },
-  // Secondary
-  { value: 'GRADE_7', label: 'Grade 7', level: 'SECONDARY' },
-  { value: 'GRADE_8', label: 'Grade 8', level: 'SECONDARY' },
-  { value: 'GRADE_9', label: 'Grade 9', level: 'SECONDARY' },
-  { value: 'GRADE_10', label: 'Grade 10', level: 'SECONDARY' },
-  { value: 'GRADE_11', label: 'Grade 11', level: 'SECONDARY' },
-  { value: 'GRADE_12', label: 'Grade 12', level: 'SECONDARY' },
+  { value: 'PRIMARY_1', label: 'Primary 1', level: 'PRIMARY' },
+  { value: 'PRIMARY_2', label: 'Primary 2', level: 'PRIMARY' },
+  { value: 'PRIMARY_3', label: 'Primary 3', level: 'PRIMARY' },
+  { value: 'PRIMARY_4', label: 'Primary 4', level: 'PRIMARY' },
+  { value: 'PRIMARY_5', label: 'Primary 5', level: 'PRIMARY' },
+  { value: 'PRIMARY_6', label: 'Primary 6', level: 'PRIMARY' },
+  // Junior Secondary
+  { value: 'JSS_1', label: 'Junior Secondary 1 (JSS1)', level: 'JUNIOR_SECONDARY' },
+  { value: 'JSS_2', label: 'Junior Secondary 2 (JSS2)', level: 'JUNIOR_SECONDARY' },
+  { value: 'JSS_3', label: 'Junior Secondary 3 (JSS3)', level: 'JUNIOR_SECONDARY' },
+  // Senior Secondary
+  { value: 'SS_1', label: 'Senior Secondary 1 (SS1)', level: 'SENIOR_SECONDARY' },
+  { value: 'SS_2', label: 'Senior Secondary 2 (SS2)', level: 'SENIOR_SECONDARY' },
+  { value: 'SS_3', label: 'Senior Secondary 3 (SS3)', level: 'SENIOR_SECONDARY' },
 ];
 
 const StudentsComponent = () => {
@@ -72,6 +75,11 @@ const StudentsComponent = () => {
   const [deleteStudentId, setDeleteStudentId] = useState<number | null>(null);
   const [viewError, setViewError] = useState<string | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [streams, setStreams] = useState<any[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [educationLevelFilter, setEducationLevelFilter] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
 
   const debouncedSearch = useDebounce(searchTerm, 400);
 
@@ -94,6 +102,25 @@ const StudentsComponent = () => {
     }
   };
 
+  // Load streams for Senior Secondary students
+  const loadStreams = useCallback(async () => {
+    try {
+      console.log('🔄 Loading streams...');
+      const response = await fetch('/api/classrooms/streams/');
+      console.log('📊 Streams response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📊 Streams data:', data);
+        setStreams(data.results || data);
+        console.log('✅ Streams loaded successfully');
+      } else {
+        console.error('❌ Streams response not ok:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('❌ Error loading streams:', error);
+    }
+  }, []);
+
   // Enhanced fetch students with profile picture debugging
   const fetchStudents = useCallback(async () => {
     setLoading(true);
@@ -105,6 +132,8 @@ const StudentsComponent = () => {
       
       const params: any = {};
       if (debouncedSearch) params.search = debouncedSearch;
+      if (educationLevelFilter) params.education_level = educationLevelFilter;
+      if (classFilter) params.student_class = classFilter;
       params.page = page;
       params.page_size = pageSize;
       
@@ -140,7 +169,16 @@ const StudentsComponent = () => {
       const studentsWithPictures = studentsData.filter(s => s.profile_picture);
       console.log(`📊 Students with profile pictures: ${studentsWithPictures.length}/${studentsData.length}`);
       
-      setStudents(studentsData);
+      // Apply client-side section filtering
+      let filteredStudents = studentsData;
+      if (sectionFilter) {
+        filteredStudents = studentsData.filter(student => {
+          const studentSection = student.classroom?.split(' ').pop();
+          return studentSection === sectionFilter;
+        });
+      }
+      
+      setStudents(filteredStudents);
       
     } catch (err: any) {
       console.log('❌ Students fetch error:', err);
@@ -170,9 +208,10 @@ const StudentsComponent = () => {
 
   useEffect(() => {
     fetchStudents();
+    loadStreams();
     setSelectAll(false);
     setSelectedStudents([]);
-  }, [fetchStudents]);
+  }, [fetchStudents, loadStreams, educationLevelFilter, classFilter, sectionFilter]);
 
   const toggleStudentSelection = (id: number) => {
     setSelectedStudents(prev => 
@@ -269,6 +308,11 @@ const StudentsComponent = () => {
       console.log(`🔍 Editing student ${studentId}`);
       const res = await StudentService.getStudent(studentId);
       console.log('✅ Edit student response:', res);
+      console.log('🔍 Stream data in response:', {
+        stream: res.stream,
+        stream_name: res.stream_name,
+        stream_type: res.stream_type
+      });
       setEditStudent(res);
       setEditForm(res);
     } catch (err: any) {
@@ -288,12 +332,17 @@ const StudentsComponent = () => {
         ...editForm,
         education_level: editForm.education_level,
         student_class: editForm.student_class,
+        stream: editForm.stream || null,
       };
+      console.log('🔍 Edit payload:', payload);
+      console.log('🔍 Stream value:', payload.stream);
       const res = await StudentService.updateStudent(editStudent.id, payload);
       setStudents((prev) => prev.map((s) => (s.id === editStudent.id ? { ...s, ...res } : s)));
       setEditStudent(null);
       setEditForm({});
     } catch (err: any) {
+      console.error('❌ Edit error:', err);
+      console.error('❌ Error response:', err.response?.data);
       setError(err.response?.data?.student_class?.[0] || err.message || 'Failed to update student');
     } finally {
       setModalLoading(false);
@@ -309,10 +358,14 @@ const StudentsComponent = () => {
     if (!deleteStudentId) return;
     setLoading(true);
     try {
-      await StudentService.deleteStudent(deleteStudentId);
+      const response = await StudentService.deleteStudent(deleteStudentId);
       setStudents((prev) => prev.filter((s) => s.id !== deleteStudentId));
       setSelectedStudents((prev) => prev.filter((id) => id !== deleteStudentId));
       setDeleteStudentId(null);
+      
+      // Show success message from backend response
+      const successMessage = response?.message || 'Student deleted successfully';
+      toast.success(successMessage);
     } catch (err: any) {
       setError(err.message || 'Failed to delete student');
     } finally {
@@ -342,6 +395,17 @@ const StudentsComponent = () => {
   const filteredClassChoices = CLASS_CHOICES.filter(
     (c) => c.level === editForm.education_level
   );
+
+  // Clear all filters
+  const clearFilters = () => {
+    setEducationLevelFilter('');
+    setSectionFilter('');
+    setClassFilter('');
+    setSearchTerm('');
+  };
+
+  // Get available sections from students
+  const availableSections = [...new Set(students.map(s => s.classroom?.split(' ').pop()).filter(Boolean))];
 
 
 
@@ -441,9 +505,21 @@ const StudentsComponent = () => {
               />
             </div>
             <div className="flex items-center space-x-3">
-              <button className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+              <button 
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  showFilters || educationLevelFilter || sectionFilter || classFilter
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                }`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
                 <Filter className="w-4 h-4" />
                 <span>Filter</span>
+                {(educationLevelFilter || sectionFilter || classFilter) && (
+                  <span className="bg-white text-indigo-600 px-2 py-0.5 rounded-full text-xs font-medium">
+                    {[educationLevelFilter, sectionFilter, classFilter].filter(Boolean).length}
+                  </span>
+                )}
               </button>
               <select 
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -457,6 +533,69 @@ const StudentsComponent = () => {
               </select>
             </div>
           </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Education Level Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Education Level</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={educationLevelFilter}
+                    onChange={(e) => setEducationLevelFilter(e.target.value)}
+                  >
+                    <option value="">All Levels</option>
+                    <option value="NURSERY">Nursery</option>
+                    <option value="PRIMARY">Primary</option>
+                    <option value="JUNIOR_SECONDARY">Junior Secondary</option>
+                    <option value="SENIOR_SECONDARY">Senior Secondary</option>
+                  </select>
+                </div>
+
+                {/* Class Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={classFilter}
+                    onChange={(e) => setClassFilter(e.target.value)}
+                  >
+                    <option value="">All Classes</option>
+                    {CLASS_CHOICES.filter(cls => !educationLevelFilter || cls.level === educationLevelFilter).map(cls => (
+                      <option key={cls.value} value={cls.value}>{cls.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Section Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Section</label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    value={sectionFilter}
+                    onChange={(e) => setSectionFilter(e.target.value)}
+                  >
+                    <option value="">All Sections</option>
+                    {availableSections.map(section => (
+                      <option key={section} value={section}>{section}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Clear Filters */}
+                <div className="flex items-end">
+                  <button
+                    onClick={clearFilters}
+                    className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Students Table */}
@@ -486,6 +625,7 @@ const StudentsComponent = () => {
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Parent Contact</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Class</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Level</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Stream</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Status</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Actions</th>
                 </tr>
@@ -519,6 +659,7 @@ const StudentsComponent = () => {
                     <td className="py-4 px-6 text-gray-700">{student.parent_contact || '-'}</td>
                     <td className="w-3xs py-4 px-6 text-gray-700">{student.student_class_display}</td>
                     <td className="py-4 px-6 text-gray-700">{student.education_level_display}</td>
+                    <td className="py-4 px-6 text-gray-700">{student.stream_name || '-'}</td>
                     <td className="py-4 px-6">
                       <span className={`px-2 py-1 rounded text-xs font-semibold ${student.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {student.is_active ? 'Active' : 'Inactive'}
@@ -743,6 +884,12 @@ const StudentsComponent = () => {
                             <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Education Level</label>
                             <p className="text-gray-900 font-medium">{viewStudent.education_level_display || 'Not specified'}</p>
                           </div>
+                          {viewStudent.stream_name && (
+                            <div className="space-y-1">
+                              <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Stream</label>
+                              <p className="text-gray-900 font-medium">{viewStudent.stream_name} ({viewStudent.stream_type})</p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -939,6 +1086,23 @@ const StudentsComponent = () => {
                           ))}
                         </select>
                       </div>
+                      {editForm.education_level === 'SENIOR_SECONDARY' && (
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">Stream</label>
+                          <select
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                            value={editForm.stream || ''}
+                            onChange={e => setEditForm((f: any) => ({ ...f, stream: e.target.value }))}
+                          >
+                            <option value="">Select Stream (Optional)</option>
+                            {streams.map((stream) => (
+                              <option key={stream.id} value={stream.id}>
+                                {stream.name} ({stream.stream_type})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </div>
 

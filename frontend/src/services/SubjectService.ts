@@ -23,6 +23,11 @@ export interface Subject {
   grade_levels_info: any;
   is_compulsory: boolean;
   is_core: boolean;
+  is_elective?: boolean;
+  elective_group?: string;
+  min_electives_required?: number;
+  max_electives_allowed?: number;
+  compatible_streams: string[];
   prerequisites: string[];
   prerequisite_subjects: any[];
   dependent_subjects: any[];
@@ -61,6 +66,11 @@ export interface CreateSubjectData {
   is_compulsory: boolean;
   is_core?: boolean;
   is_cross_cutting?: boolean;
+  is_elective?: boolean;
+  elective_group?: string;
+  min_electives_required?: number;
+  max_electives_allowed?: number;
+  compatible_stream_ids?: number[];
   has_continuous_assessment?: boolean;
   has_final_exam?: boolean;
   pass_mark?: number;

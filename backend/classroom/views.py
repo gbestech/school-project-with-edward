@@ -27,6 +27,7 @@ from .models import (
     AcademicYear,
     Term,
     Student,
+    Stream,
 )
 from teacher.models import Teacher
 from subject.models import (
@@ -48,6 +49,7 @@ from .serializers import (
     TermSerializer,
     TeacherSerializer,
     StudentSerializer,
+    StreamSerializer,
 )
 from subject.serializers import (
     SubjectListSerializer,
@@ -215,6 +217,29 @@ class TermViewSet(viewsets.ModelViewSet):
         term = self.get_object()
         # This would need to be implemented based on your subject-term relationship
         return Response({"message": "Subjects endpoint not implemented yet"})
+
+class StreamViewSet(viewsets.ModelViewSet):
+    """ViewSet for Stream model"""
+    permission_classes = []  # Allow public access for streams
+    serializer_class = StreamSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['stream_type', 'is_active']
+    search_fields = ['name', 'code', 'description']
+    ordering_fields = ['name', 'stream_type', 'created_at']
+    
+    def get_queryset(self):
+        return Stream.objects.all()
+    
+    @action(detail=False, methods=['get'])
+    def by_type(self, request):
+        """Get streams by type"""
+        stream_type = request.query_params.get('stream_type')
+        if stream_type:
+            streams = Stream.objects.filter(stream_type=stream_type, is_active=True)
+        else:
+            streams = Stream.objects.filter(is_active=True)
+        serializer = StreamSerializer(streams, many=True)
+        return Response(serializer.data)
 
 class TeacherViewSet(viewsets.ModelViewSet):
     """ViewSet for Teacher model"""
@@ -478,6 +503,19 @@ class ClassroomViewSet(viewsets.ModelViewSet):
             }
         })
 
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to return a proper JSON response"""
+        classroom = self.get_object()
+        classroom_name = classroom.name
+        
+        # Delete the classroom
+        classroom.delete()
+        
+        return Response({
+            'message': f'Classroom {classroom_name} has been successfully deleted',
+            'status': 'success'
+        }, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'])
     def assign_teacher(self, request, pk=None):
         """Assign a teacher to a classroom for a specific subject"""
@@ -586,56 +624,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=False, methods=['post'])
-    def auto_assign(self, request):
-        """Auto-assign teachers to classrooms based on their qualifications"""
-        from teacher.models import TeacherAssignment
-        
-        try:
-            # Get all classrooms
-            classrooms = Classroom.objects.filter(is_active=True)
-            assignments_created = 0
-            
-            for classroom in classrooms:
-                # Get the grade level and section for this classroom
-                grade_level = classroom.section.grade_level
-                section = classroom.section
-                
-                # Find teachers qualified for this grade level and section
-                teacher_assignments = TeacherAssignment.objects.filter(
-                    grade_level=grade_level,
-                    section=section,
-                    teacher__is_active=True
-                )
-                
-                for teacher_assignment in teacher_assignments:
-                    # Check if this assignment already exists
-                    existing_assignment = ClassroomTeacherAssignment.objects.filter(
-                        classroom=classroom,
-                        teacher=teacher_assignment.teacher,
-                        subject=teacher_assignment.subject,
-                        is_active=True
-                    ).first()
-                    
-                    if not existing_assignment:
-                        # Create new classroom assignment
-                        ClassroomTeacherAssignment.objects.create(
-                            classroom=classroom,
-                            teacher=teacher_assignment.teacher,
-                            subject=teacher_assignment.subject
-                        )
-                        assignments_created += 1
-            
-            return Response({
-                'message': f'Auto-assignment completed. {assignments_created} new assignments created.',
-                'assignments_created': assignments_created
-            })
-            
-        except Exception as e:
-            return Response(
-                {'error': f'Auto-assignment failed: {str(e)}'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+
 
     @action(detail=True, methods=['post'])
     def enroll_student(self, request, pk=None):
@@ -729,6 +718,12 @@ class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
         return ClassroomTeacherAssignment.objects.select_related(
             'classroom', 'teacher__user', 'subject'
         ).filter(is_active=True)
+    
+    def create(self, request, *args, **kwargs):
+        """Override create to add debugging"""
+        print("🔍 Received data:", request.data)
+        print("🔍 Data keys:", list(request.data.keys()))
+        return super().create(request, *args, **kwargs)
     
     @action(detail=False, methods=['get'])
     def by_academic_year(self, request):

@@ -38,17 +38,20 @@ class Teacher(models.Model):
         return f"{self.user.full_name} ({self.employee_id})"
 
 
-class TeacherAssignment(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
-    grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE)
-    section = models.ForeignKey(Section, on_delete=models.CASCADE)
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-
-    class Meta:
-        unique_together = ("teacher", "grade_level", "section", "subject")
-
-    def __str__(self):
-        return f"{self.teacher} - {self.subject} ({self.grade_level}) {self.section}"
+# DEPRECATED: This model is being replaced by ClassroomTeacherAssignment
+# which provides proper teacher-subject-classroom mapping
+# 
+# class TeacherAssignment(models.Model):
+#     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+#     grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE)
+#     section = models.ForeignKey(Section, on_delete=models.CASCADE)
+#     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+#
+#     class Meta:
+#         unique_together = ("teacher", "grade_level", "section", "subject")
+#
+#     def __str__(self):
+#         return f"{self.teacher} - {self.subject} ({self.grade_level}) {self.section}"
 
 
 class AssignmentRequest(models.Model):

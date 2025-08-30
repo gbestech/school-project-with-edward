@@ -26,6 +26,8 @@ export interface Lesson {
         education_level: string;
       };
     };
+    stream_name?: string;
+    stream_type?: string;
   };
   subject: {
     id: number;
@@ -72,6 +74,8 @@ export interface Lesson {
   teacher_name: string;
   classroom_name: string;
   subject_name: string;
+  classroom_stream_name?: string;
+  classroom_stream_type?: string;
 }
 
 export interface LessonCreateData {
@@ -127,6 +131,7 @@ export interface LessonFilters {
   teacher_id?: number;
   classroom_id?: number;
   subject_id?: number;
+  stream_filter?: string;
   lesson_type?: string;
   difficulty_level?: string;
   is_recurring?: boolean;
@@ -316,6 +321,30 @@ export class LessonService {
     } catch (error) {
       console.error('Error updating lesson progress:', error);
       throw new Error('Failed to update lesson progress');
+    }
+  }
+
+  /**
+   * Download lesson report
+   */
+  static async downloadLessonReport(lessonId: number): Promise<void> {
+    try {
+      const response = await api.get(`${this.baseUrl}/lessons/${lessonId}/download_report/`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `lesson_report_${lessonId}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading lesson report:', error);
+      throw new Error('Failed to download lesson report');
     }
   }
 

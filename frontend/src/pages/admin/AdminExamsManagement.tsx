@@ -1,5 +1,5 @@
 import React from 'react'
-import Exams from '@/components/dashboards/admin/Exams'
+import Exams from '../../components/dashboards/admin/Exams'
 
 const AdminExamsManagement = () => {
   return (

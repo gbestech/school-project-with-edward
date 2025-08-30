@@ -7,12 +7,13 @@ from .models import (
     AcademicYear,
     Term,
     Student,
-    Subject,
     Classroom,
     ClassroomTeacherAssignment,
     StudentEnrollment,
     ClassSchedule,
+    Stream,
 )
+from subject.models import Subject
 
 from teacher.models import Teacher
 
@@ -151,6 +152,30 @@ class TermSerializer(serializers.ModelSerializer):
         if data["start_date"] >= data["end_date"]:
             raise serializers.ValidationError("End date must be after start date.")
         return data
+
+
+class StreamSerializer(serializers.ModelSerializer):
+    stream_type_display = serializers.CharField(source="get_stream_type_display", read_only=True)
+    classroom_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Stream
+        fields = [
+            "id",
+            "name",
+            "code",
+            "stream_type",
+            "stream_type_display",
+            "description",
+            "is_active",
+            "classroom_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_classroom_count(self, obj):
+        return obj.classrooms.filter(is_active=True).count()
 
 
 class TeacherSerializer(serializers.ModelSerializer):
@@ -318,14 +343,99 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 # Nested Serializers for Related Models
 class ClassroomTeacherAssignmentSerializer(serializers.ModelSerializer):
+    # Accept _id fields from frontend
+    classroom_id = serializers.IntegerField(write_only=True)
+    teacher_id = serializers.IntegerField(write_only=True)
+    subject_id = serializers.IntegerField(write_only=True)
+    
+    # Read-only fields for display
+    classroom = serializers.PrimaryKeyRelatedField(read_only=True)
+    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
+    subject = serializers.PrimaryKeyRelatedField(read_only=True)
+    
+    def create(self, validated_data):
+        """Override create to handle field mapping"""
+        print("🔍 create method called!")
+        print("🔍 Validated data:", validated_data)
+        
+        # Map _id fields to model instances
+        if 'classroom_id' in validated_data:
+            classroom_id = validated_data.pop('classroom_id')
+            try:
+                classroom = Classroom.objects.get(id=classroom_id)
+                validated_data['classroom'] = classroom
+                print(f"🔍 Mapped classroom_id {classroom_id} to classroom: {classroom}")
+            except Classroom.DoesNotExist:
+                raise serializers.ValidationError(f"Classroom with id {classroom_id} does not exist")
+                
+        if 'teacher_id' in validated_data:
+            teacher_id = validated_data.pop('teacher_id')
+            try:
+                teacher = Teacher.objects.get(id=teacher_id)
+                validated_data['teacher'] = teacher
+                print(f"🔍 Mapped teacher_id {teacher_id} to teacher: {teacher}")
+            except Teacher.DoesNotExist:
+                raise serializers.ValidationError(f"Teacher with id {teacher_id} does not exist")
+                
+        if 'subject_id' in validated_data:
+            subject_id = validated_data.pop('subject_id')
+            print(f"🔍 Attempting to map subject_id: {subject_id}")
+            try:
+                subject = Subject.objects.get(id=subject_id)
+                validated_data['subject'] = subject
+                print(f"🔍 Mapped subject_id {subject_id} to subject: {subject}")
+            except Subject.DoesNotExist:
+                print(f"❌ Subject with id {subject_id} does not exist")
+                raise serializers.ValidationError(f"Subject with id {subject_id} does not exist")
+            except Exception as e:
+                print(f"❌ Error mapping subject_id {subject_id}: {e}")
+                raise serializers.ValidationError(f"Error mapping subject: {e}")
+            
+        print("🔍 Final data for creation:", validated_data)
+        
+        # Create the assignment
+        try:
+            assignment = ClassroomTeacherAssignment.objects.create(**validated_data)
+            print("🔍 Assignment created successfully:", assignment)
+            return assignment
+        except Exception as e:
+            print(f"❌ Error creating assignment: {e}")
+            print(f"❌ Validated data keys: {list(validated_data.keys())}")
+            print(f"❌ Validated data values: {validated_data}")
+            raise serializers.ValidationError(f"Error creating assignment: {e}")
+    
+    def is_valid(self, raise_exception=False):
+        """Override is_valid to add debugging"""
+        print("🔍 is_valid called")
+        print("🔍 Initial data:", self.initial_data)
+        print("🔍 Initial data keys:", list(self.initial_data.keys()) if self.initial_data else [])
+        
+        is_valid = super().is_valid(raise_exception=raise_exception)
+        if not is_valid:
+            print("🔍 Validation errors:", self.errors)
+            print("🔍 Error details:", dict(self.errors))
+            print("🔍 Full error response:", self.errors)
+        else:
+            print("🔍 Validation successful")
+        return is_valid
+    
     teacher_name = serializers.CharField(
-        source="teacher.user.get_full_name", read_only=True
+        source="teacher.user.full_name", read_only=True
     )
     teacher_email = serializers.CharField(
         source="teacher.user.email", read_only=True
     )
     teacher_phone = serializers.CharField(
         source="teacher.phone_number", read_only=True
+    )
+    teacher_employee_id = serializers.CharField(
+        source="teacher.employee_id", read_only=True
+    )
+    teacher_first_name = serializers.CharField(
+        source="teacher.user.first_name", read_only=True
+    )
+    teacher_last_name = serializers.CharField(
+        source="teacher.user.last_name", read_only=True
     )
     subject_name = serializers.CharField(source="subject.name", read_only=True)
     subject_code = serializers.CharField(source="subject.code", read_only=True)
@@ -334,38 +444,66 @@ class ClassroomTeacherAssignmentSerializer(serializers.ModelSerializer):
         model = ClassroomTeacherAssignment
         fields = [
             "id",
-            "teacher",
+            "classroom_id", "classroom",
+            "teacher_id", "teacher",
             "teacher_name",
             "teacher_email",
             "teacher_phone",
-            "subject",
+            "teacher_employee_id",
+            "teacher_first_name",
+            "teacher_last_name",
+            "subject_id", "subject",
             "subject_name",
             "subject_code",
+            "is_primary_teacher",
+            "periods_per_week",
             "assigned_date",
             "is_active",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "classroom", "teacher", "subject"]
+
 
 
 class StudentEnrollmentSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source="student.full_name", read_only=True)
-    admission_number = serializers.CharField(
-        source="student.admission_number", read_only=True
-    )
+    # Student details
+    id = serializers.IntegerField(source="student.id", read_only=True)
+    full_name = serializers.CharField(source="student.user.full_name", read_only=True)
+    registration_number = serializers.CharField(source="student.registration_number", read_only=True)
+    profile_picture = serializers.CharField(source="student.profile_picture", read_only=True)
+    gender = serializers.CharField(source="student.gender", read_only=True)
+    age = serializers.SerializerMethodField()
+    
+    # Enrollment details
+    enrollment_id = serializers.IntegerField(source="id", read_only=True)
+    enrollment_date = serializers.DateField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = StudentEnrollment
         fields = [
-            "id",
-            "student",
-            "student_name",
-            "admission_number",
+            "id",  # This is now student.id
+            "full_name",
+            "registration_number", 
+            "profile_picture",
+            "gender",
+            "age",
+            "enrollment_id",
             "enrollment_date",
             "is_active",
             "created_at",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "enrollment_id", "created_at"]
+    
+    def get_age(self, obj):
+        """Calculate student age from date of birth"""
+        from datetime import date
+        if obj.student.date_of_birth:
+            today = date.today()
+            return today.year - obj.student.date_of_birth.year - (
+                (today.month, today.day) < (obj.student.date_of_birth.month, obj.student.date_of_birth.day)
+            )
+        return None
 
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
@@ -426,6 +564,14 @@ class ClassroomSerializer(serializers.ModelSerializer):
     class_teacher_name = serializers.CharField(
         source="class_teacher.user.get_full_name", read_only=True
     )
+    class_teacher_phone = serializers.CharField(
+        source="class_teacher.phone_number", read_only=True
+    )
+    class_teacher_employee_id = serializers.CharField(
+        source="class_teacher.employee_id", read_only=True
+    )
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
 
     # Enrollment statistics
     current_enrollment = serializers.SerializerMethodField()
@@ -446,8 +592,13 @@ class ClassroomSerializer(serializers.ModelSerializer):
             "academic_year_name",
             "term",
             "term_name",
+            "stream",
+            "stream_name",
+            "stream_type",
             "class_teacher",
             "class_teacher_name",
+            "class_teacher_phone",
+            "class_teacher_employee_id",
             "room_number",
             "max_capacity",
             "current_enrollment",

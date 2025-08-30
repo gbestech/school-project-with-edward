@@ -54,6 +54,19 @@ class StudentViewSet(viewsets.ModelViewSet):
             return StudentCreateSerializer
         return StudentDetailSerializer
 
+    def update(self, request, *args, **kwargs):
+        """Override update method to add debugging."""
+        print(f"🔍 Update request for student {kwargs.get('pk')}")
+        print(f"🔍 Request data: {request.data}")
+        
+        # Get the serializer and check validation
+        serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
+        if not serializer.is_valid():
+            print(f"❌ Validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        return super().update(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
         # Allow unauthenticated POST requests for testing
         self.permission_classes = [AllowAny]
@@ -84,6 +97,19 @@ class StudentViewSet(viewsets.ModelViewSet):
         # For now, return just the student data to fix the frontend issue
         # We can add the additional data back later if needed
         return Response(student_data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to return a proper JSON response"""
+        student = self.get_object()
+        student_name = f"{student.user.first_name} {student.user.last_name}" if student.user else student.registration_number
+        
+        # Delete the student
+        student.delete()
+        
+        return Response({
+            'message': f'Student {student_name} has been successfully deleted',
+            'status': 'success'
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"])
     def nursery_students(self, request):

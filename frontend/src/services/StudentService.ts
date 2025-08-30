@@ -42,6 +42,9 @@ export interface Student {
   classroom?: string | null;
   email?: string;
   section_id?: number | null;
+  stream?: number | null;
+  stream_name?: string | null;
+  stream_type?: string | null;
 }
 
 export interface CreateStudentData {
@@ -63,6 +66,7 @@ export interface UpdateStudentData {
   email?: string;
   parent_contact?: string;
   is_active?: boolean;
+  stream?: number | null;
 }
 
 export interface StudentActivationResponse {
@@ -78,7 +82,7 @@ export class StudentService {
     search?: string;
   }): Promise<{ results: Student[]; count: number }> {
     try {
-      const response = await api.get('/api/students/', params);
+      const response = await api.get('/api/students/students/', params);
       return response;
     } catch (error) {
       console.log('Error fetching students:', error);
@@ -89,7 +93,7 @@ export class StudentService {
   // Get a single student by ID
   async getStudent(id: number): Promise<Student> {
     try {
-      const endpoint = `/api/students/${id}/`;
+      const endpoint = `/api/students/students/${id}/`;
       console.log('DEBUG: StudentService.getStudent calling', endpoint);
       const response = await api.get(endpoint);
       console.log('DEBUG: StudentService.getStudent response', response);
@@ -108,7 +112,7 @@ export class StudentService {
   // Create a new student
   async createStudent(data: CreateStudentData): Promise<Student> {
     try {
-      const response = await api.post('/api/students/', data);
+      const response = await api.post('/api/students/students/', data);
       return response;
     } catch (error) {
       console.log('Error creating student:', error);
@@ -119,7 +123,7 @@ export class StudentService {
   // Update a student
   async updateStudent(id: number, data: UpdateStudentData): Promise<Student> {
     try {
-      const response = await api.patch(`/api/students/${id}/`, data);
+      const response = await api.patch(`/api/students/students/${id}/`, data);
       return response;
     } catch (error) {
       console.log('Error updating student:', error);
@@ -128,9 +132,10 @@ export class StudentService {
   }
 
   // Delete a student
-  async deleteStudent(id: number): Promise<void> {
+  async deleteStudent(id: number): Promise<{ message: string; status: string }> {
     try {
-      await api.delete(`/api/students/${id}/`);
+      const response = await api.delete(`/api/students/students/${id}/`);
+      return response;
     } catch (error) {
       console.log('Error deleting student:', error);
       throw error;
@@ -142,7 +147,7 @@ export class StudentService {
     try {
       console.log(`🔄 Toggling student status: ${studentId}`);
       
-      const response = await api.post(`/api/students/${studentId}/toggle_status/`, {});
+      const response = await api.post(`/api/students/students/${studentId}/toggle_status/`, {});
       console.log('✅ Student status toggle response:', response);
       
       return response;
@@ -157,7 +162,7 @@ export class StudentService {
     try {
       console.log(`🔄 Activating student: ${studentId}`);
       
-      const response = await api.post(`/api/students/${studentId}/activate/`, {});
+      const response = await api.post(`/api/students/students/${studentId}/activate/`, {});
       console.log('✅ Student activation response:', response);
       
       return response;
@@ -172,7 +177,7 @@ export class StudentService {
     try {
       console.log(`🔄 Deactivating student: ${studentId}`);
       
-      const response = await api.post(`/api/students/${studentId}/deactivate/`, {});
+      const response = await api.post(`/api/students/students/${studentId}/deactivate/`, {});
       console.log('✅ Student deactivation response:', response);
       
       return response;
@@ -185,7 +190,13 @@ export class StudentService {
   // Search students
   async searchStudents(query: string): Promise<Student[]> {
     try {
-      const response = await api.get('/api/students/', { search: query });
+      console.log('🔍 Searching students with query:', query);
+      // Add cache-busting parameter to force fresh data
+      const response = await api.get('/api/students/students/', { 
+        search: query,
+        _t: Date.now() // Cache buster
+      });
+      console.log('🔍 Search response:', response);
       return Array.isArray(response) ? response : response.results || [];
     } catch (error) {
       console.log('Error searching students:', error);
@@ -196,7 +207,7 @@ export class StudentService {
   // Get student statistics
   async getStudentStatistics(): Promise<any> {
     try {
-      const response = await api.get('/api/students/statistics/');
+      const response = await api.get('/api/students/students/statistics/');
       return response;
     } catch (error) {
       console.log('Error fetching student statistics:', error);

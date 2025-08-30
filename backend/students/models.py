@@ -180,29 +180,30 @@ GENDER_CHOICES = (
 EDUCATION_LEVEL_CHOICES = (
     ("NURSERY", "Nursery"),
     ("PRIMARY", "Primary"),
-    ("SECONDARY", "Secondary"),
+    ("JUNIOR_SECONDARY", "Junior Secondary"),
+    ("SENIOR_SECONDARY", "Senior Secondary"),
 )
 
 CLASS_CHOICES = (
     # Nursery Classes
+    ("PRE_NURSERY", "Pre-nursery"),
     ("NURSERY_1", "Nursery 1"),
     ("NURSERY_2", "Nursery 2"),
-    ("PRE_K", "Pre-K"),
-    ("KINDERGARTEN", "Kindergarten"),
     # Primary Classes
-    ("GRADE_1", "Grade 1"),
-    ("GRADE_2", "Grade 2"),
-    ("GRADE_3", "Grade 3"),
-    ("GRADE_4", "Grade 4"),
-    ("GRADE_5", "Grade 5"),
-    ("GRADE_6", "Grade 6"),
-    # Secondary Classes
-    ("GRADE_7", "Grade 7"),
-    ("GRADE_8", "Grade 8"),
-    ("GRADE_9", "Grade 9"),
-    ("GRADE_10", "Grade 10"),
-    ("GRADE_11", "Grade 11"),
-    ("GRADE_12", "Grade 12"),
+    ("PRIMARY_1", "Primary 1"),
+    ("PRIMARY_2", "Primary 2"),
+    ("PRIMARY_3", "Primary 3"),
+    ("PRIMARY_4", "Primary 4"),
+    ("PRIMARY_5", "Primary 5"),
+    ("PRIMARY_6", "Primary 6"),
+    # Junior Secondary Classes
+    ("JSS_1", "Junior Secondary 1 (JSS1)"),
+    ("JSS_2", "Junior Secondary 2 (JSS2)"),
+    ("JSS_3", "Junior Secondary 3 (JSS3)"),
+    # Senior Secondary Classes
+    ("SS_1", "Senior Secondary 1 (SS1)"),
+    ("SS_2", "Senior Secondary 2 (SS2)"),
+    ("SS_3", "Senior Secondary 3 (SS3)"),
 )
 
 
@@ -222,7 +223,7 @@ class Student(models.Model):
 
     # New field to categorize education level
     education_level = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=EDUCATION_LEVEL_CHOICES,
         help_text="Education level category",
     )
@@ -253,17 +254,27 @@ class Student(models.Model):
         null=True,
         help_text="Specific classroom assignment (e.g., 'Primary 1 A', 'SS3 B')",
     )
+    
+    # Stream assignment for Senior Secondary students
+    stream = models.ForeignKey(
+        "classroom.Stream",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="students",
+        help_text="Stream assignment for Senior Secondary students",
+    )
 
     # Optional: Add fields that might be useful for nursery students
     parent_contact = models.CharField(
-        max_length=15,
+        max_length=20,
         blank=True,
         null=True,
         help_text="Primary parent/guardian contact number",
     )
 
     emergency_contact = models.CharField(
-        max_length=15, blank=True, null=True, help_text="Emergency contact number"
+        max_length=20, blank=True, null=True, help_text="Emergency contact number"
     )
 
     # Medical information might be more critical for younger students
@@ -329,36 +340,46 @@ class Student(models.Model):
     @property
     def is_secondary_student(self):
         """Check if student is in secondary level."""
-        return self.education_level == "SECONDARY"
+        return self.education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
+    
+    @property
+    def is_junior_secondary_student(self):
+        """Check if student is in junior secondary level."""
+        return self.education_level == "JUNIOR_SECONDARY"
+    
+    @property
+    def is_senior_secondary_student(self):
+        """Check if student is in senior secondary level."""
+        return self.education_level == "SENIOR_SECONDARY"
 
     def save(self, *args, **kwargs):
         """Override save to automatically set education_level based on student_class."""
         if not self.education_level:
             if self.student_class in [
+                "PRE_NURSERY",
                 "NURSERY_1",
                 "NURSERY_2",
-                "PRE_K",
-                "KINDERGARTEN",
             ]:
                 self.education_level = "NURSERY"
             elif self.student_class in [
-                "GRADE_1",
-                "GRADE_2",
-                "GRADE_3",
-                "GRADE_4",
-                "GRADE_5",
-                "GRADE_6",
+                "PRIMARY_1",
+                "PRIMARY_2",
+                "PRIMARY_3",
+                "PRIMARY_4",
+                "PRIMARY_5",
+                "PRIMARY_6",
             ]:
                 self.education_level = "PRIMARY"
             elif self.student_class in [
-                "GRADE_7",
-                "GRADE_8",
-                "GRADE_9",
-                "GRADE_10",
-                "GRADE_11",
-                "GRADE_12",
+                "JSS_1",
+                "JSS_2",
+                "JSS_3",
             ]:
-                self.education_level = "SECONDARY"
-        # Remove this line if it doesn't exist in your original model
-        # self.is_managed_by_parent = self.education_level in ["NURSERY", "PRIMARY"]
+                self.education_level = "JUNIOR_SECONDARY"
+            elif self.student_class in [
+                "SS_1",
+                "SS_2",
+                "SS_3",
+            ]:
+                self.education_level = "SENIOR_SECONDARY"
         super().save(*args, **kwargs)

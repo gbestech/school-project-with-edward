@@ -33,7 +33,9 @@ const api = {
   async get(endpoint: string, params?: Record<string, any>) {
     // If endpoint already starts with /api/, remove the /api prefix and use the base URL
     const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
-    let url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${cleanEndpoint}`;
+    // Ensure cleanEndpoint starts with a slash
+    const finalEndpoint = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+    let url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${finalEndpoint}`;
     
     // Add query parameters if provided
     if (params) {
@@ -79,7 +81,9 @@ const api = {
   async post(endpoint: string, data: any) {
     // If endpoint already starts with /api/, remove the /api prefix and use the base URL
     const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${cleanEndpoint}`;
+    // Ensure cleanEndpoint starts with a slash
+    const finalEndpoint = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${finalEndpoint}`;
     console.log(`🔧 Debug - endpoint: ${endpoint}`);
     console.log(`🔧 Debug - cleanEndpoint: ${cleanEndpoint}`);
     console.log(`🔧 Debug - VITE_API_URL: ${import.meta.env.VITE_API_URL}`);
@@ -104,7 +108,9 @@ const api = {
   async put(endpoint: string, data: any) {
     // If endpoint already starts with /api/, remove the /api prefix and use the base URL
     const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${cleanEndpoint}`;
+    // Ensure cleanEndpoint starts with a slash
+    const finalEndpoint = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${finalEndpoint}`;
     console.log(`🌐 PUT request to: ${url}`);
     const response = await fetch(url, {
       method: 'PUT',
@@ -123,7 +129,9 @@ const api = {
   async patch(endpoint: string, data: any) {
     // If endpoint already starts with /api/, remove the /api prefix and use the base URL
     const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${cleanEndpoint}`;
+    // Ensure cleanEndpoint starts with a slash
+    const finalEndpoint = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${finalEndpoint}`;
     console.log(`🌐 PATCH request to: ${url}`);
     const response = await fetch(url, {
       method: 'PATCH',
@@ -142,7 +150,9 @@ const api = {
   async delete(endpoint: string) {
     // If endpoint already starts with /api/, remove the /api prefix and use the base URL
     const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${cleanEndpoint}`;
+    // Ensure cleanEndpoint starts with a slash
+    const finalEndpoint = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${finalEndpoint}`;
     console.log(`🌐 DELETE request to: ${url}`);
     const response = await fetch(url, {
       method: 'DELETE',

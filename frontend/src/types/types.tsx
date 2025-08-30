@@ -1986,6 +1986,19 @@ export interface Teacher extends BaseEntity {
   is_active?: boolean;
 }
 
+// Updated to use the new ClassroomTeacherAssignment model
+export interface ClassroomTeacherAssignment extends BaseEntity {
+  teacher: Teacher;
+  subject: Subject;
+  classroom: number; // classroom ID
+  classroom_name?: string;
+  is_primary_teacher: boolean;
+  periods_per_week: number;
+  assigned_date: string;
+  is_active: boolean;
+}
+
+// Legacy interface for backward compatibility (deprecated)
 export interface TeacherAssignment extends BaseEntity {
   teacher: Teacher;
   grade_level: GradeLevel;

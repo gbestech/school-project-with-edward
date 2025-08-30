@@ -19,7 +19,7 @@ from schoolSettings.permissions import HasAttendancePermission, HasAttendancePer
 class AttendanceViewSet(viewsets.ModelViewSet):
     serializer_class = AttendanceSerializer
     queryset = Attendance.objects.all()
-    permission_classes = [HasAttendancePermissionOrReadOnly]
+    permission_classes = [IsAuthenticated]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -27,7 +27,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     ]
     filterset_class = AttendanceFilter
     search_fields = ["student__first_name", "teacher__first_name"]
-    ordering_fields = ["attendance_date", "student"]
+    ordering_fields = ["date", "student"]
 
     def get_queryset(self):
         user = self.request.user
@@ -66,7 +66,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                     student=student,
                     teacher=teacher,
                     section=section,
-                    attendance_date=row["attendance_date"],
+                    date=row["attendance_date"],
                     status=row["status"].lower(),
                 )
 
@@ -82,7 +82,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         response["Content-Disposition"] = 'attachment; filename="attendance.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(["student", "teacher", "section", "attendance_date", "status"])
+        writer.writerow(["student", "teacher", "section", "date", "status"])
 
         for record in self.filter_queryset(self.get_queryset()):
             writer.writerow(
@@ -90,7 +90,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                     record.student.id,
                     record.teacher.id if record.teacher else "",
                     record.section.id,
-                    record.attendance_date,
+                    record.date,
                     record.status,
                 ]
             )

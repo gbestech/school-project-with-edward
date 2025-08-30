@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Teacher, TeacherAssignment
+from .models import Teacher
 
 
 @admin.register(Teacher)
@@ -49,14 +49,16 @@ class TeacherAdmin(admin.ModelAdmin):
     get_email.admin_order_field = "user__email"
 
 
-@admin.register(TeacherAssignment)
-class TeacherAssignmentAdmin(admin.ModelAdmin):
-    list_display = ("teacher", "subject", "grade_level", "section")
-    list_filter = ("grade_level", "section", "subject")
-    search_fields = (
-        "teacher__user__first_name",
-        "teacher__user__last_name",
-        "teacher__employee_id",
-        "subject__name",
-    )
-    autocomplete_fields = ("teacher",)  # Requires search_fields in TeacherAdmin
+# Note: TeacherAssignment model has been deprecated in favor of ClassroomTeacherAssignment
+# which provides proper teacher-subject-classroom mapping
+# @admin.register(TeacherAssignment)
+# class TeacherAssignmentAdmin(admin.ModelAdmin):
+#     list_display = ("teacher", "subject", "grade_level", "section")
+#     list_filter = ("grade_level", "section", "subject")
+#     search_fields = (
+#         "teacher__user__first_name",
+#         "teacher__user__last_name",
+#         "teacher__employee_id",
+#         "subject__name",
+#     )
+#     autocomplete_fields = ("teacher",)  # Requires search_fields in TeacherAdmin

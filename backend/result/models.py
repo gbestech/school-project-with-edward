@@ -9,6 +9,7 @@ from decimal import Decimal
 import uuid
 
 from students.models import Student, CLASS_CHOICES, EDUCATION_LEVEL_CHOICES
+from classroom.models import Stream
 
 # from academics.models import Subject, AcademicSession
 
@@ -165,6 +166,15 @@ class StudentResult(models.Model):
     )
     grading_system = models.ForeignKey(
         GradingSystem, on_delete=models.CASCADE, related_name="student_results"
+    )
+    # Stream support for Senior Secondary
+    stream = models.ForeignKey(
+        Stream,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="student_results",
+        help_text="Stream for Senior Secondary results (Science, Arts, Commercial, Technical)"
     )
 
     # Score breakdown

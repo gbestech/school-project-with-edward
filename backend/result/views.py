@@ -33,6 +33,7 @@ from .serializers import (
 )
 from students.models import Student
 from academics.models import AcademicSession
+from classroom.models import Stream
 
 
 class GradingSystemViewSet(viewsets.ModelViewSet):
@@ -75,14 +76,14 @@ class StudentResultViewSet(viewsets.ModelViewSet):
     serializer_class = StudentResultSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['student', 'subject', 'exam_session', 'status', 'is_passed']
+    filterset_fields = ['student', 'subject', 'exam_session', 'status', 'is_passed', 'stream']
     search_fields = ['student__full_name', 'subject__name']
 
     def get_queryset(self):
         queryset = super().get_queryset()
         # Add prefetch_related for better performance
         return queryset.select_related(
-            'student', 'subject', 'exam_session', 'grading_system'
+            'student', 'subject', 'exam_session', 'grading_system', 'stream'
         ).prefetch_related('assessment_scores', 'comments')
 
     def create(self, request, *args, **kwargs):

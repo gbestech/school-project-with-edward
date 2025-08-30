@@ -58,25 +58,25 @@ const createFallbackClassrooms = (level: string) => {
 const educationLevels = [
   { value: 'NURSERY', label: 'Nursery' },
   { value: 'PRIMARY', label: 'Primary' },
-  { value: 'SECONDARY', label: 'Secondary' },
+  { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
+  { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
 ];
 const studentClasses = [
+  { value: 'PRE_NURSERY', label: 'Pre-nursery' },
   { value: 'NURSERY_1', label: 'Nursery 1' },
   { value: 'NURSERY_2', label: 'Nursery 2' },
-  { value: 'PRE_K', label: 'Pre-K' },
-  { value: 'KINDERGARTEN', label: 'Kindergarten' },
-  { value: 'GRADE_1', label: 'Grade 1' },
-  { value: 'GRADE_2', label: 'Grade 2' },
-  { value: 'GRADE_3', label: 'Grade 3' },
-  { value: 'GRADE_4', label: 'Grade 4' },
-  { value: 'GRADE_5', label: 'Grade 5' },
-  { value: 'GRADE_6', label: 'Grade 6' },
-  { value: 'GRADE_7', label: 'Grade 7' },
-  { value: 'GRADE_8', label: 'Grade 8' },
-  { value: 'GRADE_9', label: 'Grade 9' },
-  { value: 'GRADE_10', label: 'Grade 10' },
-  { value: 'GRADE_11', label: 'Grade 11' },
-  { value: 'GRADE_12', label: 'Grade 12' },
+  { value: 'PRIMARY_1', label: 'Primary 1' },
+  { value: 'PRIMARY_2', label: 'Primary 2' },
+  { value: 'PRIMARY_3', label: 'Primary 3' },
+  { value: 'PRIMARY_4', label: 'Primary 4' },
+  { value: 'PRIMARY_5', label: 'Primary 5' },
+  { value: 'PRIMARY_6', label: 'Primary 6' },
+  { value: 'JSS_1', label: 'Junior Secondary 1 (JSS1)' },
+  { value: 'JSS_2', label: 'Junior Secondary 2 (JSS2)' },
+  { value: 'JSS_3', label: 'Junior Secondary 3 (JSS3)' },
+  { value: 'SS_1', label: 'Senior Secondary 1 (SS1)' },
+  { value: 'SS_2', label: 'Senior Secondary 2 (SS2)' },
+  { value: 'SS_3', label: 'Senior Secondary 3 (SS3)' },
 ];
 
 
@@ -118,10 +118,10 @@ const AddTeacherForm: React.FC = () => {
           const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string; grade_level_id: string | number }>>([]);
           const [currentAssignments, setCurrentAssignments] = useState<Array<{
             id: string;
-            grade_level_id: string | number;
-            section_id: string;
-            subject_ids: string[];
-            sectionOptions?: Array<{ id: string; name: string; grade_level_id: string | number }>; // Per-assignment sections
+            classroom_id: string | number;
+            subject_id: string;
+            is_primary_teacher: boolean;
+            periods_per_week: number;
           }>>([]);
   // Load subjects when staff type and level change
   useEffect(() => {
@@ -139,7 +139,7 @@ const AddTeacherForm: React.FC = () => {
         fetch(`/api/subjects/?education_level=${educationLevel}`)
           .then(res => res.json())
           .then(data => {
-            const subjects = Array.isArray(data.results) ? data.results : data;
+            const subjects = Array.isArray(data) ? data : (data.results || []);
             setSubjectOptions(subjects.map((s: any) => ({ id: s.id, name: s.name, education_levels: s.education_levels })));
             // For nursery/primary, auto-select all
             if (formData.level === 'nursery' || formData.level === 'primary') {
@@ -161,16 +161,26 @@ const AddTeacherForm: React.FC = () => {
             }
           })
           .then(data => {
-            const classrooms = Array.isArray(data.results) ? data.results : data;
+            const classrooms = Array.isArray(data) ? data : (data.results || []);
             
             if (classrooms && classrooms.length > 0) {
-              // Use existing classrooms with better display names
-              setClassroomOptions(classrooms.map((c: any) => ({ 
-                id: c.id, 
-                name: c.grade_level_name && c.section_name ? 
-                  `${c.grade_level_name} - ${c.section_name}` : 
-                  c.name || 'Unnamed Classroom'
-              })));
+              // Use existing classrooms with better display names and remove duplicates
+              const uniqueClassrooms = new Map();
+              classrooms.forEach((c: any) => {
+                const displayName = c.grade_level_name && c.section_name ? 
+                  `${c.grade_level_name} ${c.section_name}` : 
+                  c.name || 'Unnamed Classroom';
+                
+                // Use display name as key to prevent duplicates
+                if (!uniqueClassrooms.has(displayName)) {
+                  uniqueClassrooms.set(displayName, {
+                    id: c.id,
+                    name: displayName
+                  });
+                }
+              });
+              
+              setClassroomOptions(Array.from(uniqueClassrooms.values()));
             } else {
               // Create fallback classroom options based on the level
               const fallbackClassrooms = createFallbackClassrooms(formData.level);
@@ -210,7 +220,7 @@ const AddTeacherForm: React.FC = () => {
             return res.json();
           })
           .then(data => {
-            const gradeLevels = Array.isArray(data.results) ? data.results : data;
+            const gradeLevels = Array.isArray(data) ? data : (data.results || []);
             
             if (gradeLevels && gradeLevels.length > 0) {
               setGradeLevelOptions(gradeLevels.map((gl: any) => ({ 
@@ -339,10 +349,10 @@ const AddTeacherForm: React.FC = () => {
   const addAssignment = () => {
     const newAssignment = {
       id: Date.now().toString(),
-      grade_level_id: '',
-      section_id: '',
-      subject_ids: [], // Changed from subject_id to subject_ids array
-      sectionOptions: [], // Initialize empty sections
+      classroom_id: '',
+      subject_id: '',
+      is_primary_teacher: false,
+      periods_per_week: 1,
     };
     setCurrentAssignments(prev => {
       const updated = [...prev, newAssignment];
@@ -495,11 +505,12 @@ const AddTeacherForm: React.FC = () => {
       } else {
         // For secondary: Use specific assignments
         assignments = currentAssignments
-          .filter(a => a.grade_level_id && a.section_id && a.subject_ids.length > 0)
+          .filter(a => a.classroom_id && a.subject_id) // Filter out assignments without classroom or subject
           .map(a => ({
-            grade_level_id: a.grade_level_id,
-            section_id: a.section_id,
-            subject_ids: a.subject_ids
+            classroom_id: a.classroom_id,
+            subject_id: a.subject_id,
+            is_primary_teacher: a.is_primary_teacher || false,
+            periods_per_week: a.periods_per_week || 1
           }));
       }
 
@@ -527,6 +538,7 @@ const AddTeacherForm: React.FC = () => {
         assignments: assignments,
       };
       const response = await api.post('/api/teachers/teachers/', payload);
+      console.log('🔍 Teacher creation response:', response);
       setSuccess('Teacher created successfully!');
       toast.success('Teacher added successfully');
       
@@ -536,11 +548,15 @@ const AddTeacherForm: React.FC = () => {
         const username = response.user_username;
         const password = response.user_password;
         
+        console.log('🔍 Extracted credentials:', { username, password });
+        
         if (username && password) {
+          console.log('✅ Setting credentials and showing modal');
           setTeacherUsername(username);
           setTeacherPassword(password);
           setShowPasswordModal(true);
         } else {
+          console.log('❌ No credentials found in response');
           // Show success message even without credentials
           toast.info('Teacher created successfully! Check admin panel for credentials.');
         }
@@ -937,20 +953,19 @@ const AddTeacherForm: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {currentAssignments.map((assignment, index) => {
-                        const gradeLevel = gradeLevelOptions.find(gl => gl.id == assignment.grade_level_id);
-                        const section = sectionOptions.find(s => s.id == assignment.section_id);
-                        const subjectCount = assignment.subject_ids.length;
+                        const classroom = classroomOptions.find(c => c.id == assignment.classroom_id);
+                        const subject = subjectOptions.find(s => s.id == assignment.subject_id);
                         
                         return (
                           <div key={assignment.id} className="text-xs bg-white p-2 rounded border">
                             <div className="font-medium text-gray-700">
-                              {gradeLevel ? gradeLevel.name : 'No Grade Level'}
+                              {classroom ? classroom.name : 'No Classroom'}
                             </div>
                             <div className="text-gray-600">
-                              {section ? section.name : 'No Section'}
+                              {subject ? subject.name : 'No Subject'}
                             </div>
                             <div className="text-green-600">
-                              {subjectCount} subject(s) selected
+                              {assignment.is_primary_teacher ? 'Primary Teacher' : 'Subject Teacher'}
                             </div>
                           </div>
                         );
@@ -980,101 +995,66 @@ const AddTeacherForm: React.FC = () => {
                           </button>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {/* Grade Level Selection */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                          {/* Classroom Selection */}
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Grade Level</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Classroom</label>
                             <select
-                              value={assignment.grade_level_id}
-                              onChange={(e) => updateAssignment(assignment.id, 'grade_level_id', e.target.value)}
+                              value={assignment.classroom_id}
+                              onChange={(e) => updateAssignment(assignment.id, 'classroom_id', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded text-sm"
                             >
-                              <option value="">Select Grade Level</option>
-                              {gradeLevelOptions
-                                .filter(gl => gl.education_level === (formData.level === 'junior_secondary' ? 'JUNIOR_SECONDARY' : 'SENIOR_SECONDARY'))
-                                .map(gl => (
-                                  <option key={gl.id} value={gl.id}>
-                                    {gl.name} ({gl.education_level.replace('_', ' ')})
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-
-                          {/* Section Selection */}
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Section</label>
-                            <select
-                              value={assignment.section_id}
-                              onChange={(e) => updateAssignment(assignment.id, 'section_id', e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded text-sm"
-                              disabled={!assignment.grade_level_id}
-                            >
-                              <option value="">Select Section</option>
-                              {(assignment.sectionOptions || sectionOptions)
-                                .filter(s => s.grade_level_id == assignment.grade_level_id)
-                                .map(section => (
-                                  <option key={section.id} value={section.id}>
-                                    {section.name}
-                                  </option>
-                                ))}
+                              <option value="">Select Classroom</option>
+                              {classroomOptions.map(classroom => (
+                                <option key={classroom.id} value={classroom.id}>
+                                  {classroom.name}
+                                </option>
+                              ))}
                             </select>
                           </div>
 
                           {/* Subject Selection */}
                           <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="block text-xs font-medium text-gray-600">Subjects</label>
-                              {formData.subjects.length > 0 && (
-                                <div className="flex gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const allSubjectIds = subjectOptions
-                                        .filter(subject => formData.subjects.includes(subject.id))
-                                        .map(subject => subject.id);
-                                      updateAssignment(assignment.id, 'subject_ids', allSubjectIds);
-                                    }}
-                                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                                  >
-                                    All
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateAssignment(assignment.id, 'subject_ids', [])}
-                                    className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                                  >
-                                    Clear
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            <div className="bg-gray-50 p-3 rounded border border-gray-200 max-h-48 overflow-y-auto">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {subjectOptions
-                                  .filter(subject => formData.subjects.includes(subject.id))
-                                  .map(subject => (
-                                    <label key={subject.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded-md transition-colors">
-                                      <input
-                                        type="checkbox"
-                                        checked={assignment.subject_ids.includes(subject.id)}
-                                        onChange={(e) => handleAssignmentSubjectChange(assignment.id, subject.id, e.target.checked)}
-                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
-                                      />
-                                      <span className="text-sm text-gray-700">{subject.name}</span>
-                                    </label>
-                                  ))}
-                              </div>
-                            </div>
-                            {formData.subjects.length === 0 && (
-                              <p className="text-xs text-orange-600 mt-1">
-                                Please select subjects in the "Available Subjects" section above
-                              </p>
-                            )}
-                            {assignment.subject_ids.length > 0 && (
-                              <p className="text-xs text-green-600 mt-1">
-                                ✓ {assignment.subject_ids.length} subject(s) selected
-                              </p>
-                            )}
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                            <select
+                              value={assignment.subject_id}
+                              onChange={(e) => updateAssignment(assignment.id, 'subject_id', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded text-sm"
+                            >
+                              <option value="">Select Subject</option>
+                              {subjectOptions.map(subject => (
+                                <option key={subject.id} value={subject.id}>
+                                  {subject.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Periods per Week */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Periods per Week</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={assignment.periods_per_week}
+                              onChange={(e) => updateAssignment(assignment.id, 'periods_per_week', parseInt(e.target.value) || 1)}
+                              className="w-full p-2 border border-gray-300 rounded text-sm"
+                            />
+                          </div>
+
+                          {/* Primary Teacher Checkbox */}
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id={`primary-${assignment.id}`}
+                              checked={assignment.is_primary_teacher}
+                              onChange={(e) => updateAssignment(assignment.id, 'is_primary_teacher', e.target.checked)}
+                              className="rounded border-gray-300 mr-2"
+                            />
+                            <label htmlFor={`primary-${assignment.id}`} className="text-xs font-medium text-gray-600 cursor-pointer">
+                              Primary Teacher
+                            </label>
                           </div>
                         </div>
                       </div>

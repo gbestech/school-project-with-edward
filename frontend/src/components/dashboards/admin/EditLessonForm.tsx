@@ -139,6 +139,11 @@ const EditLessonForm: React.FC<EditLessonFormProps> = ({ lesson, onClose, onSucc
                 <span className={`text-sm ${themeClasses.textSecondary}`}>
                   ID: {lesson.id}
                 </span>
+                {lesson.classroom_stream_name && (
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-100 text-blue-800 border-blue-200`}>
+                    {lesson.classroom_stream_name}
+                  </span>
+                )}
               </div>
             </div>
             <button onClick={onClose} className={`p-2 rounded-lg ${themeClasses.buttonSecondary} transition-colors`}>
@@ -156,6 +161,34 @@ const EditLessonForm: React.FC<EditLessonFormProps> = ({ lesson, onClose, onSucc
               </div>
             </div>
           )}
+
+          {/* Lesson Context Information */}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 className={`text-sm font-semibold ${themeClasses.textPrimary} mb-2 flex items-center space-x-2`}>
+              <Users size={16} className={themeClasses.iconPrimary} />
+              <span>Lesson Context</span>
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className={`${themeClasses.textSecondary}`}>Teacher:</span>
+                <p className={`${themeClasses.textPrimary} font-medium`}>{lesson.teacher_name}</p>
+              </div>
+              <div>
+                <span className={`${themeClasses.textSecondary}`}>Classroom:</span>
+                <p className={`${themeClasses.textPrimary} font-medium`}>{lesson.classroom_name}</p>
+              </div>
+              <div>
+                <span className={`${themeClasses.textSecondary}`}>Subject:</span>
+                <p className={`${themeClasses.textPrimary} font-medium`}>{lesson.subject_name}</p>
+              </div>
+              {lesson.classroom_stream_name && (
+                <div>
+                  <span className={`${themeClasses.textSecondary}`}>Stream:</span>
+                  <p className={`${themeClasses.textPrimary} font-medium`}>{lesson.classroom_stream_name}</p>
+                </div>
+              )}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Basic Information */}

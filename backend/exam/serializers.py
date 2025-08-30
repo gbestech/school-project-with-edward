@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from .models import Exam, ExamSchedule, ExamRegistration, ExamStatistics
 from result.models import StudentResult
-from classroom.models import GradeLevel, Section
+from classroom.models import GradeLevel, Section, Stream
 from subject.models import Subject
 from teacher.models import Teacher
 from students.models import Student
@@ -14,13 +14,13 @@ from students.models import Student
 class GradeLevelSerializer(serializers.ModelSerializer):
     class Meta:
         model = GradeLevel
-        fields = ["id", "name", "code", "description"]
+        fields = ["id", "name", "description"]
 
 
 class SectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Section
-        fields = ["id", "name", "code", "capacity"]
+        fields = ["id", "name"]
 
 
 class SubjectSerializer(serializers.ModelSerializer):
@@ -31,18 +31,27 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 class TeacherSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
+    email = serializers.SerializerMethodField()
+    phone = serializers.CharField(source="phone_number", read_only=True)
 
     class Meta:
         model = Teacher
         fields = ["id", "full_name", "employee_id", "email", "phone"]
 
+    def get_email(self, obj):
+        return obj.user.email if obj.user else None
+
 
 class StudentSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
+    student_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
         fields = ["id", "full_name", "student_id", "email"]
+
+    def get_student_id(self, obj):
+        return obj.admission_number
 
 
 class ExamScheduleSerializer(serializers.ModelSerializer):
@@ -80,6 +89,8 @@ class ExamListSerializer(serializers.ModelSerializer):
     grade_level_name = serializers.CharField(source="grade_level.name", read_only=True)
     section_name = serializers.CharField(source="section.name", read_only=True)
     teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
     exam_schedule_name = serializers.CharField(
         source="exam_schedule.name", read_only=True
     )
@@ -111,6 +122,8 @@ class ExamListSerializer(serializers.ModelSerializer):
             "grade_level_name",
             "section_name",
             "teacher_name",
+            "stream_name",
+            "stream_type",
             "exam_schedule_name",
             "term",
             "session_year",
@@ -122,10 +135,20 @@ class ExamListSerializer(serializers.ModelSerializer):
             "is_ongoing",
             "registered_students_count",
             "pass_percentage",
+            "objective_questions",
+            "theory_questions",
+            "practical_questions",
+            "custom_sections",
+            "objective_instructions",
+            "theory_instructions",
+            "practical_instructions",
         ]
 
     def get_pass_percentage(self, obj):
-        return obj.get_pass_percentage()
+        """Calculate pass percentage based on pass_marks and total_marks"""
+        if obj.pass_marks and obj.total_marks and obj.total_marks > 0:
+            return round((obj.pass_marks / obj.total_marks) * 100, 2)
+        return 0
 
 
 class ExamDetailSerializer(serializers.ModelSerializer):
@@ -136,6 +159,7 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     grade_level = GradeLevelSerializer(read_only=True)
     section = SectionSerializer(read_only=True)
     teacher = TeacherSerializer(read_only=True)
+    stream = serializers.SerializerMethodField()
     exam_schedule = ExamScheduleSerializer(read_only=True)
     invigilators = TeacherSerializer(many=True, read_only=True)
 
@@ -168,6 +192,7 @@ class ExamDetailSerializer(serializers.ModelSerializer):
             "grade_level",
             "section",
             "teacher",
+            "stream",
             "exam_schedule",
             "invigilators",
             "exam_type",
@@ -197,12 +222,32 @@ class ExamDetailSerializer(serializers.ModelSerializer):
             "is_completed",
             "is_ongoing",
             "registered_students_count",
+            "objective_questions",
+            "theory_questions",
+            "practical_questions",
+            "custom_sections",
+            "objective_instructions",
+            "theory_instructions",
+            "practical_instructions",
             "created_at",
             "updated_at",
         ]
 
     def get_pass_percentage(self, obj):
-        return obj.get_pass_percentage()
+        """Calculate pass percentage based on pass_marks and total_marks"""
+        if obj.pass_marks and obj.total_marks and obj.total_marks > 0:
+            return round((obj.pass_marks / obj.total_marks) * 100, 2)
+        return 0
+
+    def get_stream(self, obj):
+        """Get stream information for the exam"""
+        if obj.stream:
+            return {
+                "id": obj.stream.id,
+                "name": obj.stream.name,
+                "stream_type": obj.stream.stream_type
+            }
+        return None
 
 
 class ExamCreateUpdateSerializer(serializers.ModelSerializer):
@@ -211,7 +256,10 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
     # Foreign key fields with validation
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
     grade_level = serializers.PrimaryKeyRelatedField(queryset=GradeLevel.objects.all())
-    section = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all())
+    section = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all(), required=False, allow_null=True)
+    stream = serializers.PrimaryKeyRelatedField(
+        queryset=Stream.objects.all(), required=False, allow_null=True
+    )
     teacher = serializers.PrimaryKeyRelatedField(
         queryset=Teacher.objects.all(), required=False, allow_null=True
     )
@@ -221,6 +269,25 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
     invigilators = serializers.PrimaryKeyRelatedField(
         queryset=Teacher.objects.all(), many=True, required=False
     )
+
+    def create(self, validated_data):
+        """Override create method to add debugging and handle created_by"""
+        print("🔍 DEBUG - ExamCreateUpdateSerializer.create()")
+        print(f"🔍 validated_data: {validated_data}")
+        print(f"🔍 subject type: {type(validated_data.get('subject'))}")
+        print(f"🔍 subject value: {validated_data.get('subject')}")
+        
+        # Check if subject is a Subject instance or ID
+        subject = validated_data.get('subject')
+        if hasattr(subject, 'id'):
+            print(f"🔍 Subject is an object with id: {subject.id}")
+        else:
+            print(f"🔍 Subject is an ID: {subject}")
+        
+        # Remove created_by from validated_data since Exam model doesn't have this field
+        validated_data.pop('created_by', None)
+        
+        return super().create(validated_data)
 
     class Meta:
         model = Exam
@@ -232,6 +299,7 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
             "subject",
             "grade_level",
             "section",
+            "stream",
             "teacher",
             "exam_schedule",
             "invigilators",
@@ -253,6 +321,13 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
             "is_online",
             "term",
             "session_year",
+            "objective_questions",
+            "theory_questions",
+            "practical_questions",
+            "custom_sections",
+            "objective_instructions",
+            "theory_instructions",
+            "practical_instructions",
         ]
         extra_kwargs = {
             "code": {"required": False},  # Auto-generated if not provided
@@ -262,6 +337,11 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Cross-field validation"""
+        print("🔍 DEBUG - ExamCreateUpdateSerializer.validate()")
+        print(f"🔍 data: {data}")
+        print(f"🔍 subject type: {type(data.get('subject'))}")
+        print(f"🔍 subject value: {data.get('subject')}")
+        
         errors = {}
 
         # Validate time
@@ -276,10 +356,10 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
         if pass_marks and total_marks and pass_marks > total_marks:
             errors["pass_marks"] = "Pass marks cannot exceed total marks."
 
-        # Validate exam date (only for new exams or when changing date)
+        # Validate exam date (only for new exams)
         exam_date = data.get("exam_date")
-        if exam_date and exam_date < timezone.now().date():
-            status = data.get("status", getattr(self.instance, "status", "scheduled"))
+        if exam_date and exam_date < timezone.now().date() and not self.instance:
+            status = data.get("status", "scheduled")
             if status == "scheduled":
                 errors["exam_date"] = "Cannot schedule exam for past date."
 
@@ -312,8 +392,9 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_exam_date(self, value):
         """Validate exam date"""
+        # Allow updates of existing exams even with past dates
         if value < timezone.now().date():
-            if not self.instance or self.instance.status == "scheduled":
+            if not self.instance:  # Only check for new exams
                 raise serializers.ValidationError("Cannot schedule exam for past date.")
         return value
 

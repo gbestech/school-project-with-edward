@@ -7,6 +7,20 @@ export interface SubjectResult {
     name: string;
     code: string;
   };
+  exam_session: {
+    id: string;
+    name: string;
+    exam_type: string;
+    term: string;
+  };
+  // Stream support for Senior Secondary
+  stream?: {
+    id: string;
+    name: string;
+    stream_type: string;
+  } | null;
+  stream_name?: string;
+  stream_type?: string;
   ca_score: number;
   exam_score: number;
   total_score: number;
@@ -114,6 +128,7 @@ class ResultService {
     exam_session?: string;
     status?: string;
     is_passed?: boolean;
+    stream?: string;
     search?: string;
   }) {
     const queryParams = new URLSearchParams();
@@ -215,9 +230,17 @@ class ResultService {
     subject: string;
     exam_session: string;
     grading_system: string;
+    stream?: string;
     ca_score: number;
     exam_score: number;
+    total_score?: number;
+    percentage?: number;
+    grade?: string;
+    grade_point?: number;
+    is_passed?: boolean;
+    position?: number;
     remarks?: string;
+    status?: string;
   }) {
     return api.post('/results/student-results/', data);
   }

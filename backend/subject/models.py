@@ -99,6 +99,14 @@ class Subject(models.Model):
         null=True,
         help_text="Classification for Senior Secondary subjects",
     )
+    
+    # Stream compatibility for Senior Secondary
+    compatible_streams = models.ManyToManyField(
+        "classroom.Stream",
+        related_name="subjects",
+        blank=True,
+        help_text="Streams where this subject is available (for Senior Secondary)",
+    )
 
     # Integration with GradeLevel model
     grade_levels = models.ManyToManyField(
@@ -186,6 +194,29 @@ class Subject(models.Model):
     # Teaching requirements
     requires_specialist_teacher = models.BooleanField(
         default=False, help_text="Requires a subject specialist teacher"
+    )
+    
+    # Enhanced elective and core subject management
+    is_elective = models.BooleanField(
+        default=False,
+        help_text="Whether this is an elective subject (students can choose)"
+    )
+    
+    elective_group = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Group for elective subjects (e.g., 'Group A', 'Group B')"
+    )
+    
+    min_electives_required = models.PositiveIntegerField(
+        default=0,
+        help_text="Minimum number of electives required from this group"
+    )
+    
+    max_electives_allowed = models.PositiveIntegerField(
+        default=0,
+        help_text="Maximum number of electives allowed from this group"
     )
 
     # Status and metadata

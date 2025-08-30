@@ -14,6 +14,12 @@ export interface AttendanceRecordBackend {
   status: 'P' | 'A' | 'L' | 'E'; // Present, Absent, Late, Excused
   time_in?: string | null;
   time_out?: string | null;
+  student_stream?: number | null;
+  student_stream_name?: string | null;
+  student_stream_type?: string | null;
+  student_education_level?: string | null;
+  student_education_level_display?: string | null;
+  student_class_display?: string | null;
 }
 
 export const AttendanceStatusMap: Record<'present' | 'absent' | 'late' | 'excused', 'P' | 'A' | 'L' | 'E'> = {
@@ -31,7 +37,15 @@ export const AttendanceCodeToStatusMap: Record<'P' | 'A' | 'L' | 'E', 'present' 
 };
 
 export async function getAttendance(params?: Record<string, any>) {
-  return api.get('/attendance/attendance/', params);
+  console.log('🔍 AttendanceService: Calling getAttendance with params:', params);
+  try {
+    const response = await api.get('/attendance/attendance/', params);
+    console.log('✅ AttendanceService: API response received:', response);
+    return response;
+  } catch (error) {
+    console.error('❌ AttendanceService: API call failed:', error);
+    throw error;
+  }
 }
 
 export async function addAttendance(data: Partial<AttendanceRecordBackend>) {

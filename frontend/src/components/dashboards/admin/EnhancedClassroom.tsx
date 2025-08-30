@@ -360,8 +360,9 @@ const EnhancedClassroom = () => {
     if (!classroomToDelete) return;
 
     try {
-      await classroomService.deleteClassroom(classroomToDelete.id);
-      toast.success('Classroom deleted successfully');
+      const response = await classroomService.deleteClassroom(classroomToDelete.id);
+      const successMessage = response?.message || 'Classroom deleted successfully';
+      toast.success(successMessage);
       setShowDeleteModal(false);
       setClassroomToDelete(null);
       

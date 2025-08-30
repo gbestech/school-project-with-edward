@@ -30,10 +30,24 @@ class StudentMinimalSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name", read_only=True)
     last_name = serializers.CharField(source="user.last_name", read_only=True)
     full_name = serializers.SerializerMethodField()
+    education_level_display = serializers.CharField(source="get_education_level_display", read_only=True)
+    student_class_display = serializers.CharField(source="get_student_class_display", read_only=True)
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
 
     class Meta:
         model = Student
-        fields = ["id", "first_name", "last_name", "full_name", "education_level"]
+        fields = [
+            "id", 
+            "first_name", 
+            "last_name", 
+            "full_name", 
+            "education_level",
+            "education_level_display",
+            "student_class_display",
+            "stream_name",
+            "stream_type"
+        ]
 
     def get_full_name(self, obj):
         return obj.user.full_name if obj.user else str(obj)

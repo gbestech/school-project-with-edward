@@ -103,6 +103,9 @@ class Lesson(models.Model):
     created_by = models.ForeignKey('users.CustomUser', on_delete=models.SET_NULL, null=True, related_name='created_lessons')
     last_modified_by = models.ForeignKey('users.CustomUser', on_delete=models.SET_NULL, null=True, related_name='modified_lessons')
     
+    # Data retention
+    data_retention_expires_at = models.DateTimeField(null=True, blank=True, help_text="When lesson data should be cleaned up")
+    
     # Flags
     is_active = models.BooleanField(default=True)
     requires_special_equipment = models.BooleanField(default=False)
@@ -174,29 +177,30 @@ class Lesson(models.Model):
         if self.status != 'in_progress' or not self.actual_start_time:
             return self.completion_percentage
         
-        now = timezone.now().time()
+        now = timezone.localtime(timezone.now()).time()
         lesson_date = self.date
         
         # If lesson is not today, return current completion percentage
         if lesson_date != timezone.now().date():
             return self.completion_percentage
         
-        # Calculate progress based on time elapsed since actual start
-        start_dt = datetime.combine(lesson_date, self.actual_start_time)
-        end_dt = datetime.combine(lesson_date, self.end_time)
+        # Calculate progress based on actual start time to scheduled end time
+        # This allows for early starts while maintaining proper progress tracking
+        actual_start_dt = datetime.combine(lesson_date, self.actual_start_time)
+        scheduled_end_dt = datetime.combine(lesson_date, self.end_time)
         current_dt = datetime.combine(lesson_date, now)
         
-        # If current time is before start time, return 0
-        if current_dt < start_dt:
+        # If current time is before actual start time, return 0
+        if current_dt < actual_start_dt:
             return 0
         
-        # If current time is after end time, return 100
-        if current_dt >= end_dt:
+        # If current time is after scheduled end time, return 100
+        if current_dt >= scheduled_end_dt:
             return 100
         
-        # Calculate percentage
-        total_duration = (end_dt - start_dt).total_seconds()
-        elapsed_duration = (current_dt - start_dt).total_seconds()
+        # Calculate percentage based on actual start to scheduled end
+        total_duration = (scheduled_end_dt - actual_start_dt).total_seconds()
+        elapsed_duration = (current_dt - actual_start_dt).total_seconds()
         
         if total_duration > 0:
             percentage = min(100, int((elapsed_duration / total_duration) * 100))
@@ -208,7 +212,7 @@ class Lesson(models.Model):
         """Start the lesson and set actual start time"""
         if self.status == 'scheduled':
             self.status = 'in_progress'
-            self.actual_start_time = timezone.now().time()
+            self.actual_start_time = timezone.localtime(timezone.now()).time()
             self.completion_percentage = 0
             self.save()
             return True
@@ -218,8 +222,9 @@ class Lesson(models.Model):
         """Complete the lesson and set actual end time"""
         if self.status in ['scheduled', 'in_progress']:
             self.status = 'completed'
-            self.actual_end_time = timezone.now().time()
+            self.actual_end_time = timezone.localtime(timezone.now()).time()
             self.completion_percentage = 100
+            self.set_data_retention_expiry()  # Set 24-hour retention
             self.save()
             return True
         return False
@@ -233,6 +238,101 @@ class Lesson(models.Model):
                 self.save()
             return new_percentage
         return self.completion_percentage
+    
+    def set_data_retention_expiry(self):
+        """Set data retention expiry to 24 hours from now"""
+        from datetime import timedelta
+        self.data_retention_expires_at = timezone.now() + timedelta(hours=24)
+        self.save()
+    
+    def cleanup_lesson_data(self):
+        """Clean up detailed lesson data while keeping basic info"""
+        # Keep basic lesson info but clear detailed data
+        self.lesson_notes = ""
+        self.student_feedback = ""
+        self.admin_notes = ""
+        self.attendance_count = 0
+        self.participation_score = 0
+        self.resources = []
+        self.attachments = []
+        self.data_retention_expires_at = None
+        self.save()
+        
+        # Also clean up related attendance records
+        from .models import LessonAttendance
+        LessonAttendance.objects.filter(lesson=self).delete()
+    
+    @classmethod
+    def cleanup_expired_lessons(cls):
+        """Clean up lessons that have expired data retention"""
+        from django.utils import timezone
+        expired_lessons = cls.objects.filter(
+            data_retention_expires_at__lt=timezone.now(),
+            data_retention_expires_at__isnull=False
+        )
+        
+        for lesson in expired_lessons:
+            lesson.cleanup_lesson_data()
+        
+        return expired_lessons.count()
+    
+    def generate_lesson_report(self):
+        """Generate a comprehensive lesson report for download"""
+        from .models import LessonAttendance
+        
+        # Get attendance data
+        attendance_records = LessonAttendance.objects.filter(lesson=self).select_related('student__user')
+        
+        report_data = {
+            'lesson_info': {
+                'title': self.title,
+                'subject': self.subject.name,
+                'teacher': f"{self.teacher.user.first_name} {self.teacher.user.last_name}",
+                'classroom': self.classroom.name,
+                'date': self.date.strftime('%Y-%m-%d'),
+                'start_time': self.start_time.strftime('%H:%M'),
+                'end_time': self.end_time.strftime('%H:%M'),
+                'duration': self.duration_formatted,
+                'status': self.status,
+                'completion_percentage': self.completion_percentage,
+            },
+            'content': {
+                'description': self.description,
+                'learning_objectives': self.learning_objectives,
+                'key_concepts': self.key_concepts,
+                'materials_needed': self.materials_needed,
+                'assessment_criteria': self.assessment_criteria,
+            },
+            'notes': {
+                'teacher_notes': self.teacher_notes,
+                'lesson_notes': self.lesson_notes,
+                'student_feedback': self.student_feedback,
+                'admin_notes': self.admin_notes,
+            },
+            'attendance': {
+                'total_students': attendance_records.count(),
+                'present_count': attendance_records.filter(status='present').count(),
+                'absent_count': attendance_records.filter(status='absent').count(),
+                'late_count': attendance_records.filter(status='late').count(),
+                'excused_count': attendance_records.filter(status='excused').count(),
+                'sick_count': attendance_records.filter(status='sick').count(),
+                'records': [
+                    {
+                        'student_name': f"{record.student.user.first_name} {record.student.user.last_name}",
+                        'status': record.status,
+                        'arrival_time': record.arrival_time.strftime('%H:%M') if record.arrival_time else 'N/A',
+                        'notes': record.notes,
+                    }
+                    for record in attendance_records
+                ]
+            },
+            'resources': self.resources,
+            'attachments': self.attachments,
+            'participation_score': self.participation_score,
+            'generated_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        
+        return report_data
 
 
 class LessonAttendance(models.Model):

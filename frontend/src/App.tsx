@@ -8,18 +8,21 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 import FaviconUpdater from './components/FaviconUpdater';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <SettingsProvider>
-      <FaviconUpdater />
-      <DesignProvider>
-        <ThemeProvider>
-          <RouterProvider router={router} />
-          <ToastContainer position="top-right" autoClose={3000} />
-        </ThemeProvider>
-      </DesignProvider>
-    </SettingsProvider>
+    <ErrorBoundary>
+      <SettingsProvider>
+        <FaviconUpdater />
+        <DesignProvider>
+          <ThemeProvider>
+            <RouterProvider router={router} />
+            <ToastContainer position="top-right" autoClose={3000} />
+          </ThemeProvider>
+        </DesignProvider>
+      </SettingsProvider>
+    </ErrorBoundary>
   );
 }
 

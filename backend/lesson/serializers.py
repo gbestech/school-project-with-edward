@@ -52,6 +52,10 @@ class LessonSerializer(serializers.ModelSerializer):
     teacher = TeacherSerializer(read_only=True)
     classroom = ClassroomSerializer(read_only=True)
     subject = SubjectSerializer(read_only=True)
+    
+    # Stream information from classroom
+    classroom_stream_name = serializers.CharField(source='classroom.stream_name', read_only=True)
+    classroom_stream_type = serializers.CharField(source='classroom.stream_type', read_only=True)
     attendances = LessonAttendanceSerializer(many=True, read_only=True)
     resources = LessonResourceSerializer(many=True, read_only=True)
     assessments = LessonAssessmentSerializer(many=True, read_only=True)
@@ -92,7 +96,8 @@ class LessonSerializer(serializers.ModelSerializer):
             'requires_special_equipment', 'is_online_lesson', 'requires_substitution',
             'created_at', 'updated_at', 'created_by', 'last_modified_by',
             'attendances', 'assessments', 'time_slot', 'is_overdue', 'is_today',
-            'is_upcoming', 'can_start', 'can_complete', 'can_cancel'
+            'is_upcoming', 'can_start', 'can_complete', 'can_cancel',
+            'classroom_stream_name', 'classroom_stream_type'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'last_modified_by']
     
@@ -260,11 +265,11 @@ class LessonStatusUpdateSerializer(serializers.ModelSerializer):
         status = data.get('status')
         
         if status == 'in_progress' and not data.get('actual_start_time'):
-            data['actual_start_time'] = timezone.now().time()
+            data['actual_start_time'] = timezone.localtime(timezone.now()).time()
         
         if status == 'completed':
             if not data.get('actual_end_time'):
-                data['actual_end_time'] = timezone.now().time()
+                data['actual_end_time'] = timezone.localtime(timezone.now()).time()
             if not data.get('completion_percentage'):
                 data['completion_percentage'] = 100
         

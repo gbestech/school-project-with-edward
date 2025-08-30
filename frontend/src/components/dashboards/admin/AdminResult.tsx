@@ -10,6 +10,20 @@ interface SubjectResult {
     name: string;
     code: string;
   };
+  exam_session: {
+    id: string;
+    name: string;
+    exam_type: string;
+    term: string;
+  };
+  // Stream support for Senior Secondary
+  stream?: {
+    id: string;
+    name: string;
+    stream_type: string;
+  } | null;
+  stream_name?: string;
+  stream_type?: string;
   ca_score: number;
   exam_score: number;
   total_score: number;
@@ -87,6 +101,7 @@ const SchoolResultTemplate = () => {
   const [yearFilter, setYearFilter] = useState('all');
   const [termFilter, setTermFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
+  const [streamFilter, setStreamFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -129,6 +144,16 @@ const SchoolResultTemplate = () => {
   const years = useMemo(() => getUnique(studentResults.map(s => s.academic_session.name)), [studentResults]);
   const terms = useMemo(() => getUnique(studentResults.map(s => s.term)), [studentResults]);
   const sections = useMemo(() => getUnique(studentResults.map(s => s.student.education_level)), [studentResults]);
+  const streams = useMemo(() => {
+    const allStreams = studentResults.flatMap(s => 
+      s.subject_results
+        .filter(sr => sr.stream)
+        .map(sr => ({ id: sr.stream!.id, name: sr.stream!.name }))
+    );
+    return allStreams.filter((stream, index, self) => 
+      index === self.findIndex(s => s.id === stream.id)
+    ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [studentResults]);
 
   // Filtered students
   const filtered = useMemo(() => {
@@ -137,6 +162,7 @@ const SchoolResultTemplate = () => {
       (yearFilter === 'all' || s.academic_session.name === yearFilter) &&
       (termFilter === 'all' || s.term === termFilter) &&
       (sectionFilter === 'all' || s.student.education_level === sectionFilter) &&
+      (streamFilter === 'all' || s.subject_results.some(sr => sr.stream?.id === streamFilter)) &&
       (search === '' ||
         s.student.full_name.toLowerCase().includes(search.toLowerCase()) ||
         s.student.username.toLowerCase().includes(search.toLowerCase())
@@ -291,6 +317,14 @@ const SchoolResultTemplate = () => {
           <option value="all">All Terms</option>
           {terms.map(term => <option key={term} value={term}>{getTermDisplay(term)}</option>)}
         </select>
+        <select 
+          value={streamFilter} 
+          onChange={e => setStreamFilter(e.target.value)} 
+          className="border px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Streams</option>
+          {streams.map(stream => <option key={stream.id} value={stream.id}>{stream.name}</option>)}
+        </select>
       </div>
 
       {/* Results Table */}
@@ -302,6 +336,7 @@ const SchoolResultTemplate = () => {
               <th className="px-4 py-3 border text-left font-semibold">Username</th>
               <th className="px-4 py-3 border text-left font-semibold">Section</th>
               <th className="px-4 py-3 border text-left font-semibold">Class</th>
+              <th className="px-4 py-3 border text-left font-semibold">Stream</th>
               <th className="px-4 py-3 border text-left font-semibold">Term</th>
               <th className="px-4 py-3 border text-left font-semibold">Year</th>
               <th className="px-4 py-3 border text-left font-semibold">Average</th>
@@ -311,7 +346,7 @@ const SchoolResultTemplate = () => {
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={9} className="text-center py-8 text-gray-500">No students found.</td></tr>
+              <tr><td colSpan={10} className="text-center py-8 text-gray-500">No students found.</td></tr>
             ) : (
               filtered.map(student => (
                 <tr key={student.id} className="hover:bg-blue-50 transition-colors">
@@ -319,6 +354,9 @@ const SchoolResultTemplate = () => {
                   <td className="border px-4 py-3">{student.student.username}</td>
                   <td className="border px-4 py-3 text-sm">{getEducationLevelDisplay(student.student.education_level)}</td>
                   <td className="border px-4 py-3">{student.student.student_class}</td>
+                  <td className="border px-4 py-3 text-sm">
+                    {student.subject_results.find(sr => sr.stream)?.stream_name || '-'}
+                  </td>
                   <td className="border px-4 py-3">{getTermDisplay(student.term)}</td>
                   <td className="border px-4 py-3">{student.academic_session.name}</td>
                   <td className="border px-4 py-3 text-center font-semibold">{getSafeAverageScore(student)}</td>

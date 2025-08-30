@@ -22,7 +22,8 @@ import {
   Award,
   Users2,
   UserPlus,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
@@ -101,9 +102,24 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
   const [activatingParentId, setActivatingParentId] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear] = useState(currentDate.getFullYear());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const messageRef = useRef<HTMLDivElement>(null);
+
+  // Handle refresh with loading state and toast notification
+  const handleRefresh = () => {
+    console.log('🔄 EnhancedDashboard: handleRefresh called, onRefresh:', !!onRefresh);
+    if (onRefresh) {
+      setIsRefreshing(true);
+      onRefresh();
+      toast.success('Dashboard data refreshed successfully!');
+      // Reset loading state after a short delay
+      setTimeout(() => setIsRefreshing(false), 1000);
+    } else {
+      console.warn('⚠️ EnhancedDashboard: onRefresh prop is not provided');
+    }
+  };
 
   // Dummy data
   const dummyNotifications = [
@@ -173,9 +189,9 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
         // If it's secondary level, determine if it's junior or senior based on grade
         if (educationLevel === 'SECONDARY' || displayName === 'Secondary') {
           const studentClass = student.student_class || student.grade || '';
-          if (['GRADE_7', 'GRADE_8', 'GRADE_9'].includes(studentClass)) {
+          if (['JSS_1', 'JSS_2', 'JSS_3'].includes(studentClass)) {
             displayName = 'Junior Secondary';
-          } else if (['GRADE_10', 'GRADE_11', 'GRADE_12'].includes(studentClass)) {
+          } else if (['SS_1', 'SS_2', 'SS_3'].includes(studentClass)) {
             displayName = 'Senior Secondary';
           } else {
             // Fallback to Secondary if we can't determine
@@ -456,21 +472,21 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
   // Filter recent students (last 5) - show all recent registrations
   const recentStudents = Array.isArray(_students) 
     ? _students
-        .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+        .sort((a, b) => new Date(b.user?.date_joined || '').getTime() - new Date(a.user?.date_joined || '').getTime())
         .slice(0, 5)
     : [];
 
   // Filter recent teachers (last 5) - show all recent registrations
   const recentTeachers = Array.isArray(_teachers) 
     ? _teachers
-        .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+        .sort((a, b) => new Date(b.user?.date_joined || '').getTime() - new Date(a.user?.date_joined || '').getTime())
         .slice(0, 5)
     : [];
 
   // Filter recent parents (last 5) - show all recent registrations
   const recentParents = Array.isArray(_parents) 
     ? _parents
-        .sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())
+        .sort((a, b) => new Date(b.user?.date_joined || '').getTime() - new Date(a.user?.date_joined || '').getTime())
         .slice(0, 5)
     : [];
 
@@ -484,6 +500,17 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
     recentParents
   });
   
+  // Log individual student data for debugging
+  if (recentStudents && recentStudents.length > 0) {
+    console.log('🔍 First student data structure:', {
+      student: recentStudents[0],
+      studentId: recentStudents[0]?.id,
+      studentUserId: recentStudents[0]?.user?.id,
+      studentDateJoined: recentStudents[0]?.user?.date_joined,
+      studentName: recentStudents[0]?.user?.first_name + ' ' + recentStudents[0]?.user?.last_name
+    });
+  }
+  
   // Log individual teacher data for debugging
   if (recentTeachers && recentTeachers.length > 0) {
     console.log('🔍 First teacher data structure:', {
@@ -492,7 +519,11 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
       teacherUserId: recentTeachers[0]?.user?.id,
       teacherUserId2: recentTeachers[0]?.user_id,
       teacherIsActive: recentTeachers[0]?.user?.is_active,
-      teacherIsActive2: recentTeachers[0]?.is_active
+      teacherIsActive2: recentTeachers[0]?.is_active,
+      teacherFirstName: recentTeachers[0]?.user?.first_name,
+      teacherLastName: recentTeachers[0]?.user?.last_name,
+      teacherFullName: recentTeachers[0]?.full_name,
+      teacherEmail: recentTeachers[0]?.user?.email
     });
   }
   
@@ -541,6 +572,16 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-lg bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors duration-200 border border-blue-200 dark:border-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh dashboard data"
+            >
+              <RefreshCw className={`w-5 h-5 text-blue-600 dark:text-blue-300 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -786,9 +827,11 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
                   className="px-3 py-1 border border-slate-300 dark:border-slate-600 rounded-md text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                 >
                   <option value="all">All Levels</option>
+                  <option value="nursery">Nursery</option>
                   <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
-                  <option value="high">High School</option>
+                  <option value="junior_secondary">Junior Secondary</option>
+                  <option value="senior_secondary">Senior Secondary</option>
+                  <option value="secondary">Secondary (Legacy)</option>
                 </select>
               </div>
               <div className="flex items-center space-x-2">
@@ -907,10 +950,20 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Students */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
-              <UserPlus className="w-5 h-5 mr-2 text-blue-600" />
-              Recent Students
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
+                <UserPlus className="w-5 h-5 mr-2 text-blue-600" />
+                Recent Students
+              </h3>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh recent students"
+              >
+                <RefreshCw className={`w-4 h-4 text-blue-600 dark:text-blue-300 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
             <div className="space-y-3">
               {recentStudents.map((student, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
@@ -992,10 +1045,20 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
 
           {/* Recent Teachers */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2 text-green-600" />
-              Recent Teachers
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-green-600" />
+                Recent Teachers
+              </h3>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-1.5 rounded-lg bg-green-100 dark:bg-green-800 hover:bg-green-200 dark:hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh recent teachers"
+              >
+                <RefreshCw className={`w-4 h-4 text-green-600 dark:text-green-300 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
             <div className="space-y-3">
               {recentTeachers.map((teacher, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
@@ -1060,10 +1123,20 @@ const EnhancedDashboard: React.FC<EnhancedDashboardProps> = ({
 
           {/* Recent Parents */}
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4 flex items-center">
-              <UserCheck className="w-5 h-5 mr-2 text-purple-600" />
-              Recent Parents
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
+                <UserCheck className="w-5 h-5 mr-2 text-purple-600" />
+                Recent Parents
+              </h3>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-800 hover:bg-purple-200 dark:hover:bg-purple-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Refresh recent parents"
+              >
+                <RefreshCw className={`w-4 h-4 text-purple-600 dark:text-purple-300 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
             <div className="space-y-3">
               {recentParents.map((parent, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">

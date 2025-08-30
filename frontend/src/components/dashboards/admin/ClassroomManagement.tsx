@@ -5,7 +5,7 @@ import {
   ChevronDown, Save, UserCheck, Building, Grid3X3, List, UserPlus
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-import { classroomService, Classroom, Teacher, Subject, TeacherAssignment } from '@/services/ClassroomService';
+import { classroomService, Classroom, Teacher, Subject, ClassroomTeacherAssignment } from '@/services/ClassroomService';
 import { toast } from 'react-toastify';
 import ClassroomViewModal from './ClassroomViewModal';
 
@@ -39,7 +39,8 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     term: '',
     class_teacher: '',
     room_number: '',
-    max_capacity: 30
+    max_capacity: 30,
+    stream: ''
   });
 
   // Additional data for forms
@@ -47,11 +48,14 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [academicYears, setAcademicYears] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
+  const [streams, setStreams] = useState<any[]>([]);
   
   // Assignment form
   const [assignmentData, setAssignmentData] = useState({
     teacher_id: '',
-    subject_id: ''
+    subject_id: '',
+    is_primary_teacher: false,
+    periods_per_week: 1
   });
 
   // Available subjects for selected teacher
@@ -65,6 +69,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [streamFilter, setStreamFilter] = useState('all');
   
   // View toggle
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -77,12 +82,13 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [classroomsRes, teachersRes, subjectsRes, gradeLevelsRes, academicYearsRes] = await Promise.all([
+      const [classroomsRes, teachersRes, subjectsRes, gradeLevelsRes, academicYearsRes, streamsRes] = await Promise.all([
         classroomService.getClassrooms(),
         classroomService.getAllTeachers(),
         classroomService.getAllSubjects(),
         classroomService.getGradeLevels(),
-        classroomService.getAcademicYears()
+        classroomService.getAcademicYears(),
+        classroomService.getStreams()
       ]);
       
       // Handle both response formats: { results: [...] } and direct array
@@ -91,6 +97,10 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       const subjects = Array.isArray(subjectsRes) ? subjectsRes : (subjectsRes.results || []);
       const gradeLevels = Array.isArray(gradeLevelsRes) ? gradeLevelsRes : (gradeLevelsRes.results || []);
       const academicYears = Array.isArray(academicYearsRes) ? academicYearsRes : (academicYearsRes.results || []);
+      const streams = Array.isArray(streamsRes) ? streamsRes : (streamsRes.results || []);
+      
+      console.log('📊 Loaded teachers data:', teachers);
+      console.log('📊 Sample teacher:', teachers[0]);
       
       setClassrooms(classrooms);
       setFilteredClassrooms(classrooms);
@@ -98,6 +108,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       setSubjects(subjects);
       setGradeLevels(gradeLevels);
       setAcademicYears(academicYears);
+      setStreams(streams);
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
       toast.error('Failed to load classroom data');
@@ -126,10 +137,12 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       filtered = filtered.filter(c => c.is_active === (statusFilter === 'active'));
     }
 
-
+    if (streamFilter !== 'all') {
+      filtered = filtered.filter(c => c.stream_name === streamFilter);
+    }
 
     setFilteredClassrooms(filtered);
-  }, [classrooms, searchTerm, levelFilter, statusFilter]);
+  }, [classrooms, searchTerm, levelFilter, statusFilter, streamFilter]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,22 +175,27 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
         return;
       }
       
-      // Assign multiple subjects
+      // Assign multiple subjects using the new assignment model
       const assignmentPromises = selectedSubjects.map(subjectId =>
-        classroomService.assignTeacherToClassroom(
-          selectedClassroom.id,
-          {
-            teacher_id: parseInt(assignmentData.teacher_id),
-            subject_id: subjectId
-          }
-        )
+        classroomService.createTeacherAssignment({
+          classroom_id: selectedClassroom.id,
+          teacher_id: parseInt(assignmentData.teacher_id),
+          subject_id: subjectId,
+          is_primary_teacher: assignmentData.is_primary_teacher,
+          periods_per_week: assignmentData.periods_per_week
+        })
       );
       
       await Promise.all(assignmentPromises);
       toast.success(`Teacher assigned to ${selectedSubjects.length} subject(s) successfully`);
       
       setShowAssignTeacherModal(false);
-      setAssignmentData({ teacher_id: '', subject_id: '' });
+      setAssignmentData({ 
+        teacher_id: '', 
+        subject_id: '', 
+        is_primary_teacher: false, 
+        periods_per_week: 1 
+      });
       setAvailableSubjects([]);
       setSelectedSubjects([]);
       setIsMultipleSelection(false);
@@ -188,14 +206,11 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   };
 
   // Handle remove teacher assignment
-  const handleRemoveAssignment = async (teacherId: number, subjectId: number) => {
+  const handleRemoveAssignment = async (assignmentId: number) => {
     if (!selectedClassroom) return;
     
     try {
-      await classroomService.removeTeacherFromClassroom(
-        selectedClassroom.id,
-        { teacher_id: teacherId, subject_id: subjectId }
-      );
+      await classroomService.deleteTeacherAssignment(assignmentId);
       toast.success('Teacher assignment removed successfully');
       loadData();
     } catch (err: any) {
@@ -203,16 +218,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     }
   };
 
-  // Auto-assign teachers based on their qualifications
-  const handleAutoAssign = async () => {
-    try {
-      await classroomService.autoAssignTeachers();
-      toast.success('Teachers auto-assigned successfully based on qualifications');
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || 'Auto-assignment failed');
-    }
-  };
+
 
   // Handle delete classroom
   const handleDeleteClassroom = async (classroom: Classroom) => {
@@ -221,8 +227,9 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     }
 
     try {
-      await classroomService.deleteClassroom(classroom.id);
-      toast.success('Classroom deleted successfully');
+      const response = await classroomService.deleteClassroom(classroom.id);
+      const successMessage = response?.message || 'Classroom deleted successfully';
+      toast.success(successMessage);
       loadData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete classroom');
@@ -283,18 +290,28 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     }
 
     try {
+      console.log('🔍 Looking for teacher with ID:', teacherId);
+      console.log('🔍 Available teachers:', teachers);
+      
       const teacher = teachers.find(t => t.id.toString() === teacherId);
+      console.log('🔍 Found teacher:', teacher);
+      
       if (teacher && teacher.assigned_subjects) {
+        console.log('🔍 Teacher assigned subjects:', teacher.assigned_subjects);
+        
         // Map the assigned subjects to full subject objects
         const teacherSubjects = teacher.assigned_subjects.map(assignedSubject => {
           const fullSubject = subjects.find(s => s.id === assignedSubject.id);
+          console.log('🔍 Looking for subject ID:', assignedSubject.id, 'Found:', fullSubject);
           return fullSubject;
         }).filter(Boolean) as Subject[];
         
+        console.log('🔍 Final teacher subjects:', teacherSubjects);
         setAvailableSubjects(teacherSubjects);
         setIsMultipleSelection(true); // Always true since we use checkboxes for all levels
         setSelectedSubjects([]);
       } else {
+        console.log('❌ No teacher found or no assigned subjects');
         setAvailableSubjects([]);
         setSelectedSubjects([]);
         setIsMultipleSelection(true); // Always true since we use checkboxes for all levels
@@ -347,13 +364,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={handleAutoAssign}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              >
-                <UserPlus size={20} />
-                Auto-Assign Teachers
-              </button>
-              <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
               >
@@ -375,7 +385,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-blue-900 mb-1">Teacher Assignments</h3>
               <p className="text-sm text-blue-700">
-                Teacher assignments from the teacher page are qualifications. Use "Auto-Assign Teachers" to convert them to actual classroom assignments.
+                Use the "Assign Teacher" button on each classroom to assign teachers to specific subjects and classrooms.
               </p>
             </div>
           </div>
@@ -403,7 +413,19 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                 <option value="all">All Levels</option>
                 <option value="NURSERY">Nursery</option>
                 <option value="PRIMARY">Primary</option>
-                <option value="SECONDARY">Secondary</option>
+                <option value="JUNIOR_SECONDARY">Junior Secondary</option>
+                <option value="SENIOR_SECONDARY">Senior Secondary</option>
+              </select>
+              <select
+                value={streamFilter}
+                onChange={(e) => setStreamFilter(e.target.value)}
+                className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.borderPrimary} ${themeClasses.textPrimary}`}
+              >
+                <option value="all">All Streams</option>
+                <option value="Science">Science</option>
+                <option value="Arts">Arts</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Technical">Technical</option>
               </select>
               <select
                 value={statusFilter}
@@ -472,6 +494,9 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                 <div className="space-y-2 mb-4">
                   <p className="text-gray-600"><strong>Level:</strong> {classroom.grade_level_name}</p>
                   <p className="text-gray-600"><strong>Section:</strong> {classroom.section_name}</p>
+                  {classroom.stream_name && (
+                    <p className="text-gray-600"><strong>Stream:</strong> {classroom.stream_name}</p>
+                  )}
                   <p className="text-gray-600"><strong>Room:</strong> {classroom.room_number || 'Not assigned'}</p>
                   <p className="text-gray-600"><strong>Capacity:</strong> {classroom.current_enrollment}/{classroom.max_capacity}</p>
                   <p className="text-gray-600">
@@ -530,7 +555,8 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                         term: classroom.term.toString(),
                         class_teacher: classroom.class_teacher?.toString() || '',
                         room_number: classroom.room_number,
-                        max_capacity: classroom.max_capacity
+                        max_capacity: classroom.max_capacity,
+                        stream: classroom.stream?.toString() || ''
                       };
                       
                       setFormData(initialFormData);
@@ -582,6 +608,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Classroom</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Level</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Section</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Stream</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Room</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Capacity</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Teachers</th>
@@ -599,6 +626,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{classroom.grade_level_name}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{classroom.section_name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{classroom.stream_name || '-'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{classroom.room_number || 'Not assigned'}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {classroom.current_enrollment}/{classroom.max_capacity}
@@ -658,7 +686,8 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                                 term: classroom.term.toString(),
                                 class_teacher: classroom.class_teacher?.toString() || '',
                                 room_number: classroom.room_number,
-                                max_capacity: classroom.max_capacity
+                                max_capacity: classroom.max_capacity,
+                                stream: classroom.stream?.toString() || ''
                               };
                               
                               setFormData(initialFormData);
@@ -830,6 +859,22 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Stream (Senior Secondary Only)</label>
+                  <select
+                    value={formData.stream}
+                    onChange={(e) => setFormData({...formData, stream: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    disabled={!formData.grade_level || !gradeLevels.find(gl => gl.id === parseInt(formData.grade_level))?.education_level?.includes('SENIOR_SECONDARY')}
+                  >
+                    <option value="">Select Stream (Optional)</option>
+                    {streams.map(stream => (
+                      <option key={stream.id} value={stream.id}>
+                        {stream.name} ({stream.stream_type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               
               <div className="flex gap-4 pt-4">
@@ -846,7 +891,8 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                       term: '',
                       class_teacher: '',
                       room_number: '',
-                      max_capacity: 30
+                      max_capacity: 30,
+                      stream: ''
                     });
                   }}
                   className="flex-1 px-4 py-2 border rounded-lg"
@@ -894,7 +940,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                    <option value="">Select Teacher</option>
                    {teachers.map(teacher => (
                      <option key={teacher.id} value={teacher.id}>
-                       {teacher.first_name} {teacher.last_name} ({teacher.employee_id})
+                       {teacher.full_name} ({teacher.employee_id})
                        {teacher.assigned_subjects && teacher.assigned_subjects.length > 0 && 
                          ` - ${teacher.assigned_subjects.length} subjects`
                        }
@@ -949,6 +995,40 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                         This teacher has no subjects assigned. Please assign subjects in the teacher page first.
                       </p>
                     )}
+                  </div>
+                </div>
+
+                {/* New fields for enhanced teacher assignment */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Periods per Week</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={assignmentData.periods_per_week}
+                      onChange={(e) => setAssignmentData({
+                        ...assignmentData, 
+                        periods_per_week: parseInt(e.target.value) || 1
+                      })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="is-primary-teacher"
+                      checked={assignmentData.is_primary_teacher}
+                      onChange={(e) => setAssignmentData({
+                        ...assignmentData, 
+                        is_primary_teacher: e.target.checked
+                      })}
+                      className="rounded border-gray-300 mr-2"
+                    />
+                    <label htmlFor="is-primary-teacher" className="text-sm font-medium cursor-pointer">
+                      Primary Teacher
+                    </label>
                   </div>
                 </div>
               <div className="flex gap-4">

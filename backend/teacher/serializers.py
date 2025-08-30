@@ -1,20 +1,25 @@
 from rest_framework import serializers
-from .models import Teacher, TeacherAssignment, AssignmentRequest, TeacherSchedule
-from classroom.models import GradeLevel, Section
+from .models import Teacher, AssignmentRequest, TeacherSchedule
+from classroom.models import GradeLevel, Section, ClassroomTeacherAssignment, Classroom
 from subject.models import Subject
 
 
+# Note: TeacherAssignment model has been deprecated in favor of ClassroomTeacherAssignment
+# which provides proper teacher-subject-classroom mapping
 class TeacherAssignmentSerializer(serializers.ModelSerializer):
-    grade_level_name = serializers.CharField(source='grade_level.name', read_only=True)
-    section_name = serializers.CharField(source='section.name', read_only=True)
+    """Serializer for the new ClassroomTeacherAssignment model"""
+    grade_level_name = serializers.CharField(source='classroom.section.grade_level.name', read_only=True)
+    section_name = serializers.CharField(source='classroom.section.name', read_only=True)
     subject_name = serializers.CharField(source='subject.name', read_only=True)
-    education_level = serializers.CharField(source='grade_level.education_level', read_only=True)
+    education_level = serializers.CharField(source='classroom.section.grade_level.education_level', read_only=True)
+    classroom_name = serializers.CharField(source='classroom.name', read_only=True)
 
     class Meta:
-        model = TeacherAssignment
+        model = ClassroomTeacherAssignment
         fields = [
-            'id', 'teacher', 'grade_level', 'section', 'subject',
-            'grade_level_name', 'section_name', 'subject_name', 'education_level'
+            'id', 'teacher', 'classroom', 'subject',
+            'grade_level_name', 'section_name', 'subject_name', 'education_level',
+            'classroom_name', 'is_primary_teacher', 'periods_per_week', 'assigned_date', 'is_active'
         ]
 
 
@@ -55,431 +60,158 @@ class AssignmentRequestSerializer(serializers.ModelSerializer):
 
 class TeacherScheduleSerializer(serializers.ModelSerializer):
     subject_name = serializers.CharField(source='subject.name', read_only=True)
-    grade_level_name = serializers.CharField(source='grade_level.name', read_only=True)
-    section_name = serializers.CharField(source='section.name', read_only=True)
-    teacher_name = serializers.CharField(source='teacher.user.full_name', read_only=True)
+    classroom_name = serializers.CharField(source='classroom.name', read_only=True)
     
     class Meta:
         model = TeacherSchedule
         fields = [
-            'id', 'teacher', 'teacher_name', 'day_of_week', 'start_time', 'end_time',
-            'subject', 'subject_name', 'grade_level', 'grade_level_name', 'section', 
-            'section_name', 'room_number', 'is_active', 'academic_year', 'term',
-            'created_at', 'updated_at'
+            'id', 'teacher', 'subject', 'classroom', 'subject_name', 'classroom_name',
+            'day_of_week', 'start_time', 'end_time', 'is_active'
         ]
-        read_only_fields = ['created_at', 'updated_at']
 
 
 class TeacherSerializer(serializers.ModelSerializer):
-    # User creation fields
-    user_email = serializers.EmailField(write_only=True)
-    user_first_name = serializers.CharField(write_only=True, max_length=30)
-    user_last_name = serializers.CharField(write_only=True, max_length=30)
-    user_middle_name = serializers.CharField(write_only=True, max_length=30, required=False, allow_blank=True)
+    # User creation fields (handle both formats)
+    first_name = serializers.CharField(write_only=True, required=False)
+    last_name = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(write_only=True, required=False)
     
-    # Expose fields from related user object
-    first_name = serializers.CharField(source="user.first_name", read_only=True)
-    last_name = serializers.CharField(source="user.last_name", read_only=True)
-    email = serializers.EmailField(source="user.email", read_only=True)
-    is_active = serializers.BooleanField(source="user.is_active", read_only=True)
-    user = serializers.SerializerMethodField(read_only=True)
-    staff_type = serializers.CharField()
-    level = serializers.CharField(allow_blank=True, allow_null=True)
+    # Alternative user creation fields (from frontend)
+    user_first_name = serializers.CharField(write_only=True, required=False)
+    user_last_name = serializers.CharField(write_only=True, required=False)
+    user_email = serializers.EmailField(write_only=True, required=False)
+    user_middle_name = serializers.CharField(write_only=True, required=False)
     
-    # New fields for multiple assignments
-    assignments = serializers.ListField(
-        child=serializers.DictField(),
-        write_only=True, 
-        required=False,
-        help_text="List of assignments with grade_level_id, section_id, and subject_id"
-    )
+    # User profile fields
+    bio = serializers.CharField(write_only=True, required=False)
+    date_of_birth = serializers.DateField(write_only=True, required=False)
     
-    # General subject assignments (without specific grade levels)
-    subjects = serializers.ListField(
-        child=serializers.CharField(),
-        write_only=True,
-        required=False,
-        help_text="List of subject IDs for general teacher assignments"
-    )
+    # Assignment fields
+    assignments = serializers.ListField(write_only=True, required=False)
+    subjects = serializers.ListField(write_only=True, required=False)
     
-    assigned_subjects = serializers.SerializerMethodField(read_only=True)
+    # Read-only computed fields
+    full_name = serializers.CharField(source='user.full_name', read_only=True)
+    email_readonly = serializers.CharField(source='user.email', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+    user = serializers.SerializerMethodField()
+    
+    # Teacher assignments using the new model
     teacher_assignments = TeacherAssignmentSerializer(many=True, read_only=True)
-    classroom_assignments = serializers.SerializerMethodField(read_only=True)
-    assignment_requests = AssignmentRequestSerializer(many=True, read_only=True)
-    schedules = TeacherScheduleSerializer(many=True, read_only=True)
     
-    # User profile fields - writable for updates, read_only for responses
-    bio = serializers.CharField(required=False, allow_blank=True)
-    date_of_birth = serializers.DateField(required=False, allow_null=True)
-
+    # New classroom assignments field for frontend compatibility
+    classroom_assignments = serializers.SerializerMethodField()
+    
+    # Additional computed fields
+    total_students = serializers.SerializerMethodField()
+    total_subjects = serializers.SerializerMethodField()
+    years_experience = serializers.SerializerMethodField()
+    assigned_subjects = serializers.SerializerMethodField()
+    
     class Meta:
         model = Teacher
         fields = [
-            "id",
-            "user_email",
-            "user_first_name",
-            "user_last_name",
-            "user_middle_name",
-            "first_name",
-            "last_name",
-            "email",
-            "is_active",
-            "user",
-            "phone_number",
-            "address",
-            "created_at",
-            "staff_type",
-            "level",
-            "subjects",
-            "assignments",
-            "assigned_subjects",
-            "teacher_assignments",
-            "classroom_assignments",
-            "assignment_requests",
-            "schedules",
-            "employee_id",
-            "hire_date",
-            "qualification",
-            "specialization",
-            "photo",
-            "bio",
-            "date_of_birth",
+            'id', 'user', 'employee_id', 'staff_type', 'level', 'phone_number', 'address',
+            'date_of_birth', 'hire_date', 'qualification', 'specialization', 'photo', 'is_active',
+            'created_at', 'updated_at',
+            # User creation fields
+            'first_name', 'last_name', 'password',
+            # Alternative user creation fields (from frontend)
+            'user_first_name', 'user_last_name', 'user_email', 'user_middle_name',
+            # User profile fields
+            'bio',
+            # Assignment fields
+            'assignments', 'subjects',
+            # Read-only computed fields
+            'full_name', 'email_readonly', 'username', 'is_active',
+            # Teacher assignments
+            'teacher_assignments',
+            # New classroom assignments
+            'classroom_assignments',
+            # Additional computed fields
+            'total_students', 'total_subjects', 'years_experience', 'assigned_subjects'
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'user']
 
-    def create(self, validated_data):
-        assignments = validated_data.pop("assignments", [])
-        subjects = validated_data.pop("subjects", [])
+    def get_total_students(self, obj):
+        """Get total number of students taught by this teacher"""
+        from classroom.models import ClassroomTeacherAssignment
+        assignments = ClassroomTeacherAssignment.objects.filter(
+            teacher=obj, 
+            is_active=True
+        ).select_related('classroom')
         
-        # Extract user creation data
-        user_email = validated_data.pop("user_email")
-        user_first_name = validated_data.pop("user_first_name")
-        user_last_name = validated_data.pop("user_last_name")
-        user_middle_name = validated_data.pop("user_middle_name", "")
-        
-        # Generate username and password
-        import secrets
-        import string
-        from utils import generate_unique_username
-        
-        teacher_password = "".join(
-            secrets.choice(string.ascii_letters + string.digits) for _ in range(10)
-        )
-        teacher_username = generate_unique_username("teacher", employee_id=validated_data.get('employee_id'))
-        
-        # Create user
-        from users.models import CustomUser
-        teacher_user = CustomUser.objects.create_user(
-            email=user_email,
-            username=teacher_username,
-            first_name=user_first_name,
-            last_name=user_last_name,
-            middle_name=user_middle_name,
-            role="teacher",
-            password=teacher_password,
-            is_active=True,
-        )
-        
-        # Store generated credentials for response
-        self._generated_teacher_password = teacher_password
-        self._generated_teacher_username = teacher_username
-        
-        # Create teacher profile
-        teacher = Teacher.objects.create(user=teacher_user, **validated_data)
-        
-        # Handle assignments based on educational level
-        level = validated_data.get('level', '')
-        is_primary_level = level in ['nursery', 'primary']
-        
-        if is_primary_level:
-            # For primary/nursery: Create single classroom assignment with all selected subjects
-            if assignments and len(assignments) > 0:
-                assignment = assignments[0]  # Take the first (and only) assignment
-                grade_level_id = assignment.get('grade_level_id')
-                section_id = assignment.get('section_id')
-                
-                if grade_level_id and section_id and subjects:
-                    print(f"Creating classroom assignment for primary/nursery teacher")
-                    print(f"Grade level: {grade_level_id}, Section: {section_id}")
-                    print(f"Subjects: {subjects}")
-                    
-                    # Create assignments for all selected subjects in the single classroom
-                    for subject_id in subjects:
-                        try:
-                            TeacherAssignment.objects.create(
-                                teacher=teacher,
-                                grade_level_id=grade_level_id,
-                                section_id=section_id,
-                                subject_id=subject_id
-                            )
-                            print(f"Successfully created assignment for subject {subject_id}")
-                        except Exception as e:
-                            print(f"Error creating assignment for subject {subject_id}: {e}")
-                else:
-                    print("Missing required data for primary/nursery assignment")
-            else:
-                print("No assignment data provided for primary/nursery teacher")
-        else:
-            # For secondary: Create specific subject assignments
-            if assignments:
-                print(f"Creating {len(assignments)} specific assignments for secondary teacher")
-                for i, assignment_data in enumerate(assignments):
-                    print(f"Processing assignment {i+1}: {assignment_data}")
-                    try:
-                        grade_level_id = assignment_data.get('grade_level_id')
-                        section_id = assignment_data.get('section_id')
-                        subject_ids = assignment_data.get('subject_ids', [])
-                        
-                        print(f"Grade level ID: {grade_level_id}, Section ID: {section_id}, Subject IDs: {subject_ids}")
-                        
-                        if grade_level_id and section_id and subject_ids:
-                            # Create a separate assignment for each subject
-                            for subject_id in subject_ids:
-                                print(f"Creating assignment for subject {subject_id}")
-                                TeacherAssignment.objects.create(
-                                    teacher=teacher,
-                                    grade_level_id=grade_level_id,
-                                    section_id=section_id,
-                                    subject_id=subject_id
-                                )
-                                print(f"Successfully created assignment for subject {subject_id}")
-                        else:
-                            print(f"Skipping assignment {i+1}: missing required data")
-                    except Exception as e:
-                        print(f"Error creating assignment {i+1}: {e}")
-                        # Continue with other assignments even if one fails
-            else:
-                print("No specific assignments provided for secondary teacher")
-        
-        return teacher
-
-    def update(self, instance, validated_data):
-        print(f"🔍 TeacherSerializer.update called for teacher {instance.id}")
-        print(f"🔍 Validated data keys: {list(validated_data.keys())}")
-        
-        assignments = validated_data.pop("assignments", None)
-        subjects = validated_data.pop("subjects", [])
-        
-        # Handle user profile updates (bio and date_of_birth)
-        bio = validated_data.pop("bio", None)
-        date_of_birth = validated_data.pop("date_of_birth", None)
-        
-        print(f"🔍 Extracted bio: {bio}")
-        print(f"🔍 Extracted date_of_birth: {date_of_birth}")
-        
-        # Update user profile if bio or date_of_birth is provided
-        if bio is not None or date_of_birth is not None:
-            print(f"🔍 Attempting to update user profile...")
-            try:
-                user_profile = instance.user.profile
-                print(f"🔍 Found user profile: {user_profile}")
-                if bio is not None:
-                    user_profile.bio = bio
-                    print(f"🔍 Set bio to: {bio}")
-                if date_of_birth is not None:
-                    user_profile.date_of_birth = date_of_birth
-                    print(f"🔍 Set date_of_birth to: {date_of_birth}")
-                user_profile.save()
-                print(f"✅ Updated user profile for teacher {instance.id}: bio={bio}, date_of_birth={date_of_birth}")
-            except Exception as e:
-                print(f"❌ Error updating user profile for teacher {instance.id}: {e}")
-                import traceback
-                traceback.print_exc()
-        else:
-            print(f"🔍 No bio or date_of_birth provided for update")
-        
-        teacher = super().update(instance, validated_data)
-        
-        # Update subject assignments if provided
-        if subjects is not None:
-            print(f"Updating subjects for teacher {teacher.id}: {subjects}")
-            
-            # Clear existing TeacherAssignment records for this teacher
-            TeacherAssignment.objects.filter(teacher=teacher).delete()
-            
-            # Get the teacher's level to determine appropriate grade levels
-            level = validated_data.get('level', '') or instance.level
-            print(f"Teacher level: {level}")
-            
-            # Find appropriate grade levels based on teacher's level
-            from classroom.models import GradeLevel, Section
-            
-            if level == 'nursery':
-                grade_levels = GradeLevel.objects.filter(education_level='NURSERY')
-            elif level == 'primary':
-                grade_levels = GradeLevel.objects.filter(education_level='PRIMARY')
-            elif level == 'secondary':
-                grade_levels = GradeLevel.objects.filter(education_level='SECONDARY')
-            else:
-                # If no specific level, use all grade levels
-                grade_levels = GradeLevel.objects.all()
-            
-            print(f"Found {grade_levels.count()} grade levels for level {level}")
-            
-            # Create TeacherAssignment records for each subject and grade level
-            for subject_id in subjects:
-                for grade_level in grade_levels:
-                    # Get the first section for each grade level
-                    section = grade_level.sections.first()
-                    if section:
-                        try:
-                            TeacherAssignment.objects.create(
-                                teacher=teacher,
-                                grade_level=grade_level,
-                                section=section,
-                                subject_id=subject_id
-                            )
-                            print(f"Created TeacherAssignment: {teacher} - {subject_id} - {grade_level.name} - {section.name}")
-                        except Exception as e:
-                            print(f"Error creating TeacherAssignment for subject {subject_id}, grade {grade_level.name}: {e}")
-        
-        # Update specific assignments if provided
-        if assignments is not None:
-            # Clear existing assignments
-            TeacherAssignment.objects.filter(teacher=teacher).delete()
-            
-            # Handle assignments based on educational level
-            level = validated_data.get('level', '') or instance.level
-            is_primary_level = level in ['nursery', 'primary']
-            
-            if is_primary_level:
-                # For primary/nursery: Create single classroom assignment with all selected subjects
-                if assignments and len(assignments) > 0:
-                    assignment = assignments[0]  # Take the first (and only) assignment
-                    grade_level_id = assignment.get('grade_level_id')
-                    section_id = assignment.get('section_id')
-                    
-                    if grade_level_id and section_id and subjects:
-                        print(f"Updating classroom assignment for primary/nursery teacher")
-                        # Create assignments for all selected subjects in the single classroom
-                        for subject_id in subjects:
-                            try:
-                                TeacherAssignment.objects.create(
-                                    teacher=teacher,
-                                    grade_level_id=grade_level_id,
-                                    section_id=section_id,
-                                    subject_id=subject_id
-                                )
-                                print(f"Successfully updated assignment for subject {subject_id}")
-                            except Exception as e:
-                                print(f"Error updating assignment for subject {subject_id}: {e}")
-            else:
-                # For secondary: Create specific subject assignments
-                if assignments and len(assignments) > 0:
-                    print(f"Updating {len(assignments)} specific assignments for secondary teacher")
-                    for i, assignment_data in enumerate(assignments):
-                        try:
-                            grade_level_id = assignment_data.get('grade_level_id')
-                            section_id = assignment_data.get('section_id')
-                            subject_ids = assignment_data.get('subject_ids', [])
-                            
-                            if grade_level_id and section_id and subject_ids:
-                                # Create a separate assignment for each subject
-                                for subject_id in subject_ids:
-                                    TeacherAssignment.objects.create(
-                                        teacher=teacher,
-                                        grade_level_id=grade_level_id,
-                                        section_id=section_id,
-                                        subject_id=subject_id
-                                    )
-                                    print(f"Successfully updated assignment for subject {subject_id}")
-                            else:
-                                print(f"Skipping assignment {i+1}: missing required data")
-                        except Exception as e:
-                            print(f"Error updating assignment {i+1}: {e}")
-                else:
-                    # For secondary teachers with only subjects (no specific assignments)
-                    # Create assignments for all subjects across all secondary grade levels
-                    print(f"Creating general subject assignments for secondary teacher with {len(subjects)} subjects")
-                    secondary_grade_levels = GradeLevel.objects.filter(education_level='SECONDARY')
-                    
-                    for subject_id in subjects:
-                        for grade_level in secondary_grade_levels:
-                            section = grade_level.sections.first()
-                            if section:
-                                try:
-                                    TeacherAssignment.objects.create(
-                                        teacher=teacher,
-                                        grade_level=grade_level,
-                                        section=section,
-                                        subject_id=subject_id
-                                    )
-                                    print(f"Created general assignment: {subject_id} - {grade_level.name} - {section.name}")
-                                except Exception as e:
-                                    print(f"Error creating general assignment for subject {subject_id}: {e}")
-        
-        return teacher
-
-    def get_assigned_subjects(self, obj):
-        """Get unique subjects assigned to this teacher"""
-        assignments = TeacherAssignment.objects.filter(teacher=obj).select_related('subject')
-        unique_subjects = {}
-        
+        total_students = 0
         for assignment in assignments:
-            subject_id = assignment.subject.id
-            if subject_id not in unique_subjects:
-                unique_subjects[subject_id] = {
-                    "id": assignment.subject.id,
-                    "name": assignment.subject.name,
-                    "assignments": []
-                }
-            
-            unique_subjects[subject_id]["assignments"].append({
-                "grade_level": assignment.grade_level.name,
-                "section": assignment.section.name,
-                "education_level": assignment.grade_level.education_level
-            })
+            total_students += assignment.classroom.current_enrollment
         
-        return list(unique_subjects.values())
+        return total_students
+
+    def get_total_subjects(self, obj):
+        """Get total number of subjects taught by this teacher"""
+        from classroom.models import ClassroomTeacherAssignment
+        return ClassroomTeacherAssignment.objects.filter(
+            teacher=obj, 
+            is_active=True
+        ).count()
+
+    def get_years_experience(self, obj):
+        """Calculate years of experience"""
+        from datetime import date
+        if obj.hire_date:
+            today = date.today()
+            return today.year - obj.hire_date.year - (
+                (today.month, today.day) < (obj.hire_date.month, obj.hire_date.day)
+            )
+        return 0
 
     def get_user(self, obj):
+        """Returns user data including date_joined for sorting."""
         if obj.user:
             return {
-                "id": obj.user.id,
-                "username": obj.user.username,
-                "email": obj.user.email,
-                "first_name": obj.user.first_name,
-                "last_name": obj.user.last_name,
-                "full_name": obj.user.full_name,
-                "is_active": obj.user.is_active,
-                "date_joined": obj.user.date_joined,
+                'id': obj.user.id,
+                'first_name': obj.user.first_name,
+                'last_name': obj.user.last_name,
+                'email': obj.user.email,
+                'username': obj.user.username,
+                'date_joined': obj.user.date_joined,
+                'is_active': obj.user.is_active
             }
         return None
 
-    def to_representation(self, instance):
-        """Custom representation to include bio and date_of_birth from user profile"""
-        data = super().to_representation(instance)
+    def get_assigned_subjects(self, obj):
+        """Returns the subjects assigned to this teacher."""
+        from classroom.models import ClassroomTeacherAssignment
+        assignments = ClassroomTeacherAssignment.objects.filter(
+            teacher=obj,
+            is_active=True
+        ).select_related('subject')
         
-        # Add bio and date_of_birth from user profile
-        try:
-            if hasattr(instance.user, 'profile'):
-                data['bio'] = instance.user.profile.bio
-                data['date_of_birth'] = instance.user.profile.date_of_birth
-                print(f"🔍 to_representation: bio={data['bio']}, date_of_birth={data['date_of_birth']}")
-            else:
-                data['bio'] = None
-                data['date_of_birth'] = None
-        except Exception as e:
-            print(f"Error getting user profile data: {e}")
-            data['bio'] = None
-            data['date_of_birth'] = None
+        # Use a set to get unique subjects
+        subjects = []
+        seen_subject_ids = set()
         
-        # Add generated credentials if they exist (for newly created teachers)
-        if hasattr(self, '_generated_teacher_username') and hasattr(self, '_generated_teacher_password'):
-            data['user_username'] = self._generated_teacher_username
-            data['user_password'] = self._generated_teacher_password
+        for assignment in assignments:
+            if assignment.subject and assignment.subject.id not in seen_subject_ids:
+                subjects.append({
+                    'id': assignment.subject.id,
+                    'name': assignment.subject.name,
+                    'code': assignment.subject.code
+                })
+                seen_subject_ids.add(assignment.subject.id)
         
-        return data
+        return subjects
 
     def get_classroom_assignments(self, obj):
-        """Get actual classroom assignments for this teacher"""
+        """Returns the classroom assignments for this teacher in the format expected by the frontend."""
         from classroom.models import ClassroomTeacherAssignment
-        
         assignments = ClassroomTeacherAssignment.objects.filter(
             teacher=obj,
             is_active=True
         ).select_related(
-            'classroom',
-            'classroom__section',
+            'classroom', 
+            'classroom__section', 
             'classroom__section__grade_level',
             'classroom__academic_year',
             'classroom__term',
@@ -488,22 +220,307 @@ class TeacherSerializer(serializers.ModelSerializer):
         
         classroom_assignments = []
         for assignment in assignments:
-            classroom_assignments.append({
+            classroom = assignment.classroom
+            section = classroom.section
+            grade_level = section.grade_level
+            
+            # Get student count for this classroom
+            student_count = classroom.current_enrollment
+            
+            assignment_data = {
                 'id': assignment.id,
-                'classroom_name': assignment.classroom.name,
-                'classroom_id': assignment.classroom.id,
-                'section_name': assignment.classroom.section.name,
-                'grade_level_name': assignment.classroom.section.grade_level.name,
-                'education_level': assignment.classroom.section.grade_level.education_level,
-                'academic_year': assignment.classroom.academic_year.name,
-                'term': assignment.classroom.term.name,
+                'classroom_name': classroom.name,
+                'classroom_id': classroom.id,
+                'section_name': section.name,
+                'grade_level_name': grade_level.name,
+                'education_level': grade_level.education_level,
+                'academic_year': classroom.academic_year.name,
+                'term': classroom.term.get_name_display(),
                 'subject_name': assignment.subject.name,
                 'subject_code': assignment.subject.code,
-                'assigned_date': assignment.assigned_date,
-                'room_number': assignment.classroom.room_number,
-                'student_count': assignment.classroom.current_enrollment,
-                'max_capacity': assignment.classroom.max_capacity,
-                'is_class_teacher': assignment.classroom.class_teacher == obj
-            })
+                'assigned_date': assignment.assigned_date.isoformat() if assignment.assigned_date else None,
+                'room_number': classroom.room_number or '',
+                'student_count': student_count,
+                'max_capacity': classroom.max_capacity,
+                'is_primary_teacher': assignment.is_primary_teacher,
+                'periods_per_week': assignment.periods_per_week,
+            }
+            
+            # Add stream information if available (for Senior Secondary)
+            if hasattr(classroom, 'stream') and classroom.stream:
+                assignment_data['stream_name'] = classroom.stream.name
+                assignment_data['stream_type'] = classroom.stream.get_stream_type_display()
+            
+            classroom_assignments.append(assignment_data)
         
         return classroom_assignments
+
+    def create(self, validated_data):
+        print(f"🔍 TeacherSerializer.create called")
+        print(f"🔍 Validated data keys: {list(validated_data.keys())}")
+        
+        # Extract user creation data (handle both formats)
+        first_name = validated_data.pop('first_name', None) or validated_data.pop('user_first_name', None)
+        last_name = validated_data.pop('last_name', None) or validated_data.pop('user_last_name', None)
+        email = validated_data.pop('email', None) or validated_data.pop('user_email', None)
+        password = validated_data.pop('password', None)
+        
+        # Remove user_middle_name from validated_data as it's not a Teacher model field
+        validated_data.pop('user_middle_name', None)
+        
+        print(f"🔍 Extracted user data:")
+        print(f"🔍 First name: {first_name}")
+        print(f"🔍 Last name: {last_name}")
+        print(f"🔍 Email: {email}")
+        print(f"🔍 Password: {'*' * len(password) if password else 'None'}")
+        
+        # Extract assignment data
+        assignments = validated_data.pop('assignments', None)
+        subjects = validated_data.pop('subjects', [])
+        
+        # Create user if credentials provided
+        user = None
+        if email:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            print(f"🔍 Creating user with email: {email}")
+            print(f"🔍 First name: {first_name}")
+            print(f"🔍 Last name: {last_name}")
+            
+            # Generate a default password if none provided
+            if not password:
+                import secrets
+                import string
+                password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+                print(f"🔍 Generated password: {password}")
+            
+            try:
+                # Generate unique username in format: TCH/GTS/AUG/25/EMP035
+                from datetime import datetime
+                current_date = datetime.now()
+                month = current_date.strftime('%b').upper()
+                year = str(current_date.year)[-2:]  # Last 2 digits of year
+                
+                # Get employee_id from validated_data
+                employee_id = validated_data.get('employee_id', 'EMP001')
+                
+                # Generate username format: TCH/GTS/MONTH/YEAR/EMPLOYEE_ID
+                username = f"TCH/GTS/{month}/{year}/{employee_id}"
+                
+                # Ensure username is unique
+                counter = 1
+                original_username = username
+                while User.objects.filter(username=username).exists():
+                    username = f"{original_username}_{counter}"
+                    counter += 1
+                
+                print(f"🔍 Generated unique username: {username}")
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    first_name=first_name or '',
+                    last_name=last_name or '',
+                    role='teacher',
+                    is_active=True  # Explicitly set user as active
+                )
+                print(f"✅ Created user for teacher: {user.email}")
+                print(f"✅ User ID: {user.id}")
+                print(f"✅ Username: {user.username}")
+                print(f"✅ User is_active: {user.is_active}")
+                
+                # Store the generated password and username in the response
+                self.context['user_password'] = password
+                self.context['user_username'] = username
+                
+            except Exception as e:
+                print(f"❌ Error creating user: {e}")
+                print(f"❌ Error type: {type(e)}")
+                import traceback
+                print(f"❌ Full traceback: {traceback.format_exc()}")
+                raise serializers.ValidationError(f"Error creating user: {e}")
+        else:
+            print(f"❌ No email provided for user creation")
+        
+        print(f"🔍 About to create teacher with user: {user}")
+        print(f"🔍 Validated data keys: {list(validated_data.keys())}")
+        
+        # Create teacher with explicit active status
+        teacher = Teacher.objects.create(
+            user=user, 
+            is_active=True,  # Explicitly set teacher as active
+            **validated_data
+        )
+        print(f"✅ Created teacher: {teacher}")
+        print(f"✅ Teacher is_active: {teacher.is_active}")
+        
+        # Handle teacher assignments using the new ClassroomTeacherAssignment model
+        if assignments or subjects:
+            self._create_classroom_assignments(teacher, assignments, subjects)
+        
+        return teacher
+
+    def _create_classroom_assignments(self, teacher, assignments, subjects):
+        """Create classroom assignments using the new ClassroomTeacherAssignment model"""
+        print(f"🔍 Creating classroom assignments for teacher {teacher.id}")
+        print(f"🔍 Assignments data: {assignments}")
+        print(f"🔍 Subjects data: {subjects}")
+        
+        # Clear existing assignments
+        ClassroomTeacherAssignment.objects.filter(teacher=teacher).delete()
+        
+        if assignments:
+            # Handle specific classroom assignments
+            for assignment_data in assignments:
+                try:
+                    print(f"🔍 Processing assignment: {assignment_data}")
+                    
+                    # Handle different assignment data formats
+                    classroom_id = assignment_data.get('classroom_id')
+                    grade_level_id = assignment_data.get('grade_level_id')
+                    section_id = assignment_data.get('section_id')
+                    subject_ids = assignment_data.get('subject_ids', [])
+                    is_primary = assignment_data.get('is_primary_teacher', False)
+                    periods_per_week = assignment_data.get('periods_per_week', 1)
+                    
+                    # If we have classroom_id directly, use it
+                    if classroom_id:
+                        try:
+                            classroom = Classroom.objects.get(id=classroom_id)
+                            print(f"✅ Found classroom by ID: {classroom}")
+                        except Classroom.DoesNotExist:
+                            print(f"❌ Classroom {classroom_id} not found")
+                            continue
+                    # If we have grade_level_id and section_id, find the classroom
+                    elif grade_level_id and section_id:
+                        try:
+                            from classroom.models import GradeLevel, Section
+                            grade_level = GradeLevel.objects.get(id=grade_level_id)
+                            section = Section.objects.get(id=section_id)
+                            classroom = Classroom.objects.get(section=section)
+                            print(f"✅ Found classroom by grade/section: {classroom}")
+                        except (GradeLevel.DoesNotExist, Section.DoesNotExist, Classroom.DoesNotExist) as e:
+                            print(f"❌ Error finding classroom: {e}")
+                            print(f"🔍 Attempting to create classroom for grade_level_id={grade_level_id}, section_id={section_id}")
+                            
+                            # Try to create the classroom if it doesn't exist
+                            try:
+                                grade_level = GradeLevel.objects.get(id=grade_level_id)
+                                section = Section.objects.get(id=section_id)
+                                
+                                # Create classroom name
+                                classroom_name = f"{grade_level.name} {section.name}"
+                                
+                                # Create the classroom
+                                classroom = Classroom.objects.create(
+                                    name=classroom_name,
+                                    section=section,
+                                    academic_year="2024-2025",
+                                    term="First Term",
+                                    max_capacity=40,
+                                    current_enrollment=0
+                                )
+                                print(f"✅ Created new classroom: {classroom}")
+                            except Exception as create_error:
+                                print(f"❌ Failed to create classroom: {create_error}")
+                                continue
+                    else:
+                        print(f"❌ No classroom information provided")
+                        continue
+                    
+                    # Handle subject assignment - support both single subject_id and array of subject_ids
+                    subject_ids = assignment_data.get('subject_ids', [])
+                    subject_id = assignment_data.get('subject_id')
+                    
+                    # If we have subject_ids array, use it; otherwise try single subject_id
+                    if subject_ids:
+                        successful_assignments = 0
+                        for subject_id in subject_ids:
+                            try:
+                                subject = Subject.objects.get(id=subject_id)
+                                
+                                ClassroomTeacherAssignment.objects.create(
+                                    teacher=teacher,
+                                    classroom=classroom,
+                                    subject=subject,
+                                    is_primary_teacher=is_primary,
+                                    periods_per_week=periods_per_week
+                                )
+                                print(f"✅ Created classroom assignment: {teacher} - {subject} - {classroom}")
+                                successful_assignments += 1
+                            except Subject.DoesNotExist:
+                                print(f"❌ Subject {subject_id} not found - skipping")
+                            except Exception as e:
+                                print(f"❌ Error creating assignment for subject {subject_id}: {e}")
+                        
+                        if successful_assignments > 0:
+                            print(f"✅ Successfully created {successful_assignments} classroom assignments")
+                        else:
+                            print(f"❌ No classroom assignments were created")
+                    elif subject_id:
+                        try:
+                            subject = Subject.objects.get(id=subject_id)
+                            
+                            ClassroomTeacherAssignment.objects.create(
+                                teacher=teacher,
+                                classroom=classroom,
+                                subject=subject,
+                                is_primary_teacher=is_primary,
+                                periods_per_week=periods_per_week
+                            )
+                            print(f"✅ Created classroom assignment: {teacher} - {subject} - {classroom}")
+                        except Subject.DoesNotExist:
+                            print(f"❌ Subject {subject_id} not found")
+                        except Exception as e:
+                            print(f"❌ Error creating assignment: {e}")
+                    else:
+                        print(f"❌ No subject_id or subject_ids provided in assignment")
+                            
+                except Exception as e:
+                    print(f"❌ Error processing assignment: {e}")
+        elif subjects:
+            # Handle general subject assignments (for backward compatibility)
+            print(f"🔍 Creating general subject assignments for {len(subjects)} subjects")
+            # This would need to be implemented based on your specific logic
+            # For now, we'll skip this as it requires classroom context
+
+    def update(self, instance, validated_data):
+        print(f"🔍 TeacherSerializer.update called for teacher {instance.id}")
+        print(f"🔍 Validated data keys: {list(validated_data.keys())}")
+        
+        # Extract assignment data
+        assignments = validated_data.pop('assignments', None)
+        subjects = validated_data.pop('subjects', None)
+        
+        print(f"🔍 Assignments data: {assignments}")
+        print(f"🔍 Subjects data: {subjects}")
+        
+        # Handle user profile updates
+        bio = validated_data.pop('bio', None)
+        date_of_birth = validated_data.pop('date_of_birth', None)
+        
+        if bio is not None or date_of_birth is not None:
+            try:
+                user_profile = instance.user.profile
+                if bio is not None:
+                    user_profile.bio = bio
+                if date_of_birth is not None:
+                    user_profile.date_of_birth = date_of_birth
+                user_profile.save()
+                print(f"✅ Updated user profile for teacher {instance.id}")
+            except Exception as e:
+                print(f"❌ Error updating user profile: {e}")
+        
+        # Update teacher
+        teacher = super().update(instance, validated_data)
+        
+        # Update classroom assignments if provided
+        if assignments is not None or subjects is not None:
+            print(f"🔍 Creating/updating classroom assignments for teacher {teacher.id}")
+            self._create_classroom_assignments(teacher, assignments, subjects)
+        else:
+            print(f"🔍 No assignments or subjects provided for update")
+        
+        return teacher

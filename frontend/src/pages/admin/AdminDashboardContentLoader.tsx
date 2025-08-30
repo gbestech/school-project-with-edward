@@ -1,6 +1,6 @@
 import DashboardMainContent from '../../components/dashboards/admin/DashboardMainContent';
 import { Student, Teacher, Classroom, AttendanceData, DashboardStats, Parent } from '../../types/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '@/services/api';
 
@@ -13,6 +13,13 @@ const AdminDashboardContentLoader = () => {
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [parents, setParents] = useState<Parent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Refresh function
+  const handleRefresh = useCallback(() => {
+    console.log('🔄 AdminDashboardContentLoader: Refresh triggered');
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   // Handle user status updates
   const handleUserStatusUpdate = (userId: number, userType: 'student' | 'teacher' | 'parent', isActive: boolean) => {
@@ -45,7 +52,7 @@ const AdminDashboardContentLoader = () => {
     
     Promise.all([
       api.get('/api/parents/'),
-      api.get('/api/students/'),
+      api.get('/api/students/students/'), // Fixed: use correct students endpoint
       api.get('/api/teachers/teachers/'), // Fixed: use correct teachers endpoint
       api.get('/api/attendance/'),
       api.get('/api/classrooms/classrooms/'), // Fixed: use correct classrooms endpoint
@@ -98,7 +105,7 @@ const AdminDashboardContentLoader = () => {
         setLoading(false);
         console.log('🏁 AdminDashboardContentLoader: Loading completed');
       });
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (
@@ -119,6 +126,7 @@ const AdminDashboardContentLoader = () => {
       attendanceData={attendanceData}
       classrooms={classrooms}
       parents={parents}
+      onRefresh={handleRefresh}
       onUserStatusUpdate={handleUserStatusUpdate}
       user={user}
       activateStudent={async () => {}}

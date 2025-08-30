@@ -62,6 +62,9 @@ class StudentResultSerializer(serializers.ModelSerializer):
     grading_system = GradingSystemSerializer(read_only=True)
     assessment_scores = AssessmentScoreSerializer(many=True, read_only=True)
     comments = ResultCommentSerializer(many=True, read_only=True)
+    # Stream information
+    stream_name = serializers.CharField(source='stream.name', read_only=True)
+    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
     
     class Meta:
         model = StudentResult
@@ -92,12 +95,15 @@ class DetailedStudentResultSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     assessment_scores = AssessmentScoreSerializer(many=True, read_only=True)
+    # Stream information
+    stream_name = serializers.CharField(source='stream.name', read_only=True)
+    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
     
     class Meta:
         model = StudentResult
         fields = [
-            'id', 'student', 'subject', 'exam_session', 'ca_score', 'exam_score',
-            'total_score', 'percentage', 'grade', 'grade_point', 'is_passed',
+            'id', 'student', 'subject', 'exam_session', 'stream', 'stream_name', 'stream_type',
+            'ca_score', 'exam_score', 'total_score', 'percentage', 'grade', 'grade_point', 'is_passed',
             'position', 'remarks', 'status', 'assessment_scores', 'created_at'
         ]
 

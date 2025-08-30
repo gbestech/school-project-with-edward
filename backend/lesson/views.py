@@ -150,6 +150,11 @@ class LessonViewSet(viewsets.ModelViewSet):
             subject_id = self.request.query_params.get('subject_id')
             if subject_id:
                 queryset = queryset.filter(subject_id=subject_id)
+            
+            # Stream filtering
+            stream_filter = self.request.query_params.get('stream_filter')
+            if stream_filter:
+                queryset = queryset.filter(classroom__stream__name=stream_filter)
         
         return queryset
     
@@ -416,16 +421,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                 is_active=True
             )
             
-            # Get subjects from TeacherAssignment
-            from teacher.models import TeacherAssignment
-            teacher_assignments = TeacherAssignment.objects.filter(teacher=teacher)
-            
-            # Combine subjects from both sources
+            # Combine subjects from ClassroomTeacherAssignment only
+            # (TeacherAssignment model is deprecated)
             subjects = set()
             for allocation in classroom_allocations:
                 subjects.add(allocation.subject)
-            for assignment in teacher_assignments:
-                subjects.add(assignment.subject)
             
             # For Junior Secondary, show component subjects instead of parent subjects
             filtered_subjects = set()
@@ -478,16 +478,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                 is_active=True
             )
             
-            # Get teachers from TeacherAssignment
-            from teacher.models import TeacherAssignment
-            teacher_assignments = TeacherAssignment.objects.filter(subject=subject)
-            
-            # Combine teachers from both sources
+            # Combine teachers from ClassroomTeacherAssignment only
+            # (TeacherAssignment model is deprecated)
             teachers = set()
             for allocation in classroom_allocations:
                 teachers.add(allocation.teacher)
-            for assignment in teacher_assignments:
-                teachers.add(assignment.teacher)
             
             # If this is a component subject, also get teachers assigned to the parent subject
             if subject.parent_subject:
@@ -495,12 +490,9 @@ class LessonViewSet(viewsets.ModelViewSet):
                     subject=subject.parent_subject, 
                     is_active=True
                 )
-                parent_teacher_assignments = TeacherAssignment.objects.filter(subject=subject.parent_subject)
                 
                 for allocation in parent_classroom_allocations:
                     teachers.add(allocation.teacher)
-                for assignment in parent_teacher_assignments:
-                    teachers.add(assignment.teacher)
             
             if teachers:
                 teachers = list(teachers)
@@ -518,8 +510,9 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def teacher_classrooms(self, request):
-        """Get classrooms for a selected teacher"""
+        """Get classrooms for a selected teacher, optionally filtered by subject"""
         teacher_id = request.query_params.get('teacher_id')
+        subject_id = request.query_params.get('subject_id')
         
         if not teacher_id:
             return Response(
@@ -537,23 +530,15 @@ class LessonViewSet(viewsets.ModelViewSet):
                 is_active=True
             )
             
-            # Get classrooms from TeacherAssignment (via grade_level and section)
-            from teacher.models import TeacherAssignment
-            teacher_assignments = TeacherAssignment.objects.filter(teacher=teacher)
+            # Filter by subject if specified
+            if subject_id:
+                classroom_allocations = classroom_allocations.filter(subject_id=subject_id)
             
-            # Combine classrooms from both sources
+            # Combine classrooms from ClassroomTeacherAssignment only
+            # (TeacherAssignment model is deprecated)
             classrooms = set()
             for allocation in classroom_allocations:
                 classrooms.add(allocation.classroom)
-            for assignment in teacher_assignments:
-                if assignment.grade_level and assignment.section:
-                    # Find classrooms for this grade level and section
-                    section_classrooms = Classroom.objects.filter(
-                        section__grade_level=assignment.grade_level,
-                        section=assignment.section,
-                        is_active=True
-                    )
-                    classrooms.update(section_classrooms)
             
             if classrooms:
                 classrooms = list(classrooms)
@@ -580,9 +565,10 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def subjects_by_level(self, request):
-        """Get subjects filtered by education level and grade level"""
+        """Get subjects filtered by education level, grade level, and stream"""
         education_level = request.query_params.get('education_level')
         grade_level_id = request.query_params.get('grade_level_id')
+        stream = request.query_params.get('stream')
         
         if not education_level:
             return Response({'error': 'education_level parameter is required'}, status=400)
@@ -594,8 +580,27 @@ class LessonViewSet(viewsets.ModelViewSet):
             # Filter by grade level if specified
             subjects = [s for s in subjects if s.grade_levels.filter(id=grade_level_id).exists()]
         
+        if stream:
+            # Filter by stream if specified (for Senior Secondary)
+            subjects = [s for s in subjects if s.compatible_streams.filter(name=stream).exists()]
+        
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def download_report(self, request, pk=None):
+        """Download lesson report as JSON"""
+        try:
+            lesson = self.get_object()
+            report_data = lesson.generate_lesson_report()
+            
+            from django.http import JsonResponse
+            response = JsonResponse(report_data, json_dumps_params={'indent': 2})
+            response['Content-Disposition'] = f'attachment; filename="lesson_report_{lesson.id}_{lesson.date}.json"'
+            return response
+            
+        except Lesson.DoesNotExist:
+            return Response({'error': 'Lesson not found'}, status=404)
 
 
 class LessonAttendanceViewSet(viewsets.ModelViewSet):

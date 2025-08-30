@@ -120,7 +120,7 @@ const Nav: React.FC = () => {
   };
 
   // Calculate top position based on ContactRibbon visibility
-  const topPosition = contactRibbonVisible ? 'top-16' : 'top-0';
+  const topPosition = contactRibbonVisible ? 'top-0' : 'top-0';
 
   const handleLogout = () => {
     logout();

@@ -53,6 +53,7 @@ const SubjectManagement = () => {
     is_active: true,
     ordering: 'name'
   });
+  const [streamFilter, setStreamFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
@@ -67,6 +68,13 @@ const SubjectManagement = () => {
     education_levels: ['PRIMARY'],
     ss_subject_type: undefined,
     is_compulsory: true,
+    is_core: false,
+    is_cross_cutting: false,
+    is_elective: false,
+    elective_group: '',
+    min_electives_required: 0,
+    max_electives_allowed: 0,
+    compatible_stream_ids: [],
     has_continuous_assessment: true,
     has_final_exam: true,
     pass_mark: 50,
@@ -75,6 +83,7 @@ const SubjectManagement = () => {
     is_activity_based: false,
     requires_lab: false,
     requires_special_equipment: false,
+    equipment_notes: '',
     requires_specialist_teacher: false
   });
 
@@ -180,10 +189,19 @@ const SubjectManagement = () => {
       console.log('🔍 After active filter:', filtered.length, 'subjects');
     }
 
+    // Stream filter
+    if (streamFilter !== 'all') {
+      filtered = filtered.filter(subject => 
+        subject.compatible_streams && 
+        subject.compatible_streams.includes(streamFilter)
+      );
+      console.log('🔍 After stream filter:', filtered.length, 'subjects');
+    }
+
     console.log('🔍 Final filtered subjects:', filtered.length);
     setFilteredSubjects(filtered);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [subjects, searchTerm, filters]);
+  }, [subjects, searchTerm, filters, streamFilter]);
 
   // Test filtering with sample data
   useEffect(() => {
@@ -329,6 +347,13 @@ const SubjectManagement = () => {
         education_levels: formData.education_levels,
         ss_subject_type: formData.ss_subject_type,
         is_compulsory: formData.is_compulsory,
+        is_core: formData.is_core,
+        is_cross_cutting: formData.is_cross_cutting,
+        is_elective: formData.is_elective,
+        elective_group: formData.elective_group,
+        min_electives_required: formData.min_electives_required,
+        max_electives_allowed: formData.max_electives_allowed,
+        compatible_stream_ids: formData.compatible_stream_ids,
         has_continuous_assessment: formData.has_continuous_assessment,
         has_final_exam: formData.has_final_exam,
         pass_mark: formData.pass_mark,
@@ -337,6 +362,7 @@ const SubjectManagement = () => {
         is_activity_based: formData.is_activity_based,
         requires_lab: formData.requires_lab,
         requires_special_equipment: formData.requires_special_equipment,
+        equipment_notes: formData.equipment_notes,
         requires_specialist_teacher: formData.requires_specialist_teacher
       };
       
@@ -399,6 +425,11 @@ const SubjectManagement = () => {
       is_compulsory: subject.is_compulsory,
       is_core: subject.is_core,
       is_cross_cutting: subject.is_cross_cutting,
+      is_elective: subject.is_elective,
+      elective_group: subject.elective_group,
+      min_electives_required: subject.min_electives_required,
+      max_electives_allowed: subject.max_electives_allowed,
+      compatible_stream_ids: subject.compatible_streams || [],
       has_continuous_assessment: subject.has_continuous_assessment,
       has_final_exam: subject.has_final_exam,
       pass_mark: subject.pass_mark || 50,
@@ -407,7 +438,7 @@ const SubjectManagement = () => {
       is_activity_based: subject.is_activity_based,
       requires_lab: subject.requires_lab,
       requires_special_equipment: subject.requires_special_equipment,
-      equipment_notes: subject.equipment_notes,
+      equipment_notes: subject.equipment_notes || '',
       requires_specialist_teacher: subject.requires_specialist_teacher,
       introduced_year: subject.introduced_year,
       curriculum_version: subject.curriculum_version,
@@ -482,6 +513,13 @@ const SubjectManagement = () => {
       education_levels: ['PRIMARY'],
       ss_subject_type: undefined,
       is_compulsory: true,
+      is_core: false,
+      is_cross_cutting: false,
+      is_elective: false,
+      elective_group: '',
+      min_electives_required: 0,
+      max_electives_allowed: 0,
+      compatible_stream_ids: [],
       has_continuous_assessment: true,
       has_final_exam: true,
       pass_mark: 50,
@@ -490,6 +528,7 @@ const SubjectManagement = () => {
       is_activity_based: false,
       requires_lab: false,
       requires_special_equipment: false,
+      equipment_notes: '',
       requires_specialist_teacher: false
     });
     setErrors({});
@@ -735,6 +774,22 @@ const SubjectManagement = () => {
                   ))}
                 </select>
               </div>
+              <div className="relative">
+                <select
+                  className="pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-all duration-200"
+                  value={streamFilter}
+                  onChange={(e) => {
+                    console.log('🔍 Stream filter changed:', e.target.value);
+                    setStreamFilter(e.target.value);
+                  }}
+                >
+                  <option value="all">All Streams</option>
+                  <option value="Science">Science</option>
+                  <option value="Arts">Arts</option>
+                  <option value="Commercial">Commercial</option>
+                  <option value="Technical">Technical</option>
+                </select>
+              </div>
             </div>
                          <div className="flex items-center gap-4">
                <div className="text-sm text-gray-500 font-medium">
@@ -812,6 +867,12 @@ const SubjectManagement = () => {
                     <span className="text-sm text-gray-500">Code:</span>
                     <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{subject.code}</span>
                   </div>
+                  {subject.compatible_streams && subject.compatible_streams.length > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-500">Streams:</span>
+                      <span className="text-sm text-blue-600 font-medium">{subject.compatible_streams.join(', ')}</span>
+                    </div>
+                  )}
 
                   {subject.has_practical && (
                     <div className="flex justify-between">
@@ -829,6 +890,9 @@ const SubjectManagement = () => {
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <CheckCircle className="w-3 h-3" />
                       {subject.is_compulsory ? 'Compulsory' : 'Elective'}
+                      {subject.is_elective && subject.elective_group && (
+                        <span className="text-blue-600">({subject.elective_group})</span>
+                      )}
                     </div>
                     {subject.has_practical && (
                       <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -857,6 +921,7 @@ const SubjectManagement = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Levels</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Streams</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -882,6 +947,13 @@ const SubjectManagement = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{subject.education_levels_display}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {subject.compatible_streams && subject.compatible_streams.length > 0 
+                            ? subject.compatible_streams.join(', ') 
+                            : '-'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-1">
@@ -1105,10 +1177,24 @@ const SubjectManagement = () => {
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         errors.pass_mark ? 'border-red-500' : 'border-gray-300'
                       }`}
-                                             value={formData.pass_mark || 50}
+                      value={formData.pass_mark || 50}
                       onChange={(e) => setFormData({...formData, pass_mark: parseInt(e.target.value)})}
                     />
                     {errors.pass_mark && <p className="text-red-500 text-xs mt-1">{errors.pass_mark}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Practical Hours
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={formData.practical_hours || 0}
+                      onChange={(e) => setFormData({...formData, practical_hours: parseInt(e.target.value) || 0})}
+                      placeholder="Number of practical hours per week"
+                    />
                   </div>
 
                   <div className="md:col-span-2">
@@ -1174,6 +1260,107 @@ const SubjectManagement = () => {
                   </div>
 
                   <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Equipment Notes
+                    </label>
+                    <textarea
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={2}
+                      value={formData.equipment_notes || ''}
+                      onChange={(e) => setFormData({...formData, equipment_notes: e.target.value})}
+                      placeholder="Notes about required equipment or facilities (optional)"
+                    />
+                  </div>
+
+                  {/* Stream Compatibility Section */}
+                  {formData.education_levels && formData.education_levels.includes('SENIOR_SECONDARY') && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Compatible Streams
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['Science', 'Arts', 'Commercial', 'Technical'].map(stream => (
+                          <label key={stream} className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              checked={formData.compatible_stream_ids && formData.compatible_stream_ids.includes(stream)}
+                              onChange={(e) => {
+                                const currentStreams = formData.compatible_stream_ids || [];
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    compatible_stream_ids: [...currentStreams, stream]
+                                  });
+                                } else {
+                                  setFormData({
+                                    ...formData,
+                                    compatible_stream_ids: currentStreams.filter(s => s !== stream)
+                                  });
+                                }
+                              }}
+                            />
+                            <span className="ml-2 text-sm text-gray-700">{stream}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Elective Subject Configuration */}
+                  <div className="md:col-span-2">
+                    <label className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={formData.is_elective}
+                        onChange={(e) => setFormData({...formData, is_elective: e.target.checked})}
+                      />
+                      <span className="ml-2 text-sm font-medium text-gray-700">Elective Subject</span>
+                    </label>
+                    {formData.is_elective && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Elective Group
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={formData.elective_group || ''}
+                            onChange={(e) => setFormData({...formData, elective_group: e.target.value})}
+                            placeholder="e.g., Group A, Group B"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Min Required
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={formData.min_electives_required || 0}
+                            onChange={(e) => setFormData({...formData, min_electives_required: parseInt(e.target.value) || 0})}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Max Allowed
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={formData.max_electives_allowed || 0}
+                            onChange={(e) => setFormData({...formData, max_electives_allowed: parseInt(e.target.value) || 0})}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <label className="flex items-center">
                         <input
@@ -1183,6 +1370,24 @@ const SubjectManagement = () => {
                           onChange={(e) => setFormData({...formData, is_compulsory: e.target.checked})}
                         />
                         <span className="ml-2 text-sm text-gray-700">Compulsory</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={formData.is_core}
+                          onChange={(e) => setFormData({...formData, is_core: e.target.checked})}
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Core Subject</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={formData.is_cross_cutting}
+                          onChange={(e) => setFormData({...formData, is_cross_cutting: e.target.checked})}
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Cross-cutting</span>
                       </label>
                       <label className="flex items-center">
                         <input
@@ -1201,6 +1406,24 @@ const SubjectManagement = () => {
                           onChange={(e) => setFormData({...formData, is_activity_based: e.target.checked})}
                         />
                         <span className="ml-2 text-sm text-gray-700">Activity-based</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={formData.requires_lab}
+                          onChange={(e) => setFormData({...formData, requires_lab: e.target.checked})}
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Requires Lab</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          checked={formData.requires_special_equipment}
+                          onChange={(e) => setFormData({...formData, requires_special_equipment: e.target.checked})}
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Special Equipment</span>
                       </label>
                       <label className="flex items-center">
                         <input

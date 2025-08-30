@@ -12,3 +12,7 @@ const TeacherProfilePage: React.FC = () => {
 
 export default TeacherProfilePage;
 
+
+
+
+

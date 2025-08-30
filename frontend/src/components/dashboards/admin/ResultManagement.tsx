@@ -31,6 +31,39 @@ import ResultService, {
 import AddResultForm from './AddResultForm';
 
 // Mock data for fallback
+const MOCK_EXAM_SESSIONS: ExamSession[] = [
+  {
+    id: '1',
+    name: 'First Term Examination',
+    exam_type: 'FINAL_EXAM',
+    term: 'FIRST',
+    academic_session: {
+      id: '1',
+      name: '2024/2025'
+    },
+    start_date: '2024-09-01',
+    end_date: '2024-09-30',
+    result_release_date: '2024-10-15',
+    is_published: true,
+    is_active: true
+  },
+  {
+    id: '2',
+    name: 'Second Term Examination',
+    exam_type: 'FINAL_EXAM',
+    term: 'SECOND',
+    academic_session: {
+      id: '1',
+      name: '2024/2025'
+    },
+    start_date: '2024-12-01',
+    end_date: '2024-12-30',
+    result_release_date: '2025-01-15',
+    is_published: true,
+    is_active: true
+  }
+];
+
 const MOCK_STUDENT_RESULTS: StudentResult[] = [
   {
     id: '1',
@@ -51,16 +84,15 @@ const MOCK_STUDENT_RESULTS: StudentResult[] = [
       id: '1',
       name: 'First Term Examination',
       exam_type: 'FINAL_EXAM',
-      term: 'FIRST',
-      academic_session: {
-        id: '1',
-        name: '2024/2025'
-      },
-      start_date: '2024-09-01',
-      end_date: '2024-09-30',
-      is_published: true,
-      is_active: true
+      term: 'FIRST'
     },
+    stream: {
+      id: '1',
+      name: 'Science',
+      stream_type: 'SCIENCE'
+    },
+    stream_name: 'Science',
+    stream_type: 'SCIENCE',
     ca_score: 25,
     exam_score: 65,
     total_score: 90,
@@ -160,38 +192,7 @@ const MOCK_STUDENT_RESULTS: StudentResult[] = [
   }
 ];
 
-const MOCK_EXAM_SESSIONS: ExamSession[] = [
-  {
-    id: '1',
-    name: 'First Term Examination',
-    exam_type: 'FINAL_EXAM',
-    term: 'FIRST',
-    academic_session: {
-      id: '1',
-      name: '2024/2025'
-    },
-    start_date: '2024-09-01',
-    end_date: '2024-09-30',
-    result_release_date: '2024-10-15',
-    is_published: true,
-    is_active: true
-  },
-  {
-    id: '2',
-    name: 'Second Term Examination',
-    exam_type: 'FINAL_EXAM',
-    term: 'SECOND',
-    academic_session: {
-      id: '1',
-      name: '2024/2025'
-    },
-    start_date: '2024-12-01',
-    end_date: '2024-12-30',
-    result_release_date: '2025-01-15',
-    is_published: true,
-    is_active: true
-  }
-];
+
 
 const MOCK_CLASS_STATISTICS: ClassStatistics = {
   total_students: 25,
@@ -223,6 +224,7 @@ const ResultManagement: React.FC<ResultManagementProps> = () => {
   const [classFilter, setClassFilter] = useState<string>('all');
   const [examSessionFilter, setExamSessionFilter] = useState<string>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
+  const [streamFilter, setStreamFilter] = useState<string>('all');
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -282,8 +284,9 @@ const ResultManagement: React.FC<ResultManagementProps> = () => {
       const matchesClass = classFilter === 'all' || result.student.student_class === classFilter;
       const matchesExamSession = examSessionFilter === 'all' || result.exam_session.id === examSessionFilter;
       const matchesSubject = subjectFilter === 'all' || result.subject.id === subjectFilter;
+      const matchesStream = streamFilter === 'all' || result.stream?.id === streamFilter;
       
-      return matchesSearch && matchesStatus && matchesClass && matchesExamSession && matchesSubject;
+      return matchesSearch && matchesStatus && matchesClass && matchesExamSession && matchesSubject && matchesStream;
     });
   }, [results, searchTerm, statusFilter, classFilter, examSessionFilter, subjectFilter]);
 
@@ -323,6 +326,16 @@ const ResultManagement: React.FC<ResultManagementProps> = () => {
     Array.from(new Set(results.map(r => r.status))).sort(), 
     [results]
   );
+
+  const uniqueStreams = useMemo(() => {
+    const streams = results
+      .filter(r => r.stream)
+      .map(r => ({ id: r.stream!.id, name: r.stream!.name }))
+      .filter((stream, index, self) => 
+        index === self.findIndex(s => s.id === stream.id)
+      );
+    return streams.sort((a, b) => a.name.localeCompare(b.name));
+  }, [results]);
 
   // Event handlers
   const handleAddResult = () => {
@@ -588,6 +601,18 @@ const ResultManagement: React.FC<ResultManagementProps> = () => {
               <option key={subject} value={subject}>{subject}</option>
             ))}
           </select>
+
+          {/* Stream Filter */}
+          <select
+            value={streamFilter}
+            onChange={(e) => setStreamFilter(e.target.value)}
+            className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          >
+            <option value="all">All Streams</option>
+            {uniqueStreams.map(stream => (
+              <option key={stream.id} value={stream.id}>{stream.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -614,6 +639,9 @@ const ResultManagement: React.FC<ResultManagementProps> = () => {
                     </th>
                     <th className={`px-6 py-4 text-left text-sm font-medium ${themeClasses.textPrimary}`}>
                       Class
+                    </th>
+                    <th className={`px-6 py-4 text-left text-sm font-medium ${themeClasses.textPrimary}`}>
+                      Stream
                     </th>
                     <th className={`px-6 py-4 text-left text-sm font-medium ${themeClasses.textPrimary}`}>
                       CA Score
@@ -661,6 +689,11 @@ const ResultManagement: React.FC<ResultManagementProps> = () => {
                       <td className="px-6 py-4">
                         <span className={`text-sm ${themeClasses.textSecondary}`}>
                           {result.student.student_class}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm ${themeClasses.textSecondary}`}>
+                          {result.stream_name || '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4">

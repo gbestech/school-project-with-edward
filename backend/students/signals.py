@@ -16,17 +16,49 @@ def auto_enroll_student(sender, instance, created, **kwargs):
             education_level = instance.education_level
             student_class = instance.student_class
             
-            # Find the appropriate grade level
-            grade_level = GradeLevel.objects.filter(
-                education_level=education_level,
-                name__icontains=student_class.replace('GRADE_', '').replace('_', ' ')
-            ).first()
+            # Map student class to grade level name
+            class_to_grade_mapping = {
+                'NURSERY_1': 'Nursery 1',
+                'NURSERY_2': 'Nursery 2',
+                'PRE_K': 'Pre-K',
+                'KINDERGARTEN': 'Kindergarten',
+                'GRADE_1': 'Primary 1',
+                'GRADE_2': 'Primary 2',
+                'GRADE_3': 'Primary 3',
+                'GRADE_4': 'Primary 4',
+                'GRADE_5': 'Primary 5',
+                'GRADE_6': 'Primary 6',
+                'GRADE_7': 'JSS 1',
+                'GRADE_8': 'JSS 2',
+                'GRADE_9': 'JSS 3',
+                'GRADE_10': 'SS 1',
+                'GRADE_11': 'SS 2',
+                'GRADE_12': 'SS 3',
+                # Direct mappings for actual class names used in database
+                'SS1': 'SS 1',
+                'SS2': 'SS 2',
+                'SS3': 'SS 3',
+                'JSS1': 'JSS 1',
+                'JSS2': 'JSS 2',
+                'JSS3': 'JSS 3',
+            }
             
-            if not grade_level:
-                # Try to find by education level only
+            grade_level_name = class_to_grade_mapping.get(student_class)
+            if grade_level_name:
+                # Find the appropriate grade level by name
+                grade_level = GradeLevel.objects.filter(name=grade_level_name).first()
+            else:
+                # Fallback: try to find by education level and partial name match
                 grade_level = GradeLevel.objects.filter(
-                    education_level=education_level
+                    education_level=education_level,
+                    name__icontains=student_class.replace('GRADE_', '').replace('_', ' ')
                 ).first()
+                
+                if not grade_level:
+                    # Try to find by education level only
+                    grade_level = GradeLevel.objects.filter(
+                        education_level=education_level
+                    ).first()
             
             if grade_level:
                 # Get the current academic year and term

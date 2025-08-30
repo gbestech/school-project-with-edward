@@ -23,7 +23,8 @@ const DashboardMainContent: React.FC<DashboardMainContentProps> = (props) => {
     teachers: props.teachers,
     attendanceData: props.attendanceData,
     classrooms: props.classrooms,
-    parents: props.parents
+    parents: props.parents,
+    onRefresh: !!props.onRefresh
   });
   
   return <EnhancedDashboard {...props} />;

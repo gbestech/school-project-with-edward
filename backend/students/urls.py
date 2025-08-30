@@ -4,7 +4,7 @@ from .views import StudentViewSet
 
 # Create router and register viewsets
 router = DefaultRouter()
-router.register(r"", StudentViewSet, basename="student")
+router.register(r"students", StudentViewSet, basename="student")
 
 # URL patterns - using router for main CRUD operations
 urlpatterns = [

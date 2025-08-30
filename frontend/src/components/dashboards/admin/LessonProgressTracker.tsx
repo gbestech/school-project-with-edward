@@ -97,7 +97,7 @@ const LessonProgressTracker: React.FC<LessonProgressTrackerProps> = ({
       } catch (err) {
         console.error('Error updating progress:', err);
       }
-    }, 30000); // Update every 30 seconds
+    }, 5000); // Update every 5 seconds for more visible progress
   };
 
   // Stop progress interval
@@ -293,7 +293,7 @@ const LessonProgressTracker: React.FC<LessonProgressTrackerProps> = ({
         <div className="mt-3 flex items-center space-x-2">
           <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
           <span className={`text-xs ${themeClasses.textSecondary}`}>
-            Auto-updating progress every 30 seconds
+            Auto-updating progress every 5 seconds
           </span>
         </div>
       )}

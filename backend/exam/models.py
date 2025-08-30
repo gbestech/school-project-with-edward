@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import datetime
 
-from academics.models import AcademicSession, Term, Subject
+from academics.models import AcademicSession, Term
+from subject.models import Subject
 from classroom.models import GradeLevel, Section
 from teacher.models import Teacher
 from students.models import Student
@@ -389,12 +390,22 @@ class Exam(models.Model):
     # Academic relationships (use academic app)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE)
-    section = models.ForeignKey(Section, on_delete=models.CASCADE)
+    section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, blank=True)
+    # Stream support for Senior Secondary
+    stream = models.ForeignKey(
+        "classroom.Stream", 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="exams",
+        help_text="Stream for Senior Secondary exams (Science, Arts, Commercial, Technical)"
+    )
     exam_schedule = models.ForeignKey(
         ExamSchedule,
         on_delete=models.CASCADE,
         related_name="exams",
-        default=get_default_exam_schedule_id,  # Add this line
+        null=True,
+        blank=True,
         help_text="Exam schedule this exam belongs to",
     )
 
@@ -434,6 +445,15 @@ class Exam(models.Model):
     instructions = models.TextField(blank=True)
     materials_allowed = models.TextField(blank=True)
     materials_provided = models.TextField(blank=True)
+    
+    # Question data (stored as JSON)
+    objective_questions = models.JSONField(default=list, blank=True)
+    theory_questions = models.JSONField(default=list, blank=True)
+    practical_questions = models.JSONField(default=list, blank=True)
+    custom_sections = models.JSONField(default=list, blank=True)
+    objective_instructions = models.TextField(blank=True)
+    theory_instructions = models.TextField(blank=True)
+    practical_instructions = models.TextField(blank=True)
 
     # File uploads (optional)
     questions_file = models.FileField(
@@ -455,9 +475,9 @@ class Exam(models.Model):
     class Meta:
         db_table = "exams_exam"
         ordering = ["exam_date", "start_time"]
-        unique_together = [
-            ("subject", "grade_level", "section", "exam_type", "exam_schedule")
-        ]
+        # Note: unique_together removed since section can be null
+        # This allows multiple exams for the same subject/grade_level/exam_type/schedule
+        # even if they have different sections or no section
 
     def __str__(self):
         return f"{self.title} - {self.subject.name} ({self.exam_schedule.name})"

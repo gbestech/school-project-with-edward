@@ -302,26 +302,26 @@ const SignUpPage: React.FC = () => {
                 <option value="">Select Education Level</option>
                 <option value="NURSERY">Nursery</option>
                 <option value="PRIMARY">Primary</option>
-                <option value="SECONDARY">Secondary</option>
+                <option value="JUNIOR_SECONDARY">Junior Secondary</option>
+                <option value="SENIOR_SECONDARY">Senior Secondary</option>
               </select>
               <select name="student_class" value={student.student_class} onChange={e => handleChange(e, 'student')} className="p-3 border rounded-lg">
                 <option value="">Select Class</option>
+                <option value="PRE_NURSERY">Pre-nursery</option>
                 <option value="NURSERY_1">Nursery 1</option>
                 <option value="NURSERY_2">Nursery 2</option>
-                <option value="PRE_K">Pre-K</option>
-                <option value="KINDERGARTEN">Kindergarten</option>
-                <option value="GRADE_1">Grade 1</option>
-                <option value="GRADE_2">Grade 2</option>
-                <option value="GRADE_3">Grade 3</option>
-                <option value="GRADE_4">Grade 4</option>
-                <option value="GRADE_5">Grade 5</option>
-                <option value="GRADE_6">Grade 6</option>
-                <option value="GRADE_7">Grade 7</option>
-                <option value="GRADE_8">Grade 8</option>
-                <option value="GRADE_9">Grade 9</option>
-                <option value="GRADE_10">Grade 10</option>
-                <option value="GRADE_11">Grade 11</option>
-                <option value="GRADE_12">Grade 12</option>
+                <option value="PRIMARY_1">Primary 1</option>
+                <option value="PRIMARY_2">Primary 2</option>
+                <option value="PRIMARY_3">Primary 3</option>
+                <option value="PRIMARY_4">Primary 4</option>
+                <option value="PRIMARY_5">Primary 5</option>
+                <option value="PRIMARY_6">Primary 6</option>
+                <option value="JSS_1">Junior Secondary 1 (JSS1)</option>
+                <option value="JSS_2">Junior Secondary 2 (JSS2)</option>
+                <option value="JSS_3">Junior Secondary 3 (JSS3)</option>
+                <option value="SS_1">Senior Secondary 1 (SS1)</option>
+                <option value="SS_2">Senior Secondary 2 (SS2)</option>
+                <option value="SS_3">Senior Secondary 3 (SS3)</option>
               </select>
             </div>
             <div className="mb-4">
@@ -472,22 +472,21 @@ const SignUpPage: React.FC = () => {
                 <input name="dateOfBirth" type="date" value={s.dateOfBirth} onChange={e => handleChange(e, 'students', idx)} className="p-3 border rounded-lg" />
                 <select name="student_class" value={s.student_class} onChange={e => handleChange(e, 'students', idx)} className="p-3 border rounded-lg">
                   <option value="">Select Class</option>
+                  <option value="PRE_NURSERY">Pre-nursery</option>
                   <option value="NURSERY_1">Nursery 1</option>
                   <option value="NURSERY_2">Nursery 2</option>
-                  <option value="PRE_K">Pre-K</option>
-                  <option value="KINDERGARTEN">Kindergarten</option>
-                  <option value="GRADE_1">Grade 1</option>
-                  <option value="GRADE_2">Grade 2</option>
-                  <option value="GRADE_3">Grade 3</option>
-                  <option value="GRADE_4">Grade 4</option>
-                  <option value="GRADE_5">Grade 5</option>
-                  <option value="GRADE_6">Grade 6</option>
-                  <option value="GRADE_7">Grade 7</option>
-                  <option value="GRADE_8">Grade 8</option>
-                  <option value="GRADE_9">Grade 9</option>
-                  <option value="GRADE_10">Grade 10</option>
-                  <option value="GRADE_11">Grade 11</option>
-                  <option value="GRADE_12">Grade 12</option>
+                  <option value="PRIMARY_1">Primary 1</option>
+                  <option value="PRIMARY_2">Primary 2</option>
+                  <option value="PRIMARY_3">Primary 3</option>
+                  <option value="PRIMARY_4">Primary 4</option>
+                  <option value="PRIMARY_5">Primary 5</option>
+                  <option value="PRIMARY_6">Primary 6</option>
+                  <option value="JSS_1">Junior Secondary 1 (JSS1)</option>
+                  <option value="JSS_2">Junior Secondary 2 (JSS2)</option>
+                  <option value="JSS_3">Junior Secondary 3 (JSS3)</option>
+                  <option value="SS_1">Senior Secondary 1 (SS1)</option>
+                  <option value="SS_2">Senior Secondary 2 (SS2)</option>
+                  <option value="SS_3">Senior Secondary 3 (SS3)</option>
             </select>
                 {students.length > 1 && <button className="text-red-500" onClick={() => removeStudent(idx)}>Remove</button>}
           </div>

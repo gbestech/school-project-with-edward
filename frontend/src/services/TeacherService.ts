@@ -4,11 +4,12 @@ export interface Teacher {
   id: number;
   first_name: string;
   last_name: string;
+  full_name?: string;
   email: string;
   phone_number: string;
   address: string;
   staff_type: 'teaching' | 'non-teaching';
-  level: 'nursery' | 'primary' | 'secondary' | null;
+  level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary' | null;
   hire_date: string;
   qualification: string;
   specialization: string;
@@ -16,22 +17,15 @@ export interface Teacher {
   created_at: string;
   updated_at: string;
   photo?: string; // Profile picture URL
+  
+  // Updated to use new assignment structure
   assigned_subjects: Array<{
     id: number;
     name: string;
-    assignments?: Array<{
-      grade_level: string;
-      section: string;
-      education_level: string;
-    }>;
+    code: string;
   }>;
-  teacher_assignments?: Array<{
-    id: number;
-    grade_level_name: string;
-    section_name: string;
-    subject_name: string;
-    education_level: string;
-  }>;
+  
+  // New classroom assignments using ClassroomTeacherAssignment
   classroom_assignments?: Array<{
     id: number;
     classroom_name: string;
@@ -47,8 +41,21 @@ export interface Teacher {
     room_number: string;
     student_count: number;
     max_capacity: number;
-    is_class_teacher: boolean;
+    is_primary_teacher: boolean;
+    periods_per_week: number;
+    stream_name?: string;
+    stream_type?: string;
   }>;
+  
+  // Legacy field for backward compatibility (deprecated)
+  teacher_assignments?: Array<{
+    id: number;
+    grade_level_name: string;
+    section_name: string;
+    subject_name: string;
+    education_level: string;
+  }>;
+  
   assignment_requests?: AssignmentRequest[];
   schedules?: TeacherSchedule[];
 }
@@ -87,10 +94,8 @@ export interface TeacherSchedule {
   end_time: string;
   subject: number;
   subject_name: string;
-  grade_level: number;
-  grade_level_name: string;
-  section: number;
-  section_name: string;
+  classroom: number;
+  classroom_name: string;
   room_number: string;
   is_active: boolean;
   academic_year: string;
@@ -108,7 +113,7 @@ export interface CreateTeacherData {
   };
   employee_id: string;
   staff_type: 'teaching' | 'non-teaching';
-  level?: 'nursery' | 'primary' | 'secondary';
+  level?: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary';
   phone_number?: string;
   address?: string;
   date_of_birth?: string;
@@ -116,10 +121,12 @@ export interface CreateTeacherData {
   qualification?: string;
   specialization?: string;
   subjects?: number[];
+  // Updated to use new assignment structure
   assignments?: Array<{
-    grade_level_id: string;
-    section_id: string;
-    subject_id: string;
+    classroom_id: number;
+    subject_id: number;
+    is_primary_teacher?: boolean;
+    periods_per_week?: number;
   }>;
   photo?: string;
 }
@@ -132,7 +139,7 @@ export interface UpdateTeacherData {
   };
   employee_id?: string;
   staff_type?: 'teaching' | 'non-teaching';
-  level?: 'nursery' | 'primary' | 'secondary';
+  level?: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary';
   phone_number?: string;
   address?: string;
   date_of_birth?: string;
@@ -141,10 +148,12 @@ export interface UpdateTeacherData {
   qualification?: string;
   specialization?: string;
   subjects?: string[];
+  // Updated to use new assignment structure
   assignments?: Array<{
-    grade_level_id: string;
-    section_id: string;
-    subject_id: string;
+    classroom_id: number;
+    subject_id: number;
+    is_primary_teacher?: boolean;
+    periods_per_week?: number;
   }>;
   photo?: string;
   is_active?: boolean;
@@ -166,11 +175,25 @@ export interface CreateScheduleData {
   start_time: string;
   end_time: string;
   subject: number;
-  grade_level: number;
-  section: number;
+  classroom: number;
   room_number?: string;
   academic_year?: string;
   term?: string;
+}
+
+// New interface for enhanced teacher assignment management
+export interface CreateTeacherAssignmentData {
+  classroom_id: number;
+  teacher_id: number;
+  subject_id: number;
+  is_primary_teacher?: boolean;
+  periods_per_week?: number;
+}
+
+export interface UpdateTeacherAssignmentData {
+  is_primary_teacher?: boolean;
+  periods_per_week?: number;
+  is_active?: boolean;
 }
 
 class TeacherService {
@@ -210,6 +233,17 @@ class TeacherService {
   async getTeacher(id: number): Promise<Teacher> {
     const response = await api.get(`/api/teachers/teachers/${id}/`);
     return response;
+  }
+
+  // Get teacher by user ID
+  async getTeacherByUserId(userId: number): Promise<Teacher | null> {
+    try {
+      const response = await api.get(`/api/teachers/teachers/by-user/${userId}/`);
+      return response;
+    } catch (error) {
+      console.log('Teacher not found by user ID:', userId, error);
+      return null;
+    }
   }
 
   // Create teacher
@@ -252,8 +286,9 @@ class TeacherService {
   }
 
   // Delete teacher
-  async deleteTeacher(id: number): Promise<void> {
-    await api.delete(`/api/teachers/teachers/${id}/`);
+  async deleteTeacher(id: number): Promise<{ message: string; status: string }> {
+    const response = await api.delete(`/api/teachers/teachers/${id}/`);
+    return response;
   }
 
   // Activate teacher
@@ -412,6 +447,47 @@ class TeacherService {
     const response = await api.get('/api/teachers/assignment-management/teacher_assignments_summary/', {
       params: { teacher_id }
     });
+    return response;
+  }
+
+  // New methods for enhanced teacher assignment management
+  async createTeacherAssignment(data: CreateTeacherAssignmentData) {
+    const response = await api.post('/api/classrooms/teacher-assignments/', data);
+    return response;
+  }
+
+  async updateTeacherAssignment(assignmentId: number, data: UpdateTeacherAssignmentData) {
+    const response = await api.patch(`/api/classrooms/teacher-assignments/${assignmentId}/`, data);
+    return response;
+  }
+
+  async deleteTeacherAssignment(assignmentId: number) {
+    const response = await api.delete(`/api/classrooms/teacher-assignments/${assignmentId}/`);
+    return response;
+  }
+
+  async getTeacherAssignments(teacherId?: number, classroomId?: number) {
+    const params: any = {};
+    if (teacherId) params.teacher = teacherId;
+    if (classroomId) params.classroom = classroomId;
+    
+    const response = await api.get('/api/classrooms/teacher-assignments/', { params });
+    return response;
+  }
+
+  // Get available classrooms for assignment
+  async getAvailableClassrooms(teacherId?: number, subjectId?: number) {
+    const params: any = {};
+    if (teacherId) params.teacher_id = teacherId;
+    if (subjectId) params.subject_id = subjectId;
+    
+    const response = await api.get('/api/classrooms/classrooms/available-for-assignment/', { params });
+    return response;
+  }
+
+  // Get teacher workload analysis
+  async getTeacherWorkload(teacherId: number) {
+    const response = await api.get(`/api/teachers/teachers/${teacherId}/workload/`);
     return response;
   }
 }

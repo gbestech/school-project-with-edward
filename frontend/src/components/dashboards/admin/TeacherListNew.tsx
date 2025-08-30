@@ -53,13 +53,16 @@ interface Teacher {
     last_name: string;
     email: string;
   }; // For update operations
+  // Legacy field for backward compatibility (deprecated)
   teacher_assignments?: Array<{
     id: number;
     grade_level_name: string;
     section_name: string;
     subject_name: string;
-    education_level: string; // Added for detailed assignments
+    education_level: string;
   }>;
+  
+  // New classroom assignments using ClassroomTeacherAssignment
   classroom_assignments?: Array<{
     id: number;
     classroom_name: string;
@@ -75,7 +78,10 @@ interface Teacher {
     room_number: string;
     student_count: number;
     max_capacity: number;
-    is_class_teacher: boolean;
+    is_primary_teacher: boolean;
+    periods_per_week: number;
+    stream_name?: string;
+    stream_type?: string;
   }>;
 }
 
@@ -163,14 +169,16 @@ const TeacherList = () => {
     let filtered = Array.isArray(teachers) ? teachers : [];
 
     if (searchTerm) {
-      filtered = filtered.filter(teacher =>
-        `${teacher.first_name} ${teacher.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (teacher.assigned_subjects && teacher.assigned_subjects.some(subject => 
-          subject.name.toLowerCase().includes(searchTerm.toLowerCase())
-        )) ||
-        teacher.qualification.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(teacher => {
+        const teacherName = teacher.full_name || `${teacher.user?.first_name || teacher.first_name || ''} ${teacher.user?.last_name || teacher.last_name || ''}`;
+        const teacherEmail = teacher.user?.email || teacher.email || '';
+        return teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          teacherEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (teacher.assigned_subjects && Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.some(subject => 
+            (subject?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+          )) ||
+          (teacher.qualification || '').toLowerCase().includes(searchTerm.toLowerCase());
+      });
     }
 
     if (statusFilter !== 'all') {
@@ -195,7 +203,7 @@ const TeacherList = () => {
     if (teacherToDelete) {
       try {
         console.log('Attempting to delete teacher:', teacherToDelete.id);
-        await TeacherService.deleteTeacher(teacherToDelete.id);
+        const response = await TeacherService.deleteTeacher(teacherToDelete.id);
         
         // Update the UI immediately after successful deletion
         const teachersArray = Array.isArray(teachers) ? teachers : [];
@@ -206,8 +214,9 @@ const TeacherList = () => {
         setShowDeleteModal(false);
         setTeacherToDelete(null);
         
-        // Show success message
-        toast.success('Teacher deleted successfully');
+        // Show success message from backend response
+        const successMessage = response?.message || 'Teacher deleted successfully';
+        toast.success(successMessage);
         
         console.log('Teacher deleted successfully, UI updated');
       } catch (err: any) {
@@ -304,9 +313,9 @@ const TeacherList = () => {
 
   const getLevelStats = () => {
     const teachersArray = Array.isArray(teachers) ? teachers : [];
-    const nursery = teachersArray.filter(t => t.level === 'nursery' && t.is_active).length;
-    const primary = teachersArray.filter(t => t.level === 'primary' && t.is_active).length;
-    const secondary = teachersArray.filter(t => t.level === 'secondary' && t.is_active).length;
+    const nursery = teachersArray.filter(t => t?.level === 'nursery' && t?.is_active).length;
+    const primary = teachersArray.filter(t => t?.level === 'primary' && t?.is_active).length;
+    const secondary = teachersArray.filter(t => t?.level === 'secondary' && t?.is_active).length;
     return { nursery, primary, secondary, juniorSecondary: 0, seniorSecondary: 0 };
   };
 
@@ -314,7 +323,9 @@ const TeacherList = () => {
 
   // Helper function to get initials from name
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    const first = firstName?.charAt(0) || '';
+    const last = lastName?.charAt(0) || '';
+    return `${first}${last}`.toUpperCase();
   };
 
   // Enhanced profile picture rendering with debugging
@@ -463,7 +474,7 @@ const TeacherList = () => {
               </div>
               <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Active</p>
               <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>
-                {teachers.filter(t => t.is_active).length}
+                {teachers.filter(t => t?.is_active).length}
               </p>
             </div>
           </div>
@@ -493,7 +504,9 @@ const TeacherList = () => {
                   <option value="all">All Levels</option>
                   <option value="nursery">Nursery</option>
                   <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
+                  <option value="junior_secondary">Junior Secondary</option>
+                  <option value="senior_secondary">Senior Secondary</option>
+                  <option value="secondary">Secondary (Legacy)</option>
                 </select>
               </div>
               <div className="relative">
@@ -553,7 +566,7 @@ const TeacherList = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`text-lg font-bold ${themeClasses.textPrimary} leading-tight mb-1`}>
-                        {teacher.first_name} {teacher.last_name}
+                        {teacher.user?.first_name || teacher.first_name} {teacher.user?.last_name || teacher.last_name}
                       </h3>
                       <p className={`${themeClasses.iconPrimary} font-semibold text-sm mb-3 leading-tight`}>
                         {teacher.staff_type === 'teaching' ? 'Teaching Staff' : 'Non-Teaching Staff'}
@@ -562,7 +575,7 @@ const TeacherList = () => {
                         {teacher.level && (
                           <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${getLevelColor(teacher.level)}`}>
                             {getLevelIcon(teacher.level)}
-                            {teacher.level.charAt(0).toUpperCase() + teacher.level.slice(1)}
+                            {teacher.level.charAt(0)?.toUpperCase() + teacher.level.slice(1) || teacher.level}
                           </span>
                         )}
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -582,7 +595,9 @@ const TeacherList = () => {
                   <div className="space-y-3">
                     <div className={`flex items-center ${themeClasses.textSecondary}`}>
                       <Users size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary}`} />
-                      <span className="text-sm break-all leading-relaxed">{teacher.first_name} {teacher.last_name}</span>
+                      <span className="text-sm break-all leading-relaxed">
+                      {teacher.user?.first_name || teacher.first_name} {teacher.user?.last_name || teacher.last_name}
+                    </span>
                     </div>
                     
                     <div className={`flex items-center ${themeClasses.textSecondary}`}>
@@ -605,7 +620,7 @@ const TeacherList = () => {
                       </div>
                     </div>
 
-                    {teacher.assigned_subjects.length > 0 && (
+                    {teacher.assigned_subjects && Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.length > 0 && (
                       <div className={`flex items-start ${themeClasses.textSecondary}`}>
                         <BookOpen size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary} mt-0.5`} />
                         <div>
@@ -618,13 +633,13 @@ const TeacherList = () => {
                     )}
 
                     {/* Display detailed assignments if available */}
-                    {teacher.teacher_assignments && teacher.teacher_assignments.length > 0 && (
+                    {teacher.teacher_assignments && Array.isArray(teacher.teacher_assignments) && teacher.teacher_assignments.length > 0 && (
                       <div className={`flex items-start ${themeClasses.textSecondary}`}>
-                        <BookOpen size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary} mt-0.5`} />
+                        <School size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary} mt-0.5`} />
                         <div>
-                          <span className="text-sm font-medium block">Assignments:</span>
+                          <span className="text-sm font-medium block">Classes & Sections:</span>
                           <div className="text-xs text-gray-500 space-y-1 mt-1">
-                            {teacher.teacher_assignments.slice(0, 2).map((assignment, idx) => (
+                            {teacher.teacher_assignments.slice(0, 3).map((assignment, idx) => (
                               <div key={idx} className="flex items-center">
                                 <span className="bg-blue-100 text-blue-800 px-1 rounded text-xs mr-1">
                                   {assignment.grade_level_name} {assignment.section_name}
@@ -632,9 +647,9 @@ const TeacherList = () => {
                                 <span>{assignment.subject_name}</span>
                               </div>
                             ))}
-                            {teacher.teacher_assignments.length > 2 && (
+                            {teacher.teacher_assignments && Array.isArray(teacher.teacher_assignments) && teacher.teacher_assignments.length > 3 && (
                               <div className="text-xs text-blue-600">
-                                +{teacher.teacher_assignments.length - 2} more assignments
+                                +{teacher.teacher_assignments.length - 3} more classes
                               </div>
                             )}
                           </div>
@@ -741,7 +756,7 @@ const TeacherList = () => {
                         {teacher.level && (
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getLevelColor(teacher.level)}`}>
                             {getLevelIcon(teacher.level)}
-                            {teacher.level.charAt(0).toUpperCase() + teacher.level.slice(1)}
+                            {teacher.level.charAt(0)?.toUpperCase() + teacher.level.slice(1) || teacher.level}
                           </span>
                         )}
                       </td>
@@ -874,7 +889,7 @@ const TeacherList = () => {
                   {selectedTeacher.level && (
                     <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-sm font-semibold ${getLevelColor(selectedTeacher.level)}`}>
                       {getLevelIcon(selectedTeacher.level)}
-                      {selectedTeacher.level.charAt(0).toUpperCase() + selectedTeacher.level.slice(1)}
+                      {selectedTeacher.level.charAt(0)?.toUpperCase() + selectedTeacher.level.slice(1) || selectedTeacher.level}
                     </span>
                   )}
                   <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
@@ -924,7 +939,7 @@ const TeacherList = () => {
                     <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Hire Date</label>
                     <p className={themeClasses.textPrimary}>{new Date(selectedTeacher.hire_date).toLocaleDateString()}</p>
                   </div>
-                  {selectedTeacher.assigned_subjects.length > 0 && (
+                  {selectedTeacher.assigned_subjects && Array.isArray(selectedTeacher.assigned_subjects) && selectedTeacher.assigned_subjects.length > 0 && (
                     <div className="md:col-span-2">
                       <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Assigned Subjects</label>
                       <p className={themeClasses.textPrimary}>
@@ -934,12 +949,12 @@ const TeacherList = () => {
                   )}
 
                   {/* Classroom Assignments */}
-                  {selectedTeacher.classroom_assignments && selectedTeacher.classroom_assignments.length > 0 && (
+                  {selectedTeacher.classroom_assignments && Array.isArray(selectedTeacher.classroom_assignments) && selectedTeacher.classroom_assignments.length > 0 && (
                     <div className="md:col-span-2">
                       <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Classroom Assignments</label>
                       <div className="space-y-3">
                         {selectedTeacher.classroom_assignments.map((assignment, idx) => (
-                          <div key={idx} className={`p-3 rounded-lg border ${assignment.is_class_teacher ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+                          <div key={idx} className={`p-3 rounded-lg border ${assignment.is_primary_teacher ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center space-x-2">
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -950,9 +965,9 @@ const TeacherList = () => {
                                 }`}>
                                   {assignment.grade_level_name} {assignment.section_name}
                                 </span>
-                                {assignment.is_class_teacher && (
+                                {assignment.is_primary_teacher && (
                                   <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                                    Class Teacher
+                                    Primary Teacher
                                   </span>
                                 )}
                               </div>
@@ -996,8 +1011,8 @@ const TeacherList = () => {
                   )}
 
                   {/* Legacy Teacher Assignments (if no classroom assignments) */}
-                  {(!selectedTeacher.classroom_assignments || selectedTeacher.classroom_assignments.length === 0) && 
-                   selectedTeacher.teacher_assignments && selectedTeacher.teacher_assignments.length > 0 && (
+                                    {(!selectedTeacher.classroom_assignments || !Array.isArray(selectedTeacher.classroom_assignments) || selectedTeacher.classroom_assignments.length === 0) &&
+                  selectedTeacher.teacher_assignments && Array.isArray(selectedTeacher.teacher_assignments) && selectedTeacher.teacher_assignments.length > 0 && (
                     <div className="md:col-span-2">
                       <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Subject Assignments</label>
                       <div className="space-y-2">
@@ -1019,6 +1034,20 @@ const TeacherList = () => {
                             </span>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Assignments Message */}
+                  {(!selectedTeacher.classroom_assignments || !Array.isArray(selectedTeacher.classroom_assignments) || selectedTeacher.classroom_assignments.length === 0) &&
+                   (!selectedTeacher.teacher_assignments || !Array.isArray(selectedTeacher.teacher_assignments) || selectedTeacher.teacher_assignments.length === 0) && (
+                    <div className="md:col-span-2">
+                      <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Class Assignments</label>
+                      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center justify-center text-gray-500">
+                          <School size={20} className="mr-2" />
+                          <span className="text-sm">No class assignments found for this teacher</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1086,32 +1115,52 @@ interface EditTeacherFormProps {
 }
 
 const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses, isDark }) => {
+  console.log('🔍 EditTeacherForm received teacher:', teacher);
+  console.log('🔍 Teacher first_name:', teacher?.first_name);
+  console.log('🔍 Teacher last_name:', teacher?.last_name);
+  console.log('🔍 Teacher assigned_subjects:', teacher?.assigned_subjects);
+  console.log('🔍 Teacher user object:', teacher?.user);
+  console.log('🔍 All teacher keys:', Object.keys(teacher || {}));
+  console.log('🔍 Teacher full object:', JSON.stringify(teacher, null, 2));
+  
   const [formData, setFormData] = useState({
-    first_name: teacher.first_name,
-    last_name: teacher.last_name,
-    email: teacher.email,
-    employee_id: teacher.employee_id || '',
-    phone_number: teacher.phone_number || '',
-    address: teacher.address || '',
-    qualification: teacher.qualification || '',
-    specialization: teacher.specialization || '',
-    staff_type: teacher.staff_type,
-    level: teacher.level || undefined,
-    is_active: teacher.is_active,
-    photo: teacher.photo || undefined
+    first_name: teacher?.user?.first_name || teacher?.first_name || '',
+    last_name: teacher?.user?.last_name || teacher?.last_name || '',
+    email: teacher?.user?.email || teacher?.email || '',
+    employee_id: teacher?.employee_id || '',
+    phone_number: teacher?.phone_number || '',
+    address: teacher?.address || '',
+    qualification: teacher?.qualification || '',
+    specialization: teacher?.specialization || '',
+    staff_type: teacher?.staff_type || 'teaching',
+    level: teacher?.level || undefined,
+    is_active: teacher?.is_active ?? true,
+    photo: teacher?.photo || undefined
   });
 
-  const [photoPreview, setPhotoPreview] = useState<string | null>(teacher.photo || null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(teacher?.photo || null);
   const [uploading, setUploading] = useState(false);
   const [subjectOptions, setSubjectOptions] = useState<{id: string, name: string}[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  
+  // New assignment management state
+  const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [currentAssignments, setCurrentAssignments] = useState<Array<{
+    id: string;
+    classroom_id: string | number;
+    subject_id: string;
+    is_primary_teacher: boolean;
+    periods_per_week: number;
+  }>>([]);
 
   // Helper function to get initials from name
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    const first = firstName?.charAt(0) || '';
+    const last = lastName?.charAt(0) || '';
+    return `${first}${last}`.toUpperCase();
   };
 
-  // Load subjects when level changes
+  // Load subjects and classrooms when level changes
   useEffect(() => {
     if (formData.staff_type === 'teaching' && formData.level) {
       let educationLevels: string[] = [];
@@ -1120,6 +1169,10 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         educationLevels = ['NURSERY'];
       } else if (formData.level === 'primary') {
         educationLevels = ['PRIMARY'];
+      } else if (formData.level === 'junior_secondary') {
+        educationLevels = ['JUNIOR_SECONDARY'];
+      } else if (formData.level === 'senior_secondary') {
+        educationLevels = ['SENIOR_SECONDARY'];
       } else if (formData.level === 'secondary') {
         educationLevels = ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
       }
@@ -1147,26 +1200,62 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           setSubjectOptions([]);
         }
       };
+
+      // Fetch classrooms for the selected level
+      const fetchClassrooms = async () => {
+        try {
+          const allClassrooms = new Map();
+          
+          for (const level of educationLevels) {
+            const response = await fetch(`/api/classrooms/classrooms/?section__grade_level__education_level=${level}`);
+            if (response.ok) {
+              const data = await response.json();
+              const classrooms = Array.isArray(data.results) ? data.results : data;
+              
+              classrooms.forEach((classroom: any) => {
+                const displayName = classroom.grade_level_name && classroom.section_name ? 
+                  `${classroom.grade_level_name} ${classroom.section_name}` : 
+                  classroom.name || 'Unnamed Classroom';
+                
+                // Use display name as key to prevent duplicates
+                if (!allClassrooms.has(displayName)) {
+                  allClassrooms.set(displayName, { 
+                    id: classroom.id, 
+                    name: displayName
+                  });
+                }
+              });
+            }
+          }
+          
+          setClassroomOptions(Array.from(allClassrooms.values()));
+        } catch (error) {
+          console.error('Error fetching classrooms:', error);
+          setClassroomOptions([]);
+        }
+      };
       
       fetchSubjects();
+      fetchClassrooms();
     } else {
       setSubjectOptions([]);
+      setClassroomOptions([]);
     }
   }, [formData.staff_type, formData.level]);
 
   // Load current teacher's subjects
   useEffect(() => {
-    console.log('Teacher assigned subjects effect triggered:', teacher.assigned_subjects);
-    if (teacher.assigned_subjects && teacher.assigned_subjects.length > 0) {
-      console.log('Loading teacher assigned subjects:', teacher.assigned_subjects);
+    console.log('🔍 Teacher assigned subjects effect triggered:', teacher?.assigned_subjects);
+    if (teacher?.assigned_subjects && Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.length > 0) {
+      console.log('✅ Loading teacher assigned subjects:', teacher.assigned_subjects);
       const subjectIds = teacher.assigned_subjects.map(s => s.id.toString());
-      console.log('Setting selected subjects:', subjectIds);
+      console.log('✅ Setting selected subjects:', subjectIds);
       setSelectedSubjects(subjectIds);
     } else {
-      console.log('No assigned subjects found for teacher');
+      console.log('❌ No assigned subjects found for teacher');
       setSelectedSubjects([]);
     }
-  }, [teacher.assigned_subjects]);
+  }, [teacher?.assigned_subjects]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -1229,22 +1318,77 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     }
   };
 
+  // Assignment management functions
+  const addAssignment = () => {
+    const newAssignment = {
+      id: Date.now().toString(),
+      classroom_id: '',
+      subject_id: '',
+      is_primary_teacher: false,
+      periods_per_week: 1,
+    };
+    setCurrentAssignments(prev => {
+      const updated = [...prev, newAssignment];
+      return updated;
+    });
+  };
+
+  const removeAssignment = (assignmentId: string) => {
+    setCurrentAssignments(prev => prev.filter(a => a.id !== assignmentId));
+  };
+
+  const updateAssignment = (assignmentId: string, field: string, value: string | boolean | number) => {
+    setCurrentAssignments(prev => 
+      prev.map(assignment => {
+        if (assignment.id === assignmentId) {
+          return { ...assignment, [field]: value };
+        }
+        return assignment;
+      })
+    );
+  };
+
+  // Load current teacher's assignments
+  useEffect(() => {
+    if (teacher.classroom_assignments && Array.isArray(teacher.classroom_assignments) && teacher.classroom_assignments.length > 0) {
+      const assignments = teacher.classroom_assignments.map((assignment, index) => ({
+        id: `existing-${index}`,
+        classroom_id: assignment.classroom_id.toString(),
+        subject_id: '', // We'll need to get this from the assignment
+        is_primary_teacher: assignment.is_primary_teacher,
+        periods_per_week: assignment.periods_per_week,
+      }));
+      setCurrentAssignments(assignments);
+    }
+  }, [teacher.classroom_assignments]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('🔍 Form submission - selectedSubjects:', selectedSubjects);
+    console.log('🔍 Form submission - formData:', formData);
     
     // Prepare data for backend
     const updateData: UpdateTeacherData = {
       ...formData,
-      level: formData.level === 'junior_secondary' || formData.level === 'senior_secondary' ? 'secondary' : formData.level,
+      level: formData.level, // Don't convert to 'secondary', keep the original value
       subjects: selectedSubjects,
       // Map frontend fields to backend expected fields
       user: {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email
-      }
+      },
+      // Include new assignment structure
+      assignments: currentAssignments.map(assignment => ({
+        classroom_id: parseInt(assignment.classroom_id.toString()),
+        subject_id: parseInt(assignment.subject_id),
+        is_primary_teacher: assignment.is_primary_teacher,
+        periods_per_week: assignment.periods_per_week,
+      }))
     };
     
+    console.log('🔍 Final updateData being sent:', updateData);
     onSave(updateData);
   };
 
@@ -1417,7 +1561,9 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
             <option value="">Select Level</option>
             <option value="nursery">Nursery</option>
             <option value="primary">Primary</option>
-            <option value="secondary">Secondary</option>
+            <option value="junior_secondary">Junior Secondary</option>
+            <option value="senior_secondary">Senior Secondary</option>
+            <option value="secondary">Secondary (Legacy)</option>
           </select>
         </div>
 
@@ -1518,6 +1664,112 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
                   </label>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Classroom Assignments (only for teaching staff) */}
+      {formData.staff_type === 'teaching' && formData.level && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>
+              Classroom Assignments
+            </label>
+            <button
+              type="button"
+              onClick={addAssignment}
+              className={`px-3 py-1 text-sm rounded-lg font-medium transition-colors duration-200 ${themeClasses.btnPrimary}`}
+            >
+              Add Assignment
+            </button>
+          </div>
+
+          {currentAssignments.length === 0 ? (
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <p className="text-gray-500 text-sm text-center">
+                No classroom assignments added yet. Click "Add Assignment" to assign this teacher to specific classrooms and subjects.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {currentAssignments.map((assignment, index) => (
+                <div key={assignment.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">Assignment {index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeAssignment(assignment.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Classroom Selection */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Classroom</label>
+                      <select
+                        value={assignment.classroom_id}
+                        onChange={(e) => updateAssignment(assignment.id, 'classroom_id', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Select Classroom</option>
+                        {classroomOptions.map(classroom => (
+                          <option key={classroom.id} value={classroom.id}>
+                            {classroom.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Subject Selection */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                      <select
+                        value={assignment.subject_id}
+                        onChange={(e) => updateAssignment(assignment.id, 'subject_id', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Select Subject</option>
+                        {subjectOptions.map(subject => (
+                          <option key={subject.id} value={subject.id}>
+                            {subject.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Periods per Week */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Periods per Week</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={assignment.periods_per_week}
+                        onChange={(e) => updateAssignment(assignment.id, 'periods_per_week', parseInt(e.target.value) || 1)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+
+                    {/* Primary Teacher Checkbox */}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={`primary-${assignment.id}`}
+                        checked={assignment.is_primary_teacher}
+                        onChange={(e) => updateAssignment(assignment.id, 'is_primary_teacher', e.target.checked)}
+                        className="rounded border-gray-300 mr-2"
+                      />
+                      <label htmlFor={`primary-${assignment.id}`} className="text-xs font-medium text-gray-600 cursor-pointer">
+                        Primary Teacher
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

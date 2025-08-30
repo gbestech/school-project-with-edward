@@ -3,6 +3,7 @@ import DashboardMainContent from '@/components/dashboards/admin/DashboardMainCon
 import AdminDashboard from '@/components/dashboards/admin/Admin';
 import { useAdminAuth } from '@/services/AuthServiceAdmin';
 import api from '@/services/api';
+import { useDashboardRefresh } from '@/hooks/useDashboardRefresh';
 import {
   UserProfile,
   AdminDashboardStats,
@@ -146,7 +147,7 @@ const DashboardHome: React.FC = () => {
             // Add education level mapping
             education_level: studentData?.education_level || 'PRIMARY',
             education_level_display: studentData?.education_level_display || 'Primary',
-            student_class: studentData?.student_class || 'GRADE_1',
+            student_class: studentData?.student_class || 'PRIMARY_1',
             roll_number: studentData?.roll_number || `R${user.id}`,
             academic_year: studentData?.academic_year || new Date().getFullYear().toString(),
             emergency_contact_name: studentData?.emergency_contact_name || '',
@@ -541,6 +542,9 @@ const DashboardHome: React.FC = () => {
   const handleRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
   }, []);
+
+  // Use dashboard refresh hook
+  useDashboardRefresh(handleRefresh);
 
   const handleUserStatusUpdate = useCallback((userId: number, userType: 'student' | 'teacher' | 'parent', isActive: boolean) => {
     setDashboardData(prev => {

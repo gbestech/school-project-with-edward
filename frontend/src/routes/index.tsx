@@ -2,7 +2,7 @@
 // router/index.tsx
 import React from 'react';
 import { createBrowserRouter, Outlet } from 'react-router-dom';
-import { ErrorBoundary } from './../components/ErrorBoundary';
+import ErrorBoundary from './../components/ErrorBoundary';
 import { AuthProvider } from './../hooks/useAuth';
 import { AuthLostProvider } from './../components/common/AuthLostProvider';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
@@ -24,6 +24,7 @@ const TeacherDashboard = lazy(() => import('./../pages/teacher/Dashboard').catch
 const TeacherProfile = lazy(() => import('./../pages/teacher/Profile').catch(() => ({ default: () => <div>Error loading Teacher Profile</div> })));
 const TeacherClasses = lazy(() => import('./../pages/teacher/Classes').catch(() => ({ default: () => <div>Error loading Teacher Classes</div> })));
 const TeacherAttendance = lazy(() => import('./../pages/teacher/Attendance').catch(() => ({ default: () => <div>Error loading Teacher Attendance</div> })));
+const TeacherStudents = lazy(() => import('./../pages/teacher/Students').catch(() => ({ default: () => <div>Error loading Teacher Students</div> })));
 const StudentList = lazy(() => import('./../pages/student/Allstudents').catch(() => ({ default: () => <div>Error loading Student List</div> })));
 const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard').catch(() => ({ default: () => <div>Error loading Parent Dashboard</div> })));
 const NotFound = lazy(() => import('./../pages/NotFound').catch(() => ({ default: () => <div>Page Not Found</div> })));
@@ -47,6 +48,7 @@ const PasswordRecovery = lazy(() => import('./../pages/admin/PasswordRecovery').
 const AdminDashboardContentLoader = lazy(() => import('./../pages/admin/AdminDashboardContentLoader').catch(() => ({ default: () => <div>Error loading Admin Dashboard Content</div> })));
 const AdminLayout = lazy(() => import('./../components/layouts/AdminLayout').catch(() => ({ default: () => <div>Error loading Admin Layout</div> })));
 const SettingsPage = lazy(() => import('./../pages/admin/Settings').catch(() => ({ default: () => <div>Error loading Settings</div> })));
+const MessageManagement = lazy(() => import('./../components/dashboards/admin/MessageManagement').catch(() => ({ default: () => <div>Error loading Message Management</div> })));
 const ThemeTest = lazy(() => import('./../pages/ThemeTestPage').catch(() => ({ default: () => <div>Error loading Theme Test</div> })));
 const TestHooks = lazy(() => import('./../components/TestHooks').catch(() => ({ default: () => <div>Error loading Test Hooks</div> })));
 const StudentLoginPage = lazy(() => import('./../pages/StudentLoginPage').catch(() => ({ default: () => <div>Error loading Student Login</div> })));
@@ -151,7 +153,7 @@ const RootLayout = () => {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
       <ContactRibbon />
-      <div className="pt-24" id="main-content"> {/* Reduced padding to account for fixed navbar */}
+      <div className="pt-0" id="main-content"> {/* Let individual components handle their own padding */}
         <Suspense fallback={<LoadingSpinner />}>
           <Outlet />
         </Suspense>
@@ -329,6 +331,11 @@ export const router = createBrowserRouter([
         path: 'attendance',
         element: <TeacherAttendance />,
         errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'students/:classId',
+        element: <TeacherStudents />,
+        errorElement: <RouteErrorElement />
       }
     ]
   },
@@ -426,6 +433,11 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <SettingsPage />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'messages',
+        element: <MessageManagement />,
         errorElement: <RouteErrorElement />
       },
       {

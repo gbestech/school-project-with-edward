@@ -49,6 +49,7 @@ class SubjectSerializer(serializers.ModelSerializer):
     # Nested serialization for related fields
     grade_levels = serializers.StringRelatedField(many=True, read_only=True)
     prerequisites = serializers.StringRelatedField(many=True, read_only=True)
+    compatible_streams = serializers.StringRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Subject
@@ -80,6 +81,13 @@ class SubjectSerializer(serializers.ModelSerializer):
 
             "is_compulsory",
             "is_core",
+            # Elective subject management
+            "is_elective",
+            "elective_group",
+            "min_electives_required",
+            "max_electives_allowed",
+            # Stream compatibility
+            "compatible_streams",
             # Prerequisites and dependencies
             "prerequisites",
             "prerequisite_subjects",
@@ -296,9 +304,10 @@ class SubjectSerializer(serializers.ModelSerializer):
         # Enhanced format validation for new code structure
         import re
 
-        if not re.match(r"^[A-Z]{2,6}-[A-Z]{2,4}$", value):
+        # Updated regex to support new naming convention with dots and descriptive codes
+        if not re.match(r"^[A-Z][A-Z0-9\.\-]{1,14}$", value):
             raise serializers.ValidationError(
-                "Subject code must follow format: SUBJECT-LEVEL (e.g., MATH-NUR, ENG-PRI, PHY-SS)"
+                "Subject code must follow format: SUBJECT-LEVEL (e.g., Maths-N-NUR, Eng.S-PRI, Chem. Core-Sc-SSS)"
             )
 
         return value
@@ -586,7 +595,20 @@ class SubjectCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_code(self, value):
         """Ensure subject code is unique and properly formatted"""
+        if not value:
+            raise serializers.ValidationError("Subject code is required.")
+
+        # Convert to uppercase
         value = value.upper()
+
+        # Enhanced format validation for new code structure
+        import re
+
+        # Updated regex to support new naming convention with dots and descriptive codes
+        if not re.match(r"^[A-Z][A-Z0-9\.\-]{1,14}$", value):
+            raise serializers.ValidationError(
+                "Subject code must follow format: SUBJECT-LEVEL (e.g., Maths-N-NUR, Eng.S-PRI, Chem. Core-Sc-SSS)"
+            )
 
         # Check uniqueness (excluding current instance during updates)
         queryset = Subject.objects.filter(code=value)

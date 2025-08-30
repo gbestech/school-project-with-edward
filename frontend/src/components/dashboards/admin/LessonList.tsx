@@ -288,8 +288,8 @@ const LessonList: React.FC<LessonListProps> = ({
       <div className="overflow-x-auto">
         {/* Table Header */}
         <div className={`px-6 py-4 border-b ${themeClasses.border} ${themeClasses.bgSecondary}`}>
-          <div className="grid grid-cols-12 gap-4 items-center min-w-[1200px]">
-          <div className="col-span-3">
+          <div className="grid grid-cols-12 gap-4 items-center min-w-[1400px]">
+          <div className="col-span-2">
             <SortableHeader field="title" label="Lesson" />
           </div>
           <div className="col-span-2">
@@ -300,6 +300,9 @@ const LessonList: React.FC<LessonListProps> = ({
           </div>
           <div className="col-span-1">
             <SortableHeader field="subject_name" label="Subject" />
+          </div>
+          <div className="col-span-1">
+            <span>Stream</span>
           </div>
           <div className="col-span-1">
             <SortableHeader field="date" label="Date" />
@@ -322,9 +325,9 @@ const LessonList: React.FC<LessonListProps> = ({
           <div key={lesson.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group`}>
             {/* Main Row */}
             <div className="px-6 py-4">
-              <div className="grid grid-cols-12 gap-4 items-center min-w-[1200px]">
-                {/* Lesson Title */}
-                <div className="col-span-3">
+                          <div className="grid grid-cols-12 gap-4 items-center min-w-[1400px]">
+              {/* Lesson Title */}
+              <div className="col-span-2">
                   <div className="flex items-center space-x-3">
                     <span className="text-lg">
                       {LessonService.getLessonTypeIcon(lesson.lesson_type)}
@@ -361,6 +364,13 @@ const LessonList: React.FC<LessonListProps> = ({
                 <div className="col-span-1">
                   <span className={`${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white truncate`}>
                     {lesson.subject_name}
+                  </span>
+                </div>
+
+                {/* Stream */}
+                <div className="col-span-1">
+                  <span className={`${themeClasses.textSecondary} group-hover:text-gray-900 dark:group-hover:text-white truncate`}>
+                    {lesson.classroom_stream_name || '-'}
                   </span>
                 </div>
 

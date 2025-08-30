@@ -44,12 +44,12 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
 
   // Data for dropdowns
   const [teachers, setTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
-  const [classrooms, setClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string }>>([]);
+  const [classrooms, setClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string; stream_name?: string; stream_type?: string }>>([]);
   const [subjects, setSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
   const [sections, setSections] = useState<Array<{ id: number; name: string; grade_level_name: string }>>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
-  const [filteredClassrooms, setFilteredClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string }>>([]);
+  const [filteredClassrooms, setFilteredClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string; stream_name?: string; stream_type?: string }>>([]);
   const [selectedSection, setSelectedSection] = useState<number>(0);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -140,6 +140,9 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       // Reset to all options
       setFilteredSubjects(subjects);
       setFilteredClassrooms(classrooms);
+      // Reset form data when teacher is deselected
+      setFormData(prev => ({ ...prev, subject: 0, classroom: 0 }));
+      setSelectedSection(0);
       return;
     }
 
@@ -151,22 +154,45 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       // Get classrooms for this teacher
       const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${teacherId}`);
       setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
+      
+      // Reset dependent fields when teacher changes
+      setFormData(prev => ({ ...prev, subject: 0, classroom: 0 }));
+      setSelectedSection(0);
     } catch (error) {
       console.error('Error loading teacher dependencies:', error);
+      // Fallback to all options on error
+      setFilteredSubjects(subjects);
+      setFilteredClassrooms(classrooms);
     }
   };
 
   const handleSubjectChange = async (subjectId: number) => {
     if (subjectId === 0) {
-      // Reset to all options
-      setFilteredTeachers(teachers);
+      // Reset classroom to all teacher's classrooms
+      if (formData.teacher) {
+        try {
+          const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${formData.teacher}`);
+          setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
+        } catch (error) {
+          console.error('Error loading teacher classrooms:', error);
+        }
+      }
+      // Reset form data when subject is deselected
+      setFormData(prev => ({ ...prev, classroom: 0 }));
+      setSelectedSection(0);
       return;
     }
 
     try {
-      // Get teachers for this subject
-      const subjectTeachers = await api.get(`/api/lessons/lessons/subject_teachers/?subject_id=${subjectId}`);
-      setFilteredTeachers(Array.isArray(subjectTeachers) ? subjectTeachers : []);
+      // Filter classrooms to only those where the teacher teaches this specific subject
+      if (formData.teacher) {
+        const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${formData.teacher}&subject_id=${subjectId}`);
+        setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
+      }
+      
+      // Reset dependent fields when subject changes
+      setFormData(prev => ({ ...prev, classroom: 0 }));
+      setSelectedSection(0);
     } catch (error) {
       console.error('Error loading subject dependencies:', error);
     }
@@ -174,49 +200,41 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
 
   const handleSectionChange = (sectionId: number) => {
     setSelectedSection(sectionId);
-    // Reset classroom, subject, and teacher when section changes
-    setFormData(prev => ({ ...prev, classroom: 0, subject: 0, teacher: 0 }));
-    setFilteredTeachers(teachers);
-    setFilteredSubjects(subjects);
+    
     if (sectionId === 0) {
-      setFilteredClassrooms(classrooms);
+      // When deselecting section, restore all teacher's classrooms
+      if (formData.teacher) {
+        handleTeacherChange(formData.teacher);
+      }
+      // Don't reset form data when deselecting section
     } else {
-      const filtered = classrooms.filter(classroom => classroom.section?.id === sectionId);
+      // When selecting a section, filter classrooms to only those in that section
+      const filtered = filteredClassrooms.filter(classroom => classroom.section?.id === sectionId);
       setFilteredClassrooms(filtered);
+      
+      // Reset classroom when section changes (but keep teacher and subject)
+      setFormData(prev => ({ ...prev, classroom: 0 }));
     }
   };
 
   const handleClassroomChange = async (classroomId: number) => {
     if (classroomId === 0) {
-      // Reset to all subjects
-      setFilteredSubjects(subjects);
+      // Reset section selection
+      setSelectedSection(0);
       return;
     }
 
     try {
-      // Find the selected classroom to get its grade level
-      const selectedClassroom = classrooms.find(c => c.id === classroomId);
+      // Find the selected classroom to get its section
+      const selectedClassroom = filteredClassrooms.find(c => c.id === classroomId);
       if (!selectedClassroom) return;
 
-      // Determine education level based on grade level name
-      let educationLevel = 'PRIMARY'; // default
-      const gradeLevelName = selectedClassroom.section?.grade_level?.name || '';
-      
-      if (gradeLevelName.startsWith('JSS')) {
-        educationLevel = 'JUNIOR_SECONDARY';
-      } else if (gradeLevelName.startsWith('SS')) {
-        educationLevel = 'SENIOR_SECONDARY';
-      } else if (gradeLevelName.includes('Nursery')) {
-        educationLevel = 'NURSERY';
-      }
-
-      // Get subjects for this education level
-      const levelSubjects = await api.get(`/api/lessons/lessons/subjects_by_level/?education_level=${educationLevel}`);
-      setFilteredSubjects(Array.isArray(levelSubjects) ? levelSubjects : []);
+      // The classroom change doesn't need to filter subjects or teachers anymore
+      // since they're already filtered by the teacher selection
+      // Just reset section selection
+      setSelectedSection(0);
     } catch (error) {
-      console.error('Error loading subjects for education level:', error);
-      // Fallback to all subjects
-      setFilteredSubjects(subjects);
+      console.error('Error handling classroom change:', error);
     }
   };
 
@@ -333,84 +351,20 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
               />
               <span className="text-xs text-gray-400">Provide a brief summary or context for the lesson topic.</span>
             </div>
-            {/* Assignment Order: Section -> Classroom -> Subject -> Teacher */}
+            {/* Assignment Order: Teacher -> Subject -> Classroom -> Section */}
             <div className="space-y-4">
               <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} flex items-center space-x-2`}>
                 <Users size={20} className={themeClasses.iconPrimary} />
                 <span>Assignment (Follow the order below)</span>
               </h3>
 
-              {/* 1. Section/Grade Level */}
+              {/* 1. Teacher */}
               <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Section / Grade Level <span className="text-xs text-gray-400">(Start here)</span></label>
-                <select
-                  value={selectedSection}
-                  onChange={(e) => handleSectionChange(parseInt(e.target.value))}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  disabled={loadingData}
-                >
-                  <option value={0}>All Sections</option>
-                  {Array.isArray(sections) && sections.map(section => (
-                    <option key={section.id} value={section.id}>
-                      {section.name} - {section.grade_level_name}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-gray-400">Select a section to filter classrooms. <span className="text-orange-500">Changing section/grade will reset classroom, subject, and teacher selections.</span></span>
-              </div>
-
-              {/* 2. Classroom */}
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Classroom *</label>
-                <select
-                  value={formData.classroom}
-                  onChange={(e) => handleInputChange('classroom', parseInt(e.target.value))}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  required
-                  disabled={loadingData}
-                >
-                  <option value={0}>
-                    {loadingData ? 'Loading classrooms...' : 'Select a classroom'}
-                  </option>
-                  {Array.isArray(filteredClassrooms) && filteredClassrooms.map(classroom => (
-                    <option key={classroom.id} value={classroom.id}>
-                      {classroom.name} - {classroom.grade_level_name || classroom.section?.grade_level?.name || 'Unknown Grade'}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-gray-400">Select a classroom to filter subjects.</span>
-              </div>
-
-              {/* 3. Subject */}
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Subject *</label>
-                <select
-                  value={formData.subject}
-                  onChange={(e) => handleInputChange('subject', parseInt(e.target.value))}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  required
-                  disabled={loadingData}
-                >
-                  <option value={0}>
-                    {loadingData ? 'Loading subjects...' : 'Select a subject'}
-                  </option>
-                  {Array.isArray(filteredSubjects) && filteredSubjects.map(subject => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name} ({subject.code})
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-gray-400">Select a subject to filter teachers.</span>
-              </div>
-
-              {/* 4. Teacher */}
-              <div>
-                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Teacher *</label>
+                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Teacher <span className="text-xs text-gray-400">(Start here)</span></label>
                 <select
                   value={formData.teacher}
                   onChange={(e) => handleInputChange('teacher', parseInt(e.target.value))}
                   className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  required
                   disabled={loadingData}
                 >
                   <option value={0}>
@@ -422,7 +376,82 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
                     </option>
                   ))}
                 </select>
-                <span className="text-xs text-gray-400">Choose a teacher for this subject and classroom.</span>
+                <span className="text-xs text-gray-400">Select a teacher to see their assigned subjects and classrooms. <span className="text-orange-500">Changing teacher will reset subject, classroom, and section selections.</span></span>
+              </div>
+
+              {/* 2. Subject */}
+              <div>
+                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Subject *</label>
+                <select
+                  value={formData.subject}
+                  onChange={(e) => handleInputChange('subject', parseInt(e.target.value))}
+                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  required
+                  disabled={loadingData || !formData.teacher}
+                >
+                  <option value={0}>
+                    {!formData.teacher ? 'Select a teacher first' : loadingData ? 'Loading subjects...' : 'Select a subject'}
+                  </option>
+                  {Array.isArray(filteredSubjects) && filteredSubjects.map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name} ({subject.code})
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">
+                  Select a subject assigned to the chosen teacher.
+                </span>
+              </div>
+
+              {/* 3. Classroom */}
+              <div>
+                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Classroom *</label>
+                <select
+                  value={formData.classroom}
+                  onChange={(e) => handleInputChange('classroom', parseInt(e.target.value))}
+                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  required
+                  disabled={loadingData || !formData.teacher}
+                >
+                  <option value={0}>
+                    {!formData.teacher ? 'Select a teacher first' : loadingData ? 'Loading classrooms...' : 'Select a classroom'}
+                  </option>
+                  {Array.isArray(filteredClassrooms) && filteredClassrooms.map(classroom => (
+                    <option key={classroom.id} value={classroom.id}>
+                      {classroom.name} - {classroom.grade_level_name || classroom.section?.grade_level?.name || 'Unknown Grade'}
+                      {classroom.stream_name && ` (${classroom.stream_name})`}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">
+                  Select a classroom where the teacher is assigned.
+                  {formData.classroom && filteredClassrooms.find(c => c.id === formData.classroom)?.stream_name && (
+                    <span className="block mt-1 text-blue-600">
+                      Stream: {filteredClassrooms.find(c => c.id === formData.classroom)?.stream_name}
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {/* 4. Section */}
+              <div>
+                <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Section</label>
+                <select
+                  value={selectedSection}
+                  onChange={(e) => handleSectionChange(parseInt(e.target.value))}
+                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  disabled={loadingData || !formData.classroom}
+                >
+                  <option value={0}>
+                    {!formData.classroom ? 'Select a classroom first' : 'All Sections'}
+                  </option>
+                  {Array.isArray(sections) && sections.map(section => (
+                    <option key={section.id} value={section.id}>
+                      {section.name} - {section.grade_level_name}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-gray-400">Optionally select a specific section to filter further.</span>
               </div>
             </div>
 

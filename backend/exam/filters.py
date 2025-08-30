@@ -8,6 +8,7 @@ from .models import (
     DIFFICULTY_CHOICES,
 )
 from academics.models import Term
+from classroom.models import Stream
 
 
 class ExamFilter(django_filters.FilterSet):
@@ -76,6 +77,14 @@ class ExamFilter(django_filters.FilterSet):
         empty_label="All Difficulties",
         widget=forms.Select(attrs={"class": "form-control"}),
         label="Difficulty",
+    )
+
+    # Stream filter for Senior Secondary
+    stream = django_filters.ModelChoiceFilter(
+        queryset=Stream.objects.all(),
+        empty_label="All Streams",
+        widget=forms.Select(attrs={"class": "form-control"}),
+        label="Stream",
     )
 
     # Academic session filter

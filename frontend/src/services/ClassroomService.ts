@@ -4,7 +4,9 @@ export interface Teacher {
   id: number;
   first_name: string;
   last_name: string;
+  full_name?: string;
   email: string;
+  phone_number?: string;
   employee_id: string;
   level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary';
   is_active: boolean;
@@ -23,6 +25,30 @@ export interface Subject {
   is_active: boolean;
 }
 
+// Updated to use the new ClassroomTeacherAssignment model
+export interface ClassroomTeacherAssignment {
+  id: number;
+  teacher: number; // teacher ID
+  subject: number; // subject ID
+  classroom: number; // classroom ID
+  classroom_name?: string;
+  // Teacher details as separate fields
+  teacher_name?: string;
+  teacher_email?: string;
+  teacher_phone?: string;
+  teacher_employee_id?: string;
+  teacher_first_name?: string;
+  teacher_last_name?: string;
+  // Subject details as separate fields
+  subject_name?: string;
+  subject_code?: string;
+  is_primary_teacher: boolean;
+  periods_per_week: number;
+  assigned_date: string;
+  is_active: boolean;
+}
+
+// Legacy interface for backward compatibility (deprecated)
 export interface TeacherAssignment {
   id: number;
   teacher: Teacher;
@@ -44,6 +70,8 @@ export interface Classroom {
   term_name: string;
   class_teacher: number | null;
   class_teacher_name: string;
+  class_teacher_phone?: string;
+  class_teacher_employee_id?: string;
   room_number: string;
   max_capacity: number;
   current_enrollment: number;
@@ -53,7 +81,14 @@ export interface Classroom {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  teacher_assignments?: TeacherAssignment[];
+  // Stream information for Senior Secondary
+  stream?: number;
+  stream_name?: string;
+  stream_type?: string;
+  // Updated to use new assignment model
+  teacher_assignments?: ClassroomTeacherAssignment[];
+  // Legacy field for backward compatibility
+  old_teacher_assignments?: TeacherAssignment[];
 }
 
 export interface ClassroomStats {
@@ -76,6 +111,7 @@ export interface CreateClassroomData {
   class_teacher?: number;
   room_number?: string;
   max_capacity: number;
+  stream?: number; // New field for Senior Secondary streams
 }
 
 export interface UpdateClassroomData extends Partial<CreateClassroomData> {
@@ -85,11 +121,28 @@ export interface UpdateClassroomData extends Partial<CreateClassroomData> {
 export interface AssignTeacherData {
   teacher_id: number;
   subject_id: number;
+  is_primary_teacher?: boolean;
+  periods_per_week?: number;
 }
 
 export interface RemoveTeacherAssignmentData {
   teacher_id: number;
   subject_id: number;
+}
+
+// New interface for enhanced teacher assignment
+export interface CreateTeacherAssignmentData {
+  classroom_id: number;
+  teacher_id: number;
+  subject_id: number;
+  is_primary_teacher?: boolean;
+  periods_per_week?: number;
+}
+
+export interface UpdateTeacherAssignmentData {
+  is_primary_teacher?: boolean;
+  periods_per_week?: number;
+  is_active?: boolean;
 }
 
 class ClassroomService {
@@ -126,7 +179,7 @@ class ClassroomService {
   }
 
   // Delete a classroom
-  async deleteClassroom(id: number) {
+  async deleteClassroom(id: number): Promise<{ message: string; status: string }> {
     const response = await api.delete(`/api/classrooms/classrooms/${id}/`);
     return response;
   }
@@ -149,7 +202,7 @@ class ClassroomService {
     return response;
   }
 
-  // Assign teacher to classroom
+  // Assign teacher to classroom (using new ClassroomTeacherAssignment model)
   async assignTeacherToClassroom(classroomId: number, data: AssignTeacherData) {
     const response = await api.post(`/api/classrooms/classrooms/${classroomId}/assign_teacher/`, data);
     return response;
@@ -158,6 +211,31 @@ class ClassroomService {
   // Remove teacher assignment from classroom
   async removeTeacherFromClassroom(classroomId: number, data: RemoveTeacherAssignmentData) {
     const response = await api.post(`/api/classrooms/classrooms/${classroomId}/remove_teacher/`, data);
+    return response;
+  }
+
+  // New methods for enhanced teacher assignment management
+  async createTeacherAssignment(data: CreateTeacherAssignmentData) {
+    const response = await api.post('/api/classrooms/teacher-assignments/', data);
+    return response;
+  }
+
+  async updateTeacherAssignment(assignmentId: number, data: UpdateTeacherAssignmentData) {
+    const response = await api.patch(`/api/classrooms/teacher-assignments/${assignmentId}/`, data);
+    return response;
+  }
+
+  async deleteTeacherAssignment(assignmentId: number) {
+    const response = await api.delete(`/api/classrooms/teacher-assignments/${assignmentId}/`);
+    return response;
+  }
+
+  async getTeacherAssignments(classroomId?: number, teacherId?: number) {
+    const params: any = {};
+    if (classroomId) params.classroom = classroomId;
+    if (teacherId) params.teacher = teacherId;
+    
+    const response = await api.get('/api/classrooms/teacher-assignments/', { params });
     return response;
   }
 
@@ -210,9 +288,11 @@ class ClassroomService {
     return response;
   }
 
-  // Auto-assign teachers based on their qualifications
-  async autoAssignTeachers() {
-    const response = await api.post('/api/classrooms/classrooms/auto-assign/');
+
+
+  // Get streams for Senior Secondary
+  async getStreams() {
+    const response = await api.get('/api/classrooms/streams/');
     return response;
   }
 }

@@ -81,9 +81,9 @@ const HeroSection: React.FC = () => {
   }, []);
 
   // Calculate top padding based on ContactRibbon visibility
-  // When ContactRibbon visible: navbar at top-16 (64px) + navbar height (64px) = 128px
-  // When ContactRibbon hidden: navbar at top-0 (0px) + navbar height (64px) = 64px
-  const topPadding = contactRibbonVisible ? 'pt-32' : 'pt-16'; // 128px when ribbon visible, 64px when not
+  // When ContactRibbon visible: ContactRibbon height (~64px) + navbar height (64px) + extra margin = 160px
+  // When ContactRibbon hidden: navbar height (64px) + extra margin = 96px
+  const topPadding = contactRibbonVisible ? 'pt-40' : 'pt-24'; // 160px when ribbon visible, 96px when not
 
   // Admin event management state
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
@@ -416,7 +416,7 @@ const HeroSection: React.FC = () => {
         ? 'linear-gradient(135deg, #0f172a 0%, #312e81 50%, #581c87 100%)'
         : `linear-gradient(135deg, ${currentTheme.background.replace('from-', '').replace(' via-', ', ').replace(' to-', ', ')})`
     }}>
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-8 py-12">
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-8 py-12 mt-8">
         <div className="max-w-8xl mx-auto w-full text-center">
           
           {/* Ultra Premium Badge */}
@@ -1054,7 +1054,7 @@ const HeroSection: React.FC = () => {
         </div>
         
         {/* Main content */}
-        <div className="flex-1 flex flex-col justify-center px-6 lg:px-8 py-20">
+        <div className="flex-1 flex flex-col justify-center px-6 lg:px-8 py-20 mt-8">
           <div className="max-w-4xl mx-auto w-full text-center">
             <h1 className="text-5xl sm:text-7xl font-black mb-12 leading-tight">
               <span className="bg-gradient-to-r from-slate-800 via-blue-800 to-slate-700 dark:from-white dark:via-blue-100 dark:to-slate-200 bg-clip-text text-transparent">

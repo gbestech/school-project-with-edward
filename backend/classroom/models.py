@@ -56,6 +56,31 @@ class Section(models.Model):
         return f"{self.grade_level.name} - Section {self.name}"
 
 
+class Stream(models.Model):
+    """Stream model for Senior Secondary education (Science, Arts, Commercial, Technical)"""
+
+    STREAM_CHOICES = [
+        ("SCIENCE", "Science"),
+        ("ARTS", "Arts"),
+        ("COMMERCIAL", "Commercial"),
+        ("TECHNICAL", "Technical"),
+    ]
+
+    name = models.CharField(max_length=50)
+    code = models.CharField(max_length=10, unique=True)
+    stream_type = models.CharField(max_length=20, choices=STREAM_CHOICES)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["stream_type", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_stream_type_display()})"
+
+
 class AcademicYear(models.Model):
     """Academic year management"""
 
@@ -190,6 +215,16 @@ class Classroom(models.Model):
         AcademicYear, on_delete=models.CASCADE, related_name="classrooms"
     )
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="classrooms")
+    
+    # Stream support for Senior Secondary
+    stream = models.ForeignKey(
+        Stream, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="classrooms",
+        help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)"
+    )
 
     # Teacher assignments - Now using teacher.Teacher model
     class_teacher = models.ForeignKey(
@@ -253,6 +288,16 @@ class ClassroomTeacherAssignment(models.Model):
         "teacher.Teacher", on_delete=models.CASCADE
     )  # Reference to teacher app's Teacher model
     subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
+    
+    # Enhanced assignment details
+    is_primary_teacher = models.BooleanField(
+        default=False,
+        help_text="Whether this teacher is the primary teacher for this subject in this classroom"
+    )
+    periods_per_week = models.PositiveIntegerField(
+        default=1,
+        help_text="Number of periods per week for this subject"
+    )
     assigned_date = models.DateField(default=get_current_date)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

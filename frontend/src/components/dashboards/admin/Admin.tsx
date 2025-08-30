@@ -28,6 +28,7 @@ import {
   Key,
   AlertTriangle
 } from 'lucide-react';
+import StudentResultChecker from './StudentResultChecker';
 import {
   UserProfile,  
  
@@ -132,6 +133,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [parentDropdownOpen, setParentDropdownOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState('General');
+  const [showStudentResultChecker, setShowStudentResultChecker] = useState(false);
   const settingsTabs = [
     'General',
     'Design',
@@ -305,6 +307,7 @@ console.log("Total Students:", totalStudents);
     { name: 'Lessons', icon: Clock, path: '/admin/lessons' },
     { name: 'Exams', icon: FileText, path: '/admin/exams' },
     { name: 'Results', icon: BarChart3, path: '/admin/results' },
+    { name: 'Student Result Checker', icon: Search, path: '/admin/student-result-checker' },
     { name: 'Messages', icon: MessageSquare, path: '/admin/messages' },
     { name: 'Announcements', icon: Bell, path: '/admin/announcements' },
     // Show Settings second to last for super admins, or based on permissions for regular users
@@ -406,7 +409,14 @@ console.log("Total Students:", totalStudents);
 
   // Handle navigation item click
   const handleNavigationClick = (itemName: string, path?: string) => {
-      setActiveItem(itemName);
+    setActiveItem(itemName);
+    
+    // Handle special cases
+    if (itemName === 'Student Result Checker') {
+      setShowStudentResultChecker(true);
+      return;
+    }
+    
     if (path) navigate(path);
   };
 
@@ -714,6 +724,11 @@ console.log("Total Students:", totalStudents);
         >
           <Key className="w-6 h-6" strokeWidth={2} />
         </button>
+
+        {/* Student Result Checker Modal */}
+        {showStudentResultChecker && (
+          <StudentResultChecker onClose={() => setShowStudentResultChecker(false)} />
+        )}
       </div>
     </div>
   );

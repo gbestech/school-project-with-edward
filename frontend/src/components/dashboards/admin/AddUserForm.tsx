@@ -5,6 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
+import { triggerDashboardRefresh } from '@/hooks/useDashboardRefresh';
 
 // --- Student Form Types ---
 type StudentFormData = {
@@ -20,6 +21,7 @@ type StudentFormData = {
   academicYear: string;
   education_level: string;
   student_class: string;
+  stream: string; // <-- Add stream field
   registration_number: string; // <-- Add registration number
   existing_parent_id: string;
   parentFirstName: string;
@@ -44,57 +46,63 @@ const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const educationLevels = [
   { value: 'NURSERY', label: 'Nursery' },
   { value: 'PRIMARY', label: 'Primary' },
-  { value: 'SECONDARY', label: 'Secondary' },
+  { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
+  { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
 ];
 const studentClassesByLevel: Record<string, { value: string; label: string }[]> = {
   NURSERY: [
+    { value: 'PRE_NURSERY', label: 'Pre-nursery' },
     { value: 'NURSERY_1', label: 'Nursery 1' },
     { value: 'NURSERY_2', label: 'Nursery 2' },
-    { value: 'PRE_K', label: 'Pre-K' },
-    { value: 'KINDERGARTEN', label: 'Kindergarten' },
   ],
   PRIMARY: [
-    { value: 'GRADE_1', label: 'Grade 1' },
-    { value: 'GRADE_2', label: 'Grade 2' },
-    { value: 'GRADE_3', label: 'Grade 3' },
-    { value: 'GRADE_4', label: 'Grade 4' },
-    { value: 'GRADE_5', label: 'Grade 5' },
-    { value: 'GRADE_6', label: 'Grade 6' },
+    { value: 'PRIMARY_1', label: 'Primary 1' },
+    { value: 'PRIMARY_2', label: 'Primary 2' },
+    { value: 'PRIMARY_3', label: 'Primary 3' },
+    { value: 'PRIMARY_4', label: 'Primary 4' },
+    { value: 'PRIMARY_5', label: 'Primary 5' },
+    { value: 'PRIMARY_6', label: 'Primary 6' },
   ],
-  SECONDARY: [
-    { value: 'GRADE_7', label: 'Grade 7' },
-    { value: 'GRADE_8', label: 'Grade 8' },
-    { value: 'GRADE_9', label: 'Grade 9' },
-    { value: 'GRADE_10', label: 'Grade 10' },
-    { value: 'GRADE_11', label: 'Grade 11' },
-    { value: 'GRADE_12', label: 'Grade 12' },
+  JUNIOR_SECONDARY: [
+    { value: 'JSS_1', label: 'Junior Secondary 1 (JSS1)' },
+    { value: 'JSS_2', label: 'Junior Secondary 2 (JSS2)' },
+    { value: 'JSS_3', label: 'Junior Secondary 3 (JSS3)' },
+  ],
+  SENIOR_SECONDARY: [
+    { value: 'SS_1', label: 'Senior Secondary 1 (SS1)' },
+    { value: 'SS_2', label: 'Senior Secondary 2 (SS2)' },
+    { value: 'SS_3', label: 'Senior Secondary 3 (SS3)' },
   ],
 };
 // Map student_class to valid classrooms
 const classroomsByStudentClass: Record<string, string[]> = {
   // Nursery
-  NURSERY_1: ['Pre-Nursery A', 'Pre-Nursery B', 'Nursery 1 A', 'Nursery 1 B'],
+  PRE_NURSERY: ['Pre-Nursery A', 'Pre-Nursery B'],
+  NURSERY_1: ['Nursery 1 A', 'Nursery 1 B'],
   NURSERY_2: ['Nursery 2 A', 'Nursery 2 B'],
-  PRE_K: ['Pre-K'],
-  KINDERGARTEN: ['Kindergarten'],
   // Primary
-  GRADE_1: ['Primary 1 A', 'Primary 1 B'],
-  GRADE_2: ['Primary 2 A', 'Primary 2 B'],
-  GRADE_3: ['Primary 3 A', 'Primary 3 B'],
-  GRADE_4: ['Primary 4 A', 'Primary 4 B'],
-  GRADE_5: ['Primary 5 A', 'Primary 5 B'],
-  GRADE_6: ['Primary 6 A', 'Primary 6 B'],
-  // Secondary
-  GRADE_7: ['JSS1 A', 'JSS1 B'],
-  GRADE_8: ['JSS2 A', 'JSS2 B'],
-  GRADE_9: ['JSS3 A', 'JSS3 B'],
-  GRADE_10: ['SS1 A', 'SS1 B'],
-  GRADE_11: ['SS2 A', 'SS2 B'],
-  GRADE_12: ['SS3 A', 'SS3 B'],
+  PRIMARY_1: ['Primary 1 A', 'Primary 1 B'],
+  PRIMARY_2: ['Primary 2 A', 'Primary 2 B'],
+  PRIMARY_3: ['Primary 3 A', 'Primary 3 B'],
+  PRIMARY_4: ['Primary 4 A', 'Primary 4 B'],
+  PRIMARY_5: ['Primary 5 A', 'Primary 5 B'],
+  PRIMARY_6: ['Primary 6 A', 'Primary 6 B'],
+  // Junior Secondary
+  JSS_1: ['JSS1 A', 'JSS1 B'],
+  JSS_2: ['JSS2 A', 'JSS2 B'],
+  JSS_3: ['JSS3 A', 'JSS3 B'],
+  // Senior Secondary
+  SS_1: ['SS1 A', 'SS1 B'],
+  SS_2: ['SS2 A', 'SS2 B'],
+  SS_3: ['SS3 A', 'SS3 B'],
 };
 
 // --- Student Form ---
-const AddStudentForm: React.FC = () => {
+interface AddStudentFormProps {
+  onStudentAdded?: () => void;
+}
+
+const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [formData, setFormData] = useState<StudentFormData>({
     photo: null,
     firstName: '',
@@ -108,6 +116,7 @@ const AddStudentForm: React.FC = () => {
     academicYear: '',
     education_level: '',
     student_class: '',
+    stream: '', // <-- Add stream field
     registration_number: '', // <-- Add registration number
     existing_parent_id: '',
     parentFirstName: '',
@@ -142,6 +151,7 @@ const AddStudentForm: React.FC = () => {
   const [useParentEmail, setUseParentEmail] = useState(false); // <-- Add this line
   const [uploading, setUploading] = useState(false); // For Cloudinary upload status
   const [photoPreview, setPhotoPreview] = useState<string | null>(null); // For preview
+  const [streams, setStreams] = useState<any[]>([]); // For stream options
 
   // Handler for searching parent by username
   const handleParentUsernameSearch = async () => {
@@ -197,6 +207,20 @@ const AddStudentForm: React.FC = () => {
       setFormData(prev => ({ ...prev, email: parentEmail }));
     }
   }, [useParentEmail, selectedParent, parentDetails]);
+
+  // Fetch streams for Senior Secondary students
+  useEffect(() => {
+    const fetchStreams = async () => {
+      try {
+        const response = await api.get('/api/classrooms/streams/');
+        setStreams(response || []);
+      } catch (error) {
+        console.error('Error fetching streams:', error);
+        setStreams([]);
+      }
+    };
+    fetchStreams();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -261,6 +285,7 @@ const AddStudentForm: React.FC = () => {
         academic_year: formData.academicYear,
         education_level: formData.education_level,
         student_class: formData.student_class,
+        stream: formData.stream || null,
         registration_number: formData.registration_number,
         classroom: formData.classroom,
         address: formData.address,
@@ -286,6 +311,15 @@ const AddStudentForm: React.FC = () => {
       const response = await api.post('/api/students/', payload);
       setSuccess('Student and Parent created successfully!');
       toast.success('Student and Parent added successfully');
+      
+      // Trigger dashboard refresh to update recent students
+      triggerDashboardRefresh();
+      
+      // Call the callback to refresh dashboard data
+      if (onStudentAdded) {
+        onStudentAdded();
+      }
+      
       if (response) {
         setStudentUsername(response.student_username);
         setStudentPassword(response.student_password);
@@ -308,6 +342,7 @@ const AddStudentForm: React.FC = () => {
           academicYear: '',
           education_level: '',
           student_class: '',
+          stream: '',
           registration_number: '', // <-- Add registration number
           existing_parent_id: '',
           parentFirstName: '',
@@ -379,7 +414,7 @@ const AddStudentForm: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Education Level*</label>
             <select name="education_level" value={formData.education_level || ''} onChange={e => {
               handleInputChange(e);
-              setFormData(prev => ({ ...prev, student_class: '', classroom: '' })); // Reset class and classroom
+              setFormData(prev => ({ ...prev, student_class: '', classroom: '', stream: '' })); // Reset class, classroom, and stream
             }} className="w-full p-3 border border-gray-300 rounded-lg">
               <option value="">Select Level</option>
               {educationLevels.map(level => (
@@ -391,7 +426,7 @@ const AddStudentForm: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Student Class*</label>
             <select name="student_class" value={formData.student_class || ''} onChange={e => {
               handleInputChange(e);
-              setFormData(prev => ({ ...prev, classroom: '' })); // Reset classroom
+              setFormData(prev => ({ ...prev, classroom: '', stream: '' })); // Reset classroom and stream
             }} className="w-full p-3 border border-gray-300 rounded-lg" required>
               <option value="">Select Class</option>
               {filteredStudentClasses.map(cls => (
@@ -400,6 +435,25 @@ const AddStudentForm: React.FC = () => {
             </select>
           </div>
         </div>
+        {/* Stream Selection for Senior Secondary */}
+        {formData.education_level === 'SENIOR_SECONDARY' && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Stream (Optional)</label>
+            <select
+              name="stream"
+              value={formData.stream || ''}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select Stream (Optional)</option>
+              {streams.map((stream) => (
+                <option key={stream.id} value={stream.id}>
+                  {stream.name} ({stream.stream_type})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {/* Registration Number */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">Registration Number</label>

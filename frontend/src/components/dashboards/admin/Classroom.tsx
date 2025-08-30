@@ -26,36 +26,71 @@ import {
 // Mock subjects data (would typically come from a subjects API)
 const mockSubjects = {
   nursery: [
-    { id: 1, name: 'Play Activities', code: 'PA' },
-    { id: 2, name: 'Early Learning', code: 'EL' },
-    { id: 3, name: 'Creative Arts', code: 'CA' },
-    { id: 4, name: 'Physical Development', code: 'PD' },
-    { id: 5, name: 'Language Development', code: 'LD' }
+    { id: 1, name: 'Mathematics (Numbers)', code: 'Maths-N-NUR' },
+    { id: 2, name: 'Moral and Value Studies', code: 'MVS-NUR' },
+    { id: 3, name: 'Craft', code: 'CRAFT-NUR' },
+    { id: 4, name: 'Rhymes', code: 'RHYMES-NUR' },
+    { id: 5, name: 'Social studies', code: 'So.s-NUR' },
+    { id: 6, name: 'Writing skill', code: 'Wri-S-NUR' },
+    { id: 7, name: 'English (Alphabet)', code: 'Eng.An-NUR' },
+    { id: 8, name: 'Basic Science', code: 'BS-NUR' },
+    { id: 9, name: 'Physical and Health Education', code: 'PHE-NUR' },
+    { id: 10, name: 'Computer Studies', code: 'Comp.S-NUR' },
+    { id: 11, name: 'Christian Religious Studies', code: 'CRS-NUR' },
+    { id: 12, name: 'Colouring activities', code: 'Col.A-NUR' }
   ],
   primary: [
-    { id: 6, name: 'Mathematics', code: 'MATH' },
-    { id: 7, name: 'English Language', code: 'ENG' },
-    { id: 8, name: 'Science', code: 'SCI' },
-    { id: 9, name: 'Social Studies', code: 'SS' },
-    { id: 10, name: 'Physical Education', code: 'PE' },
-    { id: 11, name: 'Art & Craft', code: 'ART' },
-    { id: 12, name: 'Computer Studies', code: 'CS' },
-    { id: 13, name: 'Religious Studies', code: 'RS' }
+    { id: 13, name: 'Cultural and Creative Arts', code: 'CCA-PRI' },
+    { id: 14, name: 'National Values', code: 'N.V-PRI' },
+    { id: 15, name: 'French', code: 'FRENCH-PRI' },
+    { id: 16, name: 'Hand writing', code: 'H.W-PRI' },
+    { id: 17, name: 'Basic Science and Technology', code: 'BST-PRI' },
+    { id: 18, name: 'History', code: 'HISTORY-PRI' },
+    { id: 19, name: 'Mathematics', code: 'Maths-PRI' },
+    { id: 20, name: 'English Studies', code: 'ENG.S-PRI' },
+    { id: 21, name: 'Christian Religious Studies', code: 'CRS-PRI' },
+    { id: 22, name: 'Pre-vocational Studies', code: 'PVS-PRI' }
   ],
-  secondary: [
-    { id: 14, name: 'Mathematics', code: 'MATH' },
-    { id: 15, name: 'English Language', code: 'ENG' },
-    { id: 16, name: 'Physics', code: 'PHY' },
-    { id: 17, name: 'Chemistry', code: 'CHEM' },
-    { id: 18, name: 'Biology', code: 'BIO' },
-    { id: 19, name: 'Geography', code: 'GEO' },
-    { id: 20, name: 'History', code: 'HIST' },
-    { id: 21, name: 'Economics', code: 'ECON' },
-    { id: 22, name: 'Government', code: 'GOV' },
-    { id: 23, name: 'Literature', code: 'LIT' },
-    { id: 24, name: 'Further Mathematics', code: 'FMATH' },
-    { id: 25, name: 'Computer Science', code: 'CS' },
-    { id: 26, name: 'Technical Drawing', code: 'TD' }
+  junior_secondary: [
+    { id: 23, name: 'English Studies', code: 'ENG-JSS' },
+    { id: 24, name: 'Mathematics', code: 'MAT-JSS' },
+    { id: 25, name: 'National Values', code: 'NV-JSS' },
+    { id: 26, name: 'Civic Education', code: 'CIV-JSS' },
+    { id: 27, name: 'Security Education', code: 'SEC-JSS' },
+    { id: 28, name: 'Social Studies', code: 'SOC-JSS' },
+    { id: 29, name: 'Basic Science and Technology', code: 'BST-JSS' },
+    { id: 30, name: 'Basic Technology', code: 'BAT-JSS' },
+    { id: 31, name: 'Information Technology', code: 'IT-JSS' },
+    { id: 32, name: 'Basic Science', code: 'BAS-JSS' },
+    { id: 33, name: 'Physical and Health Education', code: 'PHE-JSS' },
+    { id: 34, name: 'Pre-Vocational Studies', code: 'PVS-JSS' },
+    { id: 35, name: 'Agricultural Science', code: 'AGR-JSS' },
+    { id: 36, name: 'Home Economics', code: 'HE-JSS' },
+    { id: 37, name: 'Business Studies', code: 'BUSINESSSTUDIES-JSS' },
+    { id: 38, name: 'History', code: 'HIS-JSS' },
+    { id: 39, name: 'Cultural and Creative Arts', code: 'CCA-JSS' },
+    { id: 40, name: 'Hausa', code: 'HAUSA-JSS' },
+    { id: 41, name: 'Christian Religious Studies', code: 'CRS-JSS' }
+  ],
+  senior_secondary: [
+    { id: 42, name: 'English', code: 'Eng.-Cro-SSS' },
+         { id: 43, name: 'Mathematics', code: 'Math-Cro-SSS' },
+     { id: 44, name: 'Civic Education', code: 'CIV-Cro-SSS' },
+    { id: 45, name: 'Chemistry', code: 'Chem. Core-Sc-SSS' },
+    { id: 46, name: 'Physics', code: 'Phy-Core-Sc-SSS' },
+    { id: 47, name: 'Literature in English', code: 'Lt.Eng-Art-SSS' },
+    { id: 48, name: 'Government', code: 'Gov.-Art-SSS' },
+    { id: 49, name: 'Physical and Health Education', code: 'PHE-Elec-SSS' },
+    { id: 50, name: 'Accounting', code: 'ACC. Core-Hum-SSS' },
+    { id: 51, name: 'Economics', code: 'Econs-Hum-SSS' },
+    { id: 52, name: 'Agricultural Science', code: 'Agric-Elec-SSS' },
+    { id: 53, name: 'Animal Husbandry', code: 'A.Hus-Elec-SSS' },
+    { id: 54, name: 'Biology', code: 'Bio-Elec-SSS' },
+    { id: 55, name: 'Commerce', code: 'Comm-Elec-SSS' },
+    { id: 56, name: 'Computer studies', code: 'Comp.S-Elec-SSS' },
+    { id: 57, name: 'Data processing', code: 'D.P-Elec-SSS' },
+    { id: 58, name: 'Food and Nutrition', code: 'F.Nurt-Elec-SSS' },
+    { id: 60, name: 'Christian Religious Studies', code: 'CRS-Elec-SSS' }
   ]
 };
 
@@ -75,7 +110,7 @@ const mockTeachers = [
 interface Classroom {
   id: number;
   name: string;
-  level: 'nursery' | 'primary' | 'secondary';
+  level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary';
   grade: string;
   capacity: number;
   currentEnrollment: number;
@@ -90,7 +125,7 @@ interface Classroom {
 }
 
 // Mock classroom data
-type Level = 'nursery' | 'primary' | 'secondary';
+type Level = 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary';
 
 const mockClassrooms: Classroom[] = [
   {
@@ -103,7 +138,7 @@ const mockClassrooms: Classroom[] = [
     room: 'Room 101',
     building: 'Early Learning Block',
     classTeacher: 'Sarah Johnson',
-    subjects: [1, 2, 3, 4, 5],
+    subjects: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     schedule: 'Morning (8:00 AM - 12:00 PM)',
     academicYear: '2024/2025',
     status: 'active',
@@ -119,7 +154,7 @@ const mockClassrooms: Classroom[] = [
     room: 'Room 204',
     building: 'Primary Block',
     classTeacher: 'Emily Rodriguez',
-    subjects: [6, 7, 8, 9, 10, 11],
+    subjects: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
     schedule: 'Full Day (8:00 AM - 3:00 PM)',
     academicYear: '2024/2025',
     status: 'active',
@@ -127,15 +162,31 @@ const mockClassrooms: Classroom[] = [
   },
   {
     id: 3,
+    name: 'JSS2A',
+    level: 'junior_secondary',
+    grade: 'JSS 2',
+    capacity: 35,
+    currentEnrollment: 32,
+    room: 'Room 301',
+    building: 'Junior Secondary Block',
+    classTeacher: 'Michael Chen',
+    subjects: [23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41],
+    schedule: 'Full Day (7:30 AM - 3:30 PM)',
+    academicYear: '2024/2025',
+    status: 'active',
+    createdDate: '2024-02-01'
+  },
+  {
+    id: 4,
     name: 'SS2 Science',
-    level: 'secondary',
+    level: 'senior_secondary',
     grade: 'SS 2',
     capacity: 40,
     currentEnrollment: 38,
-    room: 'Room 301',
-    building: 'Secondary Block',
-    classTeacher: 'Michael Chen',
-    subjects: [14, 15, 16, 17, 18, 24],
+    room: 'Room 401',
+    building: 'Senior Secondary Block',
+    classTeacher: 'David Thompson',
+    subjects: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 60],
     schedule: 'Full Day (7:30 AM - 3:30 PM)',
     academicYear: '2024/2025',
     status: 'active',
@@ -223,7 +274,8 @@ const ClassroomManagement = () => {
     switch(level) {
       case 'nursery': return <Baby size={20} />;
       case 'primary': return <BookOpen size={20} />;
-      case 'secondary': return <School size={20} />;
+      case 'junior_secondary': return <School size={20} />;
+      case 'senior_secondary': return <GraduationCap size={20} />;
       default: return <GraduationCap size={20} />;
     }
   };
@@ -232,7 +284,8 @@ const ClassroomManagement = () => {
     switch(level) {
       case 'nursery': return 'bg-pink-100 text-pink-800 border-pink-200';
       case 'primary': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'secondary': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'junior_secondary': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'senior_secondary': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -241,12 +294,13 @@ const ClassroomManagement = () => {
     switch(level) {
       case 'nursery': return ['Nursery 1', 'Nursery 2'];
       case 'primary': return ['Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6'];
-      case 'secondary': return ['JS 1', 'JS 2', 'JS 3', 'SS 1', 'SS 2', 'SS 3'];
+      case 'junior_secondary': return ['JSS 1', 'JSS 2', 'JSS 3'];
+      case 'senior_secondary': return ['SS 1', 'SS 2', 'SS 3'];
       default: return [];
     }
   };
 
-  const getAvailableSubjects = (level: 'nursery' | 'primary' | 'secondary') => {
+  const getAvailableSubjects = (level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary') => {
     return mockSubjects[level] || [];
   };
 
@@ -360,7 +414,12 @@ const ClassroomManagement = () => {
   };
 
   const getSubjectNames = (subjectIds: number[]) => {
-    const allSubjects = [...mockSubjects.nursery, ...mockSubjects.primary, ...mockSubjects.secondary];
+    const allSubjects = [
+      ...mockSubjects.nursery, 
+      ...mockSubjects.primary, 
+      ...mockSubjects.junior_secondary, 
+      ...mockSubjects.senior_secondary
+    ];
     return subjectIds.map(id => {
       const subject = allSubjects.find(s => s.id === id);
       return subject ? subject.name : 'Unknown Subject';
@@ -372,10 +431,11 @@ const ClassroomManagement = () => {
     const active = classrooms.filter(c => c.status === 'active').length;
     const nursery = classrooms.filter(c => c.level === 'nursery').length;
     const primary = classrooms.filter(c => c.level === 'primary').length;
-    const secondary = classrooms.filter(c => c.level === 'secondary').length;
+    const junior_secondary = classrooms.filter(c => c.level === 'junior_secondary').length;
+    const senior_secondary = classrooms.filter(c => c.level === 'senior_secondary').length;
     const totalEnrollment = classrooms.reduce((sum, c) => sum + c.currentEnrollment, 0);
 
-    return { total, active, nursery, primary, secondary, totalEnrollment };
+    return { total, active, nursery, primary, junior_secondary, senior_secondary, totalEnrollment };
   };
 
   const stats = getStats();
@@ -403,8 +463,8 @@ const ClassroomManagement = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
+                 {/* Stats Cards */}
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 mb-8">
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex flex-col justify-center items-center">
               <div className="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -453,17 +513,29 @@ const ClassroomManagement = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                <School size={24} />
-              </div>
-              <div className="ml-4">
-                <p className="text-gray-600 text-sm">Secondary</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.secondary}</p>
-              </div>
-            </div>
-          </div>
+                     <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+             <div className="flex items-center">
+               <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                 <School size={24} />
+               </div>
+               <div className="ml-4">
+                 <p className="text-gray-600 text-sm">Junior Secondary</p>
+                 <p className="text-2xl font-bold text-gray-900">{stats.junior_secondary}</p>
+               </div>
+             </div>
+           </div>
+
+           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+             <div className="flex items-center">
+               <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                 <GraduationCap size={24} />
+               </div>
+               <div className="ml-4">
+                 <p className="text-gray-600 text-sm">Senior Secondary</p>
+                 <p className="text-2xl font-bold text-gray-900">{stats.senior_secondary}</p>
+               </div>
+             </div>
+           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center">
@@ -502,7 +574,9 @@ const ClassroomManagement = () => {
                   <option value="all">All Levels</option>
                   <option value="nursery">Nursery</option>
                   <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
+                  <option value="junior_secondary">Junior Secondary</option>
+                  <option value="senior_secondary">Senior Secondary</option>
+                  <option value="secondary">Secondary (Legacy)</option>
                 </select>
               </div>
               <div className="relative">
@@ -673,10 +747,11 @@ const ClassroomManagement = () => {
                     errors.level ? 'border-red-500' : 'border-gray-200'
                   }`}
                 >
-                  <option value="">Select Level</option>
-                  <option value="nursery">Nursery</option>
-                  <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
+                                     <option value="">Select Level</option>
+                   <option value="nursery">Nursery</option>
+                   <option value="primary">Primary</option>
+                   <option value="junior_secondary">Junior Secondary</option>
+                   <option value="senior_secondary">Senior Secondary</option>
                 </select>
                 {errors.level && <p className="text-red-500 text-sm mt-1">{errors.level}</p>}
               </div>

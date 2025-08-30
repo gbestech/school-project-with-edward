@@ -71,6 +71,7 @@ export default function SeniorSecondaryTermlyResult({ studentData }: ResultSheet
     name: studentData?.name || "John Doe",
     className: studentData?.class || "SSS 2",
     year: studentData?.academicSession || "2025",
+    term: studentData?.term || "1st",
     age: 16,
     average: 72,
     classAge: 16,

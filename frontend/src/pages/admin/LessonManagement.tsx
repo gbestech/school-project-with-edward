@@ -39,6 +39,7 @@ const LessonManagement: React.FC = () => {
   const [teacherFilter, setTeacherFilter] = useState<number | null>(null);
   const [classroomFilter, setClassroomFilter] = useState<number | null>(null);
   const [subjectFilter, setSubjectFilter] = useState<number | null>(null);
+  const [streamFilter, setStreamFilter] = useState<string>('all');
 
     // Theme classes
   const themeClasses = {
@@ -80,6 +81,7 @@ const LessonManagement: React.FC = () => {
           teacher_id: teacherFilter || undefined,
           classroom_id: classroomFilter || undefined,
           subject_id: subjectFilter || undefined,
+          stream_filter: streamFilter !== 'all' ? streamFilter : undefined,
         }),
         LessonService.getStatistics()
       ]);
@@ -113,7 +115,7 @@ const LessonManagement: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [searchTerm, statusFilter, dateFilter, teacherFilter, classroomFilter, subjectFilter]);
+  }, [searchTerm, statusFilter, dateFilter, teacherFilter, classroomFilter, subjectFilter, streamFilter]);
 
   // Handle lesson actions
   const handleStartLesson = async (lessonId: number) => {
@@ -205,6 +207,14 @@ const LessonManagement: React.FC = () => {
     { value: 'this_week', label: 'This Week' },
     { value: 'next_week', label: 'Next Week' },
     { value: 'overdue', label: 'Overdue' },
+  ];
+
+  const streamOptions = [
+    { value: 'all', label: 'All Streams' },
+    { value: 'Science', label: 'Science' },
+    { value: 'Arts', label: 'Arts' },
+    { value: 'Commercial', label: 'Commercial' },
+    { value: 'Technical', label: 'Technical' },
   ];
 
   if (loading && lessons.length === 0) {
@@ -374,6 +384,19 @@ const LessonManagement: React.FC = () => {
             className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
           >
             {dateOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Stream Filter */}
+          <select
+            value={streamFilter}
+            onChange={(e) => setStreamFilter(e.target.value)}
+            className={`px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          >
+            {streamOptions.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

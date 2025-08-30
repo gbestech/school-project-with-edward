@@ -35,6 +35,7 @@ export interface TeacherUpcomingEvent {
 export interface TeacherClassData {
   id: number;
   name: string;
+  section_id: number;
   section_name: string;
   grade_level_name: string;
   education_level: string;
@@ -43,7 +44,10 @@ export interface TeacherClassData {
   subject_name: string;
   subject_code: string;
   room_number: string;
-  is_class_teacher: boolean;
+  is_primary_teacher: boolean;
+  periods_per_week: number;
+  stream_name?: string;
+  stream_type?: string;
 }
 
 export interface TeacherSubjectData {
@@ -280,8 +284,9 @@ class TeacherDashboardService {
       
       // Transform to match TeacherClassData interface
       return classroomAssignments.map((assignment: any) => ({
-        id: assignment.id,
+        id: assignment.classroom_id, // Use classroom_id instead of assignment.id
         name: assignment.classroom_name,
+        section_id: assignment.section_id, // Add section_id for attendance
         section_name: assignment.section_name,
         grade_level_name: assignment.grade_level_name,
         education_level: assignment.education_level,
@@ -290,7 +295,10 @@ class TeacherDashboardService {
         subject_name: assignment.subject_name,
         subject_code: assignment.subject_code,
         room_number: assignment.room_number,
-        is_class_teacher: assignment.is_class_teacher
+        is_primary_teacher: assignment.is_primary_teacher,
+        periods_per_week: assignment.periods_per_week,
+        stream_name: assignment.stream_name,
+        stream_type: assignment.stream_type
       }));
     } catch (error) {
       console.error('Error fetching teacher classes:', error);
@@ -313,13 +321,17 @@ class TeacherDashboardService {
         return Number(teacherId);
       }
       
-      // If not found, try to get from user ID
+      // If not found in teacher_data, try to get from user ID
       const userId = user?.id;
       if (userId) {
+        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Trying to find teacher by user ID:', userId);
+        
         // Try to find teacher by user ID
         const teachersResponse = await TeacherService.getTeachers({ 
           search: user?.email || user?.username 
         });
+        
+        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Teachers response:', teachersResponse);
         
         if (teachersResponse.results && teachersResponse.results.length > 0) {
           // Find teacher that matches the current user
@@ -328,11 +340,25 @@ class TeacherDashboardService {
           );
           
           if (teacher) {
+            console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Found teacher by user ID:', teacher.id);
             return Number(teacher.id);
           }
         }
+        
+        // If still not found, try a more direct approach
+        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Trying direct teacher lookup...');
+        try {
+          const directTeacherResponse = await TeacherService.getTeacherByUserId(userId);
+          if (directTeacherResponse && directTeacherResponse.id) {
+            console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Found teacher by direct lookup:', directTeacherResponse.id);
+            return Number(directTeacherResponse.id);
+          }
+        } catch (directError) {
+          console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Direct lookup failed:', directError);
+        }
       }
       
+      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - No teacher ID found');
       return null;
     } catch (error) {
       console.error('Error getting teacher ID from user:', error);

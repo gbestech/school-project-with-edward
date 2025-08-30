@@ -20,6 +20,10 @@ const ParentListNew: React.FC = () => {
   const [showCredentialModal, setShowCredentialModal] = useState(false);
   const [parentUsername, setParentUsername] = useState<string | null>(null);
   const [parentPassword, setParentPassword] = useState<string | null>(null);
+  
+  // Filter states
+  const [streamFilter, setStreamFilter] = useState<string>('all');
+  const [educationLevelFilter, setEducationLevelFilter] = useState<string>('all');
 
   // Fetch parents from API
   const fetchParents = async () => {
@@ -68,12 +72,23 @@ const ParentListNew: React.FC = () => {
       const firstName = parent.user_first_name || '';
       const lastName = parent.user_last_name || '';
       
-      return userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             lastName.toLowerCase().includes(searchTerm.toLowerCase());
+      // Search filter
+      const matchesSearch = userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           lastName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Stream filter
+      const matchesStream = streamFilter === 'all' || 
+        parent.students.some(child => child.stream_name === streamFilter);
+      
+      // Education level filter
+      const matchesEducationLevel = educationLevelFilter === 'all' || 
+        parent.students.some(child => child.education_level_display === educationLevelFilter);
+      
+      return matchesSearch && matchesStream && matchesEducationLevel;
     });
     setFilteredParents(filtered);
-  }, [searchTerm, parents]);
+  }, [searchTerm, parents, streamFilter, educationLevelFilter]);
 
   // Toggle parent activation status
   const handleToggleStatus = async (parent: Parent) => {
@@ -269,6 +284,29 @@ const ParentListNew: React.FC = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              <select
+                value={educationLevelFilter}
+                onChange={(e) => setEducationLevelFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Education Levels</option>
+                <option value="Nursery">Nursery</option>
+                <option value="Primary">Primary</option>
+                <option value="Junior Secondary">Junior Secondary</option>
+                <option value="Senior Secondary">Senior Secondary</option>
+                <option value="Secondary (Legacy)">Secondary (Legacy)</option>
+              </select>
+              <select
+                value={streamFilter}
+                onChange={(e) => setStreamFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Streams</option>
+                <option value="Science">Science</option>
+                <option value="Arts">Arts</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Technical">Technical</option>
+              </select>
               <span className="text-sm text-gray-600 flex items-center">
                 {filteredParents.length} of {parents.length} parents
               </span>
@@ -327,7 +365,10 @@ const ParentListNew: React.FC = () => {
                         <div key={child.id} className="flex items-center gap-2 text-sm">
                           <GraduationCap className="w-3 h-3 text-gray-400 flex-shrink-0" />
                           <span className="text-gray-600 truncate flex-1">{child.full_name}</span>
-                          <span className="text-xs text-gray-400 flex-shrink-0">({child.education_level})</span>
+                          <span className="text-xs text-gray-400 flex-shrink-0">
+                            ({child.education_level_display || child.education_level})
+                            {child.stream_name && ` - ${child.stream_name}`}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -385,6 +426,7 @@ const ParentListNew: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Children</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Streams</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -408,6 +450,22 @@ const ParentListNew: React.FC = () => {
                         <div className="text-sm text-gray-900">{parent.students.length} child{parent.students.length !== 1 ? 'ren' : ''}</div>
                         <div className="text-sm text-gray-500">
                           {parent.students.map(child => child.full_name).join(', ')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {parent.students
+                            .filter(child => child.stream_name)
+                            .map(child => child.stream_name)
+                            .filter((stream, index, arr) => arr.indexOf(stream) === index)
+                            .join(', ') || 'None'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {parent.students
+                            .filter(child => child.education_level_display)
+                            .map(child => child.education_level_display)
+                            .filter((level, index, arr) => arr.indexOf(level) === index)
+                            .join(', ')}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -664,8 +722,18 @@ const ParentModal: React.FC<ParentModalProps> = ({ parent, mode, onSave, onClose
                   {parent.students.map((child) => (
                     <div key={child.id} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                       <GraduationCap className="w-4 h-4 text-gray-400" />
-                      <span className="text-gray-900">{child.full_name}</span>
-                      <span className="text-sm text-gray-500">({child.education_level})</span>
+                      <div className="flex-1">
+                        <span className="text-gray-900 font-medium">{child.full_name}</span>
+                        <div className="text-sm text-gray-500">
+                          {child.education_level_display || child.education_level}
+                          {child.student_class_display && ` - ${child.student_class_display}`}
+                          {child.stream_name && (
+                            <span className="text-blue-600 ml-1">
+                              ({child.stream_name} {child.stream_type})
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

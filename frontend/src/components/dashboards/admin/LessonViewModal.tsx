@@ -28,7 +28,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, getLessonAttendance, updateLessonAttendance, LessonAttendanceRecordBackend } from '../../../services/LessonService';
+import { Lesson, getLessonAttendance, updateLessonAttendance, LessonAttendanceRecordBackend, LessonService } from '../../../services/LessonService';
 import LessonProgressTracker from './LessonProgressTracker';
 
 interface LessonViewModalProps {
@@ -54,8 +54,20 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
       setAttendanceTabLoading(true);
       setAttendanceTabError(null);
       getLessonAttendance({ lesson_id: lesson.id })
-        .then((data) => setLessonAttendance(data.results || data))
-        .catch(() => setAttendanceTabError('Failed to load attendance'))
+        .then((data) => {
+          const attendanceData = data.results || data || [];
+          setLessonAttendance(Array.isArray(attendanceData) ? attendanceData : []);
+        })
+        .catch((error) => {
+          console.error('Error loading lesson attendance:', error);
+          // Only show error for actual failures, not for empty results
+          if (error.response && error.response.status === 404) {
+            // No attendance records found - this is normal
+            setLessonAttendance([]);
+          } else {
+            setAttendanceTabError('Failed to load attendance');
+          }
+        })
         .finally(() => setAttendanceTabLoading(false));
     }
   }, [activeTab, lesson.id]);
@@ -155,12 +167,34 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
                     </span>
                     <span>•</span>
                     <span>{lesson.classroom_name}</span>
+                    {lesson.classroom_stream_name && (
+                      <>
+                        <span>•</span>
+                        <span>{lesson.classroom_stream_name}</span>
+                      </>
+                    )}
                     <span>•</span>
                     <span>{lesson.subject_name}</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center space-x-3">
+                {(lesson.status === 'completed' || lesson.status === 'in_progress') && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await LessonService.downloadLessonReport(lesson.id);
+                      } catch (error) {
+                        console.error('Failed to download report:', error);
+                        // You could add a toast notification here
+                      }
+                    }}
+                    className="p-3 bg-white bg-opacity-20 rounded-full backdrop-blur-sm hover:bg-opacity-30 transition-all duration-200"
+                    title="Download Lesson Report"
+                  >
+                    <Download size={20} />
+                  </button>
+                )}
                 <button
                   onClick={onEdit}
                   className="p-3 bg-white bg-opacity-20 rounded-full backdrop-blur-sm hover:bg-opacity-30 transition-all duration-200"
@@ -588,43 +622,54 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
               </div>
               {attendanceTabLoading && <div className="text-blue-600">Loading attendance...</div>}
               {attendanceTabError && <div className="text-red-600">{attendanceTabError}</div>}
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arrival Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lessonAttendance.map((record) => (
-                      <tr key={record.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.student}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <select
-                            value={record.status}
-                            onChange={(e) => handleAttendanceStatusChange(record, e.target.value)}
-                            className="px-2 py-1 border rounded"
-                            disabled={attendanceTabLoading}
-                          >
-                            {attendanceStatuses.map((status) => (
-                              <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.arrival_time || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.notes || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {/* Optionally add delete/edit buttons here */}
-                        </td>
+              
+              {!attendanceTabLoading && !attendanceTabError && lessonAttendance.length === 0 && (
+                <div className="text-center py-8">
+                  <Users size={48} className={`mx-auto mb-4 ${themeClasses.iconSecondary}`} />
+                  <p className={`${themeClasses.textSecondary} mb-4`}>No students marked as attended for this lesson</p>
+                  <p className={`text-sm ${themeClasses.textTertiary}`}>Attendance records will appear here once students are marked present</p>
+                </div>
+              )}
+              
+              {!attendanceTabLoading && !attendanceTabError && lessonAttendance.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arrival Time</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lessonAttendance.map((record) => (
+                        <tr key={record.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.student}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <select
+                              value={record.status}
+                              onChange={(e) => handleAttendanceStatusChange(record, e.target.value)}
+                              className="px-2 py-1 border rounded"
+                              disabled={attendanceTabLoading}
+                            >
+                              {attendanceStatuses.map((status) => (
+                                <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.arrival_time || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.notes || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {/* Optionally add delete/edit buttons here */}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

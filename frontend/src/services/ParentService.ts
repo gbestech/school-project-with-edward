@@ -27,6 +27,10 @@ export interface Child {
   last_name: string;
   full_name: string;
   education_level: string;
+  education_level_display?: string;
+  student_class_display?: string;
+  stream_name?: string;
+  stream_type?: string;
 }
 
 export interface CreateParentData {

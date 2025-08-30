@@ -5,6 +5,7 @@ from parent.models import ParentProfile
 from django.contrib.auth.models import BaseUserManager, User
 from django.contrib.auth.base_user import AbstractBaseUser
 from utils import generate_unique_username
+from classroom.models import Stream
 
 
 class StudentDetailSerializer(serializers.ModelSerializer):
@@ -28,6 +29,14 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     section_id = serializers.SerializerMethodField()
+    stream = serializers.PrimaryKeyRelatedField(
+        queryset=Stream.objects.all(),
+        required=False,
+        allow_null=True,
+        help_text="Stream for Senior Secondary students"
+    )
+    stream_name = serializers.CharField(source='stream.name', read_only=True)
+    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
 
     class Meta:
         model = Student
@@ -57,6 +66,9 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             "profile_picture",
             "classroom",
             "section_id",
+            "stream",
+            "stream_name",
+            "stream_type",
         ]
         read_only_fields = ["id", "admission_date", "education_level"]
 
@@ -157,9 +169,22 @@ class StudentDetailSerializer(serializers.ModelSerializer):
                     'SS1': 'SS 1',
                     'SS2': 'SS 2',
                     'SS3': 'SS 3',
+                    'SS_1': 'SS 1',
+                    'SS_2': 'SS 2',
+                    'SS_3': 'SS 3',
                     'JSS1': 'JSS 1',
                     'JSS2': 'JSS 2',
                     'JSS3': 'JSS 3',
+                    'JSS_1': 'JSS 1',
+                    'JSS_2': 'JSS 2',
+                    'JSS_3': 'JSS 3',
+                    # Add mappings for the actual classroom names used
+                    'PRIMARY_1': 'Primary 1',
+                    'PRIMARY_2': 'Primary 2',
+                    'PRIMARY_3': 'Primary 3',
+                    'PRIMARY_4': 'Primary 4',
+                    'PRIMARY_5': 'Primary 5',
+                    'PRIMARY_6': 'Primary 6',
                 }
                 
                 grade_name = class_to_grade.get(obj.student_class)
@@ -177,22 +202,22 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         if self.instance:  # Only validate on updates
             education_level = self.instance.education_level
 
-            nursery_classes = ["NURSERY_1", "NURSERY_2", "PRE_K", "KINDERGARTEN"]
+            nursery_classes = ["PRE_NURSERY", "NURSERY_1", "NURSERY_2"]
             primary_classes = [
-                "GRADE_1",
-                "GRADE_2",
-                "GRADE_3",
-                "GRADE_4",
-                "GRADE_5",
-                "GRADE_6",
+                "PRIMARY_1",
+                "PRIMARY_2",
+                "PRIMARY_3",
+                "PRIMARY_4",
+                "PRIMARY_5",
+                "PRIMARY_6",
             ]
             secondary_classes = [
-                "GRADE_7",
-                "GRADE_8",
-                "GRADE_9",
-                "GRADE_10",
-                "GRADE_11",
-                "GRADE_12",
+                "JSS_1",
+                "JSS_2",
+                "JSS_3",
+                "SS_1",
+                "SS_2",
+                "SS_3",
             ]
 
             if education_level == "NURSERY" and value not in nursery_classes:
@@ -203,7 +228,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Selected class is not valid for primary level students."
                 )
-            elif education_level == "SECONDARY" and value not in secondary_classes:
+            elif education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"] and value not in secondary_classes:
                 raise serializers.ValidationError(
                     "Selected class is not valid for secondary level students."
                 )
@@ -257,6 +282,15 @@ class StudentListSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     section_id = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField()
+    stream = serializers.PrimaryKeyRelatedField(
+        queryset=Stream.objects.all(),
+        required=False,
+        allow_null=True,
+        help_text="Stream for Senior Secondary students"
+    )
+    stream_name = serializers.CharField(source='stream.name', read_only=True)
+    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
 
     class Meta:
         model = Student
@@ -276,6 +310,10 @@ class StudentListSerializer(serializers.ModelSerializer):
             "profile_picture",
             "classroom",
             "section_id",
+            "user",
+            "stream",
+            "stream_name",
+            "stream_type",
         ]
 
     def get_full_name(self, obj):
@@ -283,6 +321,17 @@ class StudentListSerializer(serializers.ModelSerializer):
 
     def get_age(self, obj):
         return obj.age
+
+    def get_user(self, obj):
+        """Returns user data including date_joined for sorting."""
+        return {
+            'id': obj.user.id,
+            'first_name': obj.user.first_name,
+            'last_name': obj.user.last_name,
+            'email': obj.user.email,
+            'date_joined': obj.user.date_joined,
+            'is_active': obj.user.is_active
+        }
 
     def get_parent_count(self, obj):
         """Returns the number of registered parents."""
@@ -334,9 +383,22 @@ class StudentListSerializer(serializers.ModelSerializer):
                     'SS1': 'SS 1',
                     'SS2': 'SS 2',
                     'SS3': 'SS 3',
+                    'SS_1': 'SS 1',
+                    'SS_2': 'SS 2',
+                    'SS_3': 'SS 3',
                     'JSS1': 'JSS 1',
                     'JSS2': 'JSS 2',
                     'JSS3': 'JSS 3',
+                    'JSS_1': 'JSS 1',
+                    'JSS_2': 'JSS 2',
+                    'JSS_3': 'JSS 3',
+                    # Add mappings for the actual classroom names used
+                    'PRIMARY_1': 'Primary 1',
+                    'PRIMARY_2': 'Primary 2',
+                    'PRIMARY_3': 'Primary 3',
+                    'PRIMARY_4': 'Primary 4',
+                    'PRIMARY_5': 'Primary 5',
+                    'PRIMARY_6': 'Primary 6',
                 }
                 
                 grade_name = class_to_grade.get(obj.student_class)
