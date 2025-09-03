@@ -36,10 +36,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
     qualification: "",
     specialization: "",
     bio: "",
-    date_of_birth: "",
-    emergency_contact_name: "",
-    emergency_contact_phone: "",
-    emergency_contact_relationship: ""
+    date_of_birth: ""
   });
 
   const tabs: ProfileTab[] = [
@@ -86,10 +83,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
         qualification: responseData.qualification || "",
         specialization: responseData.specialization || "",
         bio: responseData.bio || "",
-        date_of_birth: responseData.date_of_birth || "",
-        emergency_contact_name: responseData.emergency_contact_name || "",
-        emergency_contact_phone: responseData.emergency_contact_phone || "",
-        emergency_contact_relationship: responseData.emergency_contact_relationship || ""
+        date_of_birth: responseData.date_of_birth || ""
       });
     } catch (error) {
       console.error("Error loading profile data:", error);
@@ -131,9 +125,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
         specialization: formData.specialization,
         bio: formData.bio,
         date_of_birth: formData.date_of_birth,
-        emergency_contact_name: formData.emergency_contact_name,
-        emergency_contact_phone: formData.emergency_contact_phone,
-        emergency_contact_relationship: formData.emergency_contact_relationship
+
       };
 
       const response = await TeacherService.updateTeacher(teacherId, updateData);
@@ -152,9 +144,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
         specialization: responseData.specialization || "",
         bio: responseData.bio || "",
         date_of_birth: responseData.date_of_birth || "",
-        emergency_contact_name: responseData.emergency_contact_name || "",
-        emergency_contact_phone: responseData.emergency_contact_phone || "",
-        emergency_contact_relationship: responseData.emergency_contact_relationship || ""
+
       });
 
       if (onRefresh) {
@@ -185,9 +175,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
         specialization: profileDataAny.specialization || "",
         bio: profileDataAny.bio || "",
         date_of_birth: profileDataAny.date_of_birth || "",
-        emergency_contact_name: profileDataAny.emergency_contact_name || "",
-        emergency_contact_phone: profileDataAny.emergency_contact_phone || "",
-        emergency_contact_relationship: profileDataAny.emergency_contact_relationship || ""
+
       });
     }
   };
@@ -446,12 +434,12 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                 </div>
                 <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Bio</h3>
-                  {profileData?.bio ? (
+                  {profileData?.user?.bio ? (
                     <div>
                       <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {truncateBio(profileData.bio)}
+                        {truncateBio(profileData.user.bio)}
                       </p>
-                      {profileData.bio.split(" ").length > 20 && (
+                      {profileData.user.bio.split(" ").length > 20 && (
                         <button
                           onClick={() => setShowBioModal(true)}
                           className="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
@@ -690,7 +678,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                     <div>
                       <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Date of Birth</label>
                       <p className="text-slate-900 dark:text-white">
-                        {profileData?.date_of_birth ? new Date(profileData.date_of_birth).toLocaleDateString() : "Not provided"}
+                        {profileData?.user?.date_of_birth ? new Date(profileData.user.date_of_birth).toLocaleDateString() : "Not provided"}
                       </p>
                     </div>
                     <div className="md:col-span-2">
@@ -699,12 +687,12 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                     </div>
                     <div className="md:col-span-2">
                       <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Bio</label>
-                      {profileData?.bio ? (
+                      {profileData?.user?.bio ? (
                         <div>
                           <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                            {truncateBio(profileData.bio)}
+                            {truncateBio(profileData.user.bio)}
                           </p>
-                          {profileData.bio.split(" ").length > 20 && (
+                          {profileData.user.bio.split(" ").length > 20 && (
                             <button
                               onClick={() => setShowBioModal(true)}
                               className="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
@@ -721,58 +709,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                 )}
               </div>
 
-              {/* Emergency Contact Information */}
-              <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Emergency Contact</h3>
-                
-                {isEditing ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Contact Name</label>
-                      <input
-                        type="text"
-                        value={formData.emergency_contact_name}
-                        onChange={(e) => setFormData({...formData, emergency_contact_name: e.target.value})}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Contact Phone</label>
-                      <input
-                        type="tel"
-                        value={formData.emergency_contact_phone}
-                        onChange={(e) => setFormData({...formData, emergency_contact_phone: e.target.value})}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Relationship</label>
-                      <input
-                        type="text"
-                        value={formData.emergency_contact_relationship}
-                        onChange={(e) => setFormData({...formData, emergency_contact_relationship: e.target.value})}
-                        placeholder="e.g., Spouse, Parent, Sibling"
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Contact Name</label>
-                      <p className="text-slate-900 dark:text-white">{profileData?.emergency_contact_name || "Not provided"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Contact Phone</label>
-                      <p className="text-slate-900 dark:text-white">{profileData?.emergency_contact_phone || "Not provided"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Relationship</label>
-                      <p className="text-slate-900 dark:text-white">{profileData?.emergency_contact_relationship || "Not provided"}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+
             </div>
           )}
 
@@ -917,7 +854,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                     About {profileData?.user?.first_name || user?.first_name} {profileData?.user?.last_name || user?.last_name}
                   </h3>
                   <div className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {profileData?.bio}
+                    {profileData?.user?.bio}
                   </div>
                 </div>
               </div>

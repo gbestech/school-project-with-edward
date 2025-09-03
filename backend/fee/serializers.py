@@ -17,12 +17,22 @@ from .models import (
     StudentDiscount,
     PaymentReminder,
 )
+from academics.models import Term
 from students.models import Student
 
 
 class AcademicSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AcademicSession
+        fields = "__all__"
+
+
+class TermSerializer(serializers.ModelSerializer):
+    academic_session_name = serializers.CharField(source='academic_session.name', read_only=True)
+    name_display = serializers.CharField(source='get_name_display', read_only=True)
+    
+    class Meta:
+        model = Term
         fields = "__all__"
 
 

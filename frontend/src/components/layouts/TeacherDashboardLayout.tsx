@@ -191,7 +191,7 @@ const TeacherDashboardLayout: React.FC<TeacherDashboardLayoutProps> = ({ childre
     { id: 'classes', name: 'My Classes', icon: GraduationCap, path: '/teacher/classes' },
     { id: 'subjects', name: 'My Subjects', icon: BookOpen, path: '/teacher/subjects' },
     { id: 'students', name: 'Students', icon: Users, path: '/teacher/students' },
-    { id: 'attendance', name: 'Attendance', icon: CheckSquare, path: '/teacher/attendance' },
+    { id: 'attendance', name: 'Attendance', icon: CheckSquare, path: '/teacher/classes' },
     { id: 'exams', name: 'Exams & Tests', icon: FileText, path: '/teacher/exams' },
     { id: 'results', name: 'Results', icon: Award, path: '/teacher/results' },
     { id: 'schedule', name: 'Schedule', icon: Calendar, path: '/teacher/schedule' },

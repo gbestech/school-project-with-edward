@@ -56,7 +56,7 @@ interface ClassData {
 }
 
 const Students: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const { classId } = useParams();
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
@@ -69,18 +69,22 @@ const Students: React.FC = () => {
 
   // Load class and students data
   useEffect(() => {
-    if (classId) {
+    if (classId && user && !isLoading) {
       loadClassAndStudents();
     }
-  }, [classId]);
+  }, [classId, user, isLoading]);
 
   const loadClassAndStudents = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 loadClassAndStudents - Starting with user:', user);
+
       // Get teacher ID
       const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
+      console.log('🔍 loadClassAndStudents - Teacher ID:', teacherId);
+      
       if (!teacherId) {
         throw new Error('Teacher ID not found');
       }
@@ -128,22 +132,56 @@ const Students: React.FC = () => {
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.registration_number.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesGender = filterGender === 'all' || student.gender.toLowerCase() === filterGender.toLowerCase();
+    
+    let matchesGender = true;
+    if (filterGender !== 'all' && student.gender) {
+      const studentGender = student.gender.toLowerCase();
+      const filterGenderLower = filterGender.toLowerCase();
+      matchesGender = studentGender === filterGenderLower || 
+                     (studentGender === 'f' && filterGenderLower === 'female') ||
+                     (studentGender === 'm' && filterGenderLower === 'male');
+    }
+    
     return matchesSearch && matchesGender;
   });
 
-  const getGenderColor = (gender: string) => {
+  const getGenderColor = (gender: string | undefined | null) => {
+    if (!gender) {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+    }
+    
     switch (gender.toLowerCase()) {
       case 'male':
+      case 'm':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
       case 'female':
+      case 'f':
         return 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
   };
 
-  const getEducationLevelColor = (level: string) => {
+  const formatGenderDisplay = (gender: string | undefined | null) => {
+    if (!gender) return 'Not specified';
+    
+    switch (gender.toLowerCase()) {
+      case 'male':
+      case 'm':
+        return 'Male';
+      case 'female':
+      case 'f':
+        return 'Female';
+      default:
+        return gender;
+    }
+  };
+
+  const getEducationLevelColor = (level: string | undefined | null) => {
+    if (!level) {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+    }
+    
     switch (level.toUpperCase()) {
       case 'SENIOR_SECONDARY':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
@@ -152,21 +190,47 @@ const Students: React.FC = () => {
       case 'PRIMARY':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
       case 'NURSERY':
-        return 'bg-pink-100 text-pink-800 dark:bg-pink-900/20 dark:text-pink-400';
+        return 'bg-pink-100 text-pink-800 dark:bg-purple-900/20 dark:text-pink-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
   };
 
-  if (loading) {
+  // Show loading state while auth is loading or data is loading
+  if (isLoading || loading) {
     return (
       <TeacherDashboardLayout>
         <div className="p-6 space-y-6">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex flex-col items-center space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-              <p className="text-slate-600 dark:text-slate-400">Loading students...</p>
+              <p className="text-slate-600 dark:text-slate-400">
+                {isLoading ? 'Loading authentication...' : 'Loading students...'}
+              </p>
             </div>
+          </div>
+        </div>
+      </TeacherDashboardLayout>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!user) {
+    return (
+      <TeacherDashboardLayout>
+        <div className="p-6 space-y-6">
+          <div className="text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Authentication Required</h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Please log in to view students.
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+            >
+              Go to Login
+            </button>
           </div>
         </div>
       </TeacherDashboardLayout>
@@ -354,10 +418,10 @@ const Students: React.FC = () => {
 
                 <div className="flex flex-wrap gap-2 mb-4">
                   <span className={`px-2 py-1 text-xs rounded-full font-medium ${getGenderColor(student.gender)}`}>
-                    {student.gender}
+                    {formatGenderDisplay(student.gender)}
                   </span>
                   <span className={`px-2 py-1 text-xs rounded-full font-medium ${getEducationLevelColor(student.education_level)}`}>
-                    {student.education_level.replace('_', ' ')}
+                    {student.education_level ? student.education_level.replace('_', ' ') : 'Not specified'}
                   </span>
                 </div>
 
@@ -435,7 +499,7 @@ const Students: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-slate-600 dark:text-slate-400">{student.age} years</span>
                           <span className={`px-2 py-1 text-xs rounded-full font-medium ${getGenderColor(student.gender)}`}>
-                            {student.gender}
+                            {formatGenderDisplay(student.gender)}
                           </span>
                         </div>
                       </td>

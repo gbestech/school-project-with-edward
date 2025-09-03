@@ -66,7 +66,15 @@ const api = {
         console.error(`❌ GET request failed: ${response.status} - ${response.statusText}`);
         const errorText = await response.text();
         console.error(`❌ Error response:`, errorText);
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        // Create error object with response structure for better error handling
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        (error as any).response = { 
+          status: response.status, 
+          statusText: response.statusText,
+          data: errorText
+        };
+        throw error;
       }
       
       const data = await response.json();
@@ -98,7 +106,15 @@ const api = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error(`❌ POST request failed: ${response.status} - ${response.statusText}`, errorData);
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      
+      // Create error object with response structure for better error handling
+      const error = new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      (error as any).response = { 
+        status: response.status, 
+        statusText: response.statusText,
+        data: errorData
+      };
+      throw error;
     }
     
     console.log(`✅ POST request successful: ${response.status}`);
@@ -120,7 +136,14 @@ const api = {
     
     if (!response.ok) {
       console.error(`❌ PUT request failed: ${response.status} - ${response.statusText}`);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      
+      // Create error object with response structure for better error handling
+      const error = new Error(`HTTP error! status: ${response.status}`);
+      (error as any).response = { 
+        status: response.status, 
+        statusText: response.statusText
+      };
+      throw error;
     }
     
     return response.json();
@@ -141,7 +164,14 @@ const api = {
     
     if (!response.ok) {
       console.error(`❌ PATCH request failed: ${response.status} - ${response.statusText}`);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      
+      // Create error object with response structure for better error handling
+      const error = new Error(`HTTP error! status: ${response.status}`);
+      (error as any).response = { 
+        status: response.status, 
+        statusText: response.statusText
+      };
+      throw error;
     }
     
     return response.json();
@@ -161,7 +191,14 @@ const api = {
     
     if (!response.ok) {
       console.error(`❌ DELETE request failed: ${response.status} - ${response.statusText}`);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      
+      // Create error object with response structure for better error handling
+      const error = new Error(`HTTP error! status: ${response.status}`);
+      (error as any).response = { 
+        status: response.status, 
+        statusText: response.statusText
+      };
+      throw error;
     }
     
     return response.json();

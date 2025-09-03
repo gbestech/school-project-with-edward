@@ -1961,6 +1961,7 @@ export interface Teacher extends BaseEntity {
   blood_group?: string;
   previous_experience?: string;
   class_teacher_of?: string;
+  photo?: string;
   
   // Performance and development
   performance_rating?: number;

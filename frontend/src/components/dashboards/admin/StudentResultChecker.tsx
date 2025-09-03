@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, User, GraduationCap, Calendar, BookOpen, ArrowRight, Download, Trophy, Eye, X } from 'lucide-react';
 import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
 import ResultService from '../../../services/ResultService';
-import StudentService from '../../../services/StudentService';
+import ResultCheckerService from '../../../services/ResultCheckerService';
 import StudentResultDisplay from './StudentResultDisplay';
 import { toast } from 'react-hot-toast';
 
@@ -83,9 +83,8 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
     setError(null);
 
     try {
-      // Search for student by username
-      const response = await StudentService.searchStudents({ search: username });
-      const students = response.data || response || [];
+      // Search for student by username using the working ResultCheckerService
+      const students = await ResultCheckerService.getStudents({ search: username });
       
       if (students.length === 0) {
         setError('No student found with this username');
@@ -94,15 +93,25 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
       }
 
       // Find exact match by username
-      const foundStudent = students.find(s => s.username === username);
+      const foundStudent = students.find((s: any) => s.username === username);
       if (!foundStudent) {
         setError('No student found with this exact username');
         setStudent(null);
         return;
       }
 
-      setStudent(foundStudent);
-      toast.success(`Found student: ${foundStudent.full_name}`);
+      // Transform the student data to match the expected interface
+      const transformedStudent: StudentData = {
+        id: foundStudent.id,
+        full_name: foundStudent.name || 'Unknown',
+        username: foundStudent.username || '',
+        student_class: foundStudent.class || 'Unknown',
+        education_level: foundStudent.education_level || 'Unknown',
+        profile_picture: undefined
+      };
+
+      setStudent(transformedStudent);
+      toast.success(`Found student: ${transformedStudent.full_name}`);
     } catch (err) {
       console.error('Error searching for student:', err);
       setError('Failed to search for student. Please try again.');

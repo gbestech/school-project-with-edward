@@ -601,6 +601,22 @@ class LessonViewSet(viewsets.ModelViewSet):
             
         except Lesson.DoesNotExist:
             return Response({'error': 'Lesson not found'}, status=404)
+    
+    @action(detail=True, methods=['get'])
+    def enrolled_students(self, request, pk=None):
+        """Get list of students enrolled in the lesson's classroom"""
+        try:
+            lesson = self.get_object()
+            enrolled_students = lesson.get_enrolled_students()
+            
+            from students.serializers import StudentDetailSerializer as StudentSerializer
+            serializer = StudentSerializer(enrolled_students, many=True)
+            return Response({
+                'count': lesson.enrolled_students_count,
+                'students': serializer.data
+            })
+        except Lesson.DoesNotExist:
+            return Response({'error': 'Lesson not found'}, status=404)
 
 
 class LessonAttendanceViewSet(viewsets.ModelViewSet):

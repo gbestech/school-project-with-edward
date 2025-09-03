@@ -12,6 +12,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     short_name = serializers.SerializerMethodField()
     email = serializers.EmailField(source="user.email", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
     age = serializers.SerializerMethodField()
     education_level = serializers.CharField(read_only=True)
     education_level_display = serializers.CharField(
@@ -45,6 +46,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             "full_name",
             "short_name",
             "email",
+            "username",
             "gender",
             "date_of_birth",
             "age",

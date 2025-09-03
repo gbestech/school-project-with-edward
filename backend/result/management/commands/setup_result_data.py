@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from result.models import (
     GradingSystem, Grade, AssessmentType, ExamSession,
-    StudentResult, StudentTermResult, ResultComment
+    StudentResult, StudentTermResult, ResultComment,
+    ScoringConfiguration, ResultTemplate, SeniorSecondaryResult, SeniorSecondarySessionResult
 )
 from students.models import Student
 from academics.models import AcademicSession, Subject
@@ -196,6 +197,152 @@ class Command(BaseCommand):
                     
                     if created:
                         self.stdout.write(f'Created term result for {student.full_name} - {exam_session.term}')
+
+        # Create scoring configurations for different education levels
+        scoring_configs_data = [
+            {
+                'name': 'Senior Secondary Standard',
+                'education_level': 'SENIOR_SECONDARY',
+                'description': 'Standard scoring system for Senior Secondary with 3 tests (10 marks each) and exam (70 marks)',
+                'first_test_max_score': 10.0,
+                'second_test_max_score': 10.0,
+                'third_test_max_score': 10.0,
+                'exam_max_score': 70.0,
+                'total_max_score': 100.0,
+                'ca_weight_percentage': 30.0,
+                'exam_weight_percentage': 70.0,
+                'is_default': True,
+                'is_active': True
+            },
+            {
+                'name': 'Junior Secondary Standard',
+                'education_level': 'JUNIOR_SECONDARY',
+                'description': 'Standard scoring system for Junior Secondary with 3 tests (15 marks each) and exam (55 marks)',
+                'first_test_max_score': 15.0,
+                'second_test_max_score': 15.0,
+                'third_test_max_score': 15.0,
+                'exam_max_score': 55.0,
+                'total_max_score': 100.0,
+                'ca_weight_percentage': 45.0,
+                'exam_weight_percentage': 55.0,
+                'is_default': True,
+                'is_active': True
+            },
+            {
+                'name': 'Primary Standard',
+                'education_level': 'PRIMARY',
+                'description': 'Standard scoring system for Primary with 3 tests (20 marks each) and exam (40 marks)',
+                'first_test_max_score': 20.0,
+                'second_test_max_score': 20.0,
+                'third_test_max_score': 20.0,
+                'exam_max_score': 40.0,
+                'total_max_score': 100.0,
+                'ca_weight_percentage': 60.0,
+                'exam_weight_percentage': 40.0,
+                'is_default': True,
+                'is_active': True
+            }
+        ]
+
+        for config_data in scoring_configs_data:
+            config, created = ScoringConfiguration.objects.get_or_create(
+                name=config_data['name'],
+                education_level=config_data['education_level'],
+                defaults=config_data
+            )
+            if created:
+                self.stdout.write(f'Created scoring configuration {config_data["name"]}')
+
+        # Create result templates
+        templates_data = [
+            {
+                'name': 'Classic Template',
+                'description': 'Traditional layout with school logo and detailed grades',
+                'template_type': 'CLASSIC',
+                'education_level': 'SENIOR_SECONDARY',
+                'template_content': '<p>Classic result template content</p>',
+                'is_active': True
+            },
+            {
+                'name': 'Modern Template',
+                'description': 'Clean, contemporary design with visual grade indicators',
+                'template_type': 'MODERN',
+                'education_level': 'SENIOR_SECONDARY',
+                'template_content': '<p>Modern result template content</p>',
+                'is_active': True
+            },
+            {
+                'name': 'Detailed Template',
+                'description': 'Comprehensive layout with subject remarks and progress charts',
+                'template_type': 'DETAILED',
+                'education_level': 'JUNIOR_SECONDARY',
+                'template_content': '<p>Detailed result template content</p>',
+                'is_active': True
+            }
+        ]
+
+        for template_data in templates_data:
+            template, created = ResultTemplate.objects.get_or_create(
+                name=template_data['name'],
+                defaults=template_data
+            )
+            if created:
+                self.stdout.write(f'Created result template {template_data["name"]}')
+
+        # Create sample Senior Secondary results
+        senior_students = Student.objects.filter(
+            education_level='SENIOR_SECONDARY'
+        )[:3]  # Get first 3 senior secondary students
+        
+        # Get the default scoring configuration for Senior Secondary
+        senior_scoring_config = ScoringConfiguration.objects.filter(
+            education_level='SENIOR_SECONDARY',
+            is_default=True,
+            is_active=True
+        ).first()
+        
+        if senior_students.exists() and senior_scoring_config:
+            for student in senior_students:
+                for subject in subjects[:5]:  # First 5 subjects
+                    for exam_session in ExamSession.objects.all():
+                        # Create Senior Secondary result with detailed test scores
+                        senior_result, created = SeniorSecondaryResult.objects.get_or_create(
+                            student=student,
+                            subject=subject,
+                            exam_session=exam_session,
+                            defaults={
+                                'grading_system': grading_system,
+                                'scoring_configuration': senior_scoring_config,
+                                'first_test_score': Decimal('8.5'),
+                                'second_test_score': Decimal('9.0'),
+                                'third_test_score': Decimal('8.0'),
+                                'exam_score': Decimal('65.0'),
+                                'teacher_remark': 'Good performance. Shows understanding of concepts.',
+                                'status': 'APPROVED'
+                            }
+                        )
+                        
+                        if created:
+                            self.stdout.write(f'Created Senior Secondary result for {student.full_name} - {subject.name}')
+
+            # Create sample Senior Secondary session results
+            for student in senior_students:
+                for subject in subjects[:5]:
+                    session_result, created = SeniorSecondarySessionResult.objects.get_or_create(
+                        student=student,
+                        subject=subject,
+                        academic_session=academic_session,
+                        defaults={
+                            'first_term_score': Decimal('85.0'),
+                            'second_term_score': Decimal('88.0'),
+                            'third_term_score': Decimal('82.0'),
+                            'teacher_remark': 'Consistent performance throughout the year.',
+                            'status': 'APPROVED'
+                        }
+                    )
+                    
+                    if created:
+                        self.stdout.write(f'Created Senior Secondary session result for {student.full_name} - {subject.name}')
 
         self.stdout.write(
             self.style.SUCCESS('Successfully set up result data')

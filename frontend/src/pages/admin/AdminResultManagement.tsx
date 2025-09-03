@@ -1,10 +1,10 @@
 import React from 'react'
-import ResultManagement from '@/components/dashboards/admin/ResultManagement'
+import EnhancedResultManagement from '@/components/dashboards/admin/EnhancedResultManagement'
 
 const AdminResultManagement = () => {
   return (
     <div>
-      <ResultManagement />
+      <EnhancedResultManagement />
     </div>
   )
 }

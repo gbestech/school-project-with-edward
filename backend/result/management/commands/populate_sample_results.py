@@ -8,7 +8,8 @@ from result.models import (
     AssessmentType
 )
 from students.models import Student
-from academics.models import Subject, AcademicSession
+from subject.models import Subject
+from academics.models import AcademicSession
 from users.models import CustomUser
 from decimal import Decimal
 import random

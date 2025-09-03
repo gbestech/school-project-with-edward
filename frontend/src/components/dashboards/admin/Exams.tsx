@@ -415,7 +415,6 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
         try {
           const examSchedulesData = await api.get('exams/schedules/');
           examSchedules = safeArrayFromResponse(examSchedulesData);
-
         } catch (err) {
           console.error('Failed to load exam schedules:', err);
         }
@@ -477,11 +476,14 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
 
   // Load exams from backend with better error handling
   useEffect(() => {
-    const loadExams = async () => {
+        const loadExams = async () => {
       try {
         setLoading(true);
         setError(null);
         const examsData = await ExamService.getExams();
+        
+
+ 
         // Ensure we always set an array
         setExams(Array.isArray(examsData) ? examsData : []);
       } catch (err) {
@@ -516,14 +518,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       // Safety checks for exam properties
       if (!exam || typeof exam !== 'object') return false;
       
-      // Use the names provided by the API instead of finding by ID
+      // Use the flat property names from API response
       const gradeLevelName = exam.grade_level_name || '';
       const subjectName = exam.subject_name || '';
       
-      // Safe teacher lookup
-      const teacher = teachers.find(t => t?.id === exam.teacher);
-      const teacherName = teacher?.user ? 
-        `${teacher.user.first_name || ''} ${teacher.user.last_name || ''}`.trim() : '';
+      // Safe teacher lookup from flat property
+      const teacherName = exam.teacher_name || '';
       
       const examTitle = exam.title || '';
       
@@ -651,12 +651,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       // Safely process exam data
       const safeExam = safeExamData ? safeExamData(exam) : exam;
       
-      // Ensure subject is a number, not an object
-      const subjectId = typeof safeExam.subject === 'object' ? safeExam.subject?.id : safeExam.subject;
-      const gradeLevelId = typeof safeExam.grade_level === 'object' ? safeExam.grade_level?.id : safeExam.grade_level;
-      const sectionId = typeof safeExam.section === 'object' ? safeExam.section?.id : safeExam.section;
-      const teacherId = typeof safeExam.teacher === 'object' ? safeExam.teacher?.id : safeExam.teacher;
-      const scheduleId = typeof safeExam.exam_schedule === 'object' ? safeExam.exam_schedule?.id : safeExam.exam_schedule;
+      // Extract IDs (handle both flat and nested structures)
+      const subjectId = safeExam.subject?.id || safeExam.subject;
+      const gradeLevelId = safeExam.grade_level?.id || safeExam.grade_level;
+      const sectionId = safeExam.section?.id || safeExam.section;
+      const teacherId = safeExam.teacher?.id || safeExam.teacher;
+      const scheduleId = safeExam.exam_schedule?.id || safeExam.exam_schedule;
       
       setNewExam({
         title: safeExam.title || '',
@@ -757,9 +757,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     const file = new Blob([examContent], { type: 'text/html' });
     element.href = URL.createObjectURL(file);
     // This is the grade level name
-    // Get grade level name for filename
-    const gradeLevel = Array.isArray(gradeLevels) ? gradeLevels.find(gl => gl.id === freshExam.grade_level) : null;
-    const gradeLevelName = gradeLevel?.name || 'Class';
+    // Get grade level name for filename (handle both flat and nested structures)
+    const gradeLevelName = freshExam.grade_level_name || freshExam.grade_level?.name || 'Class';
     
     element.download = `${freshExam.title}_${gradeLevelName.replace(' ', '_')}_TEACHER_MARKING_PAPER.html`;
     document.body.appendChild(element);
@@ -790,9 +789,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     const file = new Blob([teacherPaperContent], { type: 'text/html' });
     element.href = URL.createObjectURL(file);
     
-    // Get grade level name for filename
-    const gradeLevel = Array.isArray(gradeLevels) ? gradeLevels.find(gl => gl.id === freshExam.grade_level) : null;
-    const gradeLevelName = gradeLevel?.name || 'Class';
+    // Get grade level name for filename (handle both flat and nested structures)
+    const gradeLevelName = freshExam.grade_level_name || freshExam.grade_level?.name || 'Class';
     
     element.download = `${freshExam.title}_${gradeLevelName.replace(' ', '_')}_TEACHER_MARKING_PAPER.html`;
     document.body.appendChild(element);
@@ -840,13 +838,11 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     const academicSession = settings?.academic_year || 'Academic Year';
     const currentTerm = settings?.current_term || 'Current Term';
     
-    // Get grade level name
-    const gradeLevel = Array.isArray(gradeLevels) ? gradeLevels.find(gl => gl.id === exam.grade_level) : null;
-    const gradeLevelName = gradeLevel?.name || 'Class';
+    // Get grade level name (handle both flat and nested structures)
+    const gradeLevelName = exam.grade_level_name || exam.grade_level?.name || 'Class';
     
-    // Get subject name
-    const subject = Array.isArray(subjects) ? subjects.find(s => s.id === exam.subject) : null;
-    const subjectName = subject?.name || 'Subject';
+    // Get subject name (handle both flat and nested structures)
+    const subjectName = exam.subject_name || exam.subject?.name || 'Subject';
     
     return `<!DOCTYPE html>
 <html>
@@ -888,7 +884,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     .section h3 { background-color: #f0f0f0; padding: 4px 8px; margin: 6px 0 4px 0; border-left: 4px solid #333; font-size: 16px; font-weight: bold; }
     .section-instruction { margin: 4px 0 6px 0; font-weight: bold; font-size: 13px; }
     .question { margin: 4px 0; padding-left: 8px; }
-    .options { margin-left: 8px; margin-top: 1px; font-size: 12px; display: flex; justify-content: space-between; gap: 4px; flex-wrap: wrap; }
+    .options { margin-left: 8px; margin-top: 1px; font-size: 12px; display: flex; justify-content: flex-start; gap: 2px; flex-wrap: wrap; }
+    .options > div { margin-right: 8px; }
     .sub-questions { margin-left: 16px; margin-top: 2px; }
     .section-c-passage { background: #f9fafb; border-left: 4px solid #6366f1; padding: 8px; margin-bottom: 6px; font-style: italic; white-space: pre-line; font-size: 13px; }
     .section-c-question { margin-bottom: 4px; }
@@ -1016,13 +1013,11 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     const academicSession = settings?.academic_year || 'Academic Year';
     const currentTerm = settings?.current_term || 'Current Term';
     
-    // Get grade level name
-    const gradeLevel = Array.isArray(gradeLevels) ? gradeLevels.find(gl => gl.id === exam.grade_level) : null;
-    const gradeLevelName = gradeLevel?.name || 'Class';
+    // Get grade level name (handle both flat and nested structures)
+    const gradeLevelName = exam.grade_level_name || exam.grade_level?.name || 'Class';
     
-    // Get subject name
-    const subject = Array.isArray(subjects) ? subjects.find(s => s.id === exam.subject) : null;
-    const subjectName = subject?.name || 'Subject';
+    // Get subject name (handle both flat and nested structures)
+    const subjectName = exam.subject_name || exam.subject?.name || 'Subject';
     
     return `<!DOCTYPE html>
 <html>
@@ -1064,7 +1059,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     .section h3 { background-color: #f0f0f0; padding: 4px 8px; margin: 6px 0 4px 0; border-left: 4px solid #333; font-size: 16px; font-weight: bold; }
     .section-instruction { margin: 4px 0 6px 0; font-weight: bold; font-size: 13px; }
     .question { margin: 4px 0; padding-left: 8px; }
-    .options { margin-left: 16px; margin-top: 2px; font-size: 13px; }
+    .options { margin-left: 16px; margin-top: 2px; font-size: 13px; display: flex; justify-content: flex-start; gap: 2px; flex-wrap: wrap; }
+    .options > div { margin-right: 8px; }
     .sub-questions { margin-left: 16px; margin-top: 3px; }
     .answer { background-color: #e8f5e8; padding: 4px 8px; margin: 4px 0; border-left: 3px solid #4caf50; font-weight: bold; }
     .expected-points { background-color: #fff3e0; padding: 4px 8px; margin: 4px 0; border-left: 3px solid #ff9800; font-style: italic; }
@@ -1338,13 +1334,13 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
               </tr>
             ) : (
               filteredExams.map((exam) => {
-                // Use the names provided by the API instead of finding by ID
-                const subjectName = exam.subject_name;
-                const gradeLevelName = exam.grade_level_name;
-                const teacher = Array.isArray(teachers) ? teachers.find(t => t.id === exam.teacher) : null;
+                // Use the flat property names from API response
+                const subjectName = exam.subject_name || '';
+                const gradeLevelName = exam.grade_level_name || '';
+                const teacherName = exam.teacher_name || '';
                 // Stream information is available directly from the exam object
-                const streamName = exam.stream_name;
-                const streamType = exam.stream_type;
+                const streamName = exam.stream_name || '';
+                const streamType = exam.stream_type || '';
                 
                 return (
                   <tr key={exam.id}>
@@ -1361,7 +1357,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {teacher ? `${teacher.user?.first_name} ${teacher.user?.last_name}` : '-'}
+                      {teacherName || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{exam.exam_date}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1638,7 +1634,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
               </div>
 
               {/* Instructions */}
-              <div className="space-y-4">
+              {/* <div className="space-y-4">
                 <h4 className="text-lg font-medium">Exam Instructions</h4>
                 
                 <div>
@@ -1651,7 +1647,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                     placeholder="Enter general exam instructions for students"
                   />
                 </div>
-              </div>
+              </div> */}
 
               {/* Custom Sections */}
               <div className="space-y-4">

@@ -164,9 +164,9 @@ const Classes: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">My Classes</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">My Classes & Attendance</h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2">
-              Manage your assigned classes and view student information
+              Select a class to mark attendance, view students, or manage class information
             </p>
           </div>
           <button 
@@ -211,6 +211,21 @@ const Classes: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Instructions */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-blue-800 dark:text-blue-200 text-sm font-medium mb-1">
+                How to Mark Attendance
+              </h3>
+              <p className="text-blue-700 dark:text-blue-300 text-xs">
+                Click on any class card below, then click the "Mark Attendance" button to record student attendance for that class.
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Search and Filter */}
         <div className="flex flex-col md:flex-row gap-4">

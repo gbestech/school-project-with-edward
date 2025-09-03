@@ -169,7 +169,7 @@ class TeacherSerializer(serializers.ModelSerializer):
     def get_user(self, obj):
         """Returns user data including date_joined for sorting."""
         if obj.user:
-            return {
+            user_data = {
                 'id': obj.user.id,
                 'first_name': obj.user.first_name,
                 'last_name': obj.user.last_name,
@@ -178,6 +178,16 @@ class TeacherSerializer(serializers.ModelSerializer):
                 'date_joined': obj.user.date_joined,
                 'is_active': obj.user.is_active
             }
+            
+            # Add profile information if available
+            try:
+                if hasattr(obj.user, 'profile') and obj.user.profile:
+                    user_data['bio'] = obj.user.profile.bio
+                    user_data['date_of_birth'] = obj.user.profile.date_of_birth
+            except Exception as e:
+                print(f"❌ Error getting user profile data: {e}")
+            
+            return user_data
         return None
 
     def get_assigned_subjects(self, obj):
@@ -231,6 +241,7 @@ class TeacherSerializer(serializers.ModelSerializer):
                 'id': assignment.id,
                 'classroom_name': classroom.name,
                 'classroom_id': classroom.id,
+                'section_id': section.id,  # Add section_id for attendance
                 'section_name': section.name,
                 'grade_level_name': grade_level.name,
                 'education_level': grade_level.education_level,
@@ -503,15 +514,23 @@ class TeacherSerializer(serializers.ModelSerializer):
         
         if bio is not None or date_of_birth is not None:
             try:
-                user_profile = instance.user.profile
+                # Get or create user profile
+                from userprofile.models import UserProfile
+                user_profile, created = UserProfile.objects.get_or_create(user=instance.user)
+                
                 if bio is not None:
                     user_profile.bio = bio
                 if date_of_birth is not None:
                     user_profile.date_of_birth = date_of_birth
+                
                 user_profile.save()
                 print(f"✅ Updated user profile for teacher {instance.id}")
+                print(f"✅ Bio: {bio}")
+                print(f"✅ Date of birth: {date_of_birth}")
             except Exception as e:
                 print(f"❌ Error updating user profile: {e}")
+                import traceback
+                print(f"❌ Full traceback: {traceback.format_exc()}")
         
         # Update teacher
         teacher = super().update(instance, validated_data)

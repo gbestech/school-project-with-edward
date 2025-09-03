@@ -93,6 +93,8 @@ const Attendance: React.FC = () => {
       }
 
       setSelectedClass(classData);
+      console.log('🔍 Selected class data structure:', classData);
+      console.log('🔍 Class section_id:', classData?.section_id);
 
       // Get students for this class
       let studentsData: Student[] = [];
@@ -129,8 +131,15 @@ const Attendance: React.FC = () => {
 
   const loadExistingAttendance = async (classroomId: number, date: string) => {
     try {
+      // Use section_id instead of classroom for attendance API
+      const sectionId = selectedClass?.section_id;
+      if (!sectionId) {
+        console.warn('🔍 No section_id available for loading existing attendance');
+        return;
+      }
+
       const existingAttendance = await getAttendance({
-        classroom: classroomId,
+        section: sectionId,
         date: date
       });
 
@@ -205,6 +214,9 @@ const Attendance: React.FC = () => {
           status: mappedStatus
         };
         console.log('🔍 Created attendance record:', record);
+        console.log('🔍 Selected class:', selectedClass);
+        console.log('🔍 Section ID being used:', selectedClass?.section_id);
+        console.log('🔍 Record section field:', record.section);
         return record;
       });
 
@@ -216,7 +228,7 @@ const Attendance: React.FC = () => {
         console.log('🔍 Processing attendance record:', record);
         
         try {
-          // First, try to find existing attendance record
+          // Always try to find existing attendance record first
           const existingRecord = await findExistingAttendance(record.student, record.date, record.section);
           
           if (existingRecord) {
@@ -237,37 +249,43 @@ const Attendance: React.FC = () => {
           console.error('🔍 Error processing record:', record, 'Error:', error);
           console.log('🔍 Error response:', error.response?.data);
           
-          // Check if it's a unique constraint error
-          if (error.response?.data?.non_field_errors) {
-            console.log('🔍 Non-field errors:', error.response.data.non_field_errors);
-            const errorMessage = error.response.data.non_field_errors[0] || 'Attendance record already exists';
+          // Enhanced error handling for unique constraint violations
+          if (error.response?.status === 400) {
+            const errorData = error.response.data;
+            console.log('🔍 400 Error details:', errorData);
             
-            // If it's a unique constraint error, try to find and update the existing record
-            if (errorMessage.includes('already exists') || errorMessage.includes('unique')) {
-              console.log('🔍 Attempting to find existing record for update...');
-              try {
-                // Try to get all attendance records for this date and section
-                const allRecords = await getAttendance({
-                  date: record.date,
-                  section: record.section
-                });
-                
-                const existingRecord = allRecords.find((r: any) => r.student === record.student);
-                if (existingRecord) {
-                  console.log('🔍 Found existing record via fallback method:', existingRecord);
-                  await updateAttendance(existingRecord.id, {
-                    status: record.status,
-                    teacher: record.teacher
+            // Check if it's a unique constraint error
+            if (errorData?.non_field_errors || errorData?.detail) {
+              const errorMessage = errorData.non_field_errors?.[0] || errorData.detail || 'Attendance record already exists';
+              console.log('🔍 Error message:', errorMessage);
+              
+              // If it's a unique constraint error, try to find and update the existing record
+              if (errorMessage.includes('already exists') || errorMessage.includes('unique') || errorMessage.includes('duplicate')) {
+                console.log('🔍 Attempting to find existing record for update...');
+                try {
+                  // Try to get all attendance records for this date and section
+                  const allRecords = await getAttendance({
+                    date: record.date,
+                    section: record.section
                   });
-                  console.log('🔍 Updated existing attendance record via fallback');
-                  continue; // Skip to next record
+                  
+                  const existingRecord = allRecords.find((r: any) => r.student === record.student);
+                  if (existingRecord) {
+                    console.log('🔍 Found existing record via fallback method:', existingRecord);
+                    await updateAttendance(existingRecord.id, {
+                      status: record.status,
+                      teacher: record.teacher
+                    });
+                    console.log('🔍 Updated existing attendance record via fallback');
+                    continue; // Skip to next record
+                  }
+                } catch (fallbackError) {
+                  console.error('🔍 Fallback method also failed:', fallbackError);
                 }
-              } catch (fallbackError) {
-                console.error('🔍 Fallback method also failed:', fallbackError);
               }
+              
+              throw new Error(errorMessage);
             }
-            
-            throw new Error(errorMessage);
           }
           
           throw error;

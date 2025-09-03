@@ -295,6 +295,12 @@ class ClassroomService {
     const response = await api.get('/api/classrooms/streams/');
     return response;
   }
+
+  // Get detailed student information
+  async getStudentDetails(studentId: number) {
+    const response = await api.get(`/api/students/students/${studentId}/`);
+    return response;
+  }
 }
 
 export const classroomService = new ClassroomService();

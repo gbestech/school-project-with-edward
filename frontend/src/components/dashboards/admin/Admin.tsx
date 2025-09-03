@@ -16,17 +16,11 @@ import {
   Settings,
   LogOut,
   Search,
-  Plus,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal,
-  Moon,
-  Sun,
   ChevronDown,
-  Menu,
-  X,
   Key,
-  AlertTriangle
+  Calendar
 } from 'lucide-react';
 import StudentResultChecker from './StudentResultChecker';
 import {
@@ -306,7 +300,9 @@ console.log("Total Students:", totalStudents);
     { name: 'Classes', icon: School, path: '/admin/classes' },
     { name: 'Lessons', icon: Clock, path: '/admin/lessons' },
     { name: 'Exams', icon: FileText, path: '/admin/exams' },
+    { name: 'Exam Schedules', icon: Calendar, path: '/admin/exam-schedules' },
     { name: 'Results', icon: BarChart3, path: '/admin/results' },
+    { name: 'Result Checker', icon: Search, path: '/admin/result-checker' },
     { name: 'Student Result Checker', icon: Search, path: '/admin/student-result-checker' },
     { name: 'Messages', icon: MessageSquare, path: '/admin/messages' },
     { name: 'Announcements', icon: Bell, path: '/admin/announcements' },
@@ -640,7 +636,7 @@ console.log("Total Students:", totalStudents);
                           </div>
               {!isSidebarCollapsed && (
                 <div className="ml-3 transition-all duration-300 overflow-hidden opacity-100 w-auto">
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">God's Treasure Schools</h1>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{settings?.school_name || "God's Treasure Schools"}</h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Admin Portal</p>
                 </div>
               )}

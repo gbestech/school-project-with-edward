@@ -29,6 +29,22 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     search_fields = ["student__first_name", "teacher__first_name"]
     ordering_fields = ["date", "student"]
 
+    def create(self, request, *args, **kwargs):
+        """Override create to add debugging"""
+        print(f"🔍 AttendanceViewSet.create called")
+        print(f"🔍 Request data: {request.data}")
+        print(f"🔍 Request user: {request.user}")
+        print(f"🔍 Request user role: {request.user.role}")
+        
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            print(f"❌ Error in create: {e}")
+            print(f"❌ Error type: {type(e)}")
+            import traceback
+            print(f"❌ Full traceback: {traceback.format_exc()}")
+            raise
+
     def get_queryset(self):
         user = self.request.user
 

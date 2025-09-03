@@ -65,30 +65,40 @@ class TeacherDashboardService {
   // Get teacher dashboard statistics
   async getTeacherDashboardStats(teacherId: number): Promise<TeacherDashboardStats> {
     try {
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - START - teacherId:', teacherId);
+      
       // Get teacher's classroom assignments
       const teacherResponse = await TeacherService.getTeacher(teacherId);
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - teacherResponse:', teacherResponse);
+      
       const classroomAssignments = teacherResponse.classroom_assignments || [];
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - classroomAssignments:', classroomAssignments);
       
       // Calculate total students
       const totalStudents = classroomAssignments.reduce((sum: number, assignment: any) => sum + (assignment.student_count || 0), 0);
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - totalStudents:', totalStudents);
       
       // Calculate total classes
       const totalClasses = classroomAssignments.length;
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - totalClasses:', totalClasses);
       
       // Calculate total subjects
       const uniqueSubjects = new Set(classroomAssignments.map((assignment: any) => assignment.subject_name));
       const totalSubjects = uniqueSubjects.size;
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - totalSubjects:', totalSubjects);
       
       // Get attendance rate for the current month
       const currentDate = new Date();
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
       
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - About to call getAttendance');
       const attendanceResponse = await getAttendance({
         teacher: teacherId,
         date__gte: startOfMonth.toISOString().split('T')[0],
         date__lte: endOfMonth.toISOString().split('T')[0]
       });
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - getAttendance response:', attendanceResponse);
       
       let attendanceRate = 0;
       if (attendanceResponse && attendanceResponse.length > 0) {
@@ -116,16 +126,18 @@ class TeacherDashboardService {
       const upcomingLessons = upcomingLessonsResponse?.length || 0;
       
       // Get recent results count (using term results for now)
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - About to call ResultService.getTermResults');
       const recentResultsResponse = await ResultService.getTermResults({
         // Note: created_at__gte is not supported, using default behavior
       });
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - ResultService.getTermResults response:', recentResultsResponse);
       
       const recentResults = recentResultsResponse?.length || 0;
       
       // Mock unread messages (this would need a messaging service)
       const unreadMessages = 0;
       
-      return {
+      const stats = {
         totalStudents,
         totalClasses,
         totalSubjects,
@@ -135,8 +147,16 @@ class TeacherDashboardService {
         upcomingLessons,
         recentResults
       };
+      
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - RETURNING stats:', stats);
+      return stats;
     } catch (error) {
-      console.error('Error fetching teacher dashboard stats:', error);
+      console.error('🔍 TeacherDashboardService.getTeacherDashboardStats - ERROR:', error);
+      console.error('🔍 TeacherDashboardService.getTeacherDashboardStats - Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       return {
         totalStudents: 0,
         totalClasses: 0,
@@ -310,14 +330,25 @@ class TeacherDashboardService {
   async getTeacherIdFromUser(user: any): Promise<number | null> {
     try {
       console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Input user:', user);
+      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.role:', user?.role);
+      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.id:', user?.id);
       console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.teacher_data:', (user as any)?.teacher_data);
       console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.teacher_data.id:', (user as any)?.teacher_data?.id);
+      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.profile:', (user as any)?.profile);
+      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.profile?.teacher_data:', (user as any)?.profile?.teacher_data);
       
       // First, try to get teacher ID from user data structure
       let teacherId = (user as any)?.teacher_data?.id;
       
       if (teacherId) {
         console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Found teacher ID from teacher_data.id:', teacherId);
+        return Number(teacherId);
+      }
+      
+      // Also check profile.teacher_data
+      teacherId = (user as any)?.profile?.teacher_data?.id;
+      if (teacherId) {
+        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Found teacher ID from profile.teacher_data.id:', teacherId);
         return Number(teacherId);
       }
       

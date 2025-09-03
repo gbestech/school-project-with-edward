@@ -6,20 +6,18 @@ export interface Exam {
   title: string;
   code: string;
   description?: string;
-  subject: number;
-  subject_name: string;
-  subject_code: string;
-  grade_level: number;
-  grade_level_name: string;
+  subject: any; // Can be number or nested object
+  subject_name?: string; // Flat property for display
+  subject_code?: string; // Flat property for display
+  grade_level: any; // Can be number or nested object
+  grade_level_name?: string; // Flat property for display
   section?: number | null;
-  section_name?: string;
-  stream?: number;
-  stream_name?: string;
-  stream_type?: string;
-  teacher?: number;
-  teacher_name?: string;
-  exam_schedule: number;
-  exam_schedule_name: string;
+  stream?: any; // Can be number or nested object
+  stream_name?: string; // Flat property for display
+  stream_type?: string; // Flat property for display
+  teacher?: any; // Can be number or nested object
+  teacher_name?: string; // Flat property for display
+  exam_schedule?: number;
   exam_type: string;
   exam_type_display: string;
   difficulty_level: string;
@@ -28,7 +26,6 @@ export interface Exam {
   start_time: string;
   end_time: string;
   duration_minutes: number;
-  duration_hours: string;
   total_marks: number;
   pass_marks?: number;
   pass_percentage: number;
@@ -42,12 +39,6 @@ export interface Exam {
   is_practical: boolean;
   requires_computer: boolean;
   is_online: boolean;
-  term: string;
-  term_display: string;
-  session_year: string;
-  is_completed: boolean;
-  is_ongoing: boolean;
-  registered_students_count: number;
   created_at: string;
   updated_at: string;
   // Question data

@@ -165,16 +165,21 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       const parentData = Array.isArray(res) ? res : [];
       console.log('Parent data array:', parentData);
       
-      // Find the parent by username
-      const found = parentData.find((p: any) => p.username === parentUsernameSearch);
+      // Find the parent by username (exact match or partial match)
+      const found = parentData.find((p: any) => 
+        p.username === parentUsernameSearch || 
+        p.username.includes(parentUsernameSearch) ||
+        p.username.toLowerCase().includes(parentUsernameSearch.toLowerCase())
+      );
       console.log('Found parent:', found);
       
       if (found) {
         setParentDetails(found);
         setSelectedParent(found);
+        setParentUsernameSearch(found.username); // Update with exact username
         toast.success('Parent found and details filled!');
       } else {
-        toast.error('Parent not found. Please add the parent first.');
+        toast.error('Parent not found. Please check the username or add the parent first.');
         setTimeout(() => navigate('/admin/parents/add'), 1500);
       }
     } catch (err) {
@@ -308,7 +313,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
         payload.parent_address = formData.parentAddress;
       }
       // Send as JSON (no FormData)
-      const response = await api.post('/api/students/', payload);
+      const response = await api.post('/api/students/students/', payload);
       setSuccess('Student and Parent created successfully!');
       toast.success('Student and Parent added successfully');
       
@@ -507,7 +512,10 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                       ? 'bg-blue-100 text-blue-900 border-l-4 border-blue-500' 
                       : 'hover:bg-blue-50 text-gray-900'
                   }`}
-                  onClick={() => setSelectedParent(parent)}
+                  onClick={() => {
+                    setSelectedParent(parent);
+                    setParentUsernameSearch(parent.username); // Auto-fill the username field
+                  }}
                 >
                   <div className="font-semibold text-sm">{parent.full_name} ({parent.username})</div>
                   <div className="text-xs text-gray-600 mt-1">{parent.email} | {parent.phone}</div>
@@ -540,7 +548,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               value={parentUsernameSearch}
               onChange={e => setParentUsernameSearch(e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg"
-              placeholder="Enter parent username"
+              placeholder="Enter parent username (e.g., PAR/GTS/AUG/25/003)"
             />
             <button
               type="button"
@@ -550,6 +558,11 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               Search
             </button>
           </div>
+          {selectedParent && (
+            <div className="mt-2 text-sm text-gray-600">
+              <span className="font-medium">Tip:</span> You can also search by partial username (e.g., "GTS/AUG" or "003")
+            </div>
+          )}
         </div>
         {/* If parent is found, show details read-only */}
         {parentDetails && (

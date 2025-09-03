@@ -276,6 +276,21 @@ class Lesson(models.Model):
         
         return expired_lessons.count()
     
+    def get_enrolled_students(self):
+        """Get list of students enrolled in the lesson's classroom"""
+        from classroom.models import StudentEnrollment
+        enrollments = StudentEnrollment.objects.filter(
+            classroom=self.classroom,
+            is_active=True,
+            student__is_active=True
+        ).select_related('student__user')
+        return [enrollment.student for enrollment in enrollments]
+    
+    @property
+    def enrolled_students_count(self):
+        """Get count of enrolled students"""
+        return self.get_enrolled_students().count()
+    
     def generate_lesson_report(self):
         """Generate a comprehensive lesson report for download"""
         from .models import LessonAttendance

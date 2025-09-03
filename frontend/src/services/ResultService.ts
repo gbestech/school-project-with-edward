@@ -131,18 +131,91 @@ class ResultService {
     stream?: string;
     search?: string;
   }) {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
+    try {
+      // Try to get results from individual endpoints
+      const [nurseryResults, primaryResults, jssResults, sssResults] = await Promise.allSettled([
+        api.get('/api/results/nursery-results/'),
+        api.get('/api/results/primary-results/'),
+        api.get('/api/results/junior-secondary-results/'),
+        api.get('/api/results/senior-secondary-results/')
+      ]);
+      
+      let allResults: any[] = [];
+      
+      // Process nursery results
+      if (nurseryResults.status === 'fulfilled') {
+        const nurseryData = nurseryResults.value;
+        const nurseryArray = Array.isArray(nurseryData) ? nurseryData : (nurseryData?.results || []);
+        allResults = allResults.concat(nurseryArray.map((result: any) => ({
+          ...result,
+          education_level: 'NURSERY'
+        })));
+      }
+      
+      // Process primary results
+      if (primaryResults.status === 'fulfilled') {
+        const primaryData = primaryResults.value;
+        const primaryArray = Array.isArray(primaryData) ? primaryData : (primaryData?.results || []);
+        allResults = allResults.concat(primaryArray.map((result: any) => ({
+          ...result,
+          education_level: 'PRIMARY'
+        })));
+      }
+      
+      // Process JSS results
+      if (jssResults.status === 'fulfilled') {
+        const jssData = jssResults.value;
+        const jssArray = Array.isArray(jssData) ? jssData : (jssData?.results || []);
+        allResults = allResults.concat(jssArray.map((result: any) => ({
+          ...result,
+          education_level: 'JUNIOR_SECONDARY'
+        })));
+      }
+      
+      // Process SSS results
+      if (sssResults.status === 'fulfilled') {
+        const sssData = sssResults.value;
+        const sssArray = Array.isArray(sssData) ? sssData : (sssData?.results || []);
+        allResults = allResults.concat(sssArray.map((result: any) => ({
+          ...result,
+          education_level: 'SENIOR_SECONDARY'
+        })));
+      }
+      
+      // Apply filters if provided
+      if (params) {
+        if (params.student) {
+          allResults = allResults.filter(result => result.student?.id?.toString() === params.student);
         }
-      });
+        if (params.subject) {
+          allResults = allResults.filter(result => result.subject?.id?.toString() === params.subject);
+        }
+        if (params.exam_session) {
+          allResults = allResults.filter(result => result.exam_session?.id?.toString() === params.exam_session);
+        }
+        if (params.status) {
+          allResults = allResults.filter(result => result.status === params.status);
+        }
+        if (params.is_passed !== undefined) {
+          allResults = allResults.filter(result => result.is_passed === params.is_passed);
+        }
+        if (params.stream) {
+          allResults = allResults.filter(result => result.stream?.id?.toString() === params.stream);
+        }
+        if (params.search) {
+          const searchLower = params.search.toLowerCase();
+          allResults = allResults.filter(result => 
+            result.student?.full_name?.toLowerCase().includes(searchLower) ||
+            result.subject?.name?.toLowerCase().includes(searchLower)
+          );
+        }
+      }
+      
+      return allResults;
+    } catch (error) {
+      console.error('Error fetching student results:', error);
+      return [];
     }
-    
-    const queryString = queryParams.toString();
-    const endpoint = `/results/student-results/${queryString ? `?${queryString}` : ''}`;
-    return api.get(endpoint);
   }
 
   // Get results by student
@@ -178,18 +251,18 @@ class ResultService {
     }
     
     const queryString = queryParams.toString();
-    const endpoint = `/results/term-results/${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/results/student-term-results/${queryString ? `?${queryString}` : ''}`;
     return api.get(endpoint);
   }
 
   // Get detailed term result
   async getDetailedTermResult(termResultId: string): Promise<StudentTermResult> {
-    return api.get(`/results/term-results/${termResultId}/detailed/`);
+    return api.get(`/results/student-term-results/${termResultId}/detailed/`);
   }
 
   // Get term results by student
   async getTermResultsByStudent(studentId: string): Promise<StudentTermResult[]> {
-    return api.get(`/results/term-results/by_student/?student_id=${studentId}`);
+    return api.get(`/results/student-term-results/by_student/?student_id=${studentId}`);
   }
 
   // Get term results by academic session
@@ -198,7 +271,7 @@ class ResultService {
     if (term) {
       params.append('term', term);
     }
-    return api.get(`/results/term-results/by_academic_session/?${params.toString()}`);
+    return api.get(`/results/student-term-results/by_academic_session/?${params.toString()}`);
   }
 
   // Get all exam sessions
@@ -241,8 +314,35 @@ class ResultService {
     position?: number;
     remarks?: string;
     status?: string;
+    education_level?: string;
   }) {
-    return api.post('/results/student-results/', data);
+    // Determine the correct endpoint based on education level
+    let endpoint = '';
+    
+    if (data.education_level) {
+      switch (data.education_level.toUpperCase()) {
+        case 'NURSERY':
+          endpoint = '/api/results/nursery-results/';
+          break;
+        case 'PRIMARY':
+          endpoint = '/api/results/primary-results/';
+          break;
+        case 'JUNIOR_SECONDARY':
+          endpoint = '/api/results/junior-secondary-results/';
+          break;
+        case 'SENIOR_SECONDARY':
+          endpoint = '/api/results/senior-secondary-results/';
+          break;
+        default:
+          // Fallback to the old endpoint if education level is not specified
+          endpoint = '/results/student-results/';
+      }
+    } else {
+      // Fallback to the old endpoint if education level is not specified
+      endpoint = '/results/student-results/';
+    }
+    
+    return api.post(endpoint, data);
   }
 
   // Update a student result

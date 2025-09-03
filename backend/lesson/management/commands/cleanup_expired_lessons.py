@@ -46,3 +46,8 @@ class Command(BaseCommand):
                     f'Would clean up: {lesson.title} (completed: {lesson.actual_end_time})'
                 )
 
+
+
+
+
+

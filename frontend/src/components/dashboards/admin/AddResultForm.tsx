@@ -146,6 +146,9 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess }) => 
       setLoading(true);
       setError(null);
 
+      // Get the selected student to determine education level
+      const selectedStudent = students.find(s => s.id.toString() === formData.student);
+      
       const resultData = {
         student: formData.student,
         subject: formData.subject,
@@ -153,7 +156,8 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess }) => 
         grading_system: '1', // Default grading system
         ca_score: caScore,
         exam_score: examScore,
-        remarks: formData.remarks
+        remarks: formData.remarks,
+        education_level: selectedStudent?.education_level || 'PRIMARY' // Default to PRIMARY if not found
       };
 
       await ResultService.createStudentResult(resultData);

@@ -70,3 +70,24 @@ class AttendanceSerializer(serializers.ModelSerializer):
 
     def get_student_class_display(self, obj):
         return obj.student.get_student_class_display() if obj.student else None
+
+    def validate(self, data):
+        """Add validation debugging"""
+        print(f"🔍 AttendanceSerializer.validate called")
+        print(f"🔍 Data to validate: {data}")
+        
+        # Check for existing attendance record
+        if 'student' in data and 'date' in data and 'section' in data:
+            from .models import Attendance
+            existing = Attendance.objects.filter(
+                student=data['student'],
+                date=data['date'],
+                section=data['section']
+            ).first()
+            
+            if existing:
+                print(f"🔍 Found existing attendance record: {existing}")
+                print(f"🔍 Existing record ID: {existing.id}")
+                print(f"🔍 Existing record status: {existing.status}")
+        
+        return data

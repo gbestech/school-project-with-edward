@@ -231,7 +231,9 @@ class TeacherService {
 
   // Get single teacher
   async getTeacher(id: number): Promise<Teacher> {
+    console.log('🔍 TeacherService.getTeacher - Fetching teacher with ID:', id);
     const response = await api.get(`/api/teachers/teachers/${id}/`);
+    console.log('🔍 TeacherService.getTeacher - API response:', response);
     return response;
   }
 

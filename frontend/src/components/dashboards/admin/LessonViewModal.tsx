@@ -28,7 +28,7 @@ import {
   Zap
 } from 'lucide-react';
 import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, getLessonAttendance, updateLessonAttendance, LessonAttendanceRecordBackend, LessonService } from '../../../services/LessonService';
+import { Lesson, getLessonAttendance, updateLessonAttendance, getLessonEnrolledStudents, LessonAttendanceRecordBackend, LessonService } from '../../../services/LessonService';
 import LessonProgressTracker from './LessonProgressTracker';
 
 interface LessonViewModalProps {
@@ -47,26 +47,54 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
   const [attendanceTabLoading, setAttendanceTabLoading] = useState(false);
   const [attendanceTabError, setAttendanceTabError] = useState<string | null>(null);
   const [lessonAttendance, setLessonAttendance] = useState<LessonAttendanceRecordBackend[]>([]);
+  const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
+  const [enrolledStudentsCount, setEnrolledStudentsCount] = useState(0);
 
   // Fetch lesson attendance when attendance tab is active
   useEffect(() => {
     if (activeTab === 'attendance') {
       setAttendanceTabLoading(true);
       setAttendanceTabError(null);
+      
+      // Fetch attendance records first
       getLessonAttendance({ lesson_id: lesson.id })
-        .then((data) => {
-          const attendanceData = data.results || data || [];
-          setLessonAttendance(Array.isArray(attendanceData) ? attendanceData : []);
+        .then((attendanceData) => {
+          const attendanceRecords = attendanceData.results || attendanceData || [];
+          setLessonAttendance(Array.isArray(attendanceRecords) ? attendanceRecords : []);
         })
         .catch((error) => {
           console.error('Error loading lesson attendance:', error);
-          // Only show error for actual failures, not for empty results
-          if (error.response && error.response.status === 404) {
-            // No attendance records found - this is normal
-            setLessonAttendance([]);
+          // Handle different types of errors
+          if (error.response) {
+            const status = error.response.status;
+            if (status === 404) {
+              // No attendance records found - this is normal
+              setLessonAttendance([]);
+            } else if (status === 401 || status === 403) {
+              setAttendanceTabError('Authentication required. Please log in again.');
+            } else if (status >= 500) {
+              setAttendanceTabError('Server error. Please try again later.');
+            } else {
+              setAttendanceTabError('Failed to load attendance data');
+            }
+          } else if (error.message && error.message.includes('Network')) {
+            setAttendanceTabError('Network error. Please check your connection.');
           } else {
-            setAttendanceTabError('Failed to load attendance');
+            setAttendanceTabError('Failed to load attendance data');
           }
+        });
+
+      // Fetch enrolled students (optional - if this fails, we'll just not show the count)
+      getLessonEnrolledStudents(lesson.id)
+        .then((enrolledData) => {
+          setEnrolledStudents(enrolledData.students || []);
+          setEnrolledStudentsCount(enrolledData.count || 0);
+        })
+        .catch((error) => {
+          console.error('Error loading enrolled students:', error);
+          // Don't show error for this - just set defaults
+          setEnrolledStudents([]);
+          setEnrolledStudentsCount(0);
         })
         .finally(() => setAttendanceTabLoading(false));
     }
@@ -616,18 +644,33 @@ const LessonViewModal: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEd
 
           {activeTab === 'attendance' && (
             <div className="space-y-6">
-              <div className="flex items-center mb-4">
-                <Users size={20} className={themeClasses.iconPrimary} />
-                <h3 className="text-lg font-semibold ml-2">Lesson Attendance</h3>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <Users size={20} className={themeClasses.iconPrimary} />
+                  <h3 className="text-lg font-semibold ml-2">Lesson Attendance</h3>
+                </div>
+                {!attendanceTabLoading && enrolledStudentsCount > 0 && (
+                  <div className={`text-sm ${themeClasses.textSecondary}`}>
+                    {enrolledStudentsCount} student{enrolledStudentsCount !== 1 ? 's' : ''} enrolled
+                  </div>
+                )}
               </div>
               {attendanceTabLoading && <div className="text-blue-600">Loading attendance...</div>}
               {attendanceTabError && <div className="text-red-600">{attendanceTabError}</div>}
               
-              {!attendanceTabLoading && !attendanceTabError && lessonAttendance.length === 0 && (
+              {!attendanceTabLoading && !attendanceTabError && enrolledStudentsCount === 0 && (
                 <div className="text-center py-8">
                   <Users size={48} className={`mx-auto mb-4 ${themeClasses.iconSecondary}`} />
-                  <p className={`${themeClasses.textSecondary} mb-4`}>No students marked as attended for this lesson</p>
-                  <p className={`text-sm ${themeClasses.textTertiary}`}>Attendance records will appear here once students are marked present</p>
+                  <p className={`${themeClasses.textSecondary} mb-4`}>No students enrolled in this lesson</p>
+                  <p className={`text-sm ${themeClasses.textTertiary}`}>Students must be enrolled in the classroom before attendance can be taken</p>
+                </div>
+              )}
+              
+              {!attendanceTabLoading && !attendanceTabError && enrolledStudentsCount > 0 && lessonAttendance.length === 0 && (
+                <div className="text-center py-8">
+                  <Users size={48} className={`mx-auto mb-4 ${themeClasses.iconSecondary}`} />
+                  <p className={`${themeClasses.textSecondary} mb-4`}>No attendance records yet</p>
+                  <p className={`text-sm ${themeClasses.textTertiary}`}>There are {enrolledStudentsCount} students enrolled. Attendance records will appear here once taken.</p>
                 </div>
               )}
               

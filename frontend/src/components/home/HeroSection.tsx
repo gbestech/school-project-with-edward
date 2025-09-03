@@ -81,9 +81,9 @@ const HeroSection: React.FC = () => {
   }, []);
 
   // Calculate top padding based on ContactRibbon visibility
-  // When ContactRibbon visible: ContactRibbon height (~64px) + navbar height (64px) + extra margin = 160px
-  // When ContactRibbon hidden: navbar height (64px) + extra margin = 96px
-  const topPadding = contactRibbonVisible ? 'pt-40' : 'pt-24'; // 160px when ribbon visible, 96px when not
+  // When ContactRibbon visible: ContactRibbon height (~64px) + navbar height (64px) + extra margin
+  // Increase padding so the top content is fully visible under fixed headers
+  const topPadding = contactRibbonVisible ? 'pt-56' : 'pt-40';
 
   // Admin event management state
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
@@ -409,7 +409,7 @@ const HeroSection: React.FC = () => {
   };
 
   const renderDefaultContent = () => (
-    <div className={`relative z-10 flex flex-col min-h-screen ${topPadding}`} style={{
+    <div className={`relative z-10 flex flex-col min-h-[120vh] ${topPadding}`} style={{
       background: designSettings?.theme === 'premium'
         ? 'linear-gradient(135deg, #881337 0%, #0f172a 50%, #1e3a8a 100%)'
         : designSettings?.theme === 'default'
@@ -572,7 +572,7 @@ const HeroSection: React.FC = () => {
       {
         title: 'Education Reimagined',
         subtitle: 'Premium Learning Excellence',
-        description: 'Experience the pinnacle of educational innovation with our revolutionary AI-powered platform that adapts, evolves, and excels with every student\'s unique journey.',
+        description: 'Experience the pinnacle of educational innovation with our revolutionary platform that adapts, evolves, and excels with every student\'s unique journey.',
         ctaText: 'Begin Your Journey',
         secondaryCtaText: 'Watch Experience',
         badgeText: 'Welcome to Our School',
@@ -642,7 +642,7 @@ const HeroSection: React.FC = () => {
 
   const renderDefaultCarouselContent = () => {
     return (
-      <div className="relative z-10 h-screen">
+      <div className="relative z-10 h-[120vh]">
         {/* Full-width Carousel Container */}
         <div className="relative w-full h-full overflow-hidden">
           {/* Carousel Slides */}
@@ -903,9 +903,9 @@ const HeroSection: React.FC = () => {
     };
 
     return (
-      <div className={`relative z-10 min-h-screen ${topPadding}`}>
+      <div className={`relative z-10 min-h-[120vh] ${topPadding}`}>
         {/* Full-width Carousel Container */}
-        <div className="relative w-full h-screen overflow-hidden">
+        <div className="relative w-full h-[120vh] overflow-hidden">
           {/* Carousel Slides */}
           <div 
             className="flex transition-transform duration-700 ease-in-out h-full"
@@ -1045,7 +1045,7 @@ const HeroSection: React.FC = () => {
                       'animate-scroll-medium';
 
     return (
-      <div className={`relative z-10 flex flex-col min-h-screen ${topPadding}`}>
+      <div className={`relative z-10 flex flex-col min-h-[120vh] ${topPadding}`}>
         {/* Ribbon */}
         <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-6 overflow-hidden">
           <div className={`whitespace-nowrap ${speedClass} flex items-center justify-center h-full`}>

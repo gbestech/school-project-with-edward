@@ -544,17 +544,21 @@ export interface LessonAttendanceRecordBackend {
 }
 
 export async function getLessonAttendance(params?: Record<string, any>) {
-  return api.get('/lesson-attendances/', params);
+  return api.get('/lessons/attendances/', params);
 }
 
 export async function addLessonAttendance(data: Partial<LessonAttendanceRecordBackend>) {
-  return api.post('/lesson-attendances/', data);
+  return api.post('/lessons/attendances/', data);
 }
 
 export async function updateLessonAttendance(id: number, data: Partial<LessonAttendanceRecordBackend>) {
-  return api.patch(`/lesson-attendances/${id}/`, data);
+  return api.patch(`/lessons/attendances/${id}/`, data);
 }
 
 export async function deleteLessonAttendance(id: number) {
-  return api.delete(`/lesson-attendances/${id}/`);
+  return api.delete(`/lessons/attendances/${id}/`);
+}
+
+export async function getLessonEnrolledStudents(lessonId: number) {
+  return api.get(`/lessons/${lessonId}/enrolled_students/`);
 }

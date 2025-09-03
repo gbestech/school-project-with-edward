@@ -41,6 +41,7 @@ export interface Student {
   profile_picture: string | null;
   classroom?: string | null;
   email?: string;
+  username?: string;
   section_id?: number | null;
   stream?: number | null;
   stream_name?: string | null;

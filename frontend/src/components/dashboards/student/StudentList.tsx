@@ -851,6 +851,10 @@ const StudentsComponent = () => {
                         </h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Username</label>
+                            <p className="text-gray-900 font-medium">{viewStudent.username || 'No username'}</p>
+                          </div>
+                          <div className="space-y-1">
                             <label className="block text-sm font-medium text-gray-500 uppercase tracking-wide">Email</label>
                             <p className="text-gray-900 font-medium">{viewStudent.email || 'No email'}</p>
                           </div>
