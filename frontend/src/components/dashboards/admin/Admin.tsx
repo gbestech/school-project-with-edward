@@ -133,7 +133,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     'Design',
     'Roles & Permissions',
     'Academic',
-    'Exam',
+    'Exams & Result',
     'Finance',
     'Security',
     'Communication',

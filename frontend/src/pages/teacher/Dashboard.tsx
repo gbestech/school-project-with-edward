@@ -16,6 +16,8 @@ const TeacherDashboard: React.FC = () => {
   console.log('🔍 TeacherDashboard - Component mounted');
   console.log('🔍 TeacherDashboard - Auth state:', { isAuthenticated, isLoading, hasUser: !!user });
 
+
+
   useEffect(() => {
     console.log('🔍 TeacherDashboard - useEffect triggered');
     console.log('🔍 TeacherDashboard - useEffect state:', { isLoading, isAuthenticated, hasUser: !!user, userRole: user?.role });

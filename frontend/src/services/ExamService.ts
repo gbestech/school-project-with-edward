@@ -409,7 +409,7 @@ export class ExamService {
    */
   static async getExamsBySchedule(scheduleId: number): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/by-schedule/${scheduleId}/`);
+      const response = await api.get(`${this.baseUrl}/by-schedule/${scheduleId}/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching exams by schedule:', error);
@@ -422,7 +422,7 @@ export class ExamService {
    */
   static async getExamsBySubject(subjectId: number): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/by-subject/${subjectId}/`);
+      const response = await api.get(`${this.baseUrl}/by-subject/${subjectId}/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching exams by subject:', error);
@@ -435,7 +435,7 @@ export class ExamService {
    */
   static async getExamsByGrade(gradeId: number): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/by-grade/${gradeId}/`);
+      const response = await api.get(`${this.baseUrl}/by-grade/${gradeId}/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching exams by grade:', error);
@@ -448,7 +448,7 @@ export class ExamService {
    */
   static async getExamsByTeacher(teacherId: number): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/by-teacher/${teacherId}/`);
+      const response = await api.get(`${this.baseUrl}/by-teacher/${teacherId}/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching exams by teacher:', error);

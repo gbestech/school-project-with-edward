@@ -82,22 +82,9 @@ class SubjectViewSet(viewsets.ModelViewSet):
     filterset_fields = {
         "category": ["exact", "in"],
         "ss_subject_type": ["exact", "in"],
-        "is_compulsory": ["exact"],
         "is_active": ["exact"],
-        "is_core": ["exact"],
         "is_cross_cutting": ["exact"],
-        "is_discontinued": ["exact"],
-        "is_activity_based": ["exact"],
-        "practical_hours": ["exact", "gte", "lte"],
-        "pass_mark": ["exact", "gte", "lte"],
-        "has_practical": ["exact"],
-        "has_continuous_assessment": ["exact"],
-        "has_final_exam": ["exact"],
-        "requires_lab": ["exact"],
-        "requires_special_equipment": ["exact"],
-        "requires_specialist_teacher": ["exact"],
-        "introduced_year": ["exact", "gte", "lte"],
-        "curriculum_version": ["exact"],
+        "subject_order": ["exact", "gte", "lte"],
     }
 
     search_fields = [
@@ -105,8 +92,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
         "short_name",
         "code",
         "description",
-        "equipment_notes",
-        "learning_outcomes",
     ]
 
     ordering_fields = [
@@ -173,7 +158,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
         # Active only filtering (default behavior)
         available_only = self.request.query_params.get("available_only", "true").lower()
         if available_only == "true":
-            queryset = queryset.filter(is_active=True, is_discontinued=False)
+            queryset = queryset.filter(is_active=True)
 
         # Cross-cutting subjects filtering
         cross_cutting_only = self.request.query_params.get("cross_cutting_only")
@@ -244,9 +229,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
                         "activity_based_subjects": queryset.filter(
                             is_activity_based=True
                         ).count(),
-                        "subjects_with_practicals": queryset.filter(
-                            has_practical=True
-                        ).count(),
+
                     },
                 }
         return response
@@ -294,7 +277,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
             if has_student_subjects or has_dependent_subjects or has_grade_assignments:
                 # Soft delete for subjects with dependencies
                 instance.is_active = False
-                instance.is_discontinued = True
                 instance.save()
                 logger.info(
                     f"✅ Subject '{instance.name}' ({instance.code}) soft deleted by {user_name} "
@@ -335,7 +317,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
             for category, display in SUBJECT_CATEGORY_CHOICES:
                 subjects = (
                     self.get_queryset()
-                    .filter(category=category, is_active=True, is_discontinued=False)
+                    .filter(category=category, is_active=True)
                     .order_by("subject_order", "name")
                 )
 
@@ -344,8 +326,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
                     "icon": self._get_category_icon(category),
                     "count": subjects.count(),
                     "summary": {
-                        "compulsory_count": subjects.filter(is_compulsory=True).count(),
-                        "with_practicals": subjects.filter(has_practical=True).count(),
                         "cross_cutting": subjects.filter(is_cross_cutting=True).count(),
                     },
                     "subjects": SubjectListSerializer(subjects, many=True).data,
@@ -368,7 +348,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
                     .filter(
                         education_levels__contains=[level_code],
                         is_active=True,
-                        is_discontinued=False,
                     )
                     .order_by("category", "subject_order", "name")
                 )
@@ -409,17 +388,8 @@ class SubjectViewSet(viewsets.ModelViewSet):
                     "name": level_name,
                     "count": subjects_queryset.count(),
                     "summary": {
-                        "compulsory_count": subjects_queryset.filter(
-                            is_compulsory=True
-                        ).count(),
-                        "activity_based": subjects_queryset.filter(
-                            is_activity_based=True
-                        ).count(),
                         "cross_cutting": subjects_queryset.filter(
                             is_cross_cutting=True
-                        ).count(),
-                        "with_practicals": subjects_queryset.filter(
-                            has_practical=True
                         ).count(),
                     },
                     "subjects": SubjectListSerializer(
@@ -560,34 +530,12 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 "grade_name": grade_obj.name,
                 "summary": {
                     "total_subjects": subjects.count(),
-    
-                    "total_practical_hours": sum(s.practical_hours for s in subjects),
                 },
                 "categories": {
-                    "compulsory": {
-                        "count": compulsory.count(),
-                        "subjects": SubjectListSerializer(compulsory, many=True).data,
-                    },
-                    "elective": {
-                        "count": elective.count(),
-                        "subjects": SubjectListSerializer(elective, many=True).data,
-                    },
                     "cross_cutting": {
                         "count": cross_cutting.count(),
                         "subjects": SubjectListSerializer(
                             cross_cutting, many=True
-                        ).data,
-                    },
-                    "activity_based": {
-                        "count": activity_based.count(),
-                        "subjects": SubjectListSerializer(
-                            activity_based, many=True
-                        ).data,
-                    },
-                    "with_practicals": {
-                        "count": with_practicals.count(),
-                        "subjects": SubjectListSerializer(
-                            with_practicals, many=True
                         ).data,
                     },
                 },
@@ -606,7 +554,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 grade_level = GradeLevel.objects.get(id=grade_level_id)
                 is_available = subject.grade_levels.filter(id=grade_level_id).exists()
                 final_availability = (
-                    is_available and subject.is_active and not subject.is_discontinued
+                    is_available and subject.is_active
                 )
 
                 return Response(
@@ -626,19 +574,9 @@ class SubjectViewSet(viewsets.ModelViewSet):
                             ),
                         },
                         "subject_details": {
-                            "is_compulsory": subject.is_compulsory,
                             "is_cross_cutting": subject.is_cross_cutting,
-                            "is_activity_based": subject.is_activity_based,
-            
-                            "practical_hours": subject.practical_hours,
-                            "total_weekly_hours": subject.total_weekly_hours,
-                            "has_practical": subject.has_practical,
-                            "pass_mark": subject.pass_mark,
-                            "education_levels": subject.education_levels_display,
-                            "category_with_icon": subject.get_category_display_with_icon(),
-                            "requires_specialist_teacher": subject.requires_specialist_teacher,
-                            "requires_lab": subject.requires_lab,
-                            "requires_special_equipment": subject.requires_special_equipment,
+                            "education_levels": subject.education_levels,
+                            "category": subject.category,
                         },
                     }
                 )
@@ -659,7 +597,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
             | Q(short_name__icontains=query)
             | Q(code__icontains=query),
             is_active=True,
-            is_discontinued=False,
         ).values(
             "id",
             "name",
@@ -771,30 +708,12 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 "overview": {
                     "total_subjects": queryset.count(),
                     "active_subjects": queryset.filter(is_active=True).count(),
-                    "discontinued_subjects": queryset.filter(
-                        is_discontinued=True
-                    ).count(),
+                    
                 },
                 "by_education_level": {},
                 "by_category": {},
                 "by_requirements": {
-                    "with_practicals": queryset.filter(has_practical=True).count(),
-                    "requires_lab": queryset.filter(requires_lab=True).count(),
-                    "requires_specialist": queryset.filter(
-                        requires_specialist_teacher=True
-                    ).count(),
-                    "activity_based": queryset.filter(is_activity_based=True).count(),
                     "cross_cutting": queryset.filter(is_cross_cutting=True).count(),
-                },
-                "workload": {
-                    
-                    "avg_practical_hours": queryset.aggregate(
-                        avg_practical=Avg("practical_hours")
-                    )["avg_practical"]
-                    or 0,
-                    "total_subjects_with_practicals": queryset.filter(
-                        has_practical=True
-                    ).count(),
                 },
             }
 
@@ -804,7 +723,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 result["by_education_level"][level_code] = {
                     "name": level_name,
                     "count": level_subjects.count(),
-                    "compulsory": level_subjects.filter(is_compulsory=True).count(),
                 }
 
             # Statistics by category
@@ -931,8 +849,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
         if not subject.is_active:
             reasons.append("Subject is not currently active")
-        if subject.is_discontinued:
-            reasons.append("Subject has been discontinued")
         if not is_grade_available:
             reasons.append("Subject is not available for this grade level")
         if not reasons:

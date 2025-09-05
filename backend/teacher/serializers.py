@@ -243,10 +243,12 @@ class TeacherSerializer(serializers.ModelSerializer):
                 'classroom_id': classroom.id,
                 'section_id': section.id,  # Add section_id for attendance
                 'section_name': section.name,
+                'grade_level_id': grade_level.id,  # Add grade_level_id for form dropdowns
                 'grade_level_name': grade_level.name,
                 'education_level': grade_level.education_level,
                 'academic_year': classroom.academic_year.name,
                 'term': classroom.term.get_name_display(),
+                'subject_id': assignment.subject.id,  # Add missing subject_id field
                 'subject_name': assignment.subject.name,
                 'subject_code': assignment.subject.code,
                 'assigned_date': assignment.assigned_date.isoformat() if assignment.assigned_date else None,

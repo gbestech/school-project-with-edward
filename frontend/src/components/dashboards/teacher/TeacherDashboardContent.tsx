@@ -192,7 +192,7 @@ const TeacherDashboardContent: React.FC<TeacherDashboardContentProps> = ({
               </div>
               <div className="text-center">
                 <p className="font-semibold text-lg">{teacherData?.user?.first_name} {teacherData?.user?.last_name}</p>
-                <p className="text-blue-100 text-sm">{teacherData?.employee_id || 'EMP001'}</p>
+                <p className="text-blue-100 text-sm">{teacherData?.employee_id || ''}</p>
               </div>
             </div>
           </div>
@@ -305,16 +305,50 @@ const TeacherDashboardContent: React.FC<TeacherDashboardContentProps> = ({
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white">My Subjects</h3>
               <Award className="w-5 h-5 text-slate-400" />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {subjects && subjects.length > 0 ? (
-                subjects.slice(0, 5).map((subject: any, index: number) => (
-                  <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">{subject.name || `Subject ${index + 1}`}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{subject.code || 'Subject Code'} - {subject.grade_level || 'Grade Level'}</p>
+                subjects.map((subject: any, index: number) => (
+                  <div key={subject.id || index} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4 bg-slate-50 dark:bg-slate-700/50">
+                    {/* Subject Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        <div>
+                          <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{subject.name}</h4>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{subject.code}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-slate-400">
+                          {subject.assignments?.length || 0} class{subject.assignments?.length !== 1 ? 'es' : ''}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-xs text-slate-400">{subject.periods_per_week || 0} periods/week</span>
+                    
+                    {/* Classroom Assignments */}
+                    {subject.assignments && subject.assignments.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 uppercase tracking-wide">Class Assignments:</p>
+                        {subject.assignments.map((assignment: any, assignmentIndex: number) => (
+                          <div key={assignment.id || assignmentIndex} className="flex items-center justify-between p-2 bg-white dark:bg-slate-600 rounded border border-slate-200 dark:border-slate-500">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                {assignment.classroom_name || 'Class'}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {assignment.grade_level} - {assignment.section} ({assignment.education_level})
+                              </p>
+                            </div>
+                            <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+                              <div>{assignment.student_count || 0} students</div>
+                              <div>{assignment.periods_per_week || 1} periods/week</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500 dark:text-slate-400 italic">No class assignments found</p>
+                    )}
                   </div>
                 ))
               ) : (

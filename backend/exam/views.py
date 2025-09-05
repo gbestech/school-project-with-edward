@@ -113,6 +113,151 @@ class ExamViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
 
+    @action(detail=False, methods=["post"])
+    def bulk_create(self, request):
+        """Bulk create results"""
+        results_data = request.data.get("results", [])
+        
+        if not results_data:
+            return Response(
+                {"error": "Results data is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        created_results = []
+        errors = []
+        
+        with transaction.atomic():
+            for i, result_data in enumerate(results_data):
+                serializer = ResultCreateUpdateSerializer(data=result_data)
+                if serializer.is_valid():
+                    result = serializer.save(recorded_by=request.user)
+                    created_results.append(result.id)
+                else:
+                    errors.append({"index": i, "errors": serializer.errors})
+            
+            if errors:
+                transaction.set_rollback(True)
+                return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            "message": f"Created {len(created_results)} results",
+            "created_ids": created_results
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=["post"])
+    def bulk_update(self, request):
+        """Bulk update results"""
+        results_data = request.data.get("results", [])
+        
+        if not results_data:
+            return Response(
+                {"error": "Results data is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        updated_count = 0
+        errors = []
+        
+        with transaction.atomic():
+            for i, result_data in enumerate(results_data):
+                result_id = result_data.get("id")
+                if not result_id:
+                    errors.append({"index": i, "error": "Result ID is required"})
+                    continue
+                
+                try:
+                    result = StudentResult.objects.get(id=result_id)
+                    serializer = ResultCreateUpdateSerializer(result, data=result_data, partial=True)
+                    if serializer.is_valid():
+                        serializer.save(updated_by=request.user)
+                        updated_count += 1
+                    else:
+                        errors.append({"index": i, "errors": serializer.errors})
+                except StudentResult.DoesNotExist:
+                    errors.append({"index": i, "error": f"Result {result_id} not found"})
+                except Exception as e:
+                    errors.append({"index": i, "error": str(e)})
+            
+            if errors:
+                transaction.set_rollback(True)
+                return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({
+            "message": f"Updated {updated_count} results",
+            "updated_count": updated_count
+        })
+
+    @action(detail=False, methods=["get"])
+    def by_student(self, request, student_id=None):
+        """Get results by student"""
+        if not student_id:
+            return Response(
+                {"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        results = self.get_queryset().filter(student_id=student_id)
+        serializer = self.get_serializer(results, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_exam(self, request, exam_id=None):
+        """Get results by exam"""
+        if not exam_id:
+            return Response(
+                {"error": "Exam ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        results = self.get_queryset().filter(exam_id=exam_id)
+        serializer = self.get_serializer(results, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_subject(self, request, subject_id=None):
+        """Get results by subject"""
+        if not subject_id:
+            return Response(
+                {"error": "Subject ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        results = self.get_queryset().filter(subject_id=subject_id)
+        serializer = self.get_serializer(results, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_grade(self, request, grade_id=None):
+        """Get results by grade level"""
+        if not grade_id:
+            return Response(
+                {"error": "Grade ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        results = self.get_queryset().filter(grade_level_id=grade_id)
+        serializer = self.get_serializer(results, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def student_transcript(self, request, student_id=None):
+        """Get student transcript"""
+        if not student_id:
+            return Response(
+                {"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        results = self.get_queryset().filter(student_id=student_id).order_by('exam__exam_date')
+        serializer = self.get_serializer(results, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def grade_sheet(self, request, exam_id=None):
+        """Get grade sheet for an exam"""
+        if not exam_id:
+            return Response(
+                {"error": "Exam ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        results = self.get_queryset().filter(exam_id=exam_id).order_by('student__user__first_name')
+        serializer = self.get_serializer(results, many=True)
+        return Response(serializer.data)
+
     # Core Exam Management
     @action(detail=True, methods=["post"])
     def start_exam(self, request, pk=None):
@@ -162,6 +307,37 @@ class ExamViewSet(viewsets.ModelViewSet):
         exam.cancellation_reason = request.data.get("reason", "")
         exam.save()
         return Response({"message": "Exam cancelled successfully"})
+
+    @action(detail=True, methods=["post"])
+    def postpone_exam(self, request, pk=None):
+        """Postpone an exam"""
+        exam = self.get_object()
+        new_date = request.data.get("new_date")
+        new_start_time = request.data.get("new_start_time")
+        new_end_time = request.data.get("new_end_time")
+        reason = request.data.get("reason", "")
+
+        if not new_date:
+            return Response(
+                {"error": "New date is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if exam.status == "completed":
+            return Response(
+                {"error": "Cannot postpone completed exam"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        exam.exam_date = new_date
+        if new_start_time:
+            exam.start_time = new_start_time
+        if new_end_time:
+            exam.end_time = new_end_time
+        
+        exam.postponement_reason = reason
+        exam.save()
+        
+        return Response({"message": "Exam postponed successfully"})
 
     # Student Registration
     @action(detail=True, methods=["post"])
@@ -222,6 +398,21 @@ class ExamViewSet(viewsets.ModelViewSet):
         )
         serializer = ExamRegistrationSerializer(registrations, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def get_registrations(self, request, pk=None):
+        """Get all registrations for an exam (alias for registrations)"""
+        return self.registrations(request, pk)
+
+    @action(detail=True, methods=["get"])
+    def get_results(self, request, pk=None):
+        """Get results for an exam (alias for results)"""
+        return self.results(request, pk)
+
+    @action(detail=True, methods=["get"])
+    def get_statistics(self, request, pk=None):
+        """Get statistics for an exam (alias for statistics)"""
+        return self.statistics(request, pk)
 
     # Results Management
     @action(detail=True, methods=["get"])
@@ -313,6 +504,146 @@ class ExamViewSet(viewsets.ModelViewSet):
         exams = self.get_queryset().filter(exam_schedule_id=schedule_id)
         serializer = self.get_serializer(exams, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_teacher(self, request, teacher_id=None):
+        """Get exams created by a specific teacher"""
+        if not teacher_id:
+            return Response(
+                {"error": "Teacher ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        exams = self.get_queryset().filter(teacher_id=teacher_id)
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_subject(self, request, subject_id=None):
+        """Get exams by subject"""
+        if not subject_id:
+            return Response(
+                {"error": "Subject ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        exams = self.get_queryset().filter(subject_id=subject_id)
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_grade(self, request, grade_id=None):
+        """Get exams by grade level"""
+        if not grade_id:
+            return Response(
+                {"error": "Grade ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        exams = self.get_queryset().filter(grade_level_id=grade_id)
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def completed(self, request):
+        """Get completed exams"""
+        exams = self.get_queryset().filter(status="completed")
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def ongoing(self, request):
+        """Get ongoing exams"""
+        exams = self.get_queryset().filter(status="in_progress")
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def calendar_view(self, request):
+        """Get exams in calendar format"""
+        start_date = request.GET.get("start_date")
+        end_date = request.GET.get("end_date")
+        
+        queryset = self.get_queryset()
+        
+        if start_date:
+            queryset = queryset.filter(exam_date__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(exam_date__lte=end_date)
+            
+        exams = queryset.order_by("exam_date", "start_time")
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def summary_list(self, request):
+        """Get exam summary list"""
+        exams = self.get_queryset().annotate(
+            registered_students_count=Count("examregistration", distinct=True)
+        )
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def bulk_update(self, request):
+        """Bulk update exams"""
+        exam_ids = request.data.get("exam_ids", [])
+        update_data = request.data.get("update_data", {})
+        
+        if not exam_ids:
+            return Response(
+                {"error": "Exam IDs are required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        updated_count = 0
+        errors = []
+        
+        with transaction.atomic():
+            for exam_id in exam_ids:
+                try:
+                    exam = Exam.objects.get(id=exam_id)
+                    for field, value in update_data.items():
+                        if hasattr(exam, field):
+                            setattr(exam, field, value)
+                    exam.save()
+                    updated_count += 1
+                except Exam.DoesNotExist:
+                    errors.append(f"Exam {exam_id} not found")
+                except Exception as e:
+                    errors.append(f"Exam {exam_id}: {str(e)}")
+        
+        return Response({
+            "message": f"Updated {updated_count} exams",
+            "updated_count": updated_count,
+            "errors": errors
+        })
+
+    @action(detail=False, methods=["post"])
+    def bulk_delete(self, request):
+        """Bulk delete exams"""
+        exam_ids = request.data.get("exam_ids", [])
+        
+        if not exam_ids:
+            return Response(
+                {"error": "Exam IDs are required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        deleted_count = 0
+        errors = []
+        
+        with transaction.atomic():
+            for exam_id in exam_ids:
+                try:
+                    exam = Exam.objects.get(id=exam_id)
+                    exam.delete()
+                    deleted_count += 1
+                except Exam.DoesNotExist:
+                    errors.append(f"Exam {exam_id} not found")
+                except Exception as e:
+                    errors.append(f"Exam {exam_id}: {str(e)}")
+        
+        return Response({
+            "message": f"Deleted {deleted_count} exams",
+            "deleted_count": deleted_count,
+            "errors": errors
+        })
 
     # Import/Export
     @action(detail=False, methods=["post"])
@@ -536,6 +867,11 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
         serializer = ExamListSerializer(exams, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"])
+    def get_exams(self, request, pk=None):
+        """Get exams for a schedule (alias for exams)"""
+        return self.exams(request, pk)
+
     @action(detail=True, methods=["post"])
     def toggle_active(self, request, pk=None):
         """Toggle schedule active status"""
@@ -619,6 +955,68 @@ class ExamRegistrationViewSet(viewsets.ModelViewSet):
                 "errors": errors,
             }
         )
+
+    @action(detail=False, methods=["get"])
+    def by_student(self, request, student_id=None):
+        """Get registrations by student"""
+        if not student_id:
+            return Response(
+                {"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        registrations = self.get_queryset().filter(student_id=student_id)
+        serializer = self.get_serializer(registrations, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_exam(self, request, exam_id=None):
+        """Get registrations by exam"""
+        if not exam_id:
+            return Response(
+                {"error": "Exam ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        registrations = self.get_queryset().filter(exam_id=exam_id)
+        serializer = self.get_serializer(registrations, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def mark_attendance(self, request):
+        """Mark attendance for exam registrations"""
+        attendance_data = request.data.get("attendance", [])
+        
+        if not attendance_data:
+            return Response(
+                {"error": "Attendance data is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        updated_count = 0
+        errors = []
+        
+        with transaction.atomic():
+            for item in attendance_data:
+                registration_id = item.get("registration_id")
+                is_present = item.get("is_present", False)
+                
+                if not registration_id:
+                    errors.append("Registration ID is required")
+                    continue
+                
+                try:
+                    registration = ExamRegistration.objects.get(id=registration_id)
+                    registration.is_present = is_present
+                    registration.save()
+                    updated_count += 1
+                except ExamRegistration.DoesNotExist:
+                    errors.append(f"Registration {registration_id} not found")
+                except Exception as e:
+                    errors.append(f"Registration {registration_id}: {str(e)}")
+        
+        return Response({
+            "message": f"Updated attendance for {updated_count} registrations",
+            "updated_count": updated_count,
+            "errors": errors
+        })
 
 
 class ResultViewSet(viewsets.ModelViewSet):

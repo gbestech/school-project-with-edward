@@ -8,6 +8,8 @@ from .views import (
     SubjectAnalyticsViewSet,
     SubjectManagementViewSet,
     SubjectByEducationLevelView,
+    SchoolStreamConfigurationViewSet,
+    SchoolStreamSubjectAssignmentViewSet,
     health_check,
 )
 
@@ -31,6 +33,18 @@ management_router.register(
     r"", SubjectManagementViewSet, basename="subject-management"
 )
 
+# Stream configuration router
+stream_config_router = DefaultRouter()
+stream_config_router.register(
+    r"", SchoolStreamConfigurationViewSet, basename="stream-configuration"
+)
+
+# Stream subject assignment router
+stream_assignment_router = DefaultRouter()
+stream_assignment_router.register(
+    r"", SchoolStreamSubjectAssignmentViewSet, basename="stream-subject-assignment"
+)
+
 # ==============================================================================
 # URL PATTERNS
 # ==============================================================================
@@ -40,6 +54,13 @@ app_name = "subjects"
 urlpatterns = [
     # Health check endpoint
     path("health/", health_check, name="health-check"),
+    # Stream configuration endpoints - /api/v1/subjects/stream-configurations/ (MUST COME FIRST)
+    path("stream-configurations/", SchoolStreamConfigurationViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path("stream-configurations/<int:pk>/", SchoolStreamConfigurationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
+    path("stream-configurations/setup_defaults/", SchoolStreamConfigurationViewSet.as_view({'post': 'setup_defaults'})),
+    # Stream subject assignment endpoints - /api/v1/subjects/stream-subject-assignments/
+    path("stream-subject-assignments/", SchoolStreamSubjectAssignmentViewSet.as_view({'get': 'list', 'post': 'create'})),
+    path("stream-subject-assignments/<int:pk>/", SchoolStreamSubjectAssignmentViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
     # Core subject operations - /api/v1/subjects/
     path("", include(router.urls)),
     # Analytics endpoints - /api/v1/analytics/subjects/

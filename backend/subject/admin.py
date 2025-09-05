@@ -4,7 +4,7 @@ from django.db.models import Q, Count
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import Subject
+from .models import Subject, SchoolStreamConfiguration, SchoolStreamSubjectAssignment
 
 
 class PrerequisiteInline(admin.TabularInline):
@@ -20,63 +20,111 @@ class PrerequisiteInline(admin.TabularInline):
         return super().get_queryset(request).select_related("from_subject")
 
 
+@admin.register(SchoolStreamConfiguration)
+class SchoolStreamConfigurationAdmin(admin.ModelAdmin):
+    """Admin interface for school stream configurations"""
+    
+    list_display = [
+        'school_id', 'stream', 'subject_role', 'min_subjects_required', 
+        'max_subjects_allowed', 'is_compulsory', 'is_active'
+    ]
+    
+    list_filter = [
+        'school_id', 'stream', 'subject_role', 'is_compulsory', 'is_active'
+    ]
+    
+    search_fields = ['stream__name']
+    
+    ordering = ['school_id', 'stream', 'display_order']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('school_id', 'stream', 'subject_role')
+        }),
+        ('Requirements', {
+            'fields': ('min_subjects_required', 'max_subjects_allowed', 'is_compulsory')
+        }),
+        ('Display', {
+            'fields': ('display_order', 'is_active')
+        }),
+    )
+
+
+@admin.register(SchoolStreamSubjectAssignment)
+class SchoolStreamSubjectAssignmentAdmin(admin.ModelAdmin):
+    """Admin interface for stream subject assignments"""
+    
+    list_display = [
+        'stream_config', 'subject', 'is_compulsory', 'credit_weight', 
+        'can_be_elective_elsewhere', 'is_active'
+    ]
+    
+    list_filter = [
+        'stream_config__school_id', 'stream_config__stream', 'stream_config__subject_role',
+        'is_compulsory', 'can_be_elective_elsewhere', 'is_active'
+    ]
+    
+    search_fields = [
+        'stream_config__stream__name', 'subject__name'
+    ]
+    
+    ordering = ['stream_config', 'subject__name']
+    
+    fieldsets = (
+        ('Assignment', {
+            'fields': ('stream_config', 'subject')
+        }),
+        ('Subject Configuration', {
+            'fields': ('is_compulsory', 'credit_weight', 'can_be_elective_elsewhere')
+        }),
+        ('Prerequisites', {
+            'fields': ('prerequisites',),
+            'classes': ('collapse',)
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+    )
+    
+    filter_horizontal = ['prerequisites']
+
+
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    # Display configuration - Updated with new model fields
+    """Admin interface for subjects - updated for current model structure"""
+    
+    # Display configuration - Only fields that exist
     list_display = (
         "id",
         "name",
         "short_name",
         "code",
-        "category_with_icon",
-        "education_levels_display",
-        "nursery_levels_display_admin",
-        "ss_subject_type_display",
-        "grade_levels_display",
-        "practical_hours_display",
-        "is_compulsory",
+        "category",
+        "education_levels",
+        "ss_subject_type",
         "is_cross_cutting",
-        "has_prerequisites_display",
-        "is_active_display",
-        "enrollment_count_display",
+        "is_active",
         "created_at",
     )
 
     list_display_links = ("id", "name")
 
-    # Updated filtering options with new fields
+    # Filtering options - Only fields that exist
     list_filter = (
         "category",
         "education_levels",
         "ss_subject_type",
-        "is_compulsory",
-        "is_core",
         "is_cross_cutting",
-        "is_activity_based",
         "is_active",
-        "is_discontinued",
-        "has_practical",
-        "requires_lab",
-        "requires_special_equipment",
-        "requires_specialist_teacher",
-        "has_continuous_assessment",
-        "has_final_exam",
-        "pass_mark",
-        "practical_hours",
-        "introduced_year",
-        "curriculum_version",
         "created_at",
     )
 
-    # Updated search functionality
+    # Search functionality - Only fields that exist
     search_fields = (
         "name",
         "short_name",
         "code",
         "description",
-        "equipment_notes",
-        "learning_outcomes",
-        "curriculum_version",
     )
 
     # Ordering
@@ -87,11 +135,10 @@ class SubjectAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .prefetch_related("grade_levels", "prerequisites", "unlocks_subjects")
-            .annotate(enrollment_count=Count("grade_levels__students", distinct=True))
+            .prefetch_related("grade_levels", "prerequisites")
         )
 
-    # Updated fieldsets with new model structure
+    # Fieldsets - Only fields that exist
     fieldsets = (
         (
             "Basic Information",
@@ -101,7 +148,6 @@ class SubjectAdmin(admin.ModelAdmin):
                     "short_name",
                     "code",
                     "description",
-                    "learning_outcomes",
                 )
             },
         ),
@@ -123,43 +169,9 @@ class SubjectAdmin(admin.ModelAdmin):
             "Academic Configuration",
             {
                 "fields": (
-                    "is_compulsory",
-                    "is_core",
                     "is_cross_cutting",
-                    "is_activity_based",
-                    "pass_mark",
+                    "default_stream_role",
                 ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
-            "Assessment & Evaluation",
-            {
-                "fields": (
-                    "has_continuous_assessment",
-                    "has_final_exam",
-                ),
-                "classes": ("collapse",),
-            },
-        ),
-        (
-            "Practical Components",
-            {
-                "fields": (
-                    "has_practical",
-                    "practical_hours",
-                    "requires_lab",
-                    "requires_special_equipment",
-                    "equipment_notes",
-                ),
-                "classes": ("collapse",),
-                "description": "Configure practical and laboratory requirements for this subject.",
-            },
-        ),
-        (
-            "Teaching Requirements",
-            {
-                "fields": ("requires_specialist_teacher",),
                 "classes": ("collapse",),
             },
         ),
@@ -172,13 +184,10 @@ class SubjectAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Status & Metadata",
+            "Status",
             {
                 "fields": (
                     "is_active",
-                    "is_discontinued",
-                    "introduced_year",
-                    "curriculum_version",
                 ),
                 "classes": ("collapse",),
             },
@@ -198,25 +207,17 @@ class SubjectAdmin(admin.ModelAdmin):
     # Form field configurations
     filter_horizontal = ("grade_levels", "prerequisites")
 
-    # Updated bulk actions
+    # Bulk actions - Only actions that work with existing fields
     actions = [
         "activate_subjects",
         "deactivate_subjects",
-        "discontinue_subjects",
-        "make_compulsory",
-        "make_elective",
         "make_cross_cutting",
         "remove_cross_cutting",
-        "enable_practical_component",
-        "disable_practical_component",
-        "mark_as_lab_required",
-        "mark_as_activity_based",
-        "require_specialist_teacher",
         "export_subjects_csv",
     ]
 
     # Enable list editing for quick changes
-    list_editable = ("is_compulsory", "is_cross_cutting")
+    list_editable = ("is_cross_cutting",)
 
     # Items per page
     list_per_page = 25
@@ -227,67 +228,10 @@ class SubjectAdmin(admin.ModelAdmin):
     # Inlines
     inlines = [PrerequisiteInline]
 
-    # Custom methods for display
-    @admin.display(description="Category", ordering="category")
-    def category_with_icon(self, obj):
-        return obj.get_category_display_with_icon()
-
-    @admin.display(description="Education Levels")
-    def education_levels_display(self, obj):
-        return obj.education_levels_display
-
-    @admin.display(description="Nursery Levels")
-    def nursery_levels_display_admin(self, obj):
-        if obj.is_nursery_subject and obj.nursery_levels:
-            return obj.nursery_levels_display
-        return "-"
-
-    @admin.display(description="SS Type")
-    def ss_subject_type_display(self, obj):
-        if obj.ss_subject_type:
-            return obj.get_ss_subject_type_display()
-        return "-"
-
-    @admin.display(description="Grade Levels")
-    def grade_levels_display(self, obj):
-        count = obj.grade_levels.count()
-        if count > 0:
-            return f"{count} grade{'s' if count > 1 else ''}"
-        return "None"
-
-    @admin.display(description="Practical Hours")
-    def practical_hours_display(self, obj):
-        if obj.has_practical and obj.practical_hours > 0:
-            return f"{obj.practical_hours}h"
-        return "-"
-
-    @admin.display(description="Prerequisites")
-    def has_prerequisites_display(self, obj):
-        count = obj.prerequisites.count()
-        if count > 0:
-            return format_html(
-                '<span style="color: orange;">● {}</span>',
-                f"{count} prerequisite{'s' if count > 1 else ''}",
-            )
-        return format_html('<span style="color: green;">✓ None</span>')
-
-    @admin.display(description="Active", boolean=True, ordering="is_active")
-    def is_active_display(self, obj):
-        if obj.is_discontinued:
-            return format_html('<span style="color: red;">⚠ Discontinued</span>')
-        return obj.is_active
-
-    @admin.display(description="Enrollments", ordering="enrollment_count")
-    def enrollment_count_display(self, obj):
-        count = getattr(obj, "enrollment_count", 0)
-        if count > 0:
-            return format_html('<strong style="color: blue;">{}</strong>', count)
-        return count or 0
-
-    # Updated bulk actions
+    # Bulk actions
     @admin.action(description="✅ Activate selected subjects")
     def activate_subjects(self, request, queryset):
-        updated = queryset.update(is_active=True, is_discontinued=False)
+        updated = queryset.update(is_active=True)
         self.message_user(
             request,
             f"Successfully activated {updated} subject(s).",
@@ -299,30 +243,6 @@ class SubjectAdmin(admin.ModelAdmin):
         self.message_user(
             request,
             f"Successfully deactivated {updated} subject(s).",
-        )
-
-    @admin.action(description="⚠️ Mark as discontinued")
-    def discontinue_subjects(self, request, queryset):
-        updated = queryset.update(is_discontinued=True, is_active=False)
-        self.message_user(
-            request,
-            f"Successfully marked {updated} subject(s) as discontinued.",
-        )
-
-    @admin.action(description="📚 Mark as compulsory")
-    def make_compulsory(self, request, queryset):
-        updated = queryset.update(is_compulsory=True)
-        self.message_user(
-            request,
-            f"Successfully marked {updated} subject(s) as compulsory.",
-        )
-
-    @admin.action(description="🎯 Mark as elective")
-    def make_elective(self, request, queryset):
-        updated = queryset.update(is_compulsory=False)
-        self.message_user(
-            request,
-            f"Successfully marked {updated} subject(s) as elective.",
         )
 
     @admin.action(description="🌐 Mark as cross-cutting")
@@ -343,48 +263,6 @@ class SubjectAdmin(admin.ModelAdmin):
             f"Successfully removed cross-cutting status from {updated} subject(s).",
         )
 
-    @admin.action(description="🔬 Enable practical component")
-    def enable_practical_component(self, request, queryset):
-        updated = queryset.update(has_practical=True)
-        self.message_user(
-            request,
-            f"Successfully enabled practical component for {updated} subject(s).",
-        )
-
-    @admin.action(description="📖 Disable practical component")
-    def disable_practical_component(self, request, queryset):
-        updated = queryset.update(has_practical=False, practical_hours=0)
-        self.message_user(
-            request,
-            f"Successfully disabled practical component for {updated} subject(s).",
-        )
-
-    @admin.action(description="🥽 Mark as requiring lab")
-    def mark_as_lab_required(self, request, queryset):
-        updated = queryset.update(requires_lab=True)
-        self.message_user(
-            request,
-            f"Successfully marked {updated} subject(s) as requiring lab facilities.",
-        )
-
-    @admin.action(description="🎈 Mark as activity-based")
-    def mark_as_activity_based(self, request, queryset):
-        # Only apply to nursery subjects
-        nursery_subjects = queryset.filter(education_levels__contains=["NURSERY"])
-        updated = nursery_subjects.update(is_activity_based=True)
-        self.message_user(
-            request,
-            f"Successfully marked {updated} subject(s) as activity-based.",
-        )
-
-    @admin.action(description="👨‍🏫 Require specialist teacher")
-    def require_specialist_teacher(self, request, queryset):
-        updated = queryset.update(requires_specialist_teacher=True)
-        self.message_user(
-            request,
-            f"Successfully marked {updated} subject(s) as requiring specialist teacher.",
-        )
-
     @admin.action(description="📊 Export to CSV")
     def export_subjects_csv(self, request, queryset):
         import csv
@@ -403,14 +281,10 @@ class SubjectAdmin(admin.ModelAdmin):
                 "Education Levels",
                 "Nursery Levels",
                 "SS Subject Type",
-                "Practical Hours",
-                "Is Compulsory",
                 "Is Cross Cutting",
-                "Is Activity Based",
                 "Has Prerequisites",
-                "Requires Specialist",
                 "Is Active",
-                "Curriculum Version",
+                "Created At",
             ]
         )
 
@@ -421,21 +295,13 @@ class SubjectAdmin(admin.ModelAdmin):
                     subject.short_name,
                     subject.code,
                     subject.get_category_display(),
-                    subject.education_levels_display,
-                    subject.nursery_levels_display,
-                    (
-                        subject.get_ss_subject_type_display()
-                        if subject.ss_subject_type
-                        else ""
-                    ),
-                    subject.practical_hours if subject.has_practical else 0,
-                    "Yes" if subject.is_compulsory else "No",
+                    str(subject.education_levels),
+                    str(subject.nursery_levels),
+                    subject.get_ss_subject_type_display() if subject.ss_subject_type else "",
                     "Yes" if subject.is_cross_cutting else "No",
-                    "Yes" if subject.is_activity_based else "No",
                     "Yes" if subject.prerequisites.exists() else "No",
-                    "Yes" if subject.requires_specialist_teacher else "No",
                     "Yes" if subject.is_active else "No",
-                    subject.curriculum_version or "",
+                    subject.created_at.strftime("%Y-%m-%d") if subject.created_at else "",
                 ]
             )
 
@@ -449,20 +315,13 @@ class SubjectAdmin(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
 
-        # Updated help text with new fields
+        # Updated help text with existing fields
         help_texts = {
             "education_levels": 'Select education levels where this subject is taught (e.g., ["PRIMARY", "SECONDARY"])',
             "nursery_levels": "Select specific nursery levels if this is a nursery subject",
             "ss_subject_type": "Classification for Senior Secondary subjects (required for SS subjects)",
-            "pass_mark": "Minimum percentage required to pass this subject",
-            "practical_hours": "Weekly practical/lab hours (set to 0 if no practical component)",
-            "equipment_notes": "Describe any special equipment or facilities required",
-            "learning_outcomes": "Key learning outcomes and objectives for this subject",
             "is_cross_cutting": "Cross-cutting subjects are required for all SS students",
-            "is_activity_based": "Activity-based subjects (typically for nursery level)",
-            "requires_specialist_teacher": "Requires a subject specialist teacher",
             "subject_order": "Order for displaying subjects within a category (0 = first)",
-            "curriculum_version": "Version of curriculum this subject follows",
         }
 
         for field_name, help_text in help_texts.items():
@@ -527,8 +386,6 @@ class SubjectInline(admin.TabularInline):
     def subject_category(self, obj):
         return obj.subject.get_category_display() if obj.subject else "-"
 
-
-
     @admin.display(description="Type")
     def subject_type(self, obj):
         if not obj.subject:
@@ -544,15 +401,7 @@ class SubjectInline(admin.TabularInline):
             return "-"
 
         status_parts = []
-        if obj.subject.is_compulsory:
-            status_parts.append("Compulsory")
         if obj.subject.is_cross_cutting:
             status_parts.append("Cross-cutting")
-        if obj.subject.has_practical:
-            status_parts.append("Practical")
-        if obj.subject.requires_lab:
-            status_parts.append("Lab Required")
-        if obj.subject.is_activity_based:
-            status_parts.append("Activity-based")
 
         return " | ".join(status_parts) if status_parts else "Standard"

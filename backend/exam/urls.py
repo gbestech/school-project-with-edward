@@ -20,105 +20,105 @@ router.register(r"statistics", ExamStatisticsViewSet, basename="exam-statistics"
 custom_patterns = [
     # Exam-specific endpoints
     path(
-        "exams/<int:exam_id>/register/",
+        "<int:exam_id>/register/",
         ExamViewSet.as_view({"post": "register_student"}),
         name="exam-register-student",
     ),
     path(
-        "exams/<int:exam_id>/unregister/",
+        "<int:exam_id>/unregister/",
         ExamViewSet.as_view({"post": "unregister_student"}),
         name="exam-unregister-student",
     ),
     path(
-        "exams/<int:exam_id>/registrations/",
+        "<int:exam_id>/registrations/",
         ExamViewSet.as_view({"get": "get_registrations"}),
         name="exam-registrations",
     ),
     path(
-        "exams/<int:exam_id>/results/",
+        "<int:exam_id>/results/",
         ExamViewSet.as_view({"get": "get_results", "post": "bulk_create_results"}),
         name="exam-results",
     ),
     path(
-        "exams/<int:exam_id>/statistics/",
+        "<int:exam_id>/statistics/",
         ExamViewSet.as_view({"get": "get_statistics"}),
         name="exam-statistics",
     ),
     path(
-        "exams/<int:exam_id>/start/",
+        "<int:exam_id>/start/",
         ExamViewSet.as_view({"post": "start_exam"}),
         name="exam-start",
     ),
     path(
-        "exams/<int:exam_id>/end/",
+        "<int:exam_id>/end/",
         ExamViewSet.as_view({"post": "end_exam"}),
         name="exam-end",
     ),
     path(
-        "exams/<int:exam_id>/cancel/",
+        "<int:exam_id>/cancel/",
         ExamViewSet.as_view({"post": "cancel_exam"}),
         name="exam-cancel",
     ),
     path(
-        "exams/<int:exam_id>/postpone/",
+        "<int:exam_id>/postpone/",
         ExamViewSet.as_view({"post": "postpone_exam"}),
         name="exam-postpone",
     ),
     # Bulk operations
     path(
-        "exams/bulk-update/",
+        "bulk-update/",
         ExamViewSet.as_view({"post": "bulk_update"}),
         name="exam-bulk-update",
     ),
     path(
-        "exams/bulk-delete/",
+        "bulk-delete/",
         ExamViewSet.as_view({"post": "bulk_delete"}),
         name="exam-bulk-delete",
     ),
     # Calendar and summary views
     path(
-        "exams/calendar/",
+        "calendar/",
         ExamViewSet.as_view({"get": "calendar_view"}),
         name="exam-calendar",
     ),
     path(
-        "exams/summary/",
+        "summary/",
         ExamViewSet.as_view({"get": "summary_list"}),
         name="exam-summary",
     ),
     # Filter endpoints
     path(
-        "exams/by-schedule/<int:schedule_id>/",
+        "by-schedule/<int:schedule_id>/",
         ExamViewSet.as_view({"get": "by_schedule"}),
         name="exams-by-schedule",
     ),
     path(
-        "exams/by-subject/<int:subject_id>/",
+        "by-subject/<int:subject_id>/",
         ExamViewSet.as_view({"get": "by_subject"}),
         name="exams-by-subject",
     ),
     path(
-        "exams/by-grade/<int:grade_id>/",
+        "by-grade/<int:grade_id>/",
         ExamViewSet.as_view({"get": "by_grade"}),
         name="exams-by-grade",
     ),
     path(
-        "exams/by-teacher/<int:teacher_id>/",
+        "by-teacher/<int:teacher_id>/",
         ExamViewSet.as_view({"get": "by_teacher"}),
         name="exams-by-teacher",
     ),
     path(
-        "exams/upcoming/",
+        "upcoming/",
         ExamViewSet.as_view({"get": "upcoming"}),
         name="exams-upcoming",
     ),
     path(
-        "exams/completed/",
+        "completed/",
         ExamViewSet.as_view({"get": "completed"}),
         name="exams-completed",
     ),
     path(
-        "exams/ongoing/",
+        "ongoing/",
         ExamViewSet.as_view({"get": "ongoing"}),
         name="exams-ongoing",
     ),

@@ -23,6 +23,7 @@ const initialStudent = {
   academicYear: '',
   education_level: '',
   student_class: '',
+  stream: '', // Add stream field for Senior Secondary
   registration_number: '', // <-- Add registration number
   parentName: '',
   parentFirstName: '',
@@ -123,6 +124,11 @@ const SignUpPage: React.FC = () => {
     if (role === 'student') {
       if (!student.firstName) errs.studentFirstName = 'First name required';
       if (!student.lastName) errs.studentLastName = 'Last name required';
+      if (!student.education_level) errs.educationLevel = 'Education level required';
+      if (!student.student_class) errs.studentClass = 'Student class required';
+      if (student.education_level === 'SENIOR_SECONDARY' && !student.stream) {
+        errs.stream = 'Stream selection is required for Senior Secondary students';
+      }
       if (!parent.firstName) errs.parentFirstName = 'Parent first name required';
       if (!parent.lastName) errs.parentLastName = 'Parent last name required';
       if (!parent.email) errs.parentEmail = 'Parent email required';
@@ -135,6 +141,11 @@ const SignUpPage: React.FC = () => {
         if (!s.firstName) errs[`student${i}FirstName`] = 'Student first name required';
         if (!s.lastName) errs[`student${i}LastName`] = 'Student last name required';
         if (!s.email) errs[`student${i}Email`] = 'Student email required';
+        if (!s.education_level) errs[`student${i}EducationLevel`] = 'Education level required';
+        if (!s.student_class) errs[`student${i}StudentClass`] = 'Student class required';
+        if (s.education_level === 'SENIOR_SECONDARY' && !s.stream) {
+          errs[`student${i}Stream`] = 'Stream selection is required for Senior Secondary students';
+        }
       });
     }
     if (role === 'teacher') {
@@ -189,6 +200,7 @@ const SignUpPage: React.FC = () => {
           academic_year: student.academicYear,
           education_level: student.education_level,
           student_class: student.student_class,
+          stream: student.stream || null,
           address: student.address,
           phone_number: student.phoneNumber.startsWith('+') ? student.phoneNumber : `+${student.phoneNumber}`,
           payment_method: student.paymentMethod,
@@ -222,7 +234,9 @@ const SignUpPage: React.FC = () => {
             user_last_name: s.lastName,
             gender: s.gender,
             date_of_birth: s.dateOfBirth,
+            education_level: s.education_level,
             student_class: s.student_class,
+            stream: s.stream || null,
           })),
           role: 'parent', // <-- Ensure role is set
         };
@@ -297,6 +311,80 @@ const SignUpPage: React.FC = () => {
               <input name="placeOfBirth" value={student.placeOfBirth} onChange={e => handleChange(e, 'student')} placeholder="Place of Birth" className="p-3 border rounded-lg" />
               <input name="academicYear" value={student.academicYear} onChange={e => handleChange(e, 'student')} placeholder="Academic Year (2024/2025)" className="p-3 border rounded-lg" />
             </div>
+            
+            {/* Education Level and Class Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <select name="education_level" value={student.education_level} onChange={e => handleChange(e, 'student')} className="p-3 border rounded-lg">
+                <option value="">Select Education Level</option>
+                <option value="NURSERY">Nursery</option>
+                <option value="PRIMARY">Primary</option>
+                <option value="JUNIOR_SECONDARY">Junior Secondary</option>
+                <option value="SENIOR_SECONDARY">Senior Secondary</option>
+              </select>
+              
+              <select name="student_class" value={student.student_class} onChange={e => handleChange(e, 'student')} className="p-3 border rounded-lg">
+                <option value="">Select Class</option>
+                {student.education_level === 'NURSERY' && (
+                  <>
+                    <option value="PRE_NURSERY">Pre-nursery</option>
+                    <option value="NURSERY_1">Nursery 1</option>
+                    <option value="NURSERY_2">Nursery 2</option>
+                  </>
+                )}
+                {student.education_level === 'PRIMARY' && (
+                  <>
+                    <option value="PRIMARY_1">Primary 1</option>
+                    <option value="PRIMARY_2">Primary 2</option>
+                    <option value="PRIMARY_3">Primary 3</option>
+                    <option value="PRIMARY_4">Primary 4</option>
+                    <option value="PRIMARY_5">Primary 5</option>
+                    <option value="PRIMARY_6">Primary 6</option>
+                  </>
+                )}
+                {student.education_level === 'JUNIOR_SECONDARY' && (
+                  <>
+                    <option value="JSS_1">Junior Secondary 1 (JSS1)</option>
+                    <option value="JSS_2">Junior Secondary 2 (JSS2)</option>
+                    <option value="JSS_3">Junior Secondary 3 (JSS3)</option>
+                  </>
+                )}
+                {student.education_level === 'SENIOR_SECONDARY' && (
+                  <>
+                    <option value="SS_1">Senior Secondary 1 (SS1)</option>
+                    <option value="SS_2">Senior Secondary 2 (SS2)</option>
+                    <option value="SS_3">Senior Secondary 3 (SS3)</option>
+                  </>
+                )}
+              </select>
+            </div>
+            
+            {/* Stream Selection for Senior Secondary */}
+            {student.education_level === 'SENIOR_SECONDARY' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Stream Selection *
+                  <span className="text-xs text-gray-500 ml-2">
+                    (Required for Senior Secondary students)
+                  </span>
+                </label>
+                <select
+                  name="stream"
+                  value={student.stream}
+                  onChange={e => handleChange(e, 'student')}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select Your Stream</option>
+                  <option value="1">Science</option>
+                  <option value="2">Arts</option>
+                  <option value="3">Commercial</option>
+                  <option value="4">Technical</option>
+                </select>
+                <p className="text-xs text-gray-600 mt-1">
+                  Choose the stream that best matches your academic interests and career goals.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <select name="education_level" value={student.education_level} onChange={e => handleChange(e, 'student')} className="p-3 border rounded-lg">
                 <option value="">Select Education Level</option>
@@ -470,26 +558,65 @@ const SignUpPage: React.FC = () => {
                   <option value="F">Female</option>
                 </select>
                 <input name="dateOfBirth" type="date" value={s.dateOfBirth} onChange={e => handleChange(e, 'students', idx)} className="p-3 border rounded-lg" />
+                
+                {/* Education Level Selection */}
+                <select name="education_level" value={s.education_level} onChange={e => handleChange(e, 'students', idx)} className="p-3 border rounded-lg">
+                  <option value="">Select Education Level</option>
+                  <option value="NURSERY">Nursery</option>
+                  <option value="PRIMARY">Primary</option>
+                  <option value="JUNIOR_SECONDARY">Junior Secondary</option>
+                  <option value="SENIOR_SECONDARY">Senior Secondary</option>
+                </select>
+                
+                {/* Student Class Selection */}
                 <select name="student_class" value={s.student_class} onChange={e => handleChange(e, 'students', idx)} className="p-3 border rounded-lg">
                   <option value="">Select Class</option>
-                  <option value="PRE_NURSERY">Pre-nursery</option>
-                  <option value="NURSERY_1">Nursery 1</option>
-                  <option value="NURSERY_2">Nursery 2</option>
-                  <option value="PRIMARY_1">Primary 1</option>
-                  <option value="PRIMARY_2">Primary 2</option>
-                  <option value="PRIMARY_3">Primary 3</option>
-                  <option value="PRIMARY_4">Primary 4</option>
-                  <option value="PRIMARY_5">Primary 5</option>
-                  <option value="PRIMARY_6">Primary 6</option>
-                  <option value="JSS_1">Junior Secondary 1 (JSS1)</option>
-                  <option value="JSS_2">Junior Secondary 2 (JSS2)</option>
-                  <option value="JSS_3">Junior Secondary 3 (JSS3)</option>
-                  <option value="SS_1">Senior Secondary 1 (SS1)</option>
-                  <option value="SS_2">Senior Secondary 2 (SS2)</option>
-                  <option value="SS_3">Senior Secondary 3 (SS3)</option>
-            </select>
+                  {s.education_level === 'NURSERY' && (
+                    <>
+                      <option value="PRE_NURSERY">Pre-nursery</option>
+                      <option value="NURSERY_1">Nursery 1</option>
+                      <option value="NURSERY_2">Nursery 2</option>
+                    </>
+                  )}
+                  {s.education_level === 'PRIMARY' && (
+                    <>
+                      <option value="PRIMARY_1">Primary 1</option>
+                      <option value="PRIMARY_2">Primary 2</option>
+                      <option value="PRIMARY_3">Primary 3</option>
+                      <option value="PRIMARY_4">Primary 4</option>
+                      <option value="PRIMARY_5">Primary 5</option>
+                      <option value="PRIMARY_6">Primary 6</option>
+                    </>
+                  )}
+                  {s.education_level === 'JUNIOR_SECONDARY' && (
+                    <>
+                      <option value="JSS_1">Junior Secondary 1 (JSS1)</option>
+                      <option value="JSS_2">Junior Secondary 2 (JSS2)</option>
+                      <option value="JSS_3">Junior Secondary 3 (JSS3)</option>
+                    </>
+                  )}
+                  {s.education_level === 'SENIOR_SECONDARY' && (
+                    <>
+                      <option value="SS_1">Senior Secondary 1 (SS1)</option>
+                      <option value="SS_2">Senior Secondary 2 (SS2)</option>
+                      <option value="SS_3">Senior Secondary 3 (SS3)</option>
+                    </>
+                  )}
+                </select>
+                
+                {/* Stream Selection for Senior Secondary */}
+                {s.education_level === 'SENIOR_SECONDARY' && (
+                  <select name="stream" value={s.stream} onChange={e => handleChange(e, 'students', idx)} className="p-3 border rounded-lg">
+                    <option value="">Select Stream</option>
+                    <option value="1">Science</option>
+                    <option value="2">Arts</option>
+                    <option value="3">Commercial</option>
+                    <option value="4">Technical</option>
+                  </select>
+                )}
+                
                 {students.length > 1 && <button className="text-red-500" onClick={() => removeStudent(idx)}>Remove</button>}
-          </div>
+              </div>
             ))}
             <button className="px-4 py-2 rounded bg-green-500 text-white mt-2" onClick={addStudent}>Add Another Student</button>
             <div className="flex justify-between mt-6">

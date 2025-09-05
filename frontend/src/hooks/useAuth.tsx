@@ -16,6 +16,7 @@ const clearAuthData = () => {
   localStorage.removeItem('refreshToken');
   localStorage.removeItem('userData');
   localStorage.removeItem('userProfile');
+  sessionStorage.clear(); // Clear all session storage
   console.log('Auth data cleared');
 };
 
@@ -389,6 +390,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(updatedUser);
     localStorage.setItem('userData', JSON.stringify(updatedUser));
   };
+
+
 
   // ✅ Fetch user profile
   const fetchUserProfile = async (): Promise<UserProfile | null> => {

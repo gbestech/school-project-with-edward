@@ -1,4 +1,5 @@
 import TeacherService from './TeacherService';
+import { ExamService } from './ExamService';
 import { getAttendance } from './AttendanceService';
 import { LessonService } from './LessonService';
 import ResultService from './ResultService';
@@ -37,10 +38,12 @@ export interface TeacherClassData {
   name: string;
   section_id: number;
   section_name: string;
+  grade_level_id: number; // Add grade_level_id
   grade_level_name: string;
   education_level: string;
   student_count: number;
   max_capacity: number;
+  subject_id: number; // Add subject_id
   subject_name: string;
   subject_code: string;
   room_number: string;
@@ -55,9 +58,16 @@ export interface TeacherSubjectData {
   name: string;
   code: string;
   assignments: Array<{
+    id: number;
+    classroom_name: string;
+    classroom_id: number;
     grade_level: string;
     section: string;
     education_level: string;
+    stream_type?: string;
+    student_count: number;
+    is_class_teacher: boolean;
+    periods_per_week: number;
   }>;
 }
 
@@ -150,7 +160,7 @@ class TeacherDashboardService {
       
       console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - RETURNING stats:', stats);
       return stats;
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔍 TeacherDashboardService.getTeacherDashboardStats - ERROR:', error);
       console.error('🔍 TeacherDashboardService.getTeacherDashboardStats - Error details:', {
         message: error.message,
@@ -234,7 +244,7 @@ class TeacherDashboardService {
       
       // Sort activities by timestamp (most recent first)
       return activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching teacher recent activities:', error);
       return [];
     }
@@ -290,7 +300,7 @@ class TeacherDashboardService {
       
       // Sort events by date (earliest first)
       return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching teacher upcoming events:', error);
       return [];
     }
@@ -302,25 +312,66 @@ class TeacherDashboardService {
       const teacherResponse = await TeacherService.getTeacher(teacherId);
       const classroomAssignments = teacherResponse.classroom_assignments || [];
       
+      // Group assignments by classroom AND subject to handle same subject across multiple grade levels
+      const assignmentGroups = new Map();
+      
+      classroomAssignments.forEach((assignment: any) => {
+        // Create a unique key combining classroom and subject
+        const uniqueKey = `${assignment.classroom_id}_${assignment.subject_id || assignment.subject?.id}`;
+        
+        if (!assignmentGroups.has(uniqueKey)) {
+                  // Initialize assignment data
+        assignmentGroups.set(uniqueKey, {
+          id: assignment.classroom_id, // Use classroom ID for unique identification
+          classroom_id: assignment.classroom_id,
+            name: assignment.classroom_name,
+            section_id: assignment.section_id,
+            section_name: assignment.section_name,
+            grade_level_id: assignment.grade_level_id, // Add grade_level_id
+            grade_level_name: assignment.grade_level_name,
+            education_level: assignment.education_level,
+            student_count: assignment.student_count,
+            max_capacity: assignment.max_capacity,
+            room_number: assignment.room_number,
+            is_primary_teacher: assignment.is_primary_teacher,
+            periods_per_week: assignment.periods_per_week,
+            stream_name: assignment.stream_name,
+            stream_type: assignment.stream_type,
+            // Single subject for this assignment
+            subject: {
+              id: assignment.subject_id || assignment.subject?.id,
+              name: assignment.subject_name,
+              code: assignment.subject_code,
+              is_primary_teacher: assignment.is_primary_teacher,
+              periods_per_week: assignment.periods_per_week
+            }
+          });
+        }
+      });
+      
       // Transform to match TeacherClassData interface
-      return classroomAssignments.map((assignment: any) => ({
-        id: assignment.classroom_id, // Use classroom_id instead of assignment.id
-        name: assignment.classroom_name,
-        section_id: assignment.section_id, // Add section_id for attendance
+      return Array.from(assignmentGroups.values()).map((assignment: any) => ({
+        id: assignment.id,
+        name: assignment.name,
+        section_id: assignment.section_id,
         section_name: assignment.section_name,
+        grade_level_id: assignment.grade_level_id, // Add grade_level_id
         grade_level_name: assignment.grade_level_name,
         education_level: assignment.education_level,
         student_count: assignment.student_count,
         max_capacity: assignment.max_capacity,
-        subject_name: assignment.subject_name,
-        subject_code: assignment.subject_code,
+        subject_id: assignment.subject.id, // Add subject_id
+        subject_name: assignment.subject.name,
+        subject_code: assignment.subject.code,
         room_number: assignment.room_number,
         is_primary_teacher: assignment.is_primary_teacher,
         periods_per_week: assignment.periods_per_week,
         stream_name: assignment.stream_name,
-        stream_type: assignment.stream_type
+        stream_type: assignment.stream_type,
+        // Add the single subject for display
+        all_subjects: [assignment.subject]
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching teacher classes:', error);
       return [];
     }
@@ -391,7 +442,7 @@ class TeacherDashboardService {
       
       console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - No teacher ID found');
       return null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting teacher ID from user:', error);
       return null;
     }
@@ -401,16 +452,69 @@ class TeacherDashboardService {
   async getTeacherSubjects(teacherId: number): Promise<TeacherSubjectData[]> {
     try {
       const teacherResponse = await TeacherService.getTeacher(teacherId);
-      const assignedSubjects = teacherResponse.assigned_subjects || [];
+      const classroomAssignments = teacherResponse.classroom_assignments || [];
+      
+      console.log('🔍 getTeacherSubjects - teacherResponse:', teacherResponse);
+      console.log('🔍 getTeacherSubjects - classroomAssignments:', classroomAssignments);
+      
+      // Group assignments by SUBJECT to show all classes for each subject
+      const subjectMap = new Map();
+      
+      classroomAssignments.forEach((assignment: any) => {
+        console.log('🔍 Processing assignment:', assignment);
+        console.log('🔍 Assignment details:', {
+          id: assignment.id,
+          classroom_name: assignment.classroom_name,
+          classroom_id: assignment.classroom_id,
+          subject_id: assignment.subject_id,
+          subject_name: assignment.subject_name,
+          subject_code: assignment.subject_code,
+          grade_level: assignment.grade_level_name,
+          section: assignment.section_name
+        });
+        
+        const subjectId = assignment.subject_id;
+        const subjectName = assignment.subject_name;
+        console.log('🔍 Subject ID:', subjectId, 'Subject Name:', subjectName);
+        
+        if (!subjectId) {
+          console.warn('⚠️ Assignment missing subject_id:', assignment);
+          return; // Skip assignments without subject_id
+        }
+        
+        if (!subjectMap.has(subjectId)) {
+          // Initialize new subject
+          subjectMap.set(subjectId, {
+            id: subjectId,
+            name: subjectName,
+            code: assignment.subject_code || '',
+            assignments: []
+          });
+          console.log('🔍 Added new subject to map:', subjectId, subjectName);
+        }
+        
+        // Add classroom assignment details to this subject
+        const subject = subjectMap.get(subjectId);
+        subject.assignments.push({
+          id: assignment.id,
+          classroom_name: assignment.classroom_name,
+          classroom_id: assignment.classroom_id,
+          grade_level: assignment.grade_level_name,
+          section: assignment.section_name,
+          education_level: assignment.education_level,
+          stream_type: assignment.stream_type,
+          student_count: assignment.student_count || 0,
+          is_class_teacher: assignment.is_primary_teacher || false,
+          periods_per_week: assignment.periods_per_week || 1
+        });
+      });
+      
+      const result = Array.from(subjectMap.values());
+      console.log('🔍 getTeacherSubjects - Final result:', result);
       
       // Transform to match TeacherSubjectData interface
-      return assignedSubjects.map((subject: any) => ({
-        id: subject.id,
-        name: subject.name,
-        code: subject.code || '',
-        assignments: subject.assignments || []
-      }));
-    } catch (error) {
+      return result;
+    } catch (error: any) {
       console.error('Error fetching teacher subjects:', error);
       return [];
     }
@@ -458,12 +562,13 @@ class TeacherDashboardService {
   // Get comprehensive teacher dashboard data
   async getTeacherDashboardData(teacherId: number) {
     try {
-      const [stats, activities, events, classes, subjects] = await Promise.all([
+      const [stats, activities, events, classes, subjects, exams] = await Promise.all([
         this.getTeacherDashboardStats(teacherId),
         this.getTeacherRecentActivities(teacherId),
         this.getTeacherUpcomingEvents(teacherId),
         this.getTeacherClasses(teacherId),
-        this.getTeacherSubjects(teacherId)
+        this.getTeacherSubjects(teacherId),
+        ExamService.getExamsByTeacher(teacherId)
       ]);
 
       return {
@@ -471,9 +576,10 @@ class TeacherDashboardService {
         activities,
         events,
         classes,
-        subjects
+        subjects,
+        exams: Array.isArray(exams) ? exams : []
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching teacher dashboard data:', error);
       return {
         stats: {

@@ -1,1 +1,1 @@
-# Subject management commands
+# Management package for subject app

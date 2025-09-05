@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
 import { ExamService, ExamCreateData } from '@/services/ExamService';
 import { toast } from 'react-toastify';
-import { X, Plus, Trash2, Save } from 'lucide-react';
+import { X, Plus, Trash2, Save, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface ExamCreationFormProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'questions'>('basic');
   
   const [formData, setFormData] = useState<ExamCreateData>({
@@ -36,7 +38,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     pass_marks: 50,
     venue: '',
     instructions: '',
-    status: 'scheduled',
+    status: 'scheduled', // Default to scheduled for teachers (matches backend choices)
     is_practical: false,
     requires_computer: false,
     is_online: false,
@@ -51,13 +53,24 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
 
   const [objectiveQuestions, setObjectiveQuestions] = useState<any[]>([]);
   const [theoryQuestions, setTheoryQuestions] = useState<any[]>([]);
+  const [practicalQuestions, setPracticalQuestions] = useState<any[]>([]);
+  const [customSections, setCustomSections] = useState<any[]>([]);
+  const [sectionOrder, setSectionOrder] = useState<Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }>>([]);
+  const [gradeLevels, setGradeLevels] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadTeacherData();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (editingExam) {
       setFormData({
         title: editingExam.title || '',
-        subject: editingExam.subject?.id || 0,
-        grade_level: editingExam.grade_level?.id || 0,
+        subject: editingExam.subject?.id || editingExam.subject || 0,
+        grade_level: editingExam.grade_level?.id || editingExam.grade_level || 0,
         exam_type: editingExam.exam_type || 'test',
         difficulty_level: editingExam.difficulty_level || 'medium',
         exam_date: editingExam.exam_date || '',
@@ -70,7 +83,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
         instructions: editingExam.instructions || '',
         status: editingExam.status || 'scheduled',
         is_practical: editingExam.is_practical || false,
-        requires_computer: editingExam.requires_computer || false,
+        requires_computer: editingExam.is_requires_computer || false,
         is_online: editingExam.is_online || false,
         objective_questions: editingExam.objective_questions || [],
         theory_questions: editingExam.theory_questions || [],
@@ -80,8 +93,64 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
         theory_instructions: editingExam.theory_instructions || '',
         practical_instructions: editingExam.practical_instructions || ''
       });
+
+      // Load existing questions
+      setObjectiveQuestions(editingExam.objective_questions || []);
+      setTheoryQuestions(editingExam.theory_questions || []);
+      setPracticalQuestions(editingExam.practical_questions || []);
+      const existingCustom = editingExam.custom_sections || [];
+      setCustomSections(existingCustom);
+      const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
+        { kind: 'objective' },
+        { kind: 'theory' },
+        { kind: 'practical' }
+      ];
+      for (const s of existingCustom) {
+        order.push({ kind: 'custom', id: s.id });
+      }
+      setSectionOrder(order);
     }
   }, [editingExam]);
+
+  useEffect(() => {
+    if (isOpen && !editingExam) {
+      setSectionOrder([
+        { kind: 'objective' },
+        { kind: 'theory' },
+        { kind: 'practical' }
+      ]);
+    }
+  }, [isOpen, editingExam]);
+
+  const loadTeacherData = async () => {
+    try {
+      const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
+      if (!teacherId) {
+        toast.error('Teacher ID not found');
+        return;
+      }
+
+      const assignments = await TeacherDashboardService.getTeacherClasses(teacherId);
+      console.log('🔍 Teacher assignments:', assignments);
+
+      // Extract unique grade levels and subjects with their IDs
+      const uniqueGradeLevels = Array.from(
+        new Map(assignments.map((a: any) => [a.grade_level_id, { id: a.grade_level_id, name: a.grade_level_name }])).values()
+      );
+      const uniqueSubjects = Array.from(
+        new Map(assignments.map((a: any) => [a.subject_id, { id: a.subject_id, name: a.subject_name }])).values()
+      );
+
+      console.log('🔍 Unique grade levels:', uniqueGradeLevels);
+      console.log('🔍 Unique subjects:', uniqueSubjects);
+
+      setGradeLevels(uniqueGradeLevels);
+      setSubjects(uniqueSubjects);
+    } catch (error) {
+      console.error('Error loading teacher data:', error);
+      toast.error('Failed to load teacher data');
+    }
+  };
 
   const handleInputChange = (field: keyof ExamCreateData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -96,9 +165,21 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       optionC: '',
       optionD: '',
       correctAnswer: '',
-      marks: 1
+      marks: 1,
+      imageUrl: '',
+      imageAlt: ''
     };
     setObjectiveQuestions(prev => [...prev, newQuestion]);
+  };
+
+  const updateObjectiveQuestion = (index: number, field: string, value: string) => {
+    setObjectiveQuestions(prev => prev.map((q, i) => 
+      i === index ? { ...q, [field]: value } : q
+    ));
+  };
+
+  const removeObjectiveQuestion = (index: number) => {
+    setObjectiveQuestions(prev => prev.filter((_, i) => i !== index));
   };
 
   const addTheoryQuestion = () => {
@@ -107,26 +188,356 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       question: '',
       expectedPoints: '',
       marks: 5,
-      wordLimit: ''
+      wordLimit: '100-150',
+      imageUrl: '',
+      imageAlt: '',
+      subQuestions: [],
+      table: null as null | { rows: number; cols: number; data: string[][] }
     };
     setTheoryQuestions(prev => [...prev, newQuestion]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.title.trim()) {
-      toast.error('Please enter an exam title');
-      return;
+  const updateTheoryQuestion = (index: number, field: string, value: string | number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => 
+      i === index ? { ...q, [field]: value } : q
+    ));
+  };
+
+  const removeTheoryQuestion = (index: number) => {
+    setTheoryQuestions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addPracticalQuestion = () => {
+    const newQuestion = {
+      id: Date.now(),
+      task: '',
+      materials: '',
+      expectedOutcome: '',
+      marks: 10,
+      timeLimit: '30 minutes',
+      imageUrl: '',
+      imageAlt: ''
+    };
+    setPracticalQuestions(prev => [...prev, newQuestion]);
+  };
+
+  const updatePracticalQuestion = (index: number, field: string, value: string | number) => {
+    setPracticalQuestions(prev => prev.map((q, i) => 
+      i === index ? { ...q, [field]: value } : q
+    ));
+  };
+
+  const removePracticalQuestion = (index: number) => {
+    setPracticalQuestions(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addCustomSection = () => {
+    const newSection = {
+      id: Date.now(),
+      name: '',
+      instructions: '',
+      questions: [] as Array<{ id: number; question: string; marks: number; imageUrl?: string; imageAlt?: string; table?: { rows: number; cols: number; data: string[][] } }>
+    };
+    setCustomSections(prev => [...prev, newSection]);
+    setSectionOrder(prev => [...prev, { kind: 'custom', id: newSection.id }]);
+  };
+
+  // legacy helpers kept for compatibility if referenced in JSX in the future
+  // const updateCustomSection = (index: number, field: string, value: string) => {
+  //   setCustomSections(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  // };
+
+  // const removeCustomSection = (index: number) => {
+  //   const removed = customSections[index];
+  //   setCustomSections(prev => prev.filter((_, i) => i !== index));
+  //   if (removed) {
+  //     setSectionOrder(prev => prev.filter(item => !(item.kind === 'custom' && item.id === removed.id)));
+  //   }
+  // };
+
+  const insertCustomSectionAt = (position: number) => {
+    const newSection = {
+      id: Date.now(),
+      name: '',
+      instructions: '',
+      questions: []
+    };
+    setCustomSections(prev => [...prev, newSection]);
+    setSectionOrder(prev => {
+      const copy = [...prev];
+      copy.splice(position, 0, { kind: 'custom', id: newSection.id });
+      return copy;
+    });
+  };
+
+  const removeCustomSectionById = (sectionId: number) => {
+    setCustomSections(prev => prev.filter(s => s.id !== sectionId));
+    setSectionOrder(prev => prev.filter(item => !(item.kind === 'custom' && item.id === sectionId)));
+  };
+
+  // Using inline String.fromCharCode where needed; keep util for potential reuse
+  // const getSectionLabel = (index: number) => String.fromCharCode(65 + index);
+
+  const getOrderedCustomSections = () => {
+    const idToSection = new Map(customSections.map(s => [s.id, s] as const));
+    return sectionOrder.filter(s => s.kind === 'custom' && s.id).map(s => idToSection.get(s.id!)).filter(Boolean);
+  };
+
+  const calculateTotalMarks = () => {
+    const objectiveMarks = objectiveQuestions.reduce((sum: number, q: any) => sum + (q.marks || 0), 0);
+    const theoryMarks = theoryQuestions.reduce((sum: number, q: any) => {
+      const base = sum + (q.marks || 0);
+      const subQ = (q.subQuestions || []).reduce((ss: number, sq: any) => {
+        const baseSq = ss + (sq.marks || 0);
+        const subSub = (sq.subSubQuestions || []).reduce((sss: number, s2: any) => sss + (s2.marks || 0), 0);
+        return baseSq + subSub;
+      }, 0);
+      return base + subQ;
+    }, 0);
+    const practicalMarks = practicalQuestions.reduce((sum: number, q: any) => sum + (q.marks || 0), 0);
+    const customMarks = customSections.reduce((sum: number, s: any) =>
+      sum + (s.questions || []).reduce((qSum: number, q: any) => qSum + (q.marks || 0), 0), 0
+    );
+    return objectiveMarks + theoryMarks + practicalMarks + customMarks;
+  };
+
+  // Image upload helper (Cloudinary)
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      const cloudinaryData = new FormData();
+      cloudinaryData.append('file', file);
+      cloudinaryData.append('upload_preset', 'profile_upload');
+      const res = await axios.post('https://api.cloudinary.com/v1_1/djbz7wunu/image/upload', cloudinaryData);
+      return res.data.secure_url as string;
+    } catch (err) {
+      toast.error('Image upload failed. Please try again.');
+      return null;
     }
+  };
+
+  // Theory sub-question helpers
+  const addSubQuestion = (questionIndex: number) => {
+    const newSub = { id: Date.now(), question: '', marks: 0, subSubQuestions: [] as Array<{ id: number; question: string; marks: number }> };
+    setTheoryQuestions(prev => prev.map((q, i) => i === questionIndex ? { ...q, subQuestions: [ ...(q.subQuestions || []), newSub ] } : q));
+  };
+
+  const updateSubQuestion = (questionIndex: number, subIndex: number, field: string, value: any) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== questionIndex) return q;
+      const copy = [ ...(q.subQuestions || []) ];
+      copy[subIndex] = { ...copy[subIndex], [field]: value };
+      return { ...q, subQuestions: copy };
+    }));
+  };
+
+  const removeSubQuestion = (questionIndex: number, subIndex: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => i === questionIndex ? { ...q, subQuestions: (q.subQuestions || []).filter((_: any, idx: number) => idx !== subIndex) } : q));
+  };
+
+  const addSubSubQuestion = (questionIndex: number, subIndex: number) => {
+    const newSubSub = { id: Date.now(), question: '', marks: 0 };
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== questionIndex) return q;
+      const subs = [ ...(q.subQuestions || []) ];
+      const target = subs[subIndex];
+      const updated = { ...target, subSubQuestions: [ ...(target.subSubQuestions || []), newSubSub ] };
+      subs[subIndex] = updated;
+      return { ...q, subQuestions: subs };
+    }));
+  };
+
+  const updateSubSubQuestion = (questionIndex: number, subIndex: number, subSubIndex: number, field: string, value: any) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== questionIndex) return q;
+      const subs = [ ...(q.subQuestions || []) ];
+      const target = subs[subIndex];
+      const subsubs = [ ...(target.subSubQuestions || []) ];
+      subsubs[subSubIndex] = { ...subsubs[subSubIndex], [field]: value };
+      subs[subIndex] = { ...target, subSubQuestions: subsubs };
+      return { ...q, subQuestions: subs };
+    }));
+  };
+
+  const removeSubSubQuestion = (questionIndex: number, subIndex: number, subSubIndex: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== questionIndex) return q;
+      const subs = [ ...(q.subQuestions || []) ];
+      const target = subs[subIndex];
+      const subsubs = (target.subSubQuestions || []).filter((_: any, idx: number) => idx !== subSubIndex);
+      subs[subIndex] = { ...target, subSubQuestions: subsubs };
+      return { ...q, subQuestions: subs };
+    }));
+  };
+
+  // Table helpers for theory/custom questions
+  const initQuestionTable = (_q: any, rows: number, cols: number) => ({ rows, cols, data: Array.from({ length: rows }, () => Array.from({ length: cols }, () => '')) });
+
+  const setTheoryTable = (index: number, rows: number, cols: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => i === index ? { ...q, table: initQuestionTable(q, rows, cols) } : q));
+  };
+
+  const updateTheoryTableCell = (qIndex: number, r: number, c: number, value: string) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex) return q;
+      const table = q.table;
+      if (!table) return q;
+      const data = table.data.map((row: string[], ri: number) => row.map((cell, ci) => (ri === r && ci === c ? value : cell)));
+      return { ...q, table: { ...table, data } };
+    }));
+  };
+
+  const addTheoryTableRow = (qIndex: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex || !q.table) return q;
+      const cols = q.table.cols;
+      const newRow = Array.from({ length: cols }, () => '');
+      return { ...q, table: { ...q.table, rows: q.table.rows + 1, data: [...q.table.data, newRow] } };
+    }));
+  };
+
+  const addTheoryTableCol = (qIndex: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex || !q.table) return q;
+      const newData = q.table.data.map((row: string[]) => [...row, '']);
+      return { ...q, table: { ...q.table, cols: q.table.cols + 1, data: newData } };
+    }));
+  };
+
+  const removeTheoryTableRow = (qIndex: number, rowIndex?: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex || !q.table || q.table.rows <= 1) return q;
+      const idx = rowIndex !== undefined ? rowIndex : q.table.rows - 1;
+      const newData = q.table.data.filter((_: any, r: number) => r !== idx);
+      return { ...q, table: { ...q.table, rows: q.table.rows - 1, data: newData } };
+    }));
+  };
+
+  const removeTheoryTableCol = (qIndex: number, colIndex?: number) => {
+    setTheoryQuestions(prev => prev.map((q, i) => {
+      if (i !== qIndex || !q.table || q.table.cols <= 1) return q;
+      const idx = colIndex !== undefined ? colIndex : q.table.cols - 1;
+      const newData = q.table.data.map((row: string[]) => row.filter((_: any, c: number) => c !== idx));
+      return { ...q, table: { ...q.table, cols: q.table.cols - 1, data: newData } };
+    }));
+  };
+
+  const setCustomTable = (sectionId: number, qIndex: number, rows: number, cols: number) => {
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const qs = [...(s.questions || [])];
+      const target = qs[qIndex];
+      qs[qIndex] = { ...target, table: initQuestionTable(target, rows, cols) };
+      return { ...s, questions: qs };
+    }));
+  };
+
+  const updateCustomTableCell = (sectionId: number, qIndex: number, r: number, c: number, value: string) => {
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const qs = [...(s.questions || [])];
+      const target = qs[qIndex];
+      const table = target.table;
+      if (!table) return s;
+      const data = table.data.map((row: string[], ri: number) => row.map((cell, ci) => (ri === r && ci === c ? value : cell)));
+      qs[qIndex] = { ...target, table: { ...table, data } };
+      return { ...s, questions: qs };
+    }));
+  };
+
+  const addCustomTableRow = (sectionId: number, qIndex: number) => {
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const qs = [...(s.questions || [])];
+      const q = qs[qIndex];
+      if (!q?.table) return s;
+      const cols = q.table.cols;
+      const newRow = Array.from({ length: cols }, () => '');
+      qs[qIndex] = { ...q, table: { ...q.table, rows: q.table.rows + 1, data: [...q.table.data, newRow] } };
+      return { ...s, questions: qs };
+    }));
+  };
+
+  const addCustomTableCol = (sectionId: number, qIndex: number) => {
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const qs = [...(s.questions || [])];
+      const q = qs[qIndex];
+      if (!q?.table) return s;
+      const newData = q.table.data.map((row: string[]) => [...row, '']);
+      qs[qIndex] = { ...q, table: { ...q.table, cols: q.table.cols + 1, data: newData } };
+      return { ...s, questions: qs };
+    }));
+  };
+
+  const removeCustomTableRow = (sectionId: number, qIndex: number, rowIndex?: number) => {
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const qs = [...(s.questions || [])];
+      const q = qs[qIndex];
+      if (!q?.table || q.table.rows <= 1) return s;
+      const idx = rowIndex !== undefined ? rowIndex : q.table.rows - 1;
+      const newData = q.table.data.filter((_: any, r: number) => r !== idx);
+      qs[qIndex] = { ...q, table: { ...q.table, rows: q.table.rows - 1, data: newData } };
+      return { ...s, questions: qs };
+    }));
+  };
+
+  const removeCustomTableCol = (sectionId: number, qIndex: number, colIndex?: number) => {
+    setCustomSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const qs = [...(s.questions || [])];
+      const q = qs[qIndex];
+      if (!q?.table || q.table.cols <= 1) return s;
+      const idx = colIndex !== undefined ? colIndex : q.table.cols - 1;
+      const newData = q.table.data.map((row: string[]) => row.filter((_: any, c: number) => c !== idx));
+      qs[qIndex] = { ...q, table: { ...q.table, cols: q.table.cols - 1, data: newData } };
+      return { ...s, questions: qs };
+    }));
+  };
+
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      toast.error('Please enter exam title');
+      return false;
+    }
+    if (!formData.subject) {
+      toast.error('Please select a subject');
+      return false;
+    }
+    if (!formData.grade_level) {
+      toast.error('Please select a grade level');
+      return false;
+    }
+    if (!formData.exam_date) {
+      toast.error('Please select exam date');
+      return false;
+    }
+    if (!formData.start_time || !formData.end_time) {
+      toast.error('Please set start and end times');
+      return false;
+    }
+    if (objectiveQuestions.length === 0 && theoryQuestions.length === 0 && 
+        practicalQuestions.length === 0 && customSections.length === 0) {
+      toast.error('Please add at least one question');
+      return false;
+    }
+    return true;
+  };
+
+  const saveAsDraft = async () => {
+    if (!validateForm()) return;
 
     try {
-      setLoading(true);
+      setSavingDraft(true);
       
-      const examData = {
+      const examData: ExamCreateData = {
         ...formData,
+        status: 'scheduled', // Use 'scheduled' status for drafts (matches backend choices)
         objective_questions: objectiveQuestions,
-        theory_questions: theoryQuestions
+        theory_questions: theoryQuestions,
+        practical_questions: practicalQuestions,
+        custom_sections: getOrderedCustomSections(),
+        total_marks: calculateTotalMarks()
       };
 
       if (editingExam) {
@@ -134,57 +545,123 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
         toast.success('Exam updated successfully!');
       } else {
         await ExamService.createExam(examData);
-        toast.success('Exam created successfully!');
+        toast.success('Exam saved successfully!');
       }
 
       onExamCreated();
       onClose();
     } catch (error) {
-      console.error('Error saving exam:', error);
-      toast.error('Failed to save exam. Please try again.');
+      console.error('Error saving draft:', error);
+      toast.error('Failed to save draft. Please try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  };
+
+  const submitForApproval = async () => {
+    if (!validateForm()) return;
+
+    try {
+      setLoading(true);
+      
+      const examData: ExamCreateData = {
+        ...formData,
+        status: 'scheduled', // Use 'scheduled' status for admin review (matches backend choices)
+        objective_questions: objectiveQuestions,
+        theory_questions: theoryQuestions,
+        practical_questions: practicalQuestions,
+        custom_sections: getOrderedCustomSections(),
+        total_marks: calculateTotalMarks()
+      };
+
+      if (editingExam) {
+        await ExamService.updateExam(editingExam.id, examData);
+        toast.success('Exam submitted for review successfully!');
+      } else {
+        await ExamService.createExam(examData);
+        toast.success('Exam submitted for review successfully!');
+      }
+
+      onExamCreated();
+      onClose();
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      toast.error('Failed to submit exam. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      scheduled: { color: 'bg-blue-100 text-blue-800', icon: Clock, text: 'Scheduled' },
+      in_progress: { color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle, text: 'In Progress' },
+      completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, text: 'Completed' },
+      cancelled: { color: 'bg-red-100 text-red-800', icon: X, text: 'Cancelled' },
+      postponed: { color: 'bg-orange-100 text-orange-800', icon: Clock, text: 'Postponed' }
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.scheduled;
+    const Icon = config.icon;
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        <Icon className="w-3 h-3 mr-1" />
+        {config.text}
+      </span>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex items-center justify-between">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center space-x-3">
             <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
               {editingExam ? 'Edit Exam' : 'Create New Exam'}
             </h2>
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
-              <X className="w-5 h-5 text-slate-500" />
-            </button>
+            {editingExam && getStatusBadge(editingExam.status)}
           </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Tab Navigation */}
-          <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-700">
-            {['basic', 'questions'].map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab as any)}
-                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                  activeTab === tab
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {tab === 'basic' ? 'Basic Information' : 'Questions'}
-              </button>
-            ))}
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => setActiveTab('basic')}
+            className={`px-6 py-3 text-sm font-medium ${
+              activeTab === 'basic'
+                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            Basic Information
+          </button>
+          <button
+            onClick={() => setActiveTab('questions')}
+            className={`px-6 py-3 text-sm font-medium ${
+              activeTab === 'questions'
+                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            Questions & Instructions
+          </button>
+        </div>
 
-          {/* Basic Information Tab */}
-          {activeTab === 'basic' && (
+        {/* Content */}
+        <div className="p-6">
+          {activeTab === 'basic' ? (
             <div className="space-y-6">
+              {/* Basic Exam Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -194,7 +671,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                     type="text"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                     placeholder="Enter exam title"
                   />
                 </div>
@@ -206,26 +683,66 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                   <select
                     value={formData.exam_type}
                     onChange={(e) => handleInputChange('exam_type', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   >
-                    <option value="quiz">Quiz</option>
                     <option value="test">Class Test</option>
-                    <option value="mid_term">Mid-Term</option>
-                    <option value="final_exam">Final Exam</option>
-                    <option value="practical">Practical</option>
+                    <option value="quiz">Quiz</option>
+                    <option value="mid_term">Mid-Term Examination</option>
+                    <option value="final_exam">Final Examination</option>
+                    <option value="practical">Practical Examination</option>
+                    <option value="oral_exam">Oral Examination</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Exam Date *
+                    Subject *
                   </label>
-                  <input
-                    type="date"
-                    value={formData.exam_date}
-                    onChange={(e) => handleInputChange('exam_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <select
+                    value={formData.subject}
+                    onChange={(e) => handleInputChange('subject', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
+                    <option value={0}>Select Subject</option>
+                    {subjects.map((subject: any) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Grade Level *
+                  </label>
+                  <select
+                    value={formData.grade_level}
+                    onChange={(e) => handleInputChange('grade_level', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
+                    <option value={0}>Select Grade Level</option>
+                    {gradeLevels.map((gradeLevel: any) => (
+                      <option key={gradeLevel.id} value={gradeLevel.id}>
+                        {gradeLevel.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Difficulty Level
+                  </label>
+                  <select
+                    value={formData.difficulty_level}
+                    onChange={(e) => handleInputChange('difficulty_level', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
                 </div>
 
                 <div>
@@ -236,9 +753,24 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                     type="number"
                     value={formData.duration_minutes}
                     onChange={(e) => handleInputChange('duration_minutes', parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                     min="15"
                     max="300"
+                  />
+                </div>
+              </div>
+
+              {/* Date and Time */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Exam Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.exam_date}
+                    onChange={(e) => handleInputChange('exam_date', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   />
                 </div>
 
@@ -250,7 +782,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                     type="time"
                     value={formData.start_time}
                     onChange={(e) => handleInputChange('start_time', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   />
                 </div>
 
@@ -262,286 +794,456 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                     type="time"
                     value={formData.end_time}
                     onChange={(e) => handleInputChange('end_time', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Instructions
+              {/* Additional Settings */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Venue
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.venue}
+                    onChange={(e) => handleInputChange('venue', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                    placeholder="e.g., Room 101, Computer Lab"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Instructions
+                  </label>
+                  <textarea
+                    value={formData.instructions}
+                    onChange={(e) => handleInputChange('instructions', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                    rows={3}
+                    placeholder="General instructions for students"
+                  />
+                </div>
+              </div>
+
+              {/* Checkboxes */}
+              <div className="space-y-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_practical}
+                    onChange={(e) => handleInputChange('is_practical', e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Practical Exam</span>
                 </label>
-                <textarea
-                  value={formData.instructions}
-                  onChange={(e) => handleInputChange('instructions', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter exam instructions for students..."
-                />
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.requires_computer}
+                    onChange={(e) => handleInputChange('requires_computer', e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Requires Computer</span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_online}
+                    onChange={(e) => handleInputChange('is_online', e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Online Exam</span>
+                </label>
               </div>
             </div>
-          )}
-
-          {/* Questions Tab */}
-          {activeTab === 'questions' && (
+          ) : (
             <div className="space-y-6">
-              {/* Objective Questions */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Objective Questions
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={addObjectiveQuestion}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Question</span>
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {objectiveQuestions.map((question, index) => (
-                    <div key={question.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium text-slate-900 dark:text-white">
-                          Question {index + 1}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => setObjectiveQuestions(prev => prev.filter(q => q.id !== question.id))}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+              {/* Ordered sections with insert controls */}
+              <div className="space-y-6">
+                {sectionOrder.map((section, orderIndex) => (
+                  <div key={`${section.kind}-${section.id ?? 'builtin'}`} className="border border-slate-200 dark:border-slate-600 rounded-lg">
+                    <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Section {String.fromCharCode(65 + orderIndex)}:</span>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                          {section.kind === 'objective' && 'Objective Questions'}
+                          {section.kind === 'theory' && 'Theory Questions'}
+                          {section.kind === 'practical' && 'Practical Questions'}
+                          {section.kind === 'custom' && (customSections.find(s => s.id === section.id)?.name || 'Custom Section')}
+                        </h3>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Question *
-                          </label>
-                          <textarea
-                            value={question.question}
-                            onChange={(e) => {
-                              const updated = [...objectiveQuestions];
-                              updated[index].question = e.target.value;
-                              setObjectiveQuestions(updated);
-                            }}
-                            rows={2}
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter the question..."
-                          />
-                        </div>
-
-                        {['A', 'B', 'C', 'D'].map((option) => (
-                          <div key={option}>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                              Option {option} *
-                            </label>
-                            <input
-                              type="text"
-                              value={question[`option${option}` as keyof typeof question] as string}
-                              onChange={(e) => {
-                                const updated = [...objectiveQuestions];
-                                updated[index][`option${option}` as keyof typeof question] = e.target.value;
-                                setObjectiveQuestions(updated);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder={`Option ${option}`}
-                            />
-                          </div>
-                        ))}
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Correct Answer *
-                          </label>
-                          <select
-                            value={question.correctAnswer}
-                            onChange={(e) => {
-                              const updated = [...objectiveQuestions];
-                              updated[index].correctAnswer = e.target.value;
-                              setObjectiveQuestions(updated);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select Answer</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Marks *
-                          </label>
-                          <input
-                            type="number"
-                            value={question.marks}
-                            onChange={(e) => {
-                              const updated = [...objectiveQuestions];
-                              updated[index].marks = parseInt(e.target.value);
-                              setObjectiveQuestions(updated);
-                            }}
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="1"
-                            max="10"
-                          />
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <button onClick={() => insertCustomSectionAt(orderIndex)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">Add Section Before</button>
+                        <button onClick={() => insertCustomSectionAt(orderIndex + 1)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">Add Section After</button>
+                        {section.kind === 'custom' && (
+                          <button onClick={() => section.id && removeCustomSectionById(section.id)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 dark:hover:bg-slate-700">Remove Section</button>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="p-4">
+                      {section.kind === 'objective' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <button onClick={addObjectiveQuestion} className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                              <Plus className="w-4 h-4" />
+                              <span>Add Question</span>
+                            </button>
+                          </div>
+                          {objectiveQuestions.length > 0 && (
+                            <div className="space-y-4">
+                              {objectiveQuestions.map((question, index) => (
+                                <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
+                                    <button onClick={() => removeObjectiveQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <input type="text" value={question.question} onChange={(e) => updateObjectiveQuestion(index, 'question', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Enter question" />
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <input type="text" value={question.imageUrl || ''} onChange={(e) => updateObjectiveQuestion(index, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Image URL (optional)" />
+                                      <input type="text" value={question.imageAlt || ''} onChange={(e) => updateObjectiveQuestion(index, 'imageAlt', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Alt text" />
+                                      <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+                                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                          const file = e.target.files && e.target.files[0];
+                                          if (!file) return;
+                                          const url = await uploadImage(file);
+                                          if (url) updateObjectiveQuestion(index, 'imageUrl', url);
+                                        }} />
+                                        Upload Image
+                                      </label>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <input type="text" value={question.optionA} onChange={(e) => updateObjectiveQuestion(index, 'optionA', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option A" />
+                                      <input type="text" value={question.optionB} onChange={(e) => updateObjectiveQuestion(index, 'optionB', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option B" />
+                                      <input type="text" value={question.optionC} onChange={(e) => updateObjectiveQuestion(index, 'optionC', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option C" />
+                                      <input type="text" value={question.optionD} onChange={(e) => updateObjectiveQuestion(index, 'optionD', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option D" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <select value={question.correctAnswer} onChange={(e) => updateObjectiveQuestion(index, 'correctAnswer', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                                        <option value="">Select correct answer</option>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                      </select>
+                                      <input type="number" value={question.marks} onChange={(e) => updateObjectiveQuestion(index, 'marks', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="1" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {section.kind === 'theory' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <button onClick={addTheoryQuestion} className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                              <Plus className="w-4 h-4" />
+                              <span>Add Question</span>
+                            </button>
+                          </div>
+                          {theoryQuestions.length > 0 && (
+                            <div className="space-y-4">
+                              {theoryQuestions.map((question, index) => (
+                                <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
+                                    <button onClick={() => removeTheoryQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <textarea value={question.question} onChange={(e) => updateTheoryQuestion(index, 'question', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={3} placeholder="Enter question" />
+                                    {/* Image attach (URL + upload) */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <input type="text" value={question.imageUrl || ''} onChange={(e) => updateTheoryQuestion(index, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Image URL (optional)" />
+                                      <input type="text" value={question.imageAlt || ''} onChange={(e) => updateTheoryQuestion(index, 'imageAlt', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Alt text" />
+                                      <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+                                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                          const file = e.target.files && e.target.files[0];
+                                          if (!file) return;
+                                          const url = await uploadImage(file);
+                                          if (url) updateTheoryQuestion(index, 'imageUrl', url);
+                                        }} />
+                                        Upload Image
+                                      </label>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <input type="text" value={question.expectedPoints} onChange={(e) => updateTheoryQuestion(index, 'expectedPoints', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Expected points" />
+                                      <input type="number" value={question.marks} onChange={(e) => updateTheoryQuestion(index, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="1" />
+                                      <input type="text" value={question.wordLimit} onChange={(e) => updateTheoryQuestion(index, 'wordLimit', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Word limit" />
+                                    </div>
+
+                                    {/* Table builder */}
+                                    <div className="space-y-2">
+                                      <div className="flex items-center space-x-2">
+                                        <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setTheoryTable(index, 2, 2)}>Add 2x2 Table</button>
+                                        <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setTheoryTable(index, 3, 3)}>Add 3x3 Table</button>
+                                        {question.table && (
+                                          <>
+                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addTheoryTableRow(index)}>+ Row</button>
+                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addTheoryTableCol(index)}>+ Col</button>
+                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeTheoryTableRow(index)}>- Row</button>
+                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeTheoryTableCol(index)}>- Col</button>
+                                          </>
+                                        )}
+                                      </div>
+                                      {question.table && (
+                                        <div className="overflow-auto">
+                                          <table className="min-w-[300px] border border-slate-300 dark:border-slate-600">
+                                            <tbody>
+                                              {question.table.data.map((row: string[], r: number) => (
+                                                <tr key={r}>
+                                                  {row.map((cell: string, c: number) => (
+                                                    <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">
+                                                      <input type="text" value={cell} onChange={(e) => updateTheoryTableCell(index, r, c, e.target.value)} className="w-full px-2 py-1 bg-transparent focus:outline-none" />
+                                                    </td>
+                                                  ))}
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Sub-questions */}
+                                    <div className="space-y-2">
+                                      <div>
+                                        <button onClick={() => addSubQuestion(index)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded">Add Sub-question</button>
+                                      </div>
+                                      {(question.subQuestions || []).map((sq: any, sqi: number) => (
+                                        <div key={sq.id} className="border border-slate-200 dark:border-slate-600 rounded p-2">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm">{index + 1}{String.fromCharCode(97 + sqi)}</span>
+                                            <div className="space-x-2">
+                                              <button onClick={() => addSubSubQuestion(index, sqi)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded">Add Sub-Sub</button>
+                                              <button onClick={() => removeSubQuestion(index, sqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded">Remove</button>
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-6 gap-2 mt-2">
+                                            <textarea value={sq.question} onChange={(e) => updateSubQuestion(index, sqi, 'question', e.target.value)} className="col-span-5 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" rows={2} placeholder="Enter sub-question" />
+                                            <input type="number" value={sq.marks || 0} onChange={(e) => updateSubQuestion(index, sqi, 'marks', parseInt(e.target.value))} className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" placeholder="Marks" />
+                                          </div>
+                                          {(sq.subSubQuestions || []).map((ssq: any, ssqi: number) => (
+                                            <div key={ssq.id} className="grid grid-cols-6 gap-2 mt-2">
+                                              <span className="text-sm col-span-1">{index + 1}{String.fromCharCode(97 + sqi)}{String.fromCharCode(105 + ssqi)}</span>
+                                              <textarea value={ssq.question} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'question', e.target.value)} className="col-span-4 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" rows={2} placeholder="Enter sub-sub-question" />
+                                              <input type="number" value={ssq.marks || 0} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'marks', parseInt(e.target.value))} className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" placeholder="Marks" />
+                                              <button onClick={() => removeSubSubQuestion(index, sqi, ssqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded">Remove</button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {section.kind === 'practical' && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <button onClick={addPracticalQuestion} className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                              <Plus className="w-4 h-4" />
+                              <span>Add Question</span>
+                            </button>
+                          </div>
+                          {practicalQuestions.length > 0 && (
+                            <div className="space-y-4">
+                              {practicalQuestions.map((question, index) => (
+                                <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
+                                    <button onClick={() => removePracticalQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <textarea value={question.task} onChange={(e) => updatePracticalQuestion(index, 'task', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Task description" />
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <input type="text" value={question.materials} onChange={(e) => updatePracticalQuestion(index, 'materials', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Required materials" />
+                                      <input type="text" value={question.expectedOutcome} onChange={(e) => updatePracticalQuestion(index, 'expectedOutcome', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Expected outcome" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <input type="number" value={question.marks} onChange={(e) => updatePracticalQuestion(index, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="1" />
+                                      <input type="text" value={question.timeLimit} onChange={(e) => updatePracticalQuestion(index, 'timeLimit', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Time limit" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {section.kind === 'custom' && (
+                        <div className="space-y-4">
+                          {(() => {
+                            const custom = customSections.find(s => s.id === section.id);
+                            if (!custom) return null;
+                            const updateCustomField = (field: string, value: any) => {
+                              setCustomSections(prev => prev.map(s => s.id === custom.id ? { ...s, [field]: value } : s));
+                            };
+                            const addQuestionToCustom = () => {
+                              const newQ = { id: Date.now(), question: '', marks: 1, imageUrl: '', imageAlt: '' };
+                              setCustomSections(prev => prev.map(s => s.id === custom.id ? { ...s, questions: [...(s.questions || []), newQ] } : s));
+                            };
+                            const updateCustomQuestion = (qIndex: number, field: string, value: any) => {
+                              setCustomSections(prev => prev.map(s => {
+                                if (s.id !== custom.id) return s;
+                                const qs = [...(s.questions || [])];
+                                qs[qIndex] = { ...qs[qIndex], [field]: value };
+                                return { ...s, questions: qs };
+                              }));
+                            };
+                            const removeCustomQuestion = (qIndex: number) => {
+                              setCustomSections(prev => prev.map(s => {
+                                if (s.id !== custom.id) return s;
+                                return { ...s, questions: (s.questions || []).filter((_: any, i: number) => i !== qIndex) };
+                              }));
+                            };
+                            return (
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <input type="text" value={custom.name} onChange={(e) => updateCustomField('name', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Section name (e.g., Comprehension)" />
+                                  <input type="text" value={custom.instructions} onChange={(e) => updateCustomField('instructions', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Section instructions" />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <button onClick={addQuestionToCustom} className="flex items-center space-x-2 px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
+                                    <Plus className="w-4 h-4" />
+                                    <span>Add Question</span>
+                                  </button>
+                                </div>
+                                {(custom.questions || []).length > 0 && (
+                                  <div className="space-y-3">
+                                    {custom.questions.map((q: any, qi: number) => (
+                                      <div key={q.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm text-slate-600 dark:text-slate-300">Question {qi + 1}</span>
+                                          <button onClick={() => removeCustomQuestion(qi)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                        </div>
+                                        <div className="grid grid-cols-6 gap-3">
+                                          <textarea value={q.question} onChange={(e) => updateCustomQuestion(qi, 'question', e.target.value)} className="col-span-5 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter question" />
+                                          <input type="number" value={q.marks} onChange={(e) => updateCustomQuestion(qi, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="0" />
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3 mt-2">
+                                          <input type="text" value={q.imageUrl || ''} onChange={(e) => updateCustomQuestion(qi, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Image URL (optional)" />
+                                          <input type="text" value={q.imageAlt || ''} onChange={(e) => updateCustomQuestion(qi, 'imageAlt', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Alt text" />
+                                          <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+                                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                              const file = e.target.files && e.target.files[0];
+                                              if (!file) return;
+                                              const url = await uploadImage(file);
+                                              if (url) updateCustomQuestion(qi, 'imageUrl', url);
+                                            }} />
+                                            Upload Image
+                                          </label>
+                                        </div>
+                                        {/* Optional table for custom question */}
+                                        <div className="space-y-2 mt-2">
+                                          <div className="flex items-center space-x-2">
+                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setCustomTable(custom.id, qi, 2, 2)}>Add 2x2 Table</button>
+                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setCustomTable(custom.id, qi, 3, 3)}>Add 3x3 Table</button>
+                                            {q.table && (
+                                              <>
+                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addCustomTableRow(custom.id, qi)}>+ Row</button>
+                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addCustomTableCol(custom.id, qi)}>+ Col</button>
+                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeCustomTableRow(custom.id, qi)}>- Row</button>
+                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeCustomTableCol(custom.id, qi)}>- Col</button>
+                                              </>
+                                            )}
+                                          </div>
+                                          {q.table && (
+                                            <div className="overflow-auto">
+                                              <table className="min-w-[300px] border border-slate-300 dark:border-slate-600">
+                                                <tbody>
+                                                  {q.table.data.map((row: string[], r: number) => (
+                                                    <tr key={r}>
+                                                      {row.map((cell: string, c: number) => (
+                                                        <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">
+                                                          <input type="text" value={cell} onChange={(e) => updateCustomTableCell(custom.id, qi, r, c, e.target.value)} className="w-full px-2 py-1 bg-transparent focus:outline-none" />
+                                                        </td>
+                                                      ))}
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Theory Questions */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    Theory Questions
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={addTheoryQuestion}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Question</span>
-                  </button>
-                </div>
+                <button onClick={addCustomSection} className="flex items-center space-x-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">
+                  <Plus className="w-4 h-4" />
+                  <span>Add Section at End</span>
+                </button>
+              </div>
 
-                <div className="space-y-4">
-                  {theoryQuestions.map((question, index) => (
-                    <div key={question.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-medium text-slate-900 dark:text-white">
-                          Question {index + 1}
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={() => setTheoryQuestions(prev => prev.filter(q => q.id !== question.id))}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            Question *
-                          </label>
-                          <textarea
-                            value={question.question}
-                            onChange={(e) => {
-                              const updated = [...theoryQuestions];
-                              updated[index].question = e.target.value;
-                              setTheoryQuestions(updated);
-                            }}
-                            rows={3}
-                            className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter the theory question..."
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                              Expected Points
-                            </label>
-                            <textarea
-                              value={question.expectedPoints}
-                              onChange={(e) => {
-                                const updated = [...theoryQuestions];
-                                updated[index].expectedPoints = e.target.value;
-                                setTheoryQuestions(updated);
-                              }}
-                              rows={2}
-                              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Key points to look for..."
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                              Marks *
-                            </label>
-                            <input
-                              type="number"
-                              value={question.marks}
-                              onChange={(e) => {
-                                const updated = [...theoryQuestions];
-                                updated[index].marks = parseInt(e.target.value);
-                                setTheoryQuestions(updated);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              min="1"
-                              max="20"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                              Word Limit
-                            </label>
-                            <input
-                              type="text"
-                              value={question.wordLimit}
-                              onChange={(e) => {
-                                const updated = [...theoryQuestions];
-                                updated[index].wordLimit = e.target.value;
-                                setTheoryQuestions(updated);
-                              }}
-                              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="e.g., 100-150 words"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-slate-900 dark:text-white">Total Marks: {calculateTotalMarks()}</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Pass Marks: {formData.pass_marks || 0}</span>
                 </div>
               </div>
             </div>
           )}
+        </div>
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-between pt-6 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex space-x-3">
-              {activeTab !== 'basic' && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('basic')}
-                  className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                >
-                  ← Basic Info
-                </button>
-              )}
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg flex items-center space-x-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>{loading ? 'Saving...' : (editingExam ? 'Update Exam' : 'Create Exam')}</span>
-              </button>
-            </div>
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            {editingExam ? 'Update exam details and save changes' : 'Fill in exam details and add questions to submit for admin review'}
           </div>
-        </form>
+          
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              Cancel
+            </button>
+            
+                         <button
+               onClick={saveAsDraft}
+               disabled={savingDraft}
+               className="flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+             >
+               <Save className="w-4 h-4" />
+               <span>{savingDraft ? 'Saving...' : 'Save Exam'}</span>
+             </button>
+            
+                         <button
+               onClick={submitForApproval}
+               disabled={loading}
+               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+             >
+               <CheckCircle className="w-4 h-4" />
+               <span>{loading ? 'Submitting...' : 'Submit for Review'}</span>
+             </button>
+          </div>
+        </div>
       </div>
     </div>
   );

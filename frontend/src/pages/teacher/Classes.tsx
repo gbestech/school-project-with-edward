@@ -40,6 +40,7 @@ interface TeacherClassData {
   subject_code: string;
   room_number: string;
   is_class_teacher: boolean;
+  all_subjects?: any[]; // Added for displaying individual subjects
 }
 
 const Classes: React.FC = () => {
@@ -102,7 +103,11 @@ const Classes: React.FC = () => {
 
   const filteredClasses = classes.filter(cls => {
     const matchesSearch = cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         cls.subject_name.toLowerCase().includes(searchTerm.toLowerCase());
+                         cls.subject_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (cls.all_subjects && cls.all_subjects.some((subject: any) => 
+                           subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           subject.code.toLowerCase().includes(searchTerm.toLowerCase())
+                         ));
     const matchesFilter = filterSection === 'all' || 
                          cls.education_level.toLowerCase() === filterSection.toLowerCase();
     return matchesSearch && matchesFilter;
@@ -168,6 +173,22 @@ const Classes: React.FC = () => {
             <p className="text-slate-600 dark:text-slate-400 mt-2">
               Select a class to mark attendance, view students, or manage class information
             </p>
+            {classes.length > 0 && (
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="w-4 h-4 text-slate-500" />
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {classes.length} class{classes.length !== 1 ? 'es' : ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <BookOpen className="w-4 h-4 text-slate-500" />
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {classes.reduce((sum, cls) => sum + (cls.all_subjects?.length || 1), 0)} subject{classes.reduce((sum, cls) => sum + (cls.all_subjects?.length || 1), 0) !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           <button 
             onClick={handleRefresh}
@@ -221,7 +242,8 @@ const Classes: React.FC = () => {
                 How to Mark Attendance
               </h3>
               <p className="text-blue-700 dark:text-blue-300 text-xs">
-                Click on any class card below, then click the "Mark Attendance" button to record student attendance for that class.
+                Click on any class card below, then click the "Mark Attendance" button to record student attendance for that class. 
+                Each class card shows all subjects you teach in that classroom.
               </p>
             </div>
           </div>
@@ -233,7 +255,7 @@ const Classes: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search classes or subjects..."
+              placeholder="Search classes, subjects, or subject codes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -254,9 +276,14 @@ const Classes: React.FC = () => {
 
         {/* Classes Count */}
         <div className="flex items-center justify-between">
-          <p className="text-slate-600 dark:text-slate-400">
-            Showing {filteredClasses.length} of {classes.length} classes
-          </p>
+          <div className="text-slate-600 dark:text-slate-400">
+            <p>Showing {filteredClasses.length} of {classes.length} classes</p>
+            {classes.length > 0 && (
+              <p className="text-sm text-slate-500 dark:text-slate-500">
+                Total subjects: {classes.reduce((sum, cls) => sum + (cls.all_subjects?.length || 1), 0)}
+              </p>
+            )}
+          </div>
           {classes.length === 0 && (
             <p className="text-orange-600 dark:text-orange-400 text-sm">
               No classes assigned yet. Please contact the administrator.
@@ -295,17 +322,42 @@ const Classes: React.FC = () => {
                 </div>
 
                 <div className="space-y-3 mb-4">
-                  <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
-                    <Users className="w-4 h-4" />
-                    <span>{cls.student_count} / {cls.max_capacity} students</span>
+                  <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-4 h-4" />
+                      <span>{cls.student_count} / {cls.max_capacity} students</span>
+                    </div>
+                    {cls.all_subjects && cls.all_subjects.length > 0 && (
+                      <span className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full">
+                        {cls.all_subjects.length} subject{cls.all_subjects.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
                     <MapPin className="w-4 h-4" />
                     <span>{cls.room_number || 'Room not assigned'}</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
-                    <BookOpen className="w-4 h-4" />
-                    <span>{cls.subject_name} ({cls.subject_code})</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
+                      <BookOpen className="w-4 h-4" />
+                      <span className="font-medium">Subjects:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {cls.all_subjects && cls.all_subjects.length > 0 ? (
+                        cls.all_subjects.map((subject: any, index: number) => (
+                          <span
+                            key={subject.id || index}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                          >
+                            {subject.name} ({subject.code})
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                          {cls.subject_name} ({cls.subject_code})
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className={`px-2 py-1 text-xs rounded-full font-medium ${getEducationLevelColor(cls.education_level)}`}>
@@ -402,10 +454,29 @@ const Classes: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Subject:</span>
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      {selectedClass.subject_name} ({selectedClass.subject_code})
-                    </span>
+                    <span className="text-slate-600 dark:text-slate-400">Subjects:</span>
+                    <div className="text-right">
+                      {selectedClass.all_subjects && selectedClass.all_subjects.length > 0 ? (
+                        <div className="space-y-1">
+                          {selectedClass.all_subjects.map((subject: any, index: number) => (
+                            <div key={subject.id || index} className="text-sm">
+                              <span className="font-medium text-slate-900 dark:text-white">
+                                {subject.name} ({subject.code})
+                              </span>
+                              {subject.is_primary_teacher && (
+                                <span className="ml-2 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 px-2 py-1 rounded-full">
+                                  Primary
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="font-medium text-slate-900 dark:text-white">
+                          {selectedClass.subject_name} ({selectedClass.subject_code})
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-600 dark:text-slate-400">Enrollment:</span>

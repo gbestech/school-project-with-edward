@@ -26,7 +26,7 @@ class SectionSerializer(serializers.ModelSerializer):
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
-        fields = ["id", "name", "code", "description", "pass_mark", "has_practical"]
+        fields = ["id", "name", "code", "description"]
 
 
 class TeacherSerializer(serializers.ModelSerializer):

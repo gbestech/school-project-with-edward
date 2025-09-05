@@ -58,16 +58,40 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
       setError(null);
       
       let teacherId = null;
+      
+      // First priority: Get from user.teacher_data.id
       if ((user as any)?.teacher_data?.id) {
         teacherId = (user as any).teacher_data.id;
-      } else if (teacherData?.id) {
+      } 
+      // Second priority: Get from teacherData.id
+      else if (teacherData?.id) {
         teacherId = teacherData.id;
-      } else {
-        teacherId = 19;
+      } 
+      // Third priority: Try to get from user ID by making an API call
+      else if (user?.id) {
+        try {
+          // Try to find teacher by user ID
+          const teachersResponse = await TeacherService.getTeachers({ 
+            search: user.email || user.username 
+          });
+          
+          if (teachersResponse.results && teachersResponse.results.length > 0) {
+            const teacher = teachersResponse.results.find((t: any) => 
+              t.user?.id === user.id || t.user?.email === user.email
+            );
+            
+            if (teacher) {
+              teacherId = teacher.id;
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to find teacher by user lookup:', error);
+        }
       }
-
+      
+      // If still no teacher ID found, show error
       if (!teacherId) {
-        throw new Error("Teacher ID not found");
+        throw new Error("Teacher ID not found. Please ensure your teacher profile is properly set up.");
       }
 
       const response = await TeacherService.getTeacher(teacherId);

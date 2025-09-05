@@ -9,6 +9,7 @@ import {
   Lock, 
   Zap,
   Calendar,
+  GraduationCap,
 
 } from 'lucide-react';
 import GeneralTab from '@/components/dashboards/admin/settingtab/components/tabs/GeneralTab';
@@ -16,6 +17,7 @@ import DesignTab from '@/components/dashboards/admin/settingtab/components/tabs/
 import CommunicationTab from '@/components/dashboards/admin/settingtab/components/tabs/CommunicationTab';
 import RolesPermissionsTab from '@/components/dashboards/admin/settingtab/components/tabs/RolesPermissions';
 import ExamsResultTab from '@/components/dashboards/admin/settingtab/components/tabs/ExamsResultTab';
+import AcademicTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicTab';
 import AcademicCalendarTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicCalendarTab';
 import FinanceTab from '@/components/dashboards/admin/settingtab/components/tabs/Finance';
 import SecurityTab from '@/components/dashboards/admin/settingtab/components/tabs/Security';
@@ -102,6 +104,7 @@ const SettingsDashboard = () => {
     { id: 'design', label: 'Design', icon: Palette, component: DesignTab },
     { id: 'communication', label: 'Communication', icon: MessageSquare, component: CommunicationTab },
     { id: 'roles', label: 'Roles & Permissions', icon: Shield, component: RolesPermissionsTab },
+    { id: 'academic', label: 'Academic', icon: GraduationCap, component: AcademicTab },
     { id: 'exams', label: 'Exams & Result', icon: FileText, component: ExamsResultTab },
     { id: 'calendar', label: 'Academic Calendar', icon: Calendar, component: AcademicCalendarTab },
     { id: 'finance', label: 'Finance', icon: CreditCard, component: FinanceTab },

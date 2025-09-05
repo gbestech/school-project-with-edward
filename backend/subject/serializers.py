@@ -6,6 +6,8 @@ from .models import (
     EDUCATION_LEVELS,
     NURSERY_LEVELS,
     SS_SUBJECT_TYPES,
+    SchoolStreamConfiguration,
+    SchoolStreamSubjectAssignment,
 )
 
 
@@ -51,6 +53,13 @@ class SubjectSerializer(serializers.ModelSerializer):
     prerequisites = serializers.StringRelatedField(many=True, read_only=True)
     compatible_streams = serializers.StringRelatedField(many=True, read_only=True)
 
+    # Add new fields
+    is_cross_cutting = serializers.BooleanField(read_only=True)
+    default_stream_role = serializers.CharField(read_only=True)
+    
+    # Stream assignments for this subject
+    stream_assignments = serializers.SerializerMethodField()
+
     class Meta:
         model = Subject
         fields = [
@@ -75,6 +84,7 @@ class SubjectSerializer(serializers.ModelSerializer):
             "ss_subject_type",
             "ss_subject_type_display",
             "is_cross_cutting",
+            "default_stream_role",
             # Grade level integration
             "grade_levels",
             "grade_levels_info",
@@ -113,7 +123,6 @@ class SubjectSerializer(serializers.ModelSerializer):
             "is_senior_secondary_subject",
             # Status fields
             "is_active",
-            "is_discontinued",
             # Metadata and organization
             "introduced_year",
             "curriculum_version",
@@ -123,6 +132,8 @@ class SubjectSerializer(serializers.ModelSerializer):
             # Timestamps
             "created_at",
             "updated_at",
+            # Stream assignments
+            "stream_assignments",
         ]
         read_only_fields = ("id", "created_at", "updated_at")
 
@@ -286,12 +297,16 @@ class SubjectSerializer(serializers.ModelSerializer):
 
     def _get_status_summary(self, obj):
         """Helper method to get status summary"""
-        if getattr(obj, 'is_discontinued', False):
-            return "Discontinued"
-        elif not getattr(obj, 'is_active', True):
+        if not getattr(obj, 'is_active', True):
             return "Inactive"
         else:
             return "Active"
+
+    def get_stream_assignments(self, obj):
+        """Return list of stream assignments for this subject"""
+        return SchoolStreamSubjectAssignmentSerializer(
+            obj.stream_assignments.all(), many=True
+        ).data
 
     def validate_code(self, value):
         """Ensure subject code follows the new format"""
@@ -480,8 +495,7 @@ class SubjectSerializer(serializers.ModelSerializer):
             if hasattr(request.user, "is_staff") and request.user.is_staff:
                 data["admin_info"] = {
                     "last_updated": getattr(instance, 'updated_at', None),
-                    "requires_attention": getattr(instance, 'is_discontinued', False)
-                    or (not getattr(instance, 'is_active', True) and getattr(instance, 'is_compulsory', False)),
+                    "requires_attention": (not getattr(instance, 'is_active', True) and getattr(instance, 'is_compulsory', False)),
                     "has_resource_requirements": getattr(instance, 'requires_lab', False)
                     or getattr(instance, 'requires_special_equipment', False),
                     "curriculum_alignment": getattr(instance, 'curriculum_version', None)
@@ -494,16 +508,6 @@ class SubjectSerializer(serializers.ModelSerializer):
 class SubjectListSerializer(serializers.ModelSerializer):
     """Simplified serializer for list views"""
 
-    category_display_with_icon = serializers.CharField(
-        source="get_category_display_with_icon", read_only=True
-    )
-    category_display = serializers.CharField(
-        source="get_category_display", read_only=True
-    )
-    display_name = serializers.ReadOnlyField()
-    education_levels_display = serializers.ReadOnlyField()
-    full_level_display = serializers.ReadOnlyField()
-    total_weekly_hours = serializers.ReadOnlyField()
     status_summary = serializers.SerializerMethodField()
 
     class Meta:
@@ -512,31 +516,18 @@ class SubjectListSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "short_name",
-            "display_name",
             "code",
-            "category",  # Added for filtering
-            "category_display",
-            "category_display_with_icon",
-            "education_levels",  # Added for filtering
-            "education_levels_display",
-            "full_level_display",
-            "practical_hours",
-            "total_weekly_hours",
-            "is_compulsory",
-            "is_core",
+            "category",
+            "education_levels",
             "is_cross_cutting",
-            "is_activity_based",
             "is_active",
-            "is_discontinued",
             "status_summary",
             "subject_order",
         ]
 
     def get_status_summary(self, obj):
         """Get concise status summary"""
-        if getattr(obj, 'is_discontinued', False):
-            return "Discontinued"
-        elif not getattr(obj, 'is_active', True):
+        if not getattr(obj, 'is_active', True):
             return "Inactive"
         else:
             return "Active"
@@ -571,24 +562,7 @@ class SubjectCreateUpdateSerializer(serializers.ModelSerializer):
             "nursery_levels",
             "ss_subject_type",
             "is_cross_cutting",
-            "is_compulsory",
-            "is_core",
-            "has_continuous_assessment",
-            "has_final_exam",
-            "pass_mark",
-            "has_practical",
-            "practical_hours",
-            "is_activity_based",
-            "requires_lab",
-            "requires_special_equipment",
-            "equipment_notes",
-            "requires_specialist_teacher",
-            "is_active",
-            "is_discontinued",
-            "introduced_year",
-            "curriculum_version",
             "subject_order",
-            "learning_outcomes",
             "grade_level_ids",
             "prerequisite_ids",
         ]
@@ -906,3 +880,71 @@ class SubjectFilterSerializer(serializers.Serializer):
     is_active = serializers.BooleanField(
         default=True, help_text="Filter by active status"
     )
+
+
+class SchoolStreamConfigurationSerializer(serializers.ModelSerializer):
+    """Serializer for school stream configurations"""
+    
+    school_name = serializers.CharField(default='My School', read_only=True)
+    stream_name = serializers.CharField(source='stream.name', read_only=True)
+    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
+    subject_role_display = serializers.CharField(source='get_subject_role_display', read_only=True)
+    stream_id = serializers.IntegerField(source='stream.id', read_only=True)
+    subjects = serializers.SerializerMethodField()
+    
+    def get_subjects(self, obj):
+        """Get subjects assigned to this stream configuration"""
+        assignments = obj.subject_assignments.filter(is_active=True)
+        subjects = []
+        for assignment in assignments:
+            subjects.append({
+                'id': assignment.subject.id,
+                'name': assignment.subject.name,
+                'code': assignment.subject.code,
+                'is_compulsory': assignment.is_compulsory,
+                'credit_weight': assignment.credit_weight,
+            })
+        return subjects
+    
+    class Meta:
+        model = SchoolStreamConfiguration
+        fields = [
+            'id', 'school_id', 'school_name', 'stream', 'stream_id', 'stream_name', 'stream_type',
+            'subject_role', 'subject_role_display', 'min_subjects_required', 
+            'max_subjects_allowed', 'is_compulsory', 'display_order', 'is_active',
+            'subjects', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class SchoolStreamSubjectAssignmentSerializer(serializers.ModelSerializer):
+    """Serializer for stream subject assignments"""
+    
+    subject_name = serializers.CharField(source='subject.name', read_only=True)
+    subject_code = serializers.CharField(source='subject.code', read_only=True)
+    stream_config_info = SchoolStreamConfigurationSerializer(source='stream_config', read_only=True)
+    
+    class Meta:
+        model = SchoolStreamSubjectAssignment
+        fields = [
+            'id', 'stream_config', 'stream_config_info', 'subject', 'subject_name', 
+            'subject_code', 'is_compulsory', 'credit_weight', 'can_be_elective_elsewhere',
+            'prerequisites', 'is_active', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class StreamConfigurationSummarySerializer(serializers.Serializer):
+    """Serializer for stream configuration summary"""
+    
+    stream_id = serializers.IntegerField()
+    stream_name = serializers.CharField()
+    stream_type = serializers.CharField()
+    
+    cross_cutting_subjects = serializers.ListField(child=serializers.DictField())
+    core_subjects = serializers.ListField(child=serializers.DictField())
+    elective_subjects = serializers.ListField(child=serializers.DictField())
+    
+    total_subjects = serializers.IntegerField()
+    min_subjects_required = serializers.IntegerField()
+    max_subjects_allowed = serializers.IntegerField()

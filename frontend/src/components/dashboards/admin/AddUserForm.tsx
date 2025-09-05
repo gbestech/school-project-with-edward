@@ -303,6 +303,14 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
         is_primary_contact: formData.isPrimaryContact,
       };
       console.log('payload:', payload);
+      
+      // Validate stream selection for Senior Secondary students
+      if (formData.education_level === 'SENIOR_SECONDARY' && !formData.stream) {
+        setError('Stream selection is required for Senior Secondary students');
+        setLoading(false);
+        return;
+      }
+      
       if (selectedParent) {
         payload.existing_parent_id = selectedParent.id;
       } else {
@@ -443,20 +451,29 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
         {/* Stream Selection for Senior Secondary */}
         {formData.education_level === 'SENIOR_SECONDARY' && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Stream (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Stream Selection *
+              <span className="text-xs text-gray-500 ml-2">
+                (Required for Senior Secondary students)
+              </span>
+            </label>
             <select
               name="stream"
               value={formData.stream || ''}
               onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
             >
-              <option value="">Select Stream (Optional)</option>
+              <option value="">Select Your Stream</option>
               {streams.map((stream) => (
                 <option key={stream.id} value={stream.id}>
                   {stream.name} ({stream.stream_type})
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-600 mt-1">
+              Choose the stream that best matches your academic interests and career goals.
+            </p>
           </div>
         )}
         {/* Registration Number */}
