@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import ResultService, { StudentTermResult, ExamSession } from '../../../services/ResultService';
+import { useState, useMemo, useEffect } from 'react';
+import ResultService, { StudentTermResult, ExamSession } from '@/services/ResultService';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAbsoluteUrl } from '@/utils/urlUtils';
 import { Eye, Edit, Trash2, Download, Printer } from 'lucide-react';
@@ -168,14 +168,13 @@ const SchoolResultTemplate = () => {
         s.student.username.toLowerCase().includes(search.toLowerCase())
       )
     );
-  }, [studentResults, classFilter, yearFilter, termFilter, sectionFilter, search]);
+  }, [studentResults, classFilter, yearFilter, termFilter, sectionFilter, streamFilter, search]);
 
   // Safe average score calculation
   const getSafeAverageScore = (student: StudentResult): string => {
-    if (student.average_score === null || student.average_score === undefined || isNaN(student.average_score)) {
-      return 'N/A';
-    }
-    return student.average_score.toFixed(1) + '%';
+    const avg = Number((student as any).average_score);
+    if (isNaN(avg)) return 'N/A';
+    return avg.toFixed(1) + '%';
   };
 
   const handleRowClick = (student: StudentResult): void => {
@@ -470,10 +469,10 @@ const SchoolResultTemplate = () => {
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="border border-black p-2 text-center font-semibold">{index + 1}</td>
                       <td className="border border-black p-2">{subject.subject.name}</td>
-                      <td className="border border-black p-2 text-center">{subject.ca_score}</td>
-                      <td className="border border-black p-2 text-center">{subject.exam_score}</td>
-                      <td className="border border-black p-2 text-center font-semibold">{subject.total_score}</td>
-                      <td className="border border-black p-2 text-center">{subject.percentage.toFixed(1)}%</td>
+                      <td className="border border-black p-2 text-center">{Number((subject as any).ca_score)}</td>
+                      <td className="border border-black p-2 text-center">{Number((subject as any).exam_score)}</td>
+                      <td className="border border-black p-2 text-center font-semibold">{Number((subject as any).total_score)}</td>
+                      <td className="border border-black p-2 text-center">{(() => { const pct = Number((subject as any).percentage); return isNaN(pct) ? 'N/A' : `${pct.toFixed(1)}%`; })()}</td>
                       <td className="border border-black p-2 text-center font-semibold">{subject.grade}</td>
                       <td className="border border-black p-2 text-center">{subject.remarks}</td>
                     </tr>

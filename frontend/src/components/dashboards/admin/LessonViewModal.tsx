@@ -27,8 +27,8 @@ import {
   Lightbulb,
   Zap
 } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, getLessonAttendance, updateLessonAttendance, getLessonEnrolledStudents, LessonAttendanceRecordBackend, LessonService } from '../../../services/LessonService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import { Lesson, getLessonAttendance, updateLessonAttendance, getLessonEnrolledStudents, LessonAttendanceRecordBackend, LessonService } from '@/services/LessonService';
 import LessonProgressTracker from './LessonProgressTracker';
 
 interface LessonViewModalProps {

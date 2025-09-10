@@ -3,48 +3,30 @@ import {
   Plus, 
   Search, 
   Filter, 
-  Download, 
-  Upload, 
-  Edit, 
-  Trash2, 
+  Edit,  
   Eye, 
   CheckCircle, 
-  XCircle, 
   Clock,
-  BarChart3,
   Users,
   BookOpen,
-  Calendar,
   RefreshCw,
-  Printer,
   FileText,
   Award,
-  TrendingUp,
   Grid3X3,
   List,
   User,
-  Mail,
-  Phone,
-  MapPin,
-  GraduationCap,
-  Trophy,
-  ChevronRight,
   MoreVertical,
   X,
-  CheckSquare,
-  Square,
-  EyeOff,
-  Check,
   AlertCircle
 } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import StudentService, { Student } from '../../../services/StudentService';
-import ResultService, { StudentTermResult, ExamSession } from '../../../services/ResultService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import StudentService, { Student } from '@/services/StudentService';
+import ResultService from '../../../services/ResultService';
 import EnhancedResultRecording from './EnhancedResultRecording';
 import EditResultForm from './EditResultForm';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import api from '../../../services/api';
+ 
 
 interface EnhancedResultManagementProps {}
 
@@ -55,7 +37,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
   // Data State
   const [students, setStudents] = useState<Student[]>([]);
   const [results, setResults] = useState<any[]>([]);
-  const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,15 +107,13 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [studentsData, resultsData, examSessionsData] = await Promise.all([
+      const [studentsData, resultsData] = await Promise.all([
         StudentService.getStudents(),
-        ResultService.getStudentResults(),
-        ResultService.getExamSessions()
+        ResultService.getStudentResults()
       ]);
       
       setStudents(studentsData.results || studentsData);
       setResults(resultsData);
-      setExamSessions(examSessionsData);
       
       // Debug logging
       console.log('Loaded results:', resultsData);
@@ -177,47 +157,14 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
     return studentResults;
   };
 
-  // Handle status change
-  const handleStatusChange = async (resultId: string, newStatus: string, educationLevel: string) => {
-    try {
-      let endpoint = '';
-      switch (educationLevel) {
-        case 'NURSERY':
-          endpoint = `/api/results/nursery-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        case 'PRIMARY':
-          endpoint = `/api/results/primary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        case 'JUNIOR_SECONDARY':
-          endpoint = `/api/results/junior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        case 'SENIOR_SECONDARY':
-          endpoint = `/api/results/senior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        default:
-          throw new Error('Invalid education level');
-      }
-
-      await api.post(endpoint, {});
-      toast.success(`Result ${newStatus.toLowerCase()} successfully`);
-      loadData(); // Reload data to reflect changes
-    } catch (error) {
-      console.error('Error changing status:', error);
-      toast.error(`Failed to ${newStatus.toLowerCase()} result`);
-    }
-  };
+  // (Removed unused handleStatusChange to satisfy linter)
 
   // Handle form close
   const handleFormClose = () => {
     setShowAddForm(false);
   };
 
-  // Handle form success
-  const handleFormSuccess = () => {
-    setShowAddForm(false);
-    loadData(); // Reload data to show new results
-    toast.success('Result added successfully!');
-  };
+  // Handle form success (unused) removed
 
   // Handle edit result
   const handleEditResult = (result: any, student: Student) => {
@@ -227,68 +174,24 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
   // Get status badge component
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      DRAFT: { color: 'bg-gray-500', icon: Clock },
-      SUBMITTED: { color: 'bg-blue-500', icon: FileText },
-      APPROVED: { color: 'bg-green-500', icon: CheckCircle },
-      PUBLISHED: { color: 'bg-purple-500', icon: Award }
-    };
+      DRAFT: { bg: 'bg-gray-100 dark:bg-gray-500/15', fg: 'text-gray-700 dark:text-gray-300', icon: Clock, label: 'Draft' },
+      SUBMITTED: { bg: 'bg-blue-100 dark:bg-blue-500/15', fg: 'text-blue-700 dark:text-blue-300', icon: FileText, label: 'Submitted' },
+      APPROVED: { bg: 'bg-green-100 dark:bg-green-500/15', fg: 'text-green-700 dark:text-green-300', icon: CheckCircle, label: 'Approved' },
+      PUBLISHED: { bg: 'bg-purple-100 dark:bg-purple-500/15', fg: 'text-purple-700 dark:text-purple-300', icon: Award, label: 'Published' }
+    } as const;
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.DRAFT;
     const IconComponent = config.icon;
 
     return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${config.color}`}>
-        <IconComponent className="w-3 h-3 mr-1" />
-        {status}
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium ${config.bg} ${config.fg}`}>
+        <IconComponent className="w-3.5 h-3.5 mr-1" />
+        {config.label}
       </span>
     );
   };
 
-  // Get detailed result information based on education level
-  const getResultDetails = (result: any, educationLevel: string) => {
-    switch (educationLevel) {
-      case 'SENIOR_SECONDARY':
-        return (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>Test 1: {result.test1_score || 0}</div>
-            <div>Test 2: {result.test2_score || 0}</div>
-            <div>Test 3: {result.test3_score || 0}</div>
-            <div>Exam: {result.exam_score || 0}</div>
-            <div>Average: {result.average_score || 0}</div>
-            <div>Highest: {result.highest_score || 0}</div>
-            <div>Lowest: {result.lowest_score || 0}</div>
-            <div>Obtainable: {result.obtainable_score || 0}</div>
-            <div>Obtained: {result.obtained_score || 0}</div>
-          </div>
-        );
-      case 'PRIMARY':
-      case 'JUNIOR_SECONDARY':
-        return (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>CA: {result.ca_score || 0}</div>
-            <div>Appearance: {result.appearance_score || 0}</div>
-            <div>Take Home: {result.take_home_score || 0}</div>
-            <div>Project: {result.project_score || 0}</div>
-            <div>Note Copying: {result.note_copying_score || 0}</div>
-            <div>Exam: {result.exam_score || 0}</div>
-            <div>Average: {result.average_score || 0}</div>
-            <div>Highest: {result.highest_score || 0}</div>
-            <div>Lowest: {result.lowest_score || 0}</div>
-          </div>
-        );
-      case 'NURSERY':
-        return (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>Exam: {result.exam_score || 0}</div>
-            <div>Total: {result.total_score || 0}</div>
-            <div>Grade: {result.grade || 'N/A'}</div>
-            <div>Position: {result.position || 'N/A'}</div>
-          </div>
-        );
-      default:
-        return <div className="text-xs text-gray-500">No details available</div>;
-    }
-  };
+  // getResultDetails removed (unused)
 
   if (loading) {
     return (
@@ -322,13 +225,14 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.bgPrimary} ${themeClasses.textPrimary}`}>
+    <div className={`min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-950 dark:to-gray-900 ${themeClasses.textPrimary}`}>
       {/* Header */}
-      <div className={`p-6 ${themeClasses.bgCard} border-b ${themeClasses.border}`}>
-        <div className="flex items-center justify-between mb-6">
+      <div className={`sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-gray-800/60 border-b ${themeClasses.border}`}>
+        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="flex items-center justify-between mb-2">
           <div>
-            <h1 className="text-3xl font-bold">Result Management</h1>
-            <p className={`text-lg ${themeClasses.textSecondary}`}>
+            <h1 className="text-3xl font-bold tracking-tight">Result Management</h1>
+            <p className={`text-sm ${themeClasses.textSecondary}`}>
               Manage and track student results across all education levels
             </p>
           </div>
@@ -336,7 +240,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
           {/* Add Result Button */}
           <button
             onClick={() => setShowAddForm(true)}
-            className={`px-6 py-3 rounded-lg font-semibold flex items-center ${themeClasses.buttonPrimary}`}
+            className={`px-6 py-3 rounded-lg font-semibold flex items-center ${themeClasses.buttonPrimary} transition-all duration-200 active:scale-[.98] shadow-sm`}
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Result
@@ -361,7 +265,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
           <div className="flex gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               <Filter className="w-4 h-4 mr-2" />
               Filters
@@ -369,7 +273,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
             
             <button
               onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               {viewMode === 'grid' ? <List className="w-4 h-4 mr-2" /> : <Grid3X3 className="w-4 h-4 mr-2" />}
               {viewMode === 'grid' ? 'List' : 'Grid'}
@@ -377,7 +281,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
             
             <button
               onClick={loadData}
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -440,13 +344,14 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="px-6 py-8 max-w-7xl mx-auto">
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className={`p-6 rounded-lg ${themeClasses.bgCard} border ${themeClasses.border}`}>
+          <div className={`p-6 rounded-2xl ${themeClasses.bgCard} border ${themeClasses.border} shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
             <div className="flex items-center">
               <Users className={`w-8 h-8 ${themeClasses.iconPrimary} mr-3`} />
               <div>
@@ -456,7 +361,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
             </div>
           </div>
           
-          <div className={`p-6 rounded-lg ${themeClasses.bgCard} border ${themeClasses.border}`}>
+          <div className={`p-6 rounded-2xl ${themeClasses.bgCard} border ${themeClasses.border} shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
             <div className="flex items-center">
               <BookOpen className={`w-8 h-8 ${themeClasses.iconPrimary} mr-3`} />
               <div>
@@ -466,7 +371,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
             </div>
           </div>
           
-          <div className={`p-6 rounded-lg ${themeClasses.bgCard} border ${themeClasses.border}`}>
+          <div className={`p-6 rounded-2xl ${themeClasses.bgCard} border ${themeClasses.border} shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
             <div className="flex items-center">
               <CheckCircle className={`w-8 h-8 text-green-500 mr-3`} />
               <div>
@@ -476,7 +381,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
             </div>
           </div>
           
-          <div className={`p-6 rounded-lg ${themeClasses.bgCard} border ${themeClasses.border}`}>
+          <div className={`p-6 rounded-2xl ${themeClasses.bgCard} border ${themeClasses.border} shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
             <div className="flex items-center">
               <Clock className={`w-8 h-8 text-yellow-500 mr-3`} />
               <div>
@@ -489,19 +394,19 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
 
         {/* Students List/Grid */}
         {viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
             {filteredStudents.map((student) => {
               const studentResults = getStudentResults(student.id);
               return (
-                <div key={student.id} className={`p-6 rounded-lg ${themeClasses.bgCard} border ${themeClasses.border} hover:shadow-lg transition-shadow`}>
+                <div key={student.id} className={`p-5 rounded-2xl ${themeClasses.bgCard} border ${themeClasses.border} shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'} transition-transform duration-200 hover:shadow-md hover:-translate-y-[1px]`}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
-                      <div className={`w-12 h-12 rounded-full ${themeClasses.bgSecondary} flex items-center justify-center mr-3`}>
+                      <div className={`w-12 h-12 rounded-full ${themeClasses.bgSecondary} flex items-center justify-center mr-3 ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
                         <User className="w-6 h-6" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">{student.full_name}</h3>
-                        <p className={`text-sm ${themeClasses.textSecondary}`}>ID: {student.id}</p>
+                        <h3 className="font-semibold leading-tight">{student.full_name}</h3>
+                        <p className={`text-xs ${themeClasses.textSecondary}`}>ID: {student.id}</p>
                       </div>
                     </div>
                     <MoreVertical className={`w-5 h-5 ${themeClasses.iconSecondary} cursor-pointer`} />
@@ -525,12 +430,14 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
                   {/* Result Status Summary */}
                   {studentResults.length > 0 && (
                     <div className="mb-4">
-                      <h4 className={`text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>Result Status:</h4>
-                      <div className="space-y-1">
+                      <h4 className={`text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>Result Status</h4>
+                      <div className="space-y-1.5">
                         {studentResults.map((result) => (
                           <div key={result.id} className="flex items-center justify-between">
-                            <span className="text-xs">{result.subject?.name || result.subject_name || 'Unknown Subject'}</span>
-                            <div className="flex items-center gap-1">
+                            <span className="text-xs truncate max-w-[60%]" title={result.subject?.name || result.subject_name || 'Unknown Subject'}>
+                              {result.subject?.name || result.subject_name || 'Unknown Subject'}
+                            </span>
+                            <div className="flex items-center gap-1.5">
                               {getStatusBadge(result.status)}
                               <button
                                 onClick={() => handleEditResult(result, student)}
@@ -549,7 +456,7 @@ const EnhancedResultManagement: React.FC<EnhancedResultManagementProps> = () => 
                   <div className="flex gap-2">
                     <button
                       onClick={() => navigate(`/admin/results/student/${student.id}`)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center ${themeClasses.buttonSecondary}`}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm flex items-center justify-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
                     >
                       <Eye className="w-4 h-4 mr-1" />
                       View

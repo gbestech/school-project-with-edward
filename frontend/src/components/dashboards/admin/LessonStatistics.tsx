@@ -2,27 +2,20 @@ import React from 'react';
 import {
   BarChart3,
   TrendingUp,
-  Users,
   Clock,
   CheckCircle,
   AlertTriangle,
-  Calendar,
   BookOpen,
-  Target,
-  Award,
-  Star,
   Activity,
   PieChart,
-  LineChart,
   Target as TargetIcon,
-  Zap,
   Heart,
   Trophy,
   Sparkles,
   GraduationCap
 } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, LessonStatistics as LessonStats } from '../../../services/LessonService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import { Lesson, LessonStatistics as LessonStats } from '@/services/LessonService';
 
 interface LessonStatisticsProps {
   statistics: LessonStats;

@@ -22,11 +22,15 @@ EXAM_TYPE_CHOICES = [
 ]
 
 EXAM_STATUS_CHOICES = [
+    ("draft", "Draft"),
+    ("pending_approval", "Pending Approval"),
+    ("approved", "Approved"),
     ("scheduled", "Scheduled"),
     ("in_progress", "In Progress"),
     ("completed", "Completed"),
     ("cancelled", "Cancelled"),
     ("postponed", "Postponed"),
+    ("rejected", "Rejected"),
 ]
 
 DIFFICULTY_CHOICES = [
@@ -463,11 +467,24 @@ class Exam(models.Model):
 
     # Status and flags
     status = models.CharField(
-        max_length=15, choices=EXAM_STATUS_CHOICES, default="scheduled"
+        max_length=20, choices=EXAM_STATUS_CHOICES, default="draft"
     )
     is_practical = models.BooleanField(default=False)
     requires_computer = models.BooleanField(default=False)
     is_online = models.BooleanField(default=False)
+    
+    # Approval workflow
+    approved_by = models.ForeignKey(
+        Teacher, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="approved_exams",
+        help_text="Admin/Teacher who approved this exam"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approval_notes = models.TextField(blank=True, help_text="Notes from the approver")
+    rejection_reason = models.TextField(blank=True, help_text="Reason for rejection if applicable")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -480,7 +497,47 @@ class Exam(models.Model):
         # even if they have different sections or no section
 
     def __str__(self):
-        return f"{self.title} - {self.subject.name} ({self.exam_schedule.name})"
+        return f"{self.title} - {self.subject.name} ({self.exam_schedule.name if self.exam_schedule else 'No Schedule'})"
+    
+    def approve(self, approver, notes=""):
+        """Approve the exam"""
+        from django.utils import timezone
+        self.status = "approved"
+        self.approved_by = approver
+        self.approved_at = timezone.now()
+        self.approval_notes = notes
+        self.rejection_reason = ""  # Clear any previous rejection reason
+        self.save()
+    
+    def reject(self, approver, reason=""):
+        """Reject the exam"""
+        from django.utils import timezone
+        self.status = "rejected"
+        self.approved_by = approver
+        self.approved_at = timezone.now()
+        self.rejection_reason = reason
+        self.approval_notes = ""  # Clear any previous approval notes
+        self.save()
+    
+    def submit_for_approval(self):
+        """Submit exam for approval"""
+        self.status = "pending_approval"
+        self.save()
+    
+    @property
+    def is_pending_approval(self):
+        """Check if exam is pending approval"""
+        return self.status == "pending_approval"
+    
+    @property
+    def is_approved(self):
+        """Check if exam is approved"""
+        return self.status == "approved"
+    
+    @property
+    def is_rejected(self):
+        """Check if exam is rejected"""
+        return self.status == "rejected"
 
     @property
     def duration(self):

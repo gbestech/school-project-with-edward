@@ -1,23 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
-  Save, 
-  AlertCircle, 
+  Save,  
   BookOpen, 
-  User, 
-  Calendar,
   Target,
-  Award,
-  TrendingUp,
-  TrendingDown,
-  Trophy,
   Star,
-  Check,
   RefreshCw
 } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import SubjectService from '../../../services/SubjectService';
-import ResultService from '../../../services/ResultService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import SubjectService from '@/services/SubjectService';
 import { toast } from 'react-toastify';
 import api from '../../../services/api';
 
@@ -90,7 +81,7 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: value
     }));
@@ -122,38 +113,38 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
     // Education level specific validations
     switch (student.education_level) {
       case 'SENIOR_SECONDARY':
-        if (formData.test1_score && (formData.test1_score < 0 || formData.test1_score > 100)) {
-          newErrors.test1_score = 'Test 1 score must be between 0 and 100';
+        if (formData.test1_score && (formData.test1_score < 0 || formData.test1_score > 10)) {
+          newErrors.test1_score = 'Test 1 score must be between 0 and 10';
         }
-        if (formData.test2_score && (formData.test2_score < 0 || formData.test2_score > 100)) {
-          newErrors.test2_score = 'Test 2 score must be between 0 and 100';
+        if (formData.test2_score && (formData.test2_score < 0 || formData.test2_score > 10)) {
+          newErrors.test2_score = 'Test 2 score must be between 0 and 10';
         }
-        if (formData.test3_score && (formData.test3_score < 0 || formData.test3_score > 100)) {
-          newErrors.test3_score = 'Test 3 score must be between 0 and 100';
+        if (formData.test3_score && (formData.test3_score < 0 || formData.test3_score > 10)) {
+          newErrors.test3_score = 'Test 3 score must be between 0 and 10';
         }
-        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 100)) {
-          newErrors.exam_score = 'Exam score must be between 0 and 100';
+        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 70)) {
+          newErrors.exam_score = 'Exam score must be between 0 and 70';
         }
         break;
       case 'PRIMARY':
       case 'JUNIOR_SECONDARY':
-        if (formData.ca_score && (formData.ca_score < 0 || formData.ca_score > 100)) {
-          newErrors.ca_score = 'CA score must be between 0 and 100';
+        if (formData.continuous_assessment_score && (formData.continuous_assessment_score < 0 || formData.continuous_assessment_score > 15)) {
+          newErrors.continuous_assessment_score = 'CA score must be between 0 and 15';
         }
-        if (formData.appearance_score && (formData.appearance_score < 0 || formData.appearance_score > 100)) {
-          newErrors.appearance_score = 'Appearance score must be between 0 and 100';
+        if (formData.practical_score && (formData.practical_score < 0 || formData.practical_score > 5)) {
+          newErrors.practical_score = 'Practical score must be between 0 and 5';
         }
-        if (formData.take_home_score && (formData.take_home_score < 0 || formData.take_home_score > 100)) {
-          newErrors.take_home_score = 'Take Home score must be between 0 and 100';
+        if (formData.take_home_test_score && (formData.take_home_test_score < 0 || formData.take_home_test_score > 5)) {
+          newErrors.take_home_test_score = 'Take Home Test score must be between 0 and 5';
         }
-        if (formData.project_score && (formData.project_score < 0 || formData.project_score > 100)) {
-          newErrors.project_score = 'Project score must be between 0 and 100';
+        if (formData.project_score && (formData.project_score < 0 || formData.project_score > 5)) {
+          newErrors.project_score = 'Project score must be between 0 and 5';
         }
-        if (formData.note_copying_score && (formData.note_copying_score < 0 || formData.note_copying_score > 100)) {
-          newErrors.note_copying_score = 'Note copying score must be between 0 and 100';
+        if (formData.note_copying_score && (formData.note_copying_score < 0 || formData.note_copying_score > 5)) {
+          newErrors.note_copying_score = 'Note copying score must be between 0 and 5';
         }
-        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 100)) {
-          newErrors.exam_score = 'Exam score must be between 0 and 100';
+        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 60)) {
+          newErrors.exam_score = 'Exam score must be between 0 and 60';
         }
         break;
       case 'NURSERY':
@@ -197,7 +188,48 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
           throw new Error('Invalid education level');
       }
 
-      await api.put(endpoint, formData);
+      // Build payload with only fields accepted by the backend CreateUpdate serializers
+      const baseForeignKeys = {
+        student: student?.id ?? result.student?.id ?? result.student,
+        subject: formData.subject?.id ?? formData.subject,
+        exam_session: formData.exam_session?.id ?? formData.exam_session,
+        grading_system: formData.grading_system?.id ?? formData.grading_system,
+      } as Record<string, any>;
+
+      let payload: Record<string, any> = { status: formData.status || 'DRAFT', ...baseForeignKeys };
+
+      if (student.education_level === 'SENIOR_SECONDARY') {
+        payload = {
+          ...payload,
+          first_test_score: formData.first_test_score ?? formData.test1_score ?? 0,
+          second_test_score: formData.second_test_score ?? formData.test2_score ?? 0,
+          third_test_score: formData.third_test_score ?? formData.test3_score ?? 0,
+          exam_score: formData.exam_score ?? 0,
+          teacher_remark: formData.teacher_remark || formData.comments || '',
+          // Optional stream if present
+          ...(formData.stream ? { stream: formData.stream?.id ?? formData.stream } : {}),
+        };
+      } else if (student.education_level === 'PRIMARY' || student.education_level === 'JUNIOR_SECONDARY') {
+        payload = {
+          ...payload,
+          continuous_assessment_score: formData.continuous_assessment_score ?? formData.ca_score ?? 0,
+          take_home_test_score: formData.take_home_test_score ?? formData.take_home_score ?? 0,
+          practical_score: formData.practical_score ?? 0,
+          project_score: formData.project_score ?? 0,
+          note_copying_score: formData.note_copying_score ?? 0,
+          exam_score: formData.exam_score ?? 0,
+          teacher_remark: formData.teacher_remark || formData.comments || '',
+        };
+      } else if (student.education_level === 'NURSERY') {
+        payload = {
+          ...payload,
+          exam_score: formData.exam_score ?? 0,
+          teacher_remark: formData.teacher_remark || formData.comments || '',
+        };
+      }
+
+      // Send the minimal, correct payload
+      await api.put(endpoint, payload);
       toast.success('Result updated successfully!');
       onSuccess();
       onClose();
@@ -222,12 +254,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="10"
                 step="0.01"
                 value={formData.test1_score || ''}
                 onChange={(e) => handleInputChange('test1_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test1_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-10"
               />
               {errors.test1_score && <p className="text-red-500 text-xs mt-1">{errors.test1_score}</p>}
             </div>
@@ -239,12 +271,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="10"
                 step="0.01"
                 value={formData.test2_score || ''}
                 onChange={(e) => handleInputChange('test2_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test2_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-10"
               />
               {errors.test2_score && <p className="text-red-500 text-xs mt-1">{errors.test2_score}</p>}
             </div>
@@ -256,12 +288,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="10"
                 step="0.01"
                 value={formData.test3_score || ''}
                 onChange={(e) => handleInputChange('test3_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test3_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-10"
               />
               {errors.test3_score && <p className="text-red-500 text-xs mt-1">{errors.test3_score}</p>}
             </div>
@@ -273,12 +305,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="70"
                 step="0.01"
                 value={formData.exam_score || ''}
                 onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-70"
               />
               {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
             </div>
@@ -291,53 +323,53 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                CA Score
+                Continuous Assessment (CA)
               </label>
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="15"
                 step="0.01"
-                value={formData.ca_score || ''}
-                onChange={(e) => handleInputChange('ca_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.ca_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                value={formData.continuous_assessment_score || ''}
+                onChange={(e) => handleInputChange('continuous_assessment_score', parseFloat(e.target.value) || 0)}
+                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.continuous_assessment_score ? 'border-red-500' : ''}`}
+                placeholder="0-15"
               />
-              {errors.ca_score && <p className="text-red-500 text-xs mt-1">{errors.ca_score}</p>}
+              {errors.continuous_assessment_score && <p className="text-red-500 text-xs mt-1">{errors.continuous_assessment_score}</p>}
             </div>
             
             <div>
               <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                Appearance Score
+                Practical Score
               </label>
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="5"
                 step="0.01"
-                value={formData.appearance_score || ''}
-                onChange={(e) => handleInputChange('appearance_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.appearance_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                value={formData.practical_score || ''}
+                onChange={(e) => handleInputChange('practical_score', parseFloat(e.target.value) || 0)}
+                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.practical_score ? 'border-red-500' : ''}`}
+                placeholder="0-5"
               />
-              {errors.appearance_score && <p className="text-red-500 text-xs mt-1">{errors.appearance_score}</p>}
+              {errors.practical_score && <p className="text-red-500 text-xs mt-1">{errors.practical_score}</p>}
             </div>
             
             <div>
               <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                Take Home Score
+                Take Home Test Score
               </label>
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="5"
                 step="0.01"
-                value={formData.take_home_score || ''}
-                onChange={(e) => handleInputChange('take_home_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.take_home_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                value={formData.take_home_test_score || ''}
+                onChange={(e) => handleInputChange('take_home_test_score', parseFloat(e.target.value) || 0)}
+                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.take_home_test_score ? 'border-red-500' : ''}`}
+                placeholder="0-5"
               />
-              {errors.take_home_score && <p className="text-red-500 text-xs mt-1">{errors.take_home_score}</p>}
+              {errors.take_home_test_score && <p className="text-red-500 text-xs mt-1">{errors.take_home_test_score}</p>}
             </div>
             
             <div>
@@ -347,12 +379,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="5"
                 step="0.01"
                 value={formData.project_score || ''}
                 onChange={(e) => handleInputChange('project_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.project_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-5"
               />
               {errors.project_score && <p className="text-red-500 text-xs mt-1">{errors.project_score}</p>}
             </div>
@@ -364,12 +396,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="5"
                 step="0.01"
                 value={formData.note_copying_score || ''}
                 onChange={(e) => handleInputChange('note_copying_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.note_copying_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-5"
               />
               {errors.note_copying_score && <p className="text-red-500 text-xs mt-1">{errors.note_copying_score}</p>}
             </div>
@@ -381,12 +413,12 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
               <input
                 type="number"
                 min="0"
-                max="100"
+                max="60"
                 step="0.01"
                 value={formData.exam_score || ''}
                 onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
-                placeholder="0-100"
+                placeholder="0-60"
               />
               {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
             </div>

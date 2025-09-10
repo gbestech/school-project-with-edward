@@ -133,6 +133,9 @@ class ResultService {
   }) {
     try {
       // Try to get results from individual endpoints
+      if (import.meta.env.DEV) {
+        console.log('ResultService.getStudentResults called with params:', params);
+      }
       const [nurseryResults, primaryResults, jssResults, sssResults] = await Promise.allSettled([
         api.get('/api/results/nursery-results/'),
         api.get('/api/results/primary-results/'),
@@ -184,14 +187,44 @@ class ResultService {
       
       // Apply filters if provided
       if (params) {
+        const toIdSet = (value?: string | boolean): Set<string> | null => {
+          if (value === undefined || value === null) return null;
+          if (typeof value !== 'string') return new Set([String(value)]);
+          const parts = value.split(',').map(v => v.trim()).filter(Boolean);
+          return new Set(parts.length ? parts : [value]);
+        };
+        if (import.meta.env.DEV) {
+          console.log('ResultService.getStudentResults before filter count:', allResults.length);
+        }
         if (params.student) {
-          allResults = allResults.filter(result => result.student?.id?.toString() === params.student);
+          const targets = toIdSet(params.student);
+          if (targets) {
+            allResults = allResults.filter(result => {
+              const candidate = (result.student?.id ?? result.student ?? result.student_id);
+              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
+            });
+          }
         }
         if (params.subject) {
-          allResults = allResults.filter(result => result.subject?.id?.toString() === params.subject);
+          const targets = toIdSet(params.subject);
+          if (import.meta.env.DEV) {
+            console.log('Filtering by subject targets:', Array.from(targets || []));
+          }
+          if (targets) {
+            allResults = allResults.filter(result => {
+              const candidate = (result.subject?.id ?? result.subject ?? result.subject_id);
+              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
+            });
+          }
         }
         if (params.exam_session) {
-          allResults = allResults.filter(result => result.exam_session?.id?.toString() === params.exam_session);
+          const targets = toIdSet(params.exam_session);
+          if (targets) {
+            allResults = allResults.filter(result => {
+              const candidate = (result.exam_session?.id ?? result.exam_session ?? result.exam_session_id);
+              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
+            });
+          }
         }
         if (params.status) {
           allResults = allResults.filter(result => result.status === params.status);
@@ -200,14 +233,23 @@ class ResultService {
           allResults = allResults.filter(result => result.is_passed === params.is_passed);
         }
         if (params.stream) {
-          allResults = allResults.filter(result => result.stream?.id?.toString() === params.stream);
+          const targets = toIdSet(params.stream);
+          if (targets) {
+            allResults = allResults.filter(result => {
+              const candidate = (result.stream?.id ?? result.stream ?? result.stream_id);
+              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
+            });
+          }
         }
         if (params.search) {
           const searchLower = params.search.toLowerCase();
           allResults = allResults.filter(result => 
-            result.student?.full_name?.toLowerCase().includes(searchLower) ||
-            result.subject?.name?.toLowerCase().includes(searchLower)
+            (result.student?.full_name ?? result.student_name ?? '').toLowerCase().includes(searchLower) ||
+            (result.subject?.name ?? result.subject_name ?? '').toLowerCase().includes(searchLower)
           );
+        }
+        if (import.meta.env.DEV) {
+          console.log('ResultService.getStudentResults after filter count:', allResults.length, 'sample:', allResults.slice(0,3));
         }
       }
       
@@ -302,10 +344,15 @@ class ResultService {
     student: string;
     subject: string;
     exam_session: string;
-    grading_system: string;
+    grading_system?: number | string;
     stream?: string;
-    ca_score: number;
-    exam_score: number;
+    // Primary/Junior fields
+    ca_score?: number;
+    exam_score?: number;
+    // Senior fields
+    first_test_score?: number;
+    second_test_score?: number;
+    third_test_score?: number;
     total_score?: number;
     percentage?: number;
     grade?: string;
@@ -362,12 +409,12 @@ class ResultService {
 
   // Approve a student result
   async approveStudentResult(resultId: string) {
-    return api.post(`/results/student-results/${resultId}/approve/`);
+    return api.post(`/results/student-results/${resultId}/approve/`, {});
   }
 
   // Publish a student result
   async publishStudentResult(resultId: string) {
-    return api.post(`/results/student-results/${resultId}/publish/`);
+    return api.post(`/results/student-results/${resultId}/publish/`, {});
   }
 
   // Get result summary statistics

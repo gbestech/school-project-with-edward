@@ -8,23 +8,16 @@ import {
   GraduationCap, 
   Users, 
   BookOpen, 
-  Calendar, 
   CheckSquare, 
   MessageSquare, 
-  Plus,
   Search,
-  Filter,
   Eye,
-  Edit,
   MoreHorizontal,
-  User,
-  Clock,
   MapPin,
   BarChart3,
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  XCircle
 } from 'lucide-react';
 
 interface TeacherClassData {
@@ -82,9 +75,14 @@ const Classes: React.FC = () => {
 
       // Fetch teacher classes from the database
       const classesData = await TeacherDashboardService.getTeacherClasses(teacherId);
-      setClasses(classesData);
+      // Ensure is_class_teacher exists on each class object
+      const normalizedClasses = classesData.map((cls: any) => ({
+        ...cls,
+        is_class_teacher: cls.is_class_teacher ?? false,
+      }));
+      setClasses(normalizedClasses);
       
-      console.log('🔍 Loaded teacher classes:', classesData);
+      console.log('🔍 Loaded teacher classes:', normalizedClasses);
     } catch (error) {
       console.error('Error loading teacher classes:', error);
       setError(error instanceof Error ? error.message : 'Failed to load classes');

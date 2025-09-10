@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Plus, Edit, Trash2, Printer, Download, X, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Printer, Download, X, FileText, Check, XCircle } from 'lucide-react';
 import { ExamService, Exam, ExamCreateData } from '@/services/ExamService';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'react-hot-toast';
@@ -99,6 +99,10 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [selectedExamForPrint, setSelectedExamForPrint] = useState<Exam | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
+  const [approvalNotes, setApprovalNotes] = useState('');
+  const [examForApproval, setExamForApproval] = useState<Exam | null>(null);
 
   const [newExam, setNewExam] = useState<ExamCreateData>({
     title: '',
@@ -448,6 +452,55 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     loadBackendData();
   }, []);
 
+  // Approval handlers
+  const handleApproveExam = useCallback(async (exam: Exam) => {
+    setExamForApproval(exam);
+    setApprovalAction('approve');
+    setApprovalNotes('');
+    setShowApprovalModal(true);
+  }, []);
+
+  const handleRejectExam = useCallback(async (exam: Exam) => {
+    setExamForApproval(exam);
+    setApprovalAction('reject');
+    setApprovalNotes('');
+    setShowApprovalModal(true);
+  }, []);
+
+  const handleConfirmApproval = useCallback(async () => {
+    if (!examForApproval || !approvalAction) return;
+
+    try {
+      if (approvalAction === 'approve') {
+        await ExamService.approveExam(examForApproval.id, approvalNotes);
+        toast.success('Exam approved successfully!');
+      } else if (approvalAction === 'reject') {
+        await ExamService.rejectExam(examForApproval.id, approvalNotes);
+        toast.success('Exam rejected successfully!');
+      }
+
+      // Reload exams to reflect the status change
+      const updatedExams = await ExamService.getExams();
+      setExams(updatedExams);
+      
+      // Close modal
+      setShowApprovalModal(false);
+      setExamForApproval(null);
+      setApprovalAction(null);
+      setApprovalNotes('');
+    } catch (error) {
+      console.error('Error processing approval:', error);
+      toast.error('Failed to process approval. Please try again.');
+    }
+  }, [examForApproval, approvalAction, approvalNotes]);
+
+  const handleCancelApproval = useCallback(() => {
+    setShowApprovalModal(false);
+    setExamForApproval(null);
+    setApprovalAction(null);
+    setApprovalNotes('');
+  }, []);
+
   // Filter subjects based on selected grade level
   useEffect(() => {
     if (newExam.grade_level && subjects.length > 0) {
@@ -476,14 +529,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
 
   // Load exams from backend with better error handling
   useEffect(() => {
-        const loadExams = async () => {
+    const loadExams = async () => {
       try {
         setLoading(true);
         setError(null);
         const examsData = await ExamService.getExams();
         
-
- 
         // Ensure we always set an array
         setExams(Array.isArray(examsData) ? examsData : []);
       } catch (err) {
@@ -1388,6 +1439,24 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                         >
                           <FileText className="w-4 h-4" />
                         </button>
+                        {exam.status === 'pending_approval' && (
+                          <>
+                            <button
+                              onClick={() => handleApproveExam(exam)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Approve Exam"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRejectExam(exam)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Reject Exam"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                         <button
                           onClick={() => handleEditExam(exam)}
                           className="text-yellow-600 hover:text-yellow-900"
@@ -2323,6 +2392,71 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
                   theoryInstructions: selectedExamForPrint.theory_instructions || '',
                   practicalInstructions: selectedExamForPrint.practical_instructions || ''
                 }) }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Modal */}
+      {showApprovalModal && examForApproval && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {approvalAction === 'approve' ? 'Approve Exam' : 'Reject Exam'}
+              </h3>
+              <button
+                onClick={handleCancelApproval}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                <strong>Exam:</strong> {examForApproval.title}
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                <strong>Subject:</strong> {examForApproval.subject_name}
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {approvalAction === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason (Required)'}
+              </label>
+              <textarea
+                value={approvalNotes}
+                onChange={(e) => setApprovalNotes(e.target.value)}
+                placeholder={approvalAction === 'approve' 
+                  ? 'Add any notes about the approval...' 
+                  : 'Please provide a reason for rejection...'
+                }
+                className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+                required={approvalAction === 'reject'}
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleCancelApproval}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmApproval}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                  approvalAction === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+                disabled={approvalAction === 'reject' && !approvalNotes.trim()}
+              >
+                {approvalAction === 'approve' ? 'Approve' : 'Reject'}
+              </button>
             </div>
           </div>
         </div>

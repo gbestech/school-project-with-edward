@@ -10,13 +10,13 @@ import {
   BarChart3,
   RefreshCw
 } from 'lucide-react';
-import { useGlobalTheme } from '../../contexts/GlobalThemeContext';
-import LessonList from '../../components/dashboards/admin/LessonList';
-import AddLessonForm from '../../components/dashboards/admin/AddLessonForm';
-import EditLessonForm from '../../components/dashboards/admin/EditLessonForm';
-import LessonViewModal from '../../components/dashboards/admin/LessonViewModal';
-import LessonCalendar from '../../components/dashboards/admin/LessonCalendar';
-import LessonStatisticsComponent from '../../components/dashboards/admin/LessonStatistics';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import LessonList from '@/components/dashboards/admin/LessonList';
+import AddLessonForm from '@/components/dashboards/admin/AddLessonForm';
+import EditLessonForm from '@/components/dashboards/admin/EditLessonForm';
+import LessonViewModal from '@/components/dashboards/admin/LessonViewModal';
+import LessonCalendar from '@/components/dashboards/admin/LessonCalendar';
+import LessonStatisticsComponent from '@/components/dashboards/admin/LessonStatistics';
 import { LessonService, type Lesson, type LessonStatistics } from '../../services/LessonService';
 
 const LessonManagement: React.FC = () => {

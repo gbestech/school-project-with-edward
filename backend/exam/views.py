@@ -88,7 +88,8 @@ class ExamViewSet(viewsets.ModelViewSet):
     search_fields = ["title", "description", "code", "subject__name", "venue"]
     ordering_fields = ["exam_date", "start_time", "title", "created_at"]
     ordering = ["-exam_date", "start_time"]
-    permission_classes = []  # Temporarily allow unauthenticated access for testing
+    permission_classes = [permissions.AllowAny]  # Allow unauthenticated access for testing
+    authentication_classes = []  # Disable authentication for testing
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -112,6 +113,7 @@ class ExamViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+
 
     @action(detail=False, methods=["post"])
     def bulk_create(self, request):
@@ -338,6 +340,90 @@ class ExamViewSet(viewsets.ModelViewSet):
         exam.save()
         
         return Response({"message": "Exam postponed successfully"})
+
+    # Approval Workflow
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """Approve an exam"""
+        exam = self.get_object()
+        
+        if exam.status != "pending_approval":
+            return Response(
+                {"error": "Only exams pending approval can be approved"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get approver - try to get Teacher from User, or use None if not available
+        approver = None
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            try:
+                from teacher.models import Teacher
+                approver = Teacher.objects.get(user=request.user)
+            except Teacher.DoesNotExist:
+                # If user is not a teacher, we'll leave approver as None
+                pass
+        
+        notes = request.data.get("notes", "")
+        
+        exam.approve(approver, notes)
+        
+        return Response({
+            "message": "Exam approved successfully",
+            "status": exam.status,
+            "approved_at": exam.approved_at,
+            "approved_by": exam.approved_by.id if exam.approved_by else None
+        })
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        """Reject an exam"""
+        exam = self.get_object()
+        
+        if exam.status != "pending_approval":
+            return Response(
+                {"error": "Only exams pending approval can be rejected"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get approver - try to get Teacher from User, or use None if not available
+        approver = None
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            try:
+                from teacher.models import Teacher
+                approver = Teacher.objects.get(user=request.user)
+            except Teacher.DoesNotExist:
+                # If user is not a teacher, we'll leave approver as None
+                pass
+        
+        reason = request.data.get("reason", "")
+        
+        exam.reject(approver, reason)
+        
+        return Response({
+            "message": "Exam rejected successfully",
+            "status": exam.status,
+            "rejected_at": exam.approved_at,
+            "rejected_by": exam.approved_by.id if exam.approved_by else None,
+            "rejection_reason": exam.rejection_reason
+        })
+
+    @action(detail=True, methods=["post"])
+    def submit_for_approval(self, request, pk=None):
+        """Submit exam for approval"""
+        exam = self.get_object()
+        
+        if exam.status not in ["draft", "rejected"]:
+            return Response(
+                {"error": "Only draft or rejected exams can be submitted for approval"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        exam.submit_for_approval()
+        
+        return Response({
+            "message": "Exam submitted for approval successfully",
+            "status": exam.status
+        })
 
     # Student Registration
     @action(detail=True, methods=["post"])

@@ -482,7 +482,7 @@ const TestCreationForm: React.FC<TestCreationFormProps> = ({
                         <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                              Question {index + 1}
+                              Question {index + 1}.
                             </span>
                             <button
                               onClick={() => removeObjectiveQuestion(index)}
@@ -582,7 +582,7 @@ const TestCreationForm: React.FC<TestCreationFormProps> = ({
                         <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                              Question {index + 1}
+                              Question {index + 1}.
                             </span>
                             <button
                               onClick={() => removeTheoryQuestion(index)}

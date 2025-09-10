@@ -17,7 +17,7 @@ class SubjectSerializer(serializers.ModelSerializer):
     education_levels_display = serializers.ReadOnlyField()
     nursery_levels_display = serializers.ReadOnlyField()
     full_level_display = serializers.ReadOnlyField()
-    total_weekly_hours = serializers.ReadOnlyField()
+    # total_weekly_hours field removed - doesn't exist in model
     category_display_with_icon = serializers.CharField(
         source="get_category_display_with_icon", read_only=True
     )
@@ -31,10 +31,8 @@ class SubjectSerializer(serializers.ModelSerializer):
     )
 
     # Boolean property fields
-    is_nursery_subject = serializers.ReadOnlyField()
-    is_primary_subject = serializers.ReadOnlyField()
-    is_junior_secondary_subject = serializers.ReadOnlyField()
-    is_senior_secondary_subject = serializers.ReadOnlyField()
+    # is_nursery_subject field removed - use education_levels JSONField instead
+    # Education level fields removed - use education_levels JSONField instead
 
     # Custom validation fields
     code = serializers.CharField(
@@ -45,7 +43,7 @@ class SubjectSerializer(serializers.ModelSerializer):
     grade_levels_info = serializers.SerializerMethodField()
     prerequisite_subjects = serializers.SerializerMethodField()
     dependent_subjects = serializers.SerializerMethodField()
-    subject_summary = serializers.SerializerMethodField()
+    # subject_summary field removed - doesn't exist in model
     education_level_details = serializers.SerializerMethodField()
 
     # Nested serialization for related fields
@@ -89,46 +87,15 @@ class SubjectSerializer(serializers.ModelSerializer):
             "grade_levels",
             "grade_levels_info",
 
-            "is_compulsory",
-            "is_core",
-            # Elective subject management
-            "is_elective",
-            "elective_group",
-            "min_electives_required",
-            "max_electives_allowed",
-            # Stream compatibility
-            "compatible_streams",
             # Prerequisites and dependencies
             "prerequisites",
             "prerequisite_subjects",
             "dependent_subjects",
-            # Assessment configuration
-            "has_continuous_assessment",
-            "has_final_exam",
-            "pass_mark",
-            # Practical and activity components
-            "has_practical",
-            "practical_hours",
-            "is_activity_based",
-            "total_weekly_hours",
-            # Resource requirements
-            "requires_lab",
-            "requires_special_equipment",
-            "equipment_notes",
-            "requires_specialist_teacher",
-            # Educational level checks
-            "is_nursery_subject",
-            "is_primary_subject",
-            "is_junior_secondary_subject",
-            "is_senior_secondary_subject",
+            "compatible_streams",
             # Status fields
             "is_active",
             # Metadata and organization
-            "introduced_year",
-            "curriculum_version",
             "subject_order",
-            "learning_outcomes",
-            "subject_summary",
             # Timestamps
             "created_at",
             "updated_at",
@@ -204,10 +171,10 @@ class SubjectSerializer(serializers.ModelSerializer):
             "applicable_levels": [],
             "nursery_specific": [],
             "level_compatibility": {
-                "nursery": getattr(obj, 'is_nursery_subject', False),
-                "primary": getattr(obj, 'is_primary_subject', False),
-                "junior_secondary": getattr(obj, 'is_junior_secondary_subject', False),
-                "senior_secondary": getattr(obj, 'is_senior_secondary_subject', False),
+                "nursery": "NURSERY" in getattr(obj, 'education_levels', []),
+                "primary": "PRIMARY" in getattr(obj, 'education_levels', []),
+                "junior_secondary": "JUNIOR_SECONDARY" in getattr(obj, 'education_levels', []),
+                "senior_secondary": "SENIOR_SECONDARY" in getattr(obj, 'education_levels', []),
             },
         }
 
@@ -231,76 +198,9 @@ class SubjectSerializer(serializers.ModelSerializer):
 
         return details
 
-    def get_subject_summary(self, obj):
-        """Return comprehensive subject summary"""
-        return {
-            "basic_info": {
-                "display_name": getattr(obj, 'display_name', getattr(obj, 'name', 'Unknown')),
-                "total_practical_hours": getattr(obj, 'practical_hours', 0),
-                "total_weekly_hours": getattr(obj, 'total_weekly_hours', getattr(obj, 'practical_hours', 0)),
-            },
-            "classification": {
-                "category": getattr(obj, 'get_category_display', lambda: 'Unknown')(),
-                "is_compulsory": getattr(obj, 'is_compulsory', False),
-                "is_core": getattr(obj, 'is_core', False),
-                "is_cross_cutting": getattr(obj, 'is_cross_cutting', False),
-                "is_activity_based": getattr(obj, 'is_activity_based', False),
-                "ss_subject_type": (
-                    getattr(obj, 'get_ss_subject_type_display', lambda: None)() if getattr(obj, 'ss_subject_type', None) else None
-                ),
-            },
-            "relationships": {
-                "has_prerequisites": getattr(obj, 'prerequisites', []).exists() if hasattr(obj, 'prerequisites') else False,
-                "prerequisite_count": getattr(obj, 'prerequisites', []).count() if hasattr(obj, 'prerequisites') else 0,
-                "dependent_count": getattr(obj, 'unlocks_subjects', []).count() if hasattr(obj, 'unlocks_subjects') else 0,
-                "grade_level_count": getattr(obj, 'grade_levels', []).count() if hasattr(obj, 'grade_levels') else 0,
-            },
-            "assessment": {
-                "assessment_type": self._get_assessment_type(obj),
-                "pass_mark": getattr(obj, 'pass_mark', 50),
-            },
-            "resources": {
-                "resource_requirements": self._get_resource_requirements(obj),
-                "requires_specialist": getattr(obj, 'requires_specialist_teacher', False),
-            },
-            "status": {
-                "status": self._get_status_summary(obj),
-                "introduced_year": getattr(obj, 'introduced_year', None),
-                "curriculum_version": getattr(obj, 'curriculum_version', None),
-            },
-        }
+    # get_subject_summary method removed - references non-existent fields
 
-    def _get_assessment_type(self, obj):
-        """Helper method to determine assessment type"""
-        has_continuous = getattr(obj, 'has_continuous_assessment', False)
-        has_final = getattr(obj, 'has_final_exam', False)
-        
-        if has_continuous and has_final:
-            return "Both Continuous and Final"
-        elif has_continuous:
-            return "Continuous Assessment Only"
-        elif has_final:
-            return "Final Exam Only"
-        else:
-            return "No Standard Assessment"
-
-    def _get_resource_requirements(self, obj):
-        """Helper method to get resource requirements"""
-        requirements = []
-        if getattr(obj, 'requires_lab', False):
-            requirements.append("Laboratory")
-        if getattr(obj, 'requires_special_equipment', False):
-            requirements.append("Special Equipment")
-        if getattr(obj, 'has_practical', False):
-            requirements.append("Practical Facilities")
-        return requirements if requirements else ["Standard Classroom"]
-
-    def _get_status_summary(self, obj):
-        """Helper method to get status summary"""
-        if not getattr(obj, 'is_active', True):
-            return "Inactive"
-        else:
-            return "Active"
+    # Helper methods removed - they reference non-existent fields
 
     def get_stream_assignments(self, obj):
         """Return list of stream assignments for this subject"""
@@ -341,18 +241,7 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 
 
-    def validate_practical_hours(self, value):
-        """Validate practical hours"""
-        has_practical = self.initial_data.get("has_practical", False)
-        if has_practical and value == 0:
-            raise serializers.ValidationError(
-                "Practical hours must be greater than 0 when subject has practical components."
-            )
-        elif not has_practical and value > 0:
-            raise serializers.ValidationError(
-                "Practical hours should be 0 when subject has no practical components."
-            )
-        return value
+    # validate_practical_hours method removed - field doesn't exist in model
 
     def validate_education_levels(self, value):
         """Validate education levels"""
@@ -456,14 +345,7 @@ class SubjectSerializer(serializers.ModelSerializer):
                 }
             )
 
-        # Assessment validation
-        has_continuous = data.get("has_continuous_assessment", True)
-        has_final = data.get("has_final_exam", True)
-
-        if not has_continuous and not has_final:
-            raise serializers.ValidationError(
-                "Subject must have at least one form of assessment (continuous or final exam)."
-            )
+        # Assessment validation removed - fields don't exist in model
 
         return data
 
@@ -495,7 +377,7 @@ class SubjectSerializer(serializers.ModelSerializer):
             if hasattr(request.user, "is_staff") and request.user.is_staff:
                 data["admin_info"] = {
                     "last_updated": getattr(instance, 'updated_at', None),
-                    "requires_attention": (not getattr(instance, 'is_active', True) and getattr(instance, 'is_compulsory', False)),
+                    "requires_attention": (not getattr(instance, 'is_active', True)),
                     "has_resource_requirements": getattr(instance, 'requires_lab', False)
                     or getattr(instance, 'requires_special_equipment', False),
                     "curriculum_alignment": getattr(instance, 'curriculum_version', None)
@@ -686,7 +568,7 @@ class NurserySubjectSerializer(serializers.ModelSerializer):
             "nursery_levels",
             "nursery_levels_display",
             "is_activity_based",
-            "practical_hours",
+            # "practical_hours",  # Field doesn't exist in model
             "is_active",
             "subject_order",
         ]
@@ -716,8 +598,8 @@ class SeniorSecondarySubjectSerializer(serializers.ModelSerializer):
             "ss_subject_type",
             "ss_subject_type_display",
             "is_cross_cutting",
-            "practical_hours",
-            "requires_specialist_teacher",
+            # "practical_hours",  # Field doesn't exist in model
+            # "requires_specialist_teacher",  # Field doesn't exist in model
             "is_active",
         ]
 
@@ -797,33 +679,33 @@ class SubjectEducationLevelSerializer(serializers.ModelSerializer):
     def get_education_level_compatibility(self, obj):
         """Check compatibility with different education levels"""
         return {
-            "nursery_compatible": getattr(obj, 'is_nursery_subject', False),
-            "primary_compatible": getattr(obj, 'is_primary_subject', False),
-            "junior_secondary_compatible": getattr(obj, 'is_junior_secondary_subject', False),
-            "senior_secondary_compatible": getattr(obj, 'is_senior_secondary_subject', False),
+            "nursery_compatible": "NURSERY" in getattr(obj, 'education_levels', []),
+            "primary_compatible": "PRIMARY" in getattr(obj, 'education_levels', []),
+            "junior_secondary_compatible": "JUNIOR_SECONDARY" in getattr(obj, 'education_levels', []),
+            "senior_secondary_compatible": "SENIOR_SECONDARY" in getattr(obj, 'education_levels', []),
             "all_levels": not getattr(obj, 'education_levels', []),
             "cross_cutting": obj.is_cross_cutting,
-            "activity_based": obj.is_activity_based,
+            "activity_based": False,  # Field moved to stream configuration
         }
 
     def get_level_specific_info(self, obj):
         """Get level-specific information"""
         info = {
             "general": {
-                "requires_specialist": obj.requires_specialist_teacher,
-                "has_practical": obj.has_practical,
+                # "requires_specialist": obj.requires_specialist_teacher,  # Field doesn't exist
+                # "has_practical": obj.has_practical,  # Field doesn't exist
             }
         }
 
         # Add nursery-specific info
-        if getattr(obj, 'is_nursery_subject', False):
+        if "NURSERY" in getattr(obj, 'education_levels', []):
             info["nursery"] = {
-                "is_activity_based": obj.is_activity_based,
+                "is_activity_based": False,  # Field moved to stream configuration
                 "applicable_levels": getattr(obj, 'nursery_levels_display', ''),
             }
 
         # Add Senior Secondary specific info
-        if getattr(obj, 'is_senior_secondary_subject', False):
+        if "SENIOR_SECONDARY" in getattr(obj, 'education_levels', []):
             info["senior_secondary"] = {
                 "subject_type": (
                     obj.get_ss_subject_type_display() if obj.ss_subject_type else None
@@ -857,25 +739,17 @@ class SubjectFilterSerializer(serializers.Serializer):
         help_text="Filter by Senior Secondary subject type",
     )
 
-    is_compulsory = serializers.BooleanField(
-        required=False, help_text="Filter by compulsory status"
-    )
+    # is_compulsory filter removed - field moved to stream configuration
 
     is_cross_cutting = serializers.BooleanField(
         required=False, help_text="Filter cross-cutting subjects"
     )
 
-    is_activity_based = serializers.BooleanField(
-        required=False, help_text="Filter activity-based subjects"
-    )
+    # is_activity_based filter removed - field moved to stream configuration
 
-    requires_specialist = serializers.BooleanField(
-        required=False, help_text="Filter subjects requiring specialist teachers"
-    )
+    # requires_specialist filter removed - field doesn't exist in model
 
-    has_practical = serializers.BooleanField(
-        required=False, help_text="Filter subjects with practical components"
-    )
+    # has_practical filter removed - field doesn't exist in model
 
     is_active = serializers.BooleanField(
         default=True, help_text="Filter by active status"

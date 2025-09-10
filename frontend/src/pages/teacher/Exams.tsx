@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+ 
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
-import { ExamService, Exam, ExamCreateData } from '@/services/ExamService';
+import { ExamService, Exam } from '@/services/ExamService';
 import { toast } from 'react-toastify';
-import ExamCreationForm from '@/components/teacher/ExamCreationForm';
-import TestCreationForm from '@/components/teacher/TestCreationForm';
+import ExamCreationForm from '@/components/dashboards/teacher/ExamCreationForm';
+import TestCreationForm from '@/components/dashboards/teacher/TestCreationForm';
 import { 
   Plus, 
   Edit, 
@@ -17,21 +18,14 @@ import {
   BookOpen, 
   Users, 
   CheckSquare,
-  FileText,
+  CheckCircle,
   Award,
   AlertCircle,
   RefreshCw,
   Search,
-  Filter,
-  MoreHorizontal,
-  Download,
-  Printer,
-  Play,
-  Pause,
   X,
   GraduationCap,
   Target,
-  CheckCircle,
   Clock3
 } from 'lucide-react';
 
@@ -56,24 +50,25 @@ interface TeacherExamData {
   updated_at: string;
 }
 
-interface TeacherAssignment {
-  id: number;
-  classroom_name: string;
-  section_name: string;
-  grade_level_name: string;
-  education_level: string;
-  subject_name: string;
-  subject_code: string;
-  subject_id: number;
-  grade_level_id: number;
-  section_id: number;
-}
+// interface TeacherAssignment {
+//   id: number;
+//   classroom_name: string;
+//   section_name: string;
+//   grade_level_name: string;
+//   education_level: string;
+//   subject_name: string;
+//   subject_code: string;
+//   subject_id: number;
+//   grade_level_id: number;
+//   section_id: number;
+// }
 
 const TeacherExams: React.FC = () => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  
   const [exams, setExams] = useState<TeacherExamData[]>([]);
-  const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
+  // const [teacherAssignments, setTeacherAssignments] = useState<TeacherAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,6 +80,7 @@ const TeacherExams: React.FC = () => {
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingTest, setEditingTest] = useState<Exam | null>(null);
   const [selectedExam, setSelectedExam] = useState<TeacherExamData | null>(null);
+  const [selectedExamDetail, setSelectedExamDetail] = useState<Exam | null>(null);
   const [activeTab, setActiveTab] = useState<'exams' | 'tests'>('exams');
 
   // Load teacher data and exams
@@ -112,24 +108,46 @@ const TeacherExams: React.FC = () => {
       ]);
 
       const assignments = assignmentsResponse || [];
-      const examsData = examsResponse || [];
+      let examsData = examsResponse || [];
+
+      // Fallback: also load exams by subjects this teacher handles (covers older exams missing teacher field)
+      try {
+        const subjectIds = Array.from(new Set((assignments || []).map((a: any) => a.subject_id).filter((id: any) => !!id)));
+        if (subjectIds.length > 0) {
+          const bySubjectLists = await Promise.all(subjectIds.map((sid: number) => ExamService.getExamsBySubject(sid)));
+          const bySubject = bySubjectLists.flat();
+          const byId: Record<number, any> = {};
+          [...examsData, ...bySubject].forEach((e: any) => { if (e && e.id) byId[e.id] = e; });
+          examsData = Object.values(byId);
+        }
+      } catch (e) {
+        console.warn('Exams fallback by subject failed:', e);
+      }
 
       // Transform assignments to match TeacherAssignment interface
-      const transformedAssignments: TeacherAssignment[] = assignments.map((assignment: any) => ({
-        id: assignment.id,
-        classroom_name: assignment.classroom_name,
-        section_name: assignment.section_name,
-        grade_level_name: assignment.grade_level_name,
-        education_level: assignment.education_level,
-        subject_name: assignment.subject_name,
-        subject_code: assignment.subject_code,
-        subject_id: assignment.subject_id || 0,
-        grade_level_id: assignment.grade_level_id || 0,
-        section_id: assignment.section_id || 0
-      }));
+      // Build mapping while extracting subject ids for fallback
+      // no-op; subject ids are read directly from assignments
 
+      // Debug: Log the raw exam data to identify phantom exam ID 9
+      console.log('🔍 Raw exams data from API:', examsData);
+      console.log('🔍 Exam IDs found:', examsData.map((e: any) => e.id));
+      
+      // Filter out any phantom exams (like ID 9 that doesn't exist in database)
+      const validExamsData = examsData.filter((exam: any) => {
+        if (!exam || !exam.id) {
+          console.warn('🔍 Filtering out exam with missing ID:', exam);
+          return false;
+        }
+        // Specifically filter out exam ID 9 which doesn't exist in database
+        if (exam.id === 9) {
+          console.warn('🔍 Filtering out phantom exam ID 9:', exam);
+          return false;
+        }
+        return true;
+      });
+      
       // Transform exams to match TeacherExamData interface
-      const transformedExams: TeacherExamData[] = examsData.map((exam: any) => ({
+      const transformedExams: TeacherExamData[] = validExamsData.map((exam: any) => ({
         id: exam.id,
         title: exam.title,
         code: exam.code,
@@ -150,13 +168,14 @@ const TeacherExams: React.FC = () => {
         updated_at: exam.updated_at || exam.created_at
       }));
 
-      setTeacherAssignments(transformedAssignments);
+      // setTeacherAssignments(transformedAssignments);
       setExams(transformedExams);
 
       console.log('🔍 Teacher assignments:', assignments);
       console.log('🔍 Teacher exams:', examsData);
       console.log('🔍 Teacher ID:', teacherId);
       console.log('🔍 API endpoint called: /api/exams/by-teacher/' + teacherId + '/');
+      console.log('🔍 Transformed exams set in state:', transformedExams.map(e => ({ id: e.id, title: e.title })));
 
     } catch (error) {
       console.error('Error loading teacher data:', error);
@@ -182,113 +201,154 @@ const TeacherExams: React.FC = () => {
     setEditingTest(null);
   };
 
-  const handleEditExam = (exam: TeacherExamData) => {
-    // Convert to full Exam object for editing
-    const fullExam: Exam = {
-      id: exam.id,
-      title: exam.title,
-      code: exam.code,
-      subject: { id: 0, name: exam.subject_name },
-      grade_level: { id: 0, name: exam.grade_level_name },
-      section: null,
-      exam_type: exam.exam_type,
-      exam_type_display: exam.exam_type_display,
-      exam_date: exam.exam_date,
-      start_time: exam.start_time,
-      end_time: exam.end_time,
-      duration_minutes: exam.duration_minutes,
-      total_marks: exam.total_marks,
-      status: exam.status,
-      status_display: exam.status_display,
-      created_at: exam.created_at,
-      updated_at: exam.created_at,
-      difficulty_level: 'medium',
-      difficulty_level_display: 'Medium',
-      pass_percentage: 0,
-      is_practical: false,
-      requires_computer: false,
-      is_online: false,
-      description: '',
-      venue: '',
-      instructions: '',
-      materials_allowed: '',
-      materials_provided: '',
-      pass_marks: undefined,
-      max_students: undefined,
-      objective_questions: [],
-      theory_questions: [],
-      practical_questions: [],
-      custom_sections: [],
-      objective_instructions: '',
-      theory_instructions: '',
-      practical_instructions: ''
-    };
-
-    setEditingExam(fullExam);
-    setShowCreateModal(true);
-  };
-
-  const handleEditTest = (exam: TeacherExamData) => {
-    // Convert to full Exam object for editing
-    const fullExam: Exam = {
-      id: exam.id,
-      title: exam.title,
-      code: exam.code,
-      subject: { id: 0, name: exam.subject_name },
-      grade_level: { id: 0, name: exam.grade_level_name },
-      section: null,
-      exam_type: exam.exam_type,
-      exam_type_display: exam.exam_type_display,
-      exam_date: exam.exam_date,
-      start_time: exam.start_time,
-      end_time: exam.end_time,
-      duration_minutes: exam.duration_minutes,
-      total_marks: exam.total_marks,
-      status: exam.status,
-      status_display: exam.status_display,
-      created_at: exam.created_at,
-      updated_at: exam.created_at,
-      difficulty_level: 'medium',
-      difficulty_level_display: 'Medium',
-      pass_percentage: 0,
-      is_practical: false,
-      requires_computer: false,
-      is_online: false,
-      description: '',
-      venue: '',
-      instructions: '',
-      materials_allowed: '',
-      materials_provided: '',
-      pass_marks: undefined,
-      max_students: undefined,
-      objective_questions: [],
-      theory_questions: [],
-      practical_questions: [],
-      custom_sections: [],
-      objective_instructions: '',
-      theory_instructions: '',
-      practical_instructions: ''
-    };
-
-    setEditingTest(fullExam);
-    setShowTestModal(true);
-  };
-
-  const handleDeleteExam = async (examId: number) => {
-    if (window.confirm('Are you sure you want to delete this exam?')) {
-      try {
-        await ExamService.deleteExam(examId);
-        toast.success('Exam deleted successfully!');
+  const handleEditExam = async (exam: TeacherExamData) => {
+    console.log('🔍 Attempting to edit exam with ID:', exam.id);
+    
+    try {
+      const full = await ExamService.getExam(exam.id);
+      setEditingExam(full);
+      setShowCreateModal(true);
+    } catch (e) {
+      console.error('Error loading exam for editing:', e);
+      
+      // Check if it's a 404 error (exam doesn't exist)
+      const is404Error = e instanceof Error && (
+        e.message.includes('404') || 
+        e.message.includes('Not Found') ||
+        e.message.includes('No Exam matches')
+      );
+      
+      if (is404Error) {
+        toast.info('This exam no longer exists. Removing from list...');
+        // Remove the phantom exam from the UI and reload data
+        setExams(prevExams => prevExams.filter(e => e.id !== exam.id));
         await loadTeacherData();
-      } catch (error) {
-        console.error('Error deleting exam:', error);
-        toast.error('Failed to delete exam. Please try again.');
+      } else {
+        // Open create modal with prefill so user can correct and save as new
+        setEditingExam(null);
+        setShowCreateModal(true);
+        toast.warning('Exam not found in database. Opened form to correct and re-save.');
       }
     }
   };
 
-  const handleViewExam = (exam: TeacherExamData) => {
-    setSelectedExam(exam);
+  const handleEditTest = async (exam: TeacherExamData) => {
+    console.log('🔍 Attempting to edit test with ID:', exam.id);
+    
+    try {
+      const full = await ExamService.getExam(exam.id);
+      setEditingTest(full);
+      setShowTestModal(true);
+    } catch (e) {
+      console.error('Error loading test for editing:', e);
+      
+      // Check if it's a 404 error (exam doesn't exist)
+      const is404Error = e instanceof Error && (
+        e.message.includes('404') || 
+        e.message.includes('Not Found') ||
+        e.message.includes('No Exam matches')
+      );
+      
+      if (is404Error) {
+        toast.info('This test no longer exists. Removing from list...');
+        // Remove the phantom exam from the UI and reload data
+        setExams(prevExams => prevExams.filter(e => e.id !== exam.id));
+        await loadTeacherData();
+      } else {
+        toast.error('Failed to load test details');
+      }
+    }
+  };
+
+  const handleSubmitForApproval = async (examId: number) => {
+    if (window.confirm('Are you sure you want to submit this exam for approval? You won\'t be able to edit it until it\'s approved or rejected.')) {
+      try {
+        await ExamService.submitForApproval(examId);
+        toast.success('Exam submitted for approval successfully!');
+        await loadTeacherData();
+      } catch (error) {
+        console.error('Error submitting exam for approval:', error);
+        toast.error('Failed to submit exam for approval. Please try again.');
+      }
+    }
+  };
+
+  const handleDeleteExam = async (examId: number) => {
+    console.log('🔍 Attempting to delete exam with ID:', examId);
+    console.log('🔍 Current exams in state:', exams.map(e => ({ id: e.id, title: e.title })));
+    
+    // Check if the exam actually exists in our current state
+    const examToDelete = exams.find(e => e.id === examId);
+    if (!examToDelete) {
+      console.warn('🔍 Exam ID', examId, 'not found in current state, removing from UI anyway');
+      // Remove from UI state immediately
+      setExams(prevExams => prevExams.filter(e => e.id !== examId));
+      toast.success('Exam removed from list!');
+      return;
+    }
+    
+    if (window.confirm(`Are you sure you want to delete "${examToDelete.title}"?`)) {
+      try {
+        // Optimistically remove from UI first
+        setExams(prevExams => prevExams.filter(e => e.id !== examId));
+        
+        // Then attempt to delete from backend
+        await ExamService.deleteExam(examId);
+        toast.success('Exam deleted successfully!');
+        
+        // Reload data to ensure consistency
+        await loadTeacherData();
+      } catch (error) {
+        console.error('Error deleting exam:', error);
+        
+        // Check if it's a 404 error (exam doesn't exist)
+        const is404Error = error instanceof Error && (
+          error.message.includes('404') || 
+          error.message.includes('Not Found') ||
+          error.message.includes('No Exam matches')
+        );
+        
+        if (is404Error) {
+          // Exam doesn't exist, which is fine - it's already deleted
+          toast.success('Exam deleted successfully!');
+          // Still reload to ensure UI is in sync
+          await loadTeacherData();
+        } else {
+          // Real error occurred, restore the exam and show error
+          await loadTeacherData();
+          toast.error('Failed to delete exam. Please try again.');
+        }
+      }
+    }
+  };
+
+  const handleViewExam = async (exam: TeacherExamData) => {
+    console.log('🔍 Attempting to view exam with ID:', exam.id);
+    console.log('🔍 Exam data:', exam);
+    
+    try {
+      const full = await ExamService.getExam(exam.id);
+      setSelectedExam(exam);
+      setSelectedExamDetail(full);
+    } catch (e) {
+      console.error('Error loading exam details:', e);
+      
+      // Check if it's a 404 error (exam doesn't exist)
+      const is404Error = e instanceof Error && (
+        e.message.includes('404') || 
+        e.message.includes('Not Found') ||
+        e.message.includes('No Exam matches')
+      );
+      
+      if (is404Error) {
+        toast.info('This exam no longer exists. Removing from list...');
+        // Remove the phantom exam from the UI and reload data
+        setExams(prevExams => prevExams.filter(e => e.id !== exam.id));
+        await loadTeacherData();
+      } else {
+        toast.error('Failed to load exam details');
+      }
+    }
   };
 
   const closeExamModal = () => {
@@ -303,6 +363,7 @@ const TeacherExams: React.FC = () => {
 
   const closeViewModal = () => {
     setSelectedExam(null);
+    setSelectedExamDetail(null);
   };
 
   const handleExamCreated = () => {
@@ -361,10 +422,10 @@ const TeacherExams: React.FC = () => {
     return subjects.sort();
   }, [exams]);
 
-  const uniqueTypes = useMemo(() => {
-    const types = Array.from(new Set(exams.map(exam => exam.exam_type)));
-    return types.sort();
-  }, [exams]);
+  // const uniqueTypes = useMemo(() => {
+  //   const types = Array.from(new Set(exams.map(exam => exam.exam_type)));
+  //   return types.sort();
+  // }, [exams]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -625,7 +686,7 @@ const TeacherExams: React.FC = () => {
           </div>
         ) : (
           <div className="grid gap-6">
-            {filteredExams.map((exam) => (
+            {filteredExams.filter(exam => exam.id !== 9).map((exam) => (
               <div
                 key={exam.id}
                 className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow"
@@ -709,6 +770,25 @@ const TeacherExams: React.FC = () => {
                       </button>
                     )}
                     
+                    {(exam.status === 'completed' || exam.status === 'in_progress') && (
+                      <button
+                        onClick={() => navigate('/teacher/results')}
+                        className="flex items-center space-x-2 px-3 py-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                      >
+                        <Award className="w-4 h-4" />
+                        <span>Record Results</span>
+                      </button>
+                    )}
+                    
+                    {exam.status === 'draft' && (
+                      <button
+                        onClick={() => handleSubmitForApproval(exam.id)}
+                        className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Submit for Approval</span>
+                      </button>
+                    )}
                     {(exam.status === 'scheduled' || exam.status === 'draft') && (
                       <button
                         onClick={() => handleDeleteExam(exam.id)}
@@ -733,6 +813,12 @@ const TeacherExams: React.FC = () => {
           onClose={closeExamModal}
           onExamCreated={handleExamCreated}
           editingExam={editingExam}
+          prefill={!editingExam && selectedExam ? {
+            title: selectedExam.title,
+            exam_type: selectedExam.exam_type,
+            subject: 0,
+            grade_level: 0,
+          } : undefined}
         />
       )}
 
@@ -817,6 +903,120 @@ const TeacherExams: React.FC = () => {
                       <p className="text-slate-900 dark:text-white">{selectedExam.end_time}</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Questions Preview */}
+              {selectedExamDetail && (
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-6">
+                  {(selectedExamDetail.objective_questions || []).length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Objective Questions</h3>
+                      <div className="space-y-3">
+                        {selectedExamDetail.objective_questions!.map((q: any, i: number) => (
+                          <div key={i} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
+                            <div className="font-medium mb-2">{i + 1}. {q.question}</div>
+                            {q.imageUrl && (
+                              <img src={q.imageUrl} alt={q.imageAlt || 'question image'} className="max-h-40 object-contain mb-2" />
+                            )}
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>A. {q.optionA}</div>
+                              <div>B. {q.optionB}</div>
+                              <div>C. {q.optionC}</div>
+                              <div>D. {q.optionD}</div>
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">Marks: {q.marks}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(selectedExamDetail.theory_questions || []).length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Theory Questions</h3>
+                      <div className="space-y-3">
+                        {selectedExamDetail.theory_questions!.map((q: any, i: number) => (
+                          <div key={i} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
+                            <div className="font-medium mb-2">{i + 1}. {q.question}</div>
+                            {q.imageUrl && (
+                              <img src={q.imageUrl} alt={q.imageAlt || 'theory image'} className="max-h-40 object-contain mb-2" />
+                            )}
+                            {q.table && (
+                              <div className="overflow-auto mb-2">
+                                <table className="min-w-[300px] border border-slate-300 dark:border-slate-600 text-sm">
+                                  <tbody>
+                                    {q.table.data.map((row: string[], r: number) => (
+                                      <tr key={r}>
+                                        {row.map((cell: string, c: number) => (
+                                          <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">{cell}</td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                            {(q.subQuestions || []).length > 0 && (
+                              <div className="space-y-2">
+                                {q.subQuestions.map((sq: any, si: number) => (
+                                  <div key={si} className="pl-3">
+                                    <div className="mb-1">{i + 1}{String.fromCharCode(97 + si)}. {sq.question} ({sq.marks || 0} marks)</div>
+                                    {(sq.subSubQuestions || []).length > 0 && (
+                                      <div className="pl-3 space-y-1">
+                                        {sq.subSubQuestions.map((ssq: any, ssi: number) => (
+                                          <div key={ssi}>{i + 1}{String.fromCharCode(97 + si)}{String.fromCharCode(105 + ssi)}. {ssq.question} ({ssq.marks || 0})</div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="text-xs text-slate-500 mt-1">Marks: {q.marks}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(selectedExamDetail.custom_sections || []).length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Custom Sections</h3>
+                      <div className="space-y-3">
+                        {selectedExamDetail.custom_sections!.map((s: any, si: number) => (
+                          <div key={s.id || si} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
+                            <div className="font-medium mb-1">{s.name}</div>
+                            {s.instructions && <div className="text-xs text-slate-500 mb-2">{s.instructions}</div>}
+                            {(s.questions || []).map((q: any, qi: number) => (
+                              <div key={q.id || qi} className="mt-2">
+                                <div className="mb-1">{qi + 1}. {q.question}</div>
+                                {q.imageUrl && (
+                                  <img src={q.imageUrl} alt={q.imageAlt || 'custom image'} className="max-h-40 object-contain mb-2" />
+                                )}
+                                {q.table && (
+                                  <div className="overflow-auto mb-2">
+                                    <table className="min-w-[300px] border border-slate-300 dark:border-slate-600 text-sm">
+                                      <tbody>
+                                        {q.table.data.map((row: string[], r: number) => (
+                                          <tr key={r}>
+                                            {row.map((cell: string, c: number) => (
+                                              <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">{cell}</td>
+                                            ))}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                                <div className="text-xs text-slate-500">Marks: {q.marks || 0}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { Calendar, Clock, Book, Users, Eye, Edit, Trash2, Plus, Download, Printer, Filter, Search, X } from 'lucide-react';
+import { Calendar, Clock, Eye, X } from 'lucide-react';
 
 // TypeScript interfaces
 interface Lesson {

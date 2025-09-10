@@ -3,15 +3,11 @@ import {
   ArrowLeft, 
   User, 
   BookOpen, 
-  Calendar, 
   Award, 
   CheckCircle, 
-  XCircle, 
   Clock,
   FileText,
-  Eye,
   Edit,
-  Trash2,
   Download,
   Printer,
   RefreshCw,
@@ -20,18 +16,73 @@ import {
   TrendingDown,
   Target,
   Trophy,
-  Star,
-  Check,
-  X,
-  AlertTriangle
+  Star
 } from 'lucide-react';
 import EditResultForm from './EditResultForm';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import StudentService, { Student } from '../../../services/StudentService';
-import ResultService from '../../../services/ResultService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import StudentService, { Student } from '@/services/StudentService';
+import ResultService from '@/services/ResultService';
 import { toast } from 'react-toastify';
-import api from '../../../services/api';
+import api from '@/services/api';
+
+
+interface NamedUserRef {
+  full_name?: string;
+}
+
+type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+
+interface Result {
+  id: string;
+  subject_name?: string;
+  subject?: { name?: string };
+  exam_session?: { name?: string };
+  term?: string;
+  status: ResultStatus;
+  education_level: string;
+
+  // Senior secondary fields
+  first_test_score?: number | string;
+  second_test_score?: number | string;
+  third_test_score?: number | string;
+
+  // Common fields
+  exam_score?: number | string;
+  total_score?: number | string;
+
+  // Primary / Junior secondary fields
+  continuous_assessment_score?: number | string;
+  practical_score?: number | string;
+  take_home_test_score?: number | string;
+  project_score?: number | string;
+  note_copying_score?: number | string;
+  ca_total?: number | string;
+
+  // Class statistics
+  class_average?: number | string;
+  highest_in_class?: number | string;
+  lowest_in_class?: number | string;
+
+  // Audit fields
+  entered_by?: NamedUserRef;
+  entered_by_name?: string;
+  created_at?: string;
+  approved_by?: NamedUserRef;
+  approved_by_name?: string;
+  approved_date?: string;
+  last_edited_by?: NamedUserRef;
+  last_edited_by_name?: string;
+  last_edited_at?: string;
+  published_by?: NamedUserRef;
+  published_by_name?: string;
+  published_date?: string;
+
+  // Nursery specifics
+  grade?: string;
+  position?: number | string;
+}
+
 
 interface StudentResultDetailProps {}
 
@@ -42,7 +93,7 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
   
   // Data State
   const [student, setStudent] = useState<Student | null>(null);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
@@ -98,37 +149,79 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
   };
 
   // Handle status change
-  const handleStatusChange = async (resultId: string, newStatus: string, educationLevel: string) => {
-    try {
-      setUpdatingStatus(resultId);
-      let endpoint = '';
-      switch (educationLevel) {
-        case 'NURSERY':
-          endpoint = `/api/results/nursery-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        case 'PRIMARY':
-          endpoint = `/api/results/primary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        case 'JUNIOR_SECONDARY':
-          endpoint = `/api/results/junior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        case 'SENIOR_SECONDARY':
-          endpoint = `/api/results/senior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-          break;
-        default:
-          throw new Error('Invalid education level');
-      }
+const ENDPOINTS = {
+  NURSERY: 'nursery-results',
+  PRIMARY: 'primary-results',
+  JUNIOR_SECONDARY: 'junior-secondary-results',
+  SENIOR_SECONDARY: 'senior-secondary-results',
+} as const;
 
-      await api.post(endpoint, {});
-      toast.success(`Result ${newStatus.toLowerCase()} successfully`);
-      loadData(); // Reload data to reflect changes
-    } catch (error) {
-      console.error('Error changing status:', error);
-      toast.error(`Failed to ${newStatus.toLowerCase()} result`);
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
+// Normalize possible variants/legacy values to canonical keys used in this component/backend
+const normalizeEducationLevel = (level: string | undefined | null): keyof typeof ENDPOINTS | undefined => {
+  if (!level) return undefined;
+  const normalized = String(level).toUpperCase().replace(/\s+/g, '_').trim();
+  if (normalized === 'SECONDARY') return 'SENIOR_SECONDARY';
+  if (normalized in ENDPOINTS) return normalized as keyof typeof ENDPOINTS;
+  return undefined;
+};
+
+
+
+  // const handleStatusChange = async (resultId: string, newStatus: string, educationLevel: string) => {
+  //   try {
+  //     setUpdatingStatus(resultId);
+  //     let endpoint = '';
+  //     switch (educationLevel) {
+  //       case 'NURSERY':
+  //         endpoint = `/api/results/nursery-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
+  //         break;
+  //       case 'PRIMARY':
+  //         endpoint = `/api/results/primary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
+  //         break;
+  //       case 'JUNIOR_SECONDARY':
+  //         endpoint = `/api/results/junior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
+  //         break;
+  //       case 'SENIOR_SECONDARY':
+  //         endpoint = `/api/results/senior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
+  //         break;
+  //       default:
+  //         throw new Error('Invalid education level');
+  //     }
+
+  //     await api.post(endpoint, {});
+  //     toast.success(`Result ${newStatus.toLowerCase()} successfully`);
+  //     loadData(); // Reload data to reflect changes
+  //   } catch (error) {
+  //     console.error('Error changing status:', error);
+  //     toast.error(`Failed to ${newStatus.toLowerCase()} result`);
+  //   } finally {
+  //     setUpdatingStatus(null);
+  //   }
+  // };
+  const handleStatusChange = async (resultId: string, newStatus: ResultStatus, educationLevel: string) => {
+  try {
+    setUpdatingStatus(resultId);
+    const levelKey = normalizeEducationLevel(educationLevel);
+    const base = levelKey ? ENDPOINTS[levelKey] : undefined;
+    if (!base) throw new Error('Invalid education level');
+
+    const action: 'approve' | 'publish' = newStatus === 'APPROVED' ? 'approve' : 'publish';
+    const endpoint = `/api/results/${base}/${resultId}/${action}/`;
+
+    await api.post(endpoint, {});
+    toast.success(`Result ${newStatus.toLowerCase()} successfully`);
+
+    // Instead of reloading everything:
+    setResults(prev =>
+      prev.map(r => r.id === resultId ? { ...r, status: newStatus } : r)
+    );
+  } catch (error) {
+    console.error('Error changing status:', error);
+    toast.error(`Failed to ${newStatus.toLowerCase()} result`);
+  } finally {
+    setUpdatingStatus(null);
+  }
+};
 
   // Get status badge component
   const getStatusBadge = (status: string) => {
@@ -152,7 +245,8 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
 
   // Get detailed result information based on education level
   const getResultDetails = (result: any, educationLevel: string) => {
-    switch (educationLevel) {
+    const levelKey = normalizeEducationLevel(educationLevel);
+    switch (levelKey) {
       case 'SENIOR_SECONDARY':
         return (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -161,63 +255,67 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Test 1</span>
               </div>
-              <div className="text-2xl font-bold">{result.test1_score || 0}</div>
+              <div className="text-2xl font-bold">{result.first_test_score || 0}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Test 2</span>
               </div>
-              <div className="text-2xl font-bold">{result.test2_score || 0}</div>
+              <div className="text-2xl font-bold">{result.second_test_score || 0}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Test 3</span>
               </div>
-              <div className="text-2xl font-bold">{result.test3_score || 0}</div>
+              <div className="text-2xl font-bold">{result.third_test_score || 0}</div>
             </div>
+            {/* CA Total (sum of tests) */}
+            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+              <div className="flex items-center mb-2">
+                <Star className="w-4 h-4 mr-2 text-orange-500" />
+                <span className="text-sm font-medium">CA Total</span>
+              </div>
+              <div className="text-2xl font-bold">{(Number(result.first_test_score||0)+Number(result.second_test_score||0)+Number(result.third_test_score||0)).toFixed(2)}</div>
+            </div>
+            {/* Exam */}
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Award className="w-4 h-4 mr-2 text-green-500" />
                 <span className="text-sm font-medium">Exam Score</span>
               </div>
-              <div className="text-2xl font-bold">{result.exam_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.exam_score||0).toFixed(2)}</div>
             </div>
+            {/* Overall Total */}
+            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+              <div className="flex items-center mb-2">
+                <Target className="w-4 h-4 mr-2 text-blue-500" />
+                <span className="text-sm font-medium">Overall Total</span>
+              </div>
+              <div className="text-2xl font-bold">{Number(result.total_score||((Number(result.first_test_score||0)+Number(result.second_test_score||0)+Number(result.third_test_score||0))+Number(result.exam_score||0))).toFixed(2)}</div>
+            </div>
+            {/* Class Statistics */}
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
-                <span className="text-sm font-medium">Average</span>
+                <span className="text-sm font-medium">Class Average</span>
               </div>
-              <div className="text-2xl font-bold">{result.average_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.class_average||0).toFixed(2)}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
-                <span className="text-sm font-medium">Highest</span>
+                <span className="text-sm font-medium">Highest in Class</span>
               </div>
-              <div className="text-2xl font-bold">{result.highest_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.highest_in_class||0).toFixed(2)}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
-                <span className="text-sm font-medium">Lowest</span>
+                <span className="text-sm font-medium">Lowest in Class</span>
               </div>
-              <div className="text-2xl font-bold">{result.lowest_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Star className="w-4 h-4 mr-2 text-orange-500" />
-                <span className="text-sm font-medium">Obtainable</span>
-              </div>
-              <div className="text-2xl font-bold">{result.obtainable_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Check className="w-4 h-4 mr-2 text-green-500" />
-                <span className="text-sm font-medium">Obtained</span>
-              </div>
-              <div className="text-2xl font-bold">{result.obtained_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.lowest_in_class||0).toFixed(2)}</div>
             </div>
           </div>
         );
@@ -230,21 +328,21 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                 <BookOpen className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">CA Score</span>
               </div>
-              <div className="text-2xl font-bold">{result.ca_score || 0}</div>
+              <div className="text-2xl font-bold">{result.continuous_assessment_score || 0}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <User className="w-4 h-4 mr-2 text-green-500" />
-                <span className="text-sm font-medium">Appearance</span>
+                <span className="text-sm font-medium">Practical</span>
               </div>
-              <div className="text-2xl font-bold">{result.appearance_score || 0}</div>
+              <div className="text-2xl font-bold">{result.practical_score || 0}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <BookOpen className="w-4 h-4 mr-2 text-purple-500" />
-                <span className="text-sm font-medium">Take Home</span>
+                <span className="text-sm font-medium">Take Home Test</span>
               </div>
-              <div className="text-2xl font-bold">{result.take_home_score || 0}</div>
+              <div className="text-2xl font-bold">{result.take_home_test_score || 0}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
@@ -265,28 +363,45 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                 <Award className="w-4 h-4 mr-2 text-green-500" />
                 <span className="text-sm font-medium">Exam Score</span>
               </div>
-              <div className="text-2xl font-bold">{result.exam_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.exam_score||0).toFixed(2)}</div>
             </div>
+            {/* CA Total */}
+            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+              <div className="flex items-center mb-2">
+                <Star className="w-4 h-4 mr-2 text-orange-500" />
+                <span className="text-sm font-medium">CA Total</span>
+              </div>
+              <div className="text-2xl font-bold">{Number(result.ca_total ?? ((Number(result.continuous_assessment_score||0)+Number(result.take_home_test_score||0)+Number(result.practical_score||0)+Number(result.project_score||0)+Number(result.note_copying_score||0))).toFixed(2))}</div>
+            </div>
+            {/* Overall Total */}
+            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+              <div className="flex items-center mb-2">
+                <Target className="w-4 h-4 mr-2 text-blue-500" />
+                <span className="text-sm font-medium">Overall Total</span>
+              </div>
+              <div className="text-2xl font-bold">{Number(result.total_score ?? ((Number(result.continuous_assessment_score||0)+Number(result.take_home_test_score||0)+Number(result.practical_score||0)+Number(result.project_score||0)+Number(result.note_copying_score||0)+Number(result.exam_score||0))).toFixed(2))}</div>
+            </div>
+            {/* Class Statistics */}
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
-                <span className="text-sm font-medium">Average</span>
+                <span className="text-sm font-medium">Class Average</span>
               </div>
-              <div className="text-2xl font-bold">{result.average_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.class_average||0).toFixed(2)}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
-                <span className="text-sm font-medium">Highest</span>
+                <span className="text-sm font-medium">Highest in Class</span>
               </div>
-              <div className="text-2xl font-bold">{result.highest_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.highest_in_class||0).toFixed(2)}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
-                <span className="text-sm font-medium">Lowest</span>
+                <span className="text-sm font-medium">Lowest in Class</span>
               </div>
-              <div className="text-2xl font-bold">{result.lowest_score || 0}</div>
+              <div className="text-2xl font-bold">{Number(result.lowest_in_class||0).toFixed(2)}</div>
             </div>
           </div>
         );
@@ -360,20 +475,21 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.bgPrimary} ${themeClasses.textPrimary}`}>
+    <div className={`min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-950 dark:to-gray-900 ${themeClasses.textPrimary}`}>
       {/* Header */}
-      <div className={`p-6 ${themeClasses.bgCard} border-b ${themeClasses.border}`}>
-        <div className="flex items-center justify-between mb-6">
+      <div className={`sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-gray-800/60 border-b ${themeClasses.border}`}>
+        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="flex items-center justify-between gap-4 mb-2">
           <div className="flex items-center">
             <button
               onClick={() => navigate('/admin/results')}
-              className={`p-2 rounded-lg mr-4 ${themeClasses.buttonSecondary}`}
+              className={`p-2 rounded-lg mr-4 ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold">Student Results</h1>
-              <p className={`text-lg ${themeClasses.textSecondary}`}>
+              <h1 className="text-3xl font-bold tracking-tight">Student Results</h1>
+              <p className={`text-sm ${themeClasses.textSecondary}`}>
                 Detailed results for {student.full_name}
               </p>
             </div>
@@ -382,19 +498,19 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
           <div className="flex gap-2">
             <button
               onClick={loadData}
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </button>
             <button
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               <Download className="w-4 h-4 mr-2" />
               Export
             </button>
             <button
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
             >
               <Printer className="w-4 h-4 mr-2" />
               Print
@@ -403,10 +519,10 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
         </div>
 
         {/* Student Info */}
-        <div className={`p-6 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className={`p-6 rounded-2xl shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'} ${themeClasses.bgSecondary}`}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-center">
-              <div className={`w-16 h-16 rounded-full ${themeClasses.bgCard} flex items-center justify-center mr-4`}>
+              <div className={`w-16 h-16 rounded-full ${themeClasses.bgCard} flex items-center justify-center mr-4 shadow-inner ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
                 <User className="w-8 h-8" />
               </div>
               <div>
@@ -432,14 +548,15 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
             </div>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="px-6 py-8 max-w-7xl mx-auto">
         {results.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-16">
             <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No results found</h3>
+            <h3 className="text-xl font-semibold mb-2">No results found</h3>
             <p className={`text-sm ${themeClasses.textSecondary}`}>
               This student doesn't have any recorded results yet.
             </p>
@@ -447,7 +564,7 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
         ) : (
           <div className="space-y-6">
             {results.map((result) => (
-              <div key={result.id} className={`p-6 rounded-lg ${themeClasses.bgCard} border ${themeClasses.border}`}>
+              <div key={result.id} className={`p-6 rounded-2xl ${themeClasses.bgCard} border ${themeClasses.border} shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'} transition-transform duration-200 hover:shadow-md hover:-translate-y-[1px]`}>
                 {/* Result Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -472,7 +589,7 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                       <button
                         onClick={() => handleStatusChange(result.id, 'APPROVED', student.education_level)}
                         disabled={updatingStatus === result.id}
-                        className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSuccess} disabled:opacity-50`}
+                        className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSuccess} disabled:opacity-50 transition-all duration-200 active:scale-[.98] shadow-sm`}
                       >
                         {updatingStatus === result.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -487,7 +604,7 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                       <button
                         onClick={() => handleStatusChange(result.id, 'PUBLISHED', student.education_level)}
                         disabled={updatingStatus === result.id}
-                        className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonPrimary} disabled:opacity-50`}
+                        className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonPrimary} disabled:opacity-50 transition-all duration-200 active:scale-[.98] shadow-sm`}
                       >
                         {updatingStatus === result.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -508,7 +625,7 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                     {/* Edit Button */}
                     <button
                       onClick={() => handleEditResult(result)}
-                      className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary}`}
+                      className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
                     >
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
@@ -522,12 +639,12 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                 </div>
 
                 {/* Additional Info */}
-                <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                <div className={`p-6 rounded-xl ${themeClasses.bgSecondary} border ${themeClasses.border} ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
                   <h4 className="font-semibold mb-3">Additional Information</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
                     <div>
                       <span className={`${themeClasses.textSecondary}`}>Entered By:</span>
-                      <p className="font-medium">{result.entered_by?.full_name || 'N/A'}</p>
+                      <p className="font-medium">{result.entered_by?.full_name || result.entered_by_name || 'N/A'}</p>
                     </div>
                     <div>
                       <span className={`${themeClasses.textSecondary}`}>Date Entered:</span>
@@ -535,10 +652,10 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                         {result.created_at ? new Date(result.created_at).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
-                    {result.approved_by && (
+                    {(result.approved_by || result.approved_by_name) && (
                       <div>
                         <span className={`${themeClasses.textSecondary}`}>Approved By:</span>
-                        <p className="font-medium">{result.approved_by.full_name}</p>
+                        <p className="font-medium">{result.approved_by?.full_name || result.approved_by_name}</p>
                       </div>
                     )}
                     {result.approved_date && (
@@ -547,6 +664,30 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
                         <p className="font-medium">
                           {new Date(result.approved_date).toLocaleDateString()}
                         </p>
+                      </div>
+                    )}
+                    {(result.last_edited_by_name || result.last_edited_by) && (
+                      <div>
+                        <span className={`${themeClasses.textSecondary}`}>Last Edited By:</span>
+                        <p className="font-medium">{result.last_edited_by?.full_name || result.last_edited_by_name}</p>
+                      </div>
+                    )}
+                    {result.last_edited_at && (
+                      <div>
+                        <span className={`${themeClasses.textSecondary}`}>Last Edited At:</span>
+                        <p className="font-medium">{new Date(result.last_edited_at).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {(result.published_by_name || result.published_by) && (
+                      <div>
+                        <span className={`${themeClasses.textSecondary}`}>Published By:</span>
+                        <p className="font-medium">{result.published_by?.full_name || result.published_by_name}</p>
+                      </div>
+                    )}
+                    {result.published_date && (
+                      <div>
+                        <span className={`${themeClasses.textSecondary}`}>Published Date:</span>
+                        <p className="font-medium">{new Date(result.published_date).toLocaleDateString()}</p>
                       </div>
                     )}
                   </div>

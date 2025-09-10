@@ -327,14 +327,51 @@ class StudentTermResultSerializer(serializers.ModelSerializer):
         ]
     
     def get_subject_results(self, obj):
-        # Get all results for this student in this term
-        results = StudentResult.objects.filter(
+        # Always return a combined list from base results and senior secondary results
+        combined = []
+
+        # Base results (Primary/Junior or any legacy entries)
+        base_results = StudentResult.objects.filter(
             student=obj.student,
             exam_session__term=obj.term,
             exam_session__academic_session=obj.academic_session
-        ).select_related('subject', 'grading_system')
-        
-        return StudentResultSerializer(results, many=True).data
+        ).select_related('subject', 'grading_system', 'exam_session')
+        combined.extend(StudentResultSerializer(base_results, many=True).data)
+
+        # Senior Secondary specific results
+        try:
+            from .models import SeniorSecondaryResult
+            senior_results = SeniorSecondaryResult.objects.filter(
+                student=obj.student,
+                exam_session__term=obj.term,
+                exam_session__academic_session=obj.academic_session
+            ).select_related('subject', 'grading_system', 'exam_session', 'stream')
+
+            for r in senior_results:
+                combined.append({
+                    'id': str(r.id),
+                    'subject': SubjectSerializer(r.subject).data,
+                    'exam_session': ExamSessionSerializer(r.exam_session).data,
+                    'stream': {'id': r.stream.id, 'name': r.stream.name, 'stream_type': getattr(r.stream, 'stream_type', '')} if r.stream else None,
+                    'stream_name': r.stream.name if r.stream else None,
+                    'stream_type': getattr(r.stream, 'stream_type', None) if r.stream else None,
+                    'ca_score': r.total_ca_score,
+                    'exam_score': r.exam_score,
+                    'total_score': r.total_score,
+                    'percentage': r.percentage,
+                    'grade': r.grade,
+                    'grade_point': r.grade_point,
+                    'is_passed': r.is_passed,
+                    'position': r.subject_position,
+                    'remarks': r.teacher_remark,
+                    'status': r.status,
+                    'assessment_scores': [],
+                    'created_at': r.created_at.isoformat() if hasattr(r, 'created_at') else ''
+                })
+        except Exception:
+            pass
+
+        return combined
 
 
 class StudentTermResultDetailSerializer(serializers.ModelSerializer):
@@ -349,14 +386,49 @@ class StudentTermResultDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_subject_results(self, obj):
-        # Get all results for this student in this term
-        results = StudentResult.objects.filter(
-            student=obj.student,
-            exam_session__term=obj.term,
-            exam_session__academic_session=obj.academic_session
-        ).select_related('subject', 'grading_system')
-        
-        return StudentResultSerializer(results, many=True).data
+        # Get all results for this student in this term across education levels
+        # For Primary/Junior the base StudentResult is used; for Senior Secondary, use SeniorSecondaryResult
+        education_level = getattr(obj.student, 'education_level', None)
+        if education_level == 'SENIOR_SECONDARY':
+            from .models import SeniorSecondaryResult
+            senior_results = SeniorSecondaryResult.objects.filter(
+                student=obj.student,
+                exam_session__term=obj.term,
+                exam_session__academic_session=obj.academic_session
+            ).select_related('subject', 'grading_system', 'exam_session', 'stream')
+
+            # Map Senior Secondary fields to a shape compatible with frontend SubjectResult
+            mapped = []
+            for r in senior_results:
+                mapped.append({
+                    'id': str(r.id),
+                    'subject': SubjectSerializer(r.subject).data,
+                    'exam_session': ExamSessionSerializer(r.exam_session).data,
+                    'stream': {'id': r.stream.id, 'name': r.stream.name, 'stream_type': getattr(r.stream, 'stream_type', '')} if r.stream else None,
+                    'stream_name': r.stream.name if r.stream else None,
+                    'stream_type': getattr(r.stream, 'stream_type', None) if r.stream else None,
+                    'ca_score': r.total_ca_score,  # total of tests
+                    'exam_score': r.exam_score,
+                    'total_score': r.total_score,
+                    'percentage': r.percentage,
+                    'grade': r.grade,
+                    'grade_point': r.grade_point,
+                    'is_passed': r.is_passed,
+                    'position': r.subject_position,
+                    'remarks': r.teacher_remark,
+                    'status': r.status,
+                    'assessment_scores': [],
+                    'created_at': r.created_at.isoformat() if hasattr(r, 'created_at') else ''
+                })
+            return mapped
+        else:
+            # Primary/Junior/Nursery use StudentResult or their specific serializers already compatible
+            results = StudentResult.objects.filter(
+                student=obj.student,
+                exam_session__term=obj.term,
+                exam_session__academic_session=obj.academic_session
+            ).select_related('subject', 'grading_system', 'exam_session')
+            return StudentResultSerializer(results, many=True).data
 
 
 class DetailedStudentResultSerializer(serializers.ModelSerializer):
@@ -391,6 +463,8 @@ class SeniorSecondaryResultSerializer(serializers.ModelSerializer):
     stream_name = serializers.CharField(source='stream.name', read_only=True)
     entered_by_name = serializers.CharField(source='entered_by.full_name', read_only=True)
     approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True)
+    published_by_name = serializers.CharField(source='published_by.full_name', read_only=True)
+    last_edited_by_name = serializers.CharField(source='last_edited_by.full_name', read_only=True)
 
     class Meta:
         model = SeniorSecondaryResult
@@ -475,6 +549,10 @@ class JuniorSecondaryResultSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     grading_system = GradingSystemSerializer(read_only=True)
+    entered_by_name = serializers.CharField(source='entered_by.full_name', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True)
+    published_by_name = serializers.CharField(source='published_by.full_name', read_only=True)
+    last_edited_by_name = serializers.CharField(source='last_edited_by.full_name', read_only=True)
     
     class Meta:
         model = JuniorSecondaryResult
@@ -493,6 +571,10 @@ class PrimaryResultSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     grading_system = GradingSystemSerializer(read_only=True)
+    entered_by_name = serializers.CharField(source='entered_by.full_name', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True)
+    published_by_name = serializers.CharField(source='published_by.full_name', read_only=True)
+    last_edited_by_name = serializers.CharField(source='last_edited_by.full_name', read_only=True)
     
     class Meta:
         model = PrimaryResult
@@ -511,6 +593,10 @@ class NurseryResultSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     grading_system = GradingSystemSerializer(read_only=True)
+    entered_by_name = serializers.CharField(source='entered_by.full_name', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True)
+    published_by_name = serializers.CharField(source='published_by.full_name', read_only=True)
+    last_edited_by_name = serializers.CharField(source='last_edited_by.full_name', read_only=True)
     
     class Meta:
         model = NurseryResult

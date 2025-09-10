@@ -11,13 +11,15 @@ interface ExamCreationFormProps {
   onClose: () => void;
   onExamCreated: () => void;
   editingExam?: any;
+  prefill?: Partial<ExamCreateData>;
 }
 
 const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
   isOpen,
   onClose,
   onExamCreated,
-  editingExam
+  editingExam,
+  prefill
 }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -58,12 +60,58 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
   const [sectionOrder, setSectionOrder] = useState<Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }>>([]);
   const [gradeLevels, setGradeLevels] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
+  const [objectiveInstructions, setObjectiveInstructions] = useState<string>('');
+  const [theoryInstructions, setTheoryInstructions] = useState<string>('');
+  const [practicalInstructions, setPracticalInstructions] = useState<string>('');
+  const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
+
+  // Helper function to generate proper question numbering
+  const getQuestionNumber = (questionIndex: number, subQuestionIndex?: number, subSubQuestionIndex?: number) => {
+    const baseNumber = questionIndex + 1;
+    
+    if (subSubQuestionIndex !== undefined) {
+      // Sub-sub-question: 1ai, 1aii, etc.
+      return `${baseNumber}${String.fromCharCode(97 + (subQuestionIndex || 0))}${String.fromCharCode(105 + subSubQuestionIndex)}`;
+    } else if (subQuestionIndex !== undefined) {
+      // Sub-question: if main question has sub-questions, start from 'b', otherwise from 'a'
+      const question = theoryQuestions[questionIndex];
+      if (question && question.subQuestions && question.subQuestions.length > 0) {
+        // If main question has sub-questions, sub-questions start from 'b'
+        return `${baseNumber}${String.fromCharCode(98 + subQuestionIndex)}`;
+      } else {
+        // If no main question sub-questions, start from 'a'
+        return `${baseNumber}${String.fromCharCode(97 + subQuestionIndex)}`;
+      }
+    } else {
+      // Main question: check if it has sub-questions
+      const question = theoryQuestions[questionIndex];
+      if (question && question.subQuestions && question.subQuestions.length > 0) {
+        // If main question has sub-questions, it becomes 1a
+        return `${baseNumber}a`;
+      } else {
+        // If no sub-questions, just use the number
+        return `${baseNumber}.`;
+      }
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
       loadTeacherData();
     }
   }, [isOpen]);
+
+  // Apply prefill when opening for create (not editing)
+  useEffect(() => {
+    if (isOpen && !editingExam && prefill) {
+      setFormData(prev => ({
+        ...prev,
+        ...prefill,
+        subject: prefill.subject ?? prev.subject,
+        grade_level: prefill.grade_level ?? prev.grade_level,
+      }));
+    }
+  }, [isOpen, editingExam, prefill]);
 
   useEffect(() => {
     if (editingExam) {
@@ -100,6 +148,9 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       setPracticalQuestions(editingExam.practical_questions || []);
       const existingCustom = editingExam.custom_sections || [];
       setCustomSections(existingCustom);
+      setObjectiveInstructions(editingExam.objective_instructions || '');
+      setTheoryInstructions(editingExam.theory_instructions || '');
+      setPracticalInstructions(editingExam.practical_instructions || '');
       const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
         { kind: 'objective' },
         { kind: 'theory' },
@@ -129,6 +180,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
         toast.error('Teacher ID not found');
         return;
       }
+      setCurrentTeacherId(Number(teacherId));
 
       const assignments = await TeacherDashboardService.getTeacherClasses(teacherId);
       console.log('🔍 Teacher assignments:', assignments);
@@ -533,10 +585,14 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       const examData: ExamCreateData = {
         ...formData,
         status: 'scheduled', // Use 'scheduled' status for drafts (matches backend choices)
+        teacher: currentTeacherId && currentTeacherId > 0 ? currentTeacherId : undefined,
         objective_questions: objectiveQuestions,
         theory_questions: theoryQuestions,
         practical_questions: practicalQuestions,
         custom_sections: getOrderedCustomSections(),
+        objective_instructions: objectiveInstructions,
+        theory_instructions: theoryInstructions,
+        practical_instructions: practicalInstructions,
         total_marks: calculateTotalMarks()
       };
 
@@ -567,10 +623,14 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       const examData: ExamCreateData = {
         ...formData,
         status: 'scheduled', // Use 'scheduled' status for admin review (matches backend choices)
+        teacher: currentTeacherId && currentTeacherId > 0 ? currentTeacherId : undefined,
         objective_questions: objectiveQuestions,
         theory_questions: theoryQuestions,
         practical_questions: practicalQuestions,
         custom_sections: getOrderedCustomSections(),
+        objective_instructions: objectiveInstructions,
+        theory_instructions: theoryInstructions,
+        practical_instructions: practicalInstructions,
         total_marks: calculateTotalMarks()
       };
 
@@ -889,6 +949,10 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                     <div className="p-4">
                       {section.kind === 'objective' && (
                         <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions (Objective)</label>
+                            <textarea value={objectiveInstructions} onChange={(e) => setObjectiveInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter instructions for this section" />
+                          </div>
                           <div className="flex items-center justify-between">
                             <button onClick={addObjectiveQuestion} className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                               <Plus className="w-4 h-4" />
@@ -944,6 +1008,10 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
 
                       {section.kind === 'theory' && (
                         <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions (Theory)</label>
+                            <textarea value={theoryInstructions} onChange={(e) => setTheoryInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter instructions for this section" />
+                          </div>
                           <div className="flex items-center justify-between">
                             <button onClick={addTheoryQuestion} className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                               <Plus className="w-4 h-4" />
@@ -955,7 +1023,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                               {theoryQuestions.map((question, index) => (
                                 <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
                                   <div className="flex items-center justify-between mb-3">
-                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {getQuestionNumber(index)}</span>
                                     <button onClick={() => removeTheoryQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
                                   </div>
                                   <div className="space-y-3">
@@ -1022,7 +1090,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                                       {(question.subQuestions || []).map((sq: any, sqi: number) => (
                                         <div key={sq.id} className="border border-slate-200 dark:border-slate-600 rounded p-2">
                                           <div className="flex items-center justify-between">
-                                            <span className="text-sm">{index + 1}{String.fromCharCode(97 + sqi)}</span>
+                                            <span className="text-sm">{getQuestionNumber(index, sqi)}</span>
                                             <div className="space-x-2">
                                               <button onClick={() => addSubSubQuestion(index, sqi)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded">Add Sub-Sub</button>
                                               <button onClick={() => removeSubQuestion(index, sqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded">Remove</button>
@@ -1034,7 +1102,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                                           </div>
                                           {(sq.subSubQuestions || []).map((ssq: any, ssqi: number) => (
                                             <div key={ssq.id} className="grid grid-cols-6 gap-2 mt-2">
-                                              <span className="text-sm col-span-1">{index + 1}{String.fromCharCode(97 + sqi)}{String.fromCharCode(105 + ssqi)}</span>
+                                              <span className="text-sm col-span-1">{getQuestionNumber(index, sqi, ssqi)}</span>
                                               <textarea value={ssq.question} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'question', e.target.value)} className="col-span-4 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" rows={2} placeholder="Enter sub-sub-question" />
                                               <input type="number" value={ssq.marks || 0} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'marks', parseInt(e.target.value))} className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" placeholder="Marks" />
                                               <button onClick={() => removeSubSubQuestion(index, sqi, ssqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded">Remove</button>
@@ -1053,6 +1121,10 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
 
                       {section.kind === 'practical' && (
                         <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions (Practical)</label>
+                            <textarea value={practicalInstructions} onChange={(e) => setPracticalInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter instructions for this section" />
+                          </div>
                           <div className="flex items-center justify-between">
                             <button onClick={addPracticalQuestion} className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
                               <Plus className="w-4 h-4" />

@@ -222,7 +222,7 @@ export class ExamService {
       const response = await api.get(endpoint);
       return response.results || response || [];
     } catch (error) {
-      console.error('Error fetching exams:', error);
+      console.error('❌ ExamService: Error fetching exams:', error);
       throw error;
     }
   }
@@ -344,9 +344,9 @@ export class ExamService {
   /**
    * Cancel an exam
    */
-  static async cancelExam(examId: number): Promise<void> {
+  static async cancelExam(examId: number, reason?: string): Promise<void> {
     try {
-      await api.post(`${this.baseUrl}/exams/${examId}/cancel/`);
+      await api.post(`${this.baseUrl}/exams/${examId}/cancel/`, reason ? { reason } : {});
     } catch (error) {
       console.error('Error cancelling exam:', error);
       throw error;
@@ -356,9 +356,9 @@ export class ExamService {
   /**
    * Postpone an exam
    */
-  static async postponeExam(examId: number): Promise<void> {
+  static async postponeExam(examId: number, payload: { new_date: string; new_start_time?: string; new_end_time?: string; reason?: string }): Promise<void> {
     try {
-      await api.post(`${this.baseUrl}/exams/${examId}/postpone/`);
+      await api.post(`${this.baseUrl}/exams/${examId}/postpone/`, payload);
     } catch (error) {
       console.error('Error postponing exam:', error);
       throw error;
@@ -370,7 +370,7 @@ export class ExamService {
    */
   static async getUpcomingExams(): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/upcoming/`);
+      const response = await api.get(`${this.baseUrl}/upcoming/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching upcoming exams:', error);
@@ -383,7 +383,7 @@ export class ExamService {
    */
   static async getCompletedExams(): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/completed/`);
+      const response = await api.get(`${this.baseUrl}/completed/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching completed exams:', error);
@@ -396,7 +396,7 @@ export class ExamService {
    */
   static async getOngoingExams(): Promise<Exam[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/exams/ongoing/`);
+      const response = await api.get(`${this.baseUrl}/ongoing/`);
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching ongoing exams:', error);
@@ -452,6 +452,45 @@ export class ExamService {
       return response.results || response || [];
     } catch (error) {
       console.error('Error fetching exams by teacher:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Approve an exam
+   */
+  static async approveExam(examId: number, notes: string = ''): Promise<any> {
+    try {
+      const response = await api.post(`${this.baseUrl}/exams/${examId}/approve/`, { notes });
+      return response;
+    } catch (error) {
+      console.error('Error approving exam:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reject an exam
+   */
+  static async rejectExam(examId: number, reason: string = ''): Promise<any> {
+    try {
+      const response = await api.post(`${this.baseUrl}/exams/${examId}/reject/`, { reason });
+      return response;
+    } catch (error) {
+      console.error('Error rejecting exam:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Submit exam for approval
+   */
+  static async submitForApproval(examId: number): Promise<any> {
+    try {
+      const response = await api.post(`${this.baseUrl}/exams/${examId}/submit_for_approval/`);
+      return response;
+    } catch (error) {
+      console.error('Error submitting exam for approval:', error);
       throw error;
     }
   }

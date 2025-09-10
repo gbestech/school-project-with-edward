@@ -3,6 +3,7 @@ import { ExamService } from './ExamService';
 import { getAttendance } from './AttendanceService';
 import { LessonService } from './LessonService';
 import ResultService from './ResultService';
+import api from './api';
 
 export interface TeacherDashboardStats {
   totalStudents: number;
@@ -556,6 +557,24 @@ class TeacherDashboardService {
         month: 'short', 
         day: 'numeric' 
       }) + `, ${time || '9:00 AM'}`;
+    }
+  }
+
+  // Get students for a specific classroom
+  async getStudentsForClass(classroomId: number) {
+    try {
+      // Note: Backend mounts classroom urls at /api/classrooms/, and within it defines
+      // "classrooms/<int:classroom_id>/students/", so the full path is:
+      // /api/classrooms/classrooms/:classroom_id/students/
+      const response = await api.get(`/api/classrooms/classrooms/${classroomId}/students/`);
+      // api.get returns parsed JSON directly. Handle array or paginated/object shapes defensively.
+      if (Array.isArray(response)) return response;
+      if (response && Array.isArray((response as any).results)) return (response as any).results;
+      if (response && Array.isArray((response as any).data)) return (response as any).data;
+      return [];
+    } catch (error) {
+      console.error('Error fetching students for class:', error);
+      throw error;
     }
   }
 

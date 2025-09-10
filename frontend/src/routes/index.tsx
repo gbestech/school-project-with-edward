@@ -28,6 +28,7 @@ const TeacherStudents = lazy(() => import('./../pages/teacher/Students').catch((
 const TeacherStudentProfile = lazy(() => import('./../pages/teacher/StudentProfile').catch(() => ({ default: () => <div>Error loading Teacher Student Profile</div> })));
 const TeacherStudentsList = lazy(() => import('./../pages/teacher/StudentsList').catch(() => ({ default: () => <div>Error loading Teacher Students List</div> })));
 const TeacherExams = lazy(() => import('./../pages/teacher/Exams').catch(() => ({ default: () => <div>Error loading Teacher Exams</div> })));
+const TeacherResults = lazy(() => import('./../pages/teacher/Results').catch(() => ({ default: () => <div>Error loading Teacher Results</div> })));
 const TeacherSubjects = lazy(() => import('./../pages/teacher/Subjects').catch(() => ({ default: () => <div>Error loading Teacher Subjects</div> })));
 const TeacherSubjectDetail = lazy(() => import('./../pages/teacher/SubjectDetail').catch(() => ({ default: () => <div>Error loading Teacher Subject Detail</div> })));
 const StudentList = lazy(() => import('./../pages/student/Allstudents').catch(() => ({ default: () => <div>Error loading Student List</div> })));
@@ -358,6 +359,11 @@ export const router = createBrowserRouter([
       {
         path: 'exams',
         element: <TeacherExams />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'results',
+        element: <TeacherResults />,
         errorElement: <RouteErrorElement />
       },
       {

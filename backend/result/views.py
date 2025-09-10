@@ -392,8 +392,35 @@ class JuniorSecondaryResultViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset.select_related(
-            'student', 'subject', 'exam_session', 'grading_system', 'scoring_configuration'
+            'student', 'subject', 'exam_session', 'grading_system'
         )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.last_edited_by = request.user
+        instance.last_edited_at = timezone.now()
+        instance.save(update_fields=['last_edited_by', 'last_edited_at'])
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'APPROVED'
+        result.approved_by = request.user
+        result.approved_date = timezone.now()
+        result.save()
+        return Response(JuniorSecondaryResultSerializer(result).data)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'PUBLISHED'
+        # Track publisher
+        if hasattr(result, 'published_by'):
+            result.published_by = request.user
+            result.published_date = timezone.now()
+        result.save()
+        return Response(JuniorSecondaryResultSerializer(result).data)
 
     def create(self, request, *args, **kwargs):
         """Create a new Junior Secondary result with automatic calculations"""
@@ -493,8 +520,34 @@ class PrimaryResultViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset.select_related(
-            'student', 'subject', 'exam_session', 'grading_system', 'scoring_configuration'
+            'student', 'subject', 'exam_session', 'grading_system'
         )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.last_edited_by = request.user
+        instance.last_edited_at = timezone.now()
+        instance.save(update_fields=['last_edited_by', 'last_edited_at'])
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'APPROVED'
+        result.approved_by = request.user
+        result.approved_date = timezone.now()
+        result.save()
+        return Response(PrimaryResultSerializer(result).data)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'PUBLISHED'
+        if hasattr(result, 'published_by'):
+            result.published_by = request.user
+            result.published_date = timezone.now()
+        result.save()
+        return Response(PrimaryResultSerializer(result).data)
 
     def create(self, request, *args, **kwargs):
         """Create a new Primary result with automatic calculations"""
@@ -594,8 +647,34 @@ class NurseryResultViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset.select_related(
-            'student', 'subject', 'exam_session', 'grading_system', 'scoring_configuration'
+            'student', 'subject', 'exam_session', 'grading_system'
         )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.last_edited_by = request.user
+        instance.last_edited_at = timezone.now()
+        instance.save(update_fields=['last_edited_by', 'last_edited_at'])
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'APPROVED'
+        result.approved_by = request.user
+        result.approved_date = timezone.now()
+        result.save()
+        return Response(NurseryResultSerializer(result).data)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'PUBLISHED'
+        if hasattr(result, 'published_by'):
+            result.published_by = request.user
+            result.published_date = timezone.now()
+        result.save()
+        return Response(NurseryResultSerializer(result).data)
 
     def create(self, request, *args, **kwargs):
         """Create a new Nursery result with automatic calculations"""
@@ -697,6 +776,32 @@ class SeniorSecondaryResultViewSet(viewsets.ModelViewSet):
         return queryset.select_related(
             'student', 'subject', 'exam_session', 'grading_system', 'stream'
         )
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.last_edited_by = request.user
+        instance.last_edited_at = timezone.now()
+        instance.save(update_fields=['last_edited_by', 'last_edited_at'])
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'APPROVED'
+        result.approved_by = request.user
+        result.approved_date = timezone.now()
+        result.save()
+        return Response(SeniorSecondaryResultSerializer(result).data)
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        result = self.get_object()
+        result.status = 'PUBLISHED'
+        if hasattr(result, 'published_by'):
+            result.published_by = request.user
+            result.published_date = timezone.now()
+        result.save()
+        return Response(SeniorSecondaryResultSerializer(result).data)
 
     def create(self, request, *args, **kwargs):
         """Create a new Senior Secondary result with automatic calculations"""

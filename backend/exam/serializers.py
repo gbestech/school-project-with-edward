@@ -101,6 +101,12 @@ class ExamListSerializer(serializers.ModelSerializer):
     is_ongoing = serializers.ReadOnlyField()
     registered_students_count = serializers.ReadOnlyField()
     pass_percentage = serializers.SerializerMethodField()
+    
+    # Approval fields
+    approved_by_name = serializers.CharField(source="approved_by.full_name", read_only=True)
+    is_pending_approval = serializers.ReadOnlyField()
+    is_approved = serializers.ReadOnlyField()
+    is_rejected = serializers.ReadOnlyField()
 
     class Meta:
         model = Exam
@@ -142,6 +148,13 @@ class ExamListSerializer(serializers.ModelSerializer):
             "objective_instructions",
             "theory_instructions",
             "practical_instructions",
+            "approved_by_name",
+            "approved_at",
+            "approval_notes",
+            "rejection_reason",
+            "is_pending_approval",
+            "is_approved",
+            "is_rejected",
         ]
 
     def get_pass_percentage(self, obj):
@@ -179,6 +192,12 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     difficulty_level_display = serializers.CharField(
         source="get_difficulty_level_display", read_only=True
     )
+    
+    # Approval fields
+    approved_by_name = serializers.CharField(source="approved_by.full_name", read_only=True)
+    is_pending_approval = serializers.ReadOnlyField()
+    is_approved = serializers.ReadOnlyField()
+    is_rejected = serializers.ReadOnlyField()
 
     class Meta:
         model = Exam
@@ -229,6 +248,13 @@ class ExamDetailSerializer(serializers.ModelSerializer):
             "objective_instructions",
             "theory_instructions",
             "practical_instructions",
+            "approved_by_name",
+            "approved_at",
+            "approval_notes",
+            "rejection_reason",
+            "is_pending_approval",
+            "is_approved",
+            "is_rejected",
             "created_at",
             "updated_at",
         ]

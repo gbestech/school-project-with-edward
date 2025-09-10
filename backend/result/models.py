@@ -860,6 +860,24 @@ class SeniorSecondaryResult(models.Model):
     )
     approved_date = models.DateTimeField(null=True, blank=True)
 
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_senior_secondary_results",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+    last_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="edited_senior_secondary_results",
+    )
+    last_edited_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1235,6 +1253,24 @@ class JuniorSecondaryResult(models.Model):
     )
     approved_date = models.DateTimeField(null=True, blank=True)
 
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_junior_results",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+    last_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="edited_junior_results",
+    )
+    last_edited_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1465,6 +1501,24 @@ class PrimaryResult(models.Model):
     )
     approved_date = models.DateTimeField(null=True, blank=True)
 
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_primary_results",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+    last_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="edited_primary_results",
+    )
+    last_edited_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1667,6 +1721,24 @@ class NurseryResult(models.Model):
         related_name="approved_nursery_results",
     )
     approved_date = models.DateTimeField(null=True, blank=True)
+
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_nursery_results",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+    last_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="edited_nursery_results",
+    )
+    last_edited_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

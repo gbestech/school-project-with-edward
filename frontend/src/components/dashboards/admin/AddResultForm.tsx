@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, User, BookOpen, Calendar, Calculator } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import ResultService from '../../../services/ResultService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import ResultService from '@/services/ResultService';
 
 interface AddResultFormProps {
   onClose: () => void;
