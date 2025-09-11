@@ -6,7 +6,7 @@ import ResultService from '@/services/ResultService';
 import ResultRecordingForm from '@/components/dashboards/teacher/ResultRecordingForm';
 import ViewResultModal from '@/components/dashboards/teacher/ViewResultModal';
 import { toast } from 'react-toastify';
-import { TeacherAssignment, StudentResult } from '@/types/types';
+import { TeacherAssignment, StudentResult, Student, Subject } from '@/types/types';
 import {
   Plus,
   Edit,
@@ -61,6 +61,15 @@ type TableColumn = {
 };
 
 
+// interface ResultRecordingFormProps {
+//   isOpen: boolean;
+//   onClose: () => void;
+//   onResultCreated?: () => void;
+//   onSuccess?: () => void;
+//   editResult?: StudentResult | null;
+//   mode?: 'create' | 'edit';
+// }
+
 interface ResultRecordingFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -68,7 +77,12 @@ interface ResultRecordingFormProps {
   onSuccess?: () => void;
   editResult?: StudentResult | null;
   mode?: 'create' | 'edit';
+  // Check if it expects these:
+  initialStudent?: Student;
+  initialSubject?: Subject;
+initialexamSessionId?: number;
 }
+
 
 const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
   const { user, isLoading } = useAuth();
@@ -85,7 +99,9 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
   const [selectedResult, setSelectedResult] = useState<StudentResult | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+ const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+
+
 
   // ---- Data loading ----
   const loadTeacherData = useCallback(async () => {
@@ -220,13 +236,30 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
   setShowCreateModal(true);
 };
 
-
-  const handleEditResult = (result: StudentResult) => {
-  setSelectedResult(result);
+const handleEditResult = (result: StudentResult) => {
+  console.log('Edit button clicked for result:', result);
+  
+  // Transform the result data to match what the form expects
+  const transformedResult = {
+    ...result,
+    // Flatten nested objects if needed
+    student_id: result.student.id,
+    subject_id: result.subject.id,
+    exam_session_id: result.exam_session.id,
+    // Add any other transformations needed
+  };
+  
+  setSelectedResult(transformedResult);
   setModalMode('edit');
   setShowCreateModal(true);
 };
-
+// const handleEditResult = (result: StudentResult) => {
+//   console.log('Edit button clicked for result:', result); // Debug log
+//   setSelectedResult(result);
+//   setModalMode('edit');
+//   setShowCreateModal(true); // This will now trigger the edit modal overlay
+//   // Don't switch tabs for editing - keep user on current tab
+// };
 const handleViewResult = (result: StudentResult) => {
   setSelectedResult(result);
   setShowViewModal(true);
@@ -388,6 +421,16 @@ const handleCloseModal = () => {
     );
   }
 
+  const handleResultSuccess = async (): Promise<void> => {
+  try {
+    await loadTeacherData(); // Reload the data
+    handleCloseModal(); // Close the modal
+    toast.success('Result saved successfully');
+  } catch (error) {
+    console.error('Error handling result success:', error);
+    toast.error('Failed to reload data');
+  }
+};
   return (
     <TeacherDashboardLayout>
       <div className="p-6 space-y-9">
@@ -898,15 +941,16 @@ const handleCloseModal = () => {
         )}
 
         {/* Record form tab placeholder (render your form component here) */}
-       {activeTab === 'record' && (
+{/* Record form tab */}
+{activeTab === 'record' && (
   <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
     <ResultRecordingForm
-      isOpen={showCreateModal}
-      onClose={handleCloseModal}
+      isOpen={true} // Always true when this tab is active
+      onClose={() => setActiveTab('results')} // Switch back to results tab
       onResultCreated={loadTeacherData}
-      onSuccess={loadTeacherData}
-      editingResult={selectedResult}
-      mode={modalMode}
+      onSuccess={handleResultSuccess}
+      editResult={null} // Always null for new records
+      mode="create" // Always create mode for this tab
     />
   </div>
 )}
@@ -917,9 +961,65 @@ const handleCloseModal = () => {
     onClose={() => setShowViewModal(false)}
   />
 )}
+
+{/* Edit modal overlay */}
+{/* {showCreateModal && selectedResult && modalMode === 'edit' && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Result</h2>
+          <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <ResultRecordingForm
+          isOpen={true}
+          onClose={handleCloseModal}
+          onResultCreated={loadTeacherData}
+          onSuccess={handleResultSuccess}
+          editResult={selectedResult}
+          mode="edit" // Only if this prop actually exists in the component
+        />
       </div>
+    </div>
+  </div>
+)} */}
+
+{showCreateModal && selectedResult && modalMode === 'edit' && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Result</h2>
+          <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        
+        {/* Add this debug info temporarily */}
+        <div className="mb-4 p-2 bg-gray-100 text-xs">
+          <strong>Debug - Selected Result:</strong>
+          <pre>{JSON.stringify(selectedResult, null, 2)}</pre>
+        </div>
+        
+        <ResultRecordingForm
+          isOpen={true}
+          onClose={handleCloseModal}
+          onResultCreated={loadTeacherData}
+          onSuccess={handleResultSuccess}
+          editResult={selectedResult}
+          mode="edit"
+        />
+      </div>
+    </div>
+  </div>
+)}
+
+  </div>
     </TeacherDashboardLayout>
   );
 };
 
 export default TeacherResults;
+

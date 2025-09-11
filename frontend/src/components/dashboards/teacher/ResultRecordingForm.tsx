@@ -119,7 +119,9 @@ interface ResultRecordingFormProps {
   onClose: () => void;
   onSuccess?: () => Promise<void>;
   onResultCreated: () => void;
-  editingResult?: any;
+  editResult?: any;
+  mode?: 'create' | 'edit';
+  
 }
 
 // Helper functions for education level assessment structures
@@ -206,7 +208,8 @@ const ResultRecordingForm = ({
   isOpen,
   onClose,
   onResultCreated,
-  editingResult
+  editResult
+  
 }: ResultRecordingFormProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -261,49 +264,168 @@ const ResultRecordingForm = ({
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (editingResult) {
-      setFormData({
-        student: (editingResult.student?.id ?? editingResult.student)?.toString(),
-        subject: (editingResult.subject?.id ?? editingResult.subject)?.toString(),
-        exam_session: (editingResult.exam_session?.id ?? editingResult.exam_session)?.toString(),
-        status: editingResult.status || 'DRAFT'
-      });
-      // Infer education level for structure
-      if (editingResult.education_level) {
-        const normalizedLevel = (editingResult.education_level || '')
-          .toString()
-          .replace(/_/g, ' ')
-          .toLowerCase()
-          .trim();
-        setSelectedEducationLevel(normalizedLevel);
-      }
-      // Map assessment values depending on level
-      const maybeSenior = String(editingResult.education_level || '').toUpperCase().includes('SENIOR');
-      if (maybeSenior) {
-        setAssessmentScores({
-          test1: (editingResult.first_test_score ?? editingResult.test1 ?? '').toString(),
-          test2: (editingResult.second_test_score ?? editingResult.test2 ?? '').toString(),
-          test3: (editingResult.third_test_score ?? editingResult.test3 ?? '').toString(),
-          exam: (editingResult.exam_score ?? editingResult.exam ?? '').toString(),
-          remarks: editingResult.remarks || ''
+  
+useEffect(() => {
+  if (editResult && teacherAssignments.length > 0 && currentTeacherId) {
+    console.log('Setting up edit mode with editResult:', editResult);
+    
+    const setupEditResult = async () => {
+      try {
+        // Set form data first
+        const studentId = (editResult.student?.id ?? editResult.student)?.toString();
+        const subjectId = (editResult.subject?.id ?? editResult.subject)?.toString();
+        const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session)?.toString();
+        
+        setFormData({
+          student: studentId,
+          subject: subjectId,
+          exam_session: examSessionId,
+          status: editResult.status || 'DRAFT'
         });
-      } else {
-        setAssessmentScores({
-          ca_total: (editingResult.ca_total ?? editingResult.total_ca_score ?? editingResult.ca_score ?? '').toString(),
-          exam_score: (editingResult.exam_score ?? editingResult.exam ?? '').toString(),
-          remarks: editingResult.remarks || ''
-        });
+        
+        // Set education level FIRST before setting scores
+        let normalizedLevel = '';
+        if (editResult.education_level) {
+          normalizedLevel = (editResult.education_level || '')
+            .toString()
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .trim();
+          setSelectedEducationLevel(normalizedLevel);
+        }
+        
+        // Set up class data
+        if (subjectId) {
+          const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
+          
+          if (subjectAssignments.length > 0) {
+            // If we don't have normalized level yet, get it from assignments
+            if (!normalizedLevel) {
+              normalizedLevel = (subjectAssignments[0].education_level || '')
+                .toString()
+                .replace(/_/g, ' ')
+                .toLowerCase()
+                .trim();
+              setSelectedEducationLevel(normalizedLevel);
+            }
+            
+            const classOptions = subjectAssignments.map(assignment => ({
+              id: assignment.section_id,
+              name: assignment.classroom_name,
+              section_name: assignment.section_name,
+              grade_level_name: assignment.grade_level_name,
+              education_level: normalizedLevel,
+              student_count: assignment.student_count
+            }));
+            
+            setAvailableClasses(classOptions);
+            
+            // Find and set the correct class
+            if (studentId) {
+              try {
+                const studentClassPromises = classOptions.map(async (classOption) => {
+                  try {
+                    const classStudents = await TeacherDashboardService.getStudentsForClass(classOption.id);
+                    const studentExists = classStudents.find((s: Student) => s.id.toString() === studentId);
+                    return studentExists ? classOption : null;
+                  } catch {
+                    return null;
+                  }
+                });
+                
+                const results = await Promise.all(studentClassPromises);
+                const studentClass = results.find(result => result !== null);
+                
+                if (studentClass) {
+                  const classId = studentClass.id.toString();
+                  setSelectedClass(classId);
+                  
+                  // Load students for this class
+                  const studentsData = await TeacherDashboardService.getStudentsForClass(studentClass.id);
+                  setFilteredStudents(studentsData);
+                }
+              } catch (error) {
+                console.error('Error finding student class:', error);
+              }
+            }
+          }
+        }
+        
+        // NOW set the assessment scores after education level is established
+        const educationLevel = String(editResult.education_level || '').toUpperCase();
+        console.log('Teacher Remark found:', editResult.remarks || editResult.teacher_remark);
+        if (educationLevel.includes('SENIOR')) {
+          setAssessmentScores({
+            test1: (editResult.first_test_score ?? editResult.test1 ?? 0).toString(),
+            test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
+            test3: (editResult.third_test_score ?? editResult.test3 ?? 0).toString(),
+            exam: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
+            remarks: editResult.remarks || editResult.teacher_remark || ''
+          });
+          
+        } else if (educationLevel.includes('NURSERY')) {
+          setAssessmentScores({
+            max_marks: (editResult.max_marks ?? 100).toString(),
+            mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
+            remarks: editResult.remarks || editResult.teacher_remark || ''
+          });
+          
+        } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
+          setAssessmentScores({
+            ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
+            take_home_marks: (editResult.take_home_marks ?? editResult.take_home_score ?? 0).toString(),
+            take_home_test: (editResult.take_home_test ?? editResult.take_home_test_score ?? 0).toString(),
+            appearance_marks: (editResult.appearance_marks ?? editResult.appearance_score ?? 0).toString(),
+            practical_marks: (editResult.practical_marks ?? editResult.practical_score ?? 0).toString(),
+            project_marks: (editResult.project_marks ?? editResult.project_score ?? 0).toString(),
+            note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
+            ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
+            exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
+            remarks: editResult.remarks || editResult.teacher_remark || ''
+          });
+          
+          // Set physical development if available
+          if (editResult.physical_development || editResult.height_beginning) {
+            setPhysicalDevelopment({
+              height_beginning: editResult.physical_development?.height_beginning ?? editResult.height_beginning ?? 0,
+              height_end: editResult.physical_development?.height_end ?? editResult.height_end ?? 0,
+              weight_beginning: editResult.physical_development?.weight_beginning ?? editResult.weight_beginning ?? 0,
+              weight_end: editResult.physical_development?.weight_end ?? editResult.weight_end ?? 0,
+              nurse_comment: editResult.physical_development?.nurse_comment ?? editResult.nurse_comment ?? ''
+            });
+          }
+          
+        } else {
+          setAssessmentScores({
+            ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
+            exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
+            remarks: editResult.remarks || editResult.teacher_remark || ''
+          });
+        }
+        
+        // Set class statistics if available
+        if (editResult.class_statistics || editResult.class_average) {
+          setClassStatistics({
+            class_average: editResult.class_statistics?.class_average ?? editResult.class_average ?? 0,
+            highest_in_class: editResult.class_statistics?.highest_in_class ?? editResult.highest_in_class ?? 0,
+            lowest_in_class: editResult.class_statistics?.lowest_in_class ?? editResult.lowest_in_class ?? 0,
+            class_position: editResult.class_statistics?.class_position ?? editResult.class_position ?? editResult.position ?? 0,
+            total_students: editResult.class_statistics?.total_students ?? editResult.total_students ?? 0
+          });
+        }
+        
+        console.log('Edit mode setup completed successfully');
+        
+      } catch (error) {
+        console.error('Error setting up edit result:', error);
+        toast.error('Failed to load edit data');
       }
+    };
 
-      // Populate classes for the subject so the class dropdown is active
-      const subjId = (editingResult.subject?.id ?? editingResult.subject)?.toString();
-      if (subjId) {
-        // Defer to ensure state is applied before loading
-        setTimeout(() => handleSubjectChange(subjId), 0);
-      }
-    }
-  }, [editingResult]);
+    setupEditResult();
+  }
+}, [editResult, teacherAssignments, currentTeacherId]);
+
 
   // Auto-select class when only one option is available (useful for edit prefill)
   useEffect(() => {
@@ -402,47 +524,48 @@ const ResultRecordingForm = ({
     }
   };
 
-  const handleSubjectChange = async (subjectId: string) => {
-    console.log('handleSubjectChange called with subjectId:', subjectId, 'currentTeacherId:', currentTeacherId);
-    if (!subjectId || !currentTeacherId) {
-      console.log('Early return: subjectId or currentTeacherId missing');
+  const handleSubjectChange = async (subjectId: string, isEditMode = false) => {
+  console.log('handleSubjectChange called with subjectId:', subjectId, 'currentTeacherId:', currentTeacherId, 'isEditMode:', isEditMode);
+  if (!subjectId || !currentTeacherId) {
+    console.log('Early return: subjectId or currentTeacherId missing');
+    return;
+  }
+
+  try {
+    // Find all assignments for this subject
+    const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
+    console.log('Subject assignments found:', subjectAssignments);
+    
+    if (subjectAssignments.length === 0) {
+      console.log('No assignments found for subject');
       return;
     }
 
-    try {
-      // Find all assignments for this subject
-      const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
-      console.log('Subject assignments found:', subjectAssignments);
-      
-      if (subjectAssignments.length === 0) {
-        console.log('No assignments found for subject');
-        return;
-      }
+    // Set normalized education level for assessment structure (use first assignment)
+    const normalizedLevel = (subjectAssignments[0].education_level || '')
+      .toString()
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .trim();
+    setSelectedEducationLevel(normalizedLevel);
 
-      // Set normalized education level for assessment structure (use first assignment)
-      const normalizedLevel = (subjectAssignments[0].education_level || '')
-        .toString()
-        .replace(/_/g, ' ')
-        .toLowerCase()
-        .trim();
-      setSelectedEducationLevel(normalizedLevel);
+    // Create class options from assignments
+    const classOptions: ClassOption[] = subjectAssignments.map(assignment => ({
+      id: assignment.section_id,
+      name: assignment.classroom_name,
+      section_name: assignment.section_name,
+      grade_level_name: assignment.grade_level_name,
+      education_level: normalizedLevel,
+      student_count: assignment.student_count
+    }));
 
-      // Create class options from assignments
-      const classOptions: ClassOption[] = subjectAssignments.map(assignment => ({
-        id: assignment.section_id, // This is actually the classroom_id from the assignment
-        name: assignment.classroom_name,
-        section_name: assignment.section_name,
-        grade_level_name: assignment.grade_level_name,
-        education_level: (assignment.education_level || '').toString().replace(/_/g, ' ').toLowerCase().trim(),
-        student_count: assignment.student_count
-      }));
-
-      console.log('Class options created:', classOptions);
-      setAvailableClasses(classOptions);
-      
+    console.log('Class options created:', classOptions);
+    setAvailableClasses(classOptions);
+    
+    // Only reset if NOT in edit mode
+    if (!isEditMode) {
       // Reset class selection and students
       setSelectedClass('');
-      // no-op: students state removed
       setFilteredStudents([]);
       setBulkResults([]);
 
@@ -450,43 +573,42 @@ const ResultRecordingForm = ({
       setAssessmentScores({});
       setClassStatistics({});
       setPhysicalDevelopment({});
-
-      console.log('Subject change completed successfully');
-
-    } catch (error) {
-      console.error('Error loading subject data:', error);
-      toast.error('Failed to load subject data');
-    }
-  };
-
-  const handleClassChange = async (classId: string) => {
-    console.log('handleClassChange called with classId:', classId, 'currentTeacherId:', currentTeacherId);
-    if (!classId || !currentTeacherId) {
-      console.log('Early return: classId or currentTeacherId missing');
-      return;
     }
 
-    try {
-      console.log('Loading students for class:', classId);
-      // Load students for the selected class
-      const studentsData = await TeacherDashboardService.getStudentsForClass(parseInt(classId));
-      console.log('Students loaded:', studentsData);
-      
-      // no-op: students state removed
-      setFilteredStudents(studentsData);
-      // After loading a class, recompute stats for a clean slate in this context
+    console.log('Subject change completed successfully');
+
+  } catch (error) {
+    console.error('Error loading subject data:', error);
+    toast.error('Failed to load subject data');
+  }
+
+  
+};
+
+
+
+
+  const handleClassChange = async (classId: string, isEditMode = false) => {
+  console.log('handleClassChange called with classId:', classId, 'currentTeacherId:', currentTeacherId, 'isEditMode:', isEditMode);
+  if (!classId || !currentTeacherId) {
+    console.log('Early return: classId or currentTeacherId missing');
+    return;
+  }
+
+  try {
+    console.log('Loading students for class:', classId);
+    // Load students for the selected class
+    const studentsData = await TeacherDashboardService.getStudentsForClass(parseInt(classId));
+    console.log('Students loaded:', studentsData);
+    
+    setFilteredStudents(studentsData);
+    
+    // Only recompute stats and reset scores if NOT in edit mode
+    if (!isEditMode) {
       setTimeout(recomputeClassStats, 0);
 
       // Initialize bulk results with enhanced structure
-      interface BulkResult {
-        student_id: number;
-        student_name: string;
-        assessment_scores: AssessmentScores;
-        class_statistics?: ClassStatistics;
-        physical_development?: PhysicalDevelopment;
-      }
-
-      const initialBulkResults: BulkResult[] = studentsData.map((student: Student) => ({
+      const initialBulkResults = studentsData.map((student: Student) => ({
         student_id: student.id,
         student_name: student.full_name,
         assessment_scores: {},
@@ -499,14 +621,16 @@ const ResultRecordingForm = ({
       setAssessmentScores({});
       setClassStatistics({});
       setPhysicalDevelopment({});
-
-      console.log('Class change completed successfully');
-
-    } catch (error) {
-      console.error('Error loading students:', error);
-      toast.error('Failed to load students');
     }
-  };
+
+    console.log('Class change completed successfully');
+
+  } catch (error) {
+    console.error('Error loading students:', error);
+    toast.error('Failed to load students');
+  }
+};
+
 
   const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -588,8 +712,8 @@ const ResultRecordingForm = ({
         };
       }
 
-      if (editingResult) {
-        await ResultService.updateStudentResult(editingResult.id, resultData);
+      if (editResult) {
+        await ResultService.updateStudentResult(editResult.id, resultData);
         toast.success('Result updated successfully!');
       } else {
         await ResultService.createStudentResult(resultData);
@@ -1115,7 +1239,7 @@ const ResultRecordingForm = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editingResult ? 'Edit Result' : 'Record Student Result'}
+              {editResult ? 'Edit Result' : 'Record Student Result'}
             </h3>
             <button
               onClick={handleClose}
@@ -1172,7 +1296,7 @@ const ResultRecordingForm = ({
                         value={formData.subject}
                         onChange={(e) => {
                           setFormData(prev => ({ ...prev, subject: e.target.value, student: '' }));
-                          handleSubjectChange(e.target.value);
+                          handleSubjectChange(e.target.value, !!editResult);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         required
@@ -1323,7 +1447,7 @@ const ResultRecordingForm = ({
                       ) : (
                         <Save className="w-4 h-4 mr-2" />
                       )}
-                      {editingResult ? 'Update Result' : 'Record Result'}
+                      {editResult ? 'Update Result' : 'Record Result'}
                     </button>
                   </div>
                 </form>
