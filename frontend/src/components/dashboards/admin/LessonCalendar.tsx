@@ -7,16 +7,12 @@ import {
   Users,
   BookOpen,
   Target,
-  AlertTriangle,
-  CheckCircle,
-  Play,
   XCircle,
   Plus,
-  Filter,
   Search
 } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, LessonService } from '../../../services/LessonService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import { Lesson, LessonService } from '@/services/LessonService';
 
 interface LessonCalendarProps {
   lessons: Lesson[];

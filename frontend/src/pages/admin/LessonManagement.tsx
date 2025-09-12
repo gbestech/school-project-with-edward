@@ -17,7 +17,7 @@ import EditLessonForm from '@/components/dashboards/admin/EditLessonForm';
 import LessonViewModal from '@/components/dashboards/admin/LessonViewModal';
 import LessonCalendar from '@/components/dashboards/admin/LessonCalendar';
 import LessonStatisticsComponent from '@/components/dashboards/admin/LessonStatistics';
-import { LessonService, type Lesson, type LessonStatistics } from '../../services/LessonService';
+import { LessonService, type Lesson, type LessonStatistics } from '@/services/LessonService';
 
 const LessonManagement: React.FC = () => {
   const { theme, isDarkMode } = useGlobalTheme();

@@ -11,12 +11,11 @@ import {
   BookOpen,
   Users,
   AlertTriangle,
-  MoreVertical,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import { Lesson, LessonService } from '../../../services/LessonService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import { Lesson, LessonService } from '@/services/LessonService';
 
 interface LessonListProps {
   lessons: Lesson[];

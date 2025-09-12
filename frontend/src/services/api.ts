@@ -2,7 +2,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 // Debug logging to see what the actual values are
 console.log('🔧 API_BASE_URL:', API_BASE_URL);
-console.log('🔧 VITE_API_URL env var:', import.meta.env.VITE_API_URL);
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -12,10 +11,7 @@ const getAuthHeaders = () => {
     'Content-Type': 'application/json',
   };
   
-  console.log('🔍 Auth Debug:');
-  console.log('  - localStorage token:', token ? 'Found' : 'Not found');
-  console.log('  - sessionStorage token:', sessionToken ? 'Found' : 'Not found');
-  
+    
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
     console.log('🔑 Token found in localStorage and included in request');
@@ -51,8 +47,6 @@ const api = {
       }
     }
     
-    console.log(`🌐 GET request to: ${url}`);
-    console.log(`🔧 Headers:`, getAuthHeaders());
     
     try {
       const response = await fetch(url, {
@@ -92,11 +86,7 @@ const api = {
     // Ensure cleanEndpoint starts with a slash
     const finalEndpoint = cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
     const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}${finalEndpoint}`;
-    console.log(`🔧 Debug - endpoint: ${endpoint}`);
-    console.log(`🔧 Debug - cleanEndpoint: ${cleanEndpoint}`);
-    console.log(`🔧 Debug - VITE_API_URL: ${import.meta.env.VITE_API_URL}`);
-    console.log(`🔧 Debug - constructed URL: ${url}`);
-    console.log(`🌐 POST request to: ${url}`, data);
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: getAuthHeaders(),

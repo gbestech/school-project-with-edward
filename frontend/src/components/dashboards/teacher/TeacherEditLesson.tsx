@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, BookOpen, Users, Target, AlertCircle, CheckCircle } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-import { LessonService, LessonUpdateData, Lesson } from '@/services/LessonService';
+import {Lesson, LessonService } from '@/services/LessonService';
+import { lessonAPI, TeacherLessonUpdateData } from '@/services/TeacherLessonService';
 
 interface EditLessonFormProps {
   lesson: Lesson;
@@ -15,7 +16,7 @@ const EditLessonForm: React.FC<EditLessonFormProps> = ({ lesson, onClose, onSucc
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
-  const [formData, setFormData] = useState<LessonUpdateData>({
+  const [formData, setFormData] = useState<TeacherLessonUpdateData>({
     title: lesson.title,
     description: lesson.description || '',
     lesson_type: lesson.lesson_type,
@@ -56,7 +57,7 @@ const EditLessonForm: React.FC<EditLessonFormProps> = ({ lesson, onClose, onSucc
     buttonWarning: isDarkMode ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white',
   };
 
-  const handleInputChange = (field: keyof LessonUpdateData, value: any) => {
+  const handleInputChange = (field: keyof TeacherLessonUpdateData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -88,7 +89,7 @@ const EditLessonForm: React.FC<EditLessonFormProps> = ({ lesson, onClose, onSucc
       setLoading(true);
       setError(null);
       
-      await LessonService.updateLesson(lesson.id, formData);
+      await lessonAPI.updateLesson(lesson.id, formData);
       setSuccess(true);
       
       setTimeout(() => {

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Users, Target, AlertCircle, CheckCircle } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-import { LessonService, LessonCreateData } from '@/services/LessonService';
+import {lessonAPI, LessonCreateData} from "@/services/TeacherLessonService";
 import { api } from '@/services/api';
 
-interface AddLessonFormProps {
+interface TeacherAddLessonProps {
   onClose: () => void;
   onSuccess: () => void;
 }
 
-const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => {
+const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess }) => {
   const { isDarkMode } = useGlobalTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,19 +73,19 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
         
         // Load teachers
         console.log('Loading teachers...');
-        const teachersData = await api.get('/api/teachers/teachers/');
+        const teachersData = await lessonAPI.getSubjectTeachers(teacherId);
         console.log('Teachers data:', teachersData);
         setTeachers(Array.isArray(teachersData?.results) ? teachersData.results : Array.isArray(teachersData) ? teachersData : []);
 
         // Load classrooms
         console.log('Loading classrooms...');
-        const classroomsData = await api.get('/api/classrooms/classrooms/');
+        const classroomsData = await lessonAPI.getTeacherClassrooms(teacherId);
         console.log('Classrooms data:', classroomsData);
         setClassrooms(Array.isArray(classroomsData?.results) ? classroomsData.results : Array.isArray(classroomsData) ? classroomsData : []);
 
         // Load subjects
         console.log('Loading subjects...');
-        const subjectsData = await api.get('/api/subjects/');
+        const subjectsData = await lessonAPI.getTeacherSubjects(teacherId);
         console.log('Subjects data:', subjectsData);
         setSubjects(Array.isArray(subjectsData?.results) ? subjectsData.results : Array.isArray(subjectsData) ? subjectsData : []);
 
@@ -266,7 +266,7 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       setLoading(true);
       setError(null);
       
-      await LessonService.createLesson(formData);
+      await lessonAPI.createLesson(formData);
       setSuccess(true);
       
       setTimeout(() => {
@@ -705,4 +705,4 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
   );
 };
 
-export default AddLessonForm;
+export default TeacherAddLesson;
