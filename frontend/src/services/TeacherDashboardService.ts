@@ -381,13 +381,7 @@ class TeacherDashboardService {
   // Get teacher ID from user data or fetch teacher profile
   async getTeacherIdFromUser(user: any): Promise<number | null> {
     try {
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Input user:', user);
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.role:', user?.role);
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.id:', user?.id);
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.teacher_data:', (user as any)?.teacher_data);
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.teacher_data.id:', (user as any)?.teacher_data?.id);
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.profile:', (user as any)?.profile);
-      console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - user.profile?.teacher_data:', (user as any)?.profile?.teacher_data);
+    
       
       // First, try to get teacher ID from user data structure
       let teacherId = (user as any)?.teacher_data?.id;

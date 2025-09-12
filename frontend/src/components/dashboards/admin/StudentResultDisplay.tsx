@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Download, Printer, Loader2, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import ResultService from '../../../services/ResultService';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+import ResultService from '@/services/ResultService';
 import { toast } from 'react-hot-toast';
 
 // Import result templates based on education level

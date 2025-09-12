@@ -1803,6 +1803,7 @@ export interface StudentResult {
     full_name: string;
     registration_number: string;
     profile_picture?: string;
+    education_level: EducationLevel;
   };
   subject: {
     id: number;

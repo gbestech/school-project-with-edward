@@ -137,10 +137,10 @@ class ResultService {
         console.log('ResultService.getStudentResults called with params:', params);
       }
       const [nurseryResults, primaryResults, jssResults, sssResults] = await Promise.allSettled([
-        api.get('/api/results/nursery-results/'),
-        api.get('/api/results/primary-results/'),
-        api.get('/api/results/junior-secondary-results/'),
-        api.get('/api/results/senior-secondary-results/')
+        api.get('/results/nursery-results/'),
+        api.get('/results/primary-results/'),
+        api.get('/results/junior-secondary-results/'),
+        api.get('/results/senior-secondary-results/')
       ]);
       
       let allResults: any[] = [];
@@ -349,19 +349,22 @@ class ResultService {
     // Primary/Junior fields
     ca_score?: number;
     exam_score?: number;
+    total_score?: number;
+    grade?: string;
     // Senior fields
     first_test_score?: number;
     second_test_score?: number;
     third_test_score?: number;
-    total_score?: number;
-    percentage?: number;
-    grade?: string;
-    grade_point?: number;
-    is_passed?: boolean;
-    position?: number;
+    teacher_remark?: string;
     remarks?: string;
     status?: string;
     education_level?: string;
+    class_statistics?: any;
+    physical_development?: any;
+    percentage?: number;
+    grade_point?: number;
+    is_passed?: boolean;
+    position?: number;
   }) {
     // Determine the correct endpoint based on education level
     let endpoint = '';
@@ -369,16 +372,16 @@ class ResultService {
     if (data.education_level) {
       switch (data.education_level.toUpperCase()) {
         case 'NURSERY':
-          endpoint = '/api/results/nursery-results/';
+          endpoint = '/results/nursery-results/';
           break;
         case 'PRIMARY':
-          endpoint = '/api/results/primary-results/';
+          endpoint = '/results/primary-results/';
           break;
         case 'JUNIOR_SECONDARY':
-          endpoint = '/api/results/junior-secondary-results/';
+          endpoint = '/results/junior-secondary-results/';
           break;
         case 'SENIOR_SECONDARY':
-          endpoint = '/api/results/senior-secondary-results/';
+          endpoint = '/results/senior-secondary-results/';
           break;
         default:
           // Fallback to the old endpoint if education level is not specified
@@ -394,17 +397,142 @@ class ResultService {
 
   // Update a student result
   async updateStudentResult(resultId: string, data: Partial<{
-    ca_score: number;
-    exam_score: number;
-    remarks: string;
-    status: string;
+    student: string;
+    subject: string;
+    exam_session: string;
+    grading_system?: number | string;
+    // Primary/Junior fields
+    ca_score?: number;
+    exam_score?: number;
+    total_score?: number;
+    grade?: string;
+    // Senior fields
+    first_test_score?: number;
+    second_test_score?: number;
+    third_test_score?: number;
+    teacher_remark?: string;
+    remarks?: string;
+    status?: string;
+    education_level?: string;
+    class_statistics?: any;
+    physical_development?: any;
   }>) {
-    return api.put(`/results/student-results/${resultId}/`, data);
+    // Determine the correct endpoint based on education level
+    let endpoint = '';
+    
+    if (data.education_level) {
+      switch (data.education_level.toUpperCase()) {
+        case 'NURSERY':
+          endpoint = `/results/nursery-results/${resultId}/`;
+          break;
+        case 'PRIMARY':
+          endpoint = `/results/primary-results/${resultId}/`;
+          break;
+        case 'JUNIOR_SECONDARY':
+          endpoint = `/results/junior-secondary-results/${resultId}/`;
+          break;
+        case 'SENIOR_SECONDARY':
+          endpoint = `/results/senior-secondary-results/${resultId}/`;
+          break;
+        default:
+          // Fallback to the old endpoint if education level is not specified
+          endpoint = `/results/student-results/${resultId}/`;
+      }
+    } else {
+      // Fallback to the old endpoint if education level is not specified
+      endpoint = `/results/student-results/${resultId}/`;
+    }
+    
+    return api.put(endpoint, data);
+  }
+
+  // Find an existing student result id by composite keys
+  async findResultIdByComposite(params: {
+    student: string | number;
+    subject: string | number;
+    exam_session: string | number;
+    education_level: string;
+  }): Promise<string | null> {
+    const education = (params.education_level || '')
+      .toString()
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+
+    let base = '';
+    switch (education) {
+      case 'NURSERY':
+        base = '/results/nursery-results/';
+        break;
+      case 'PRIMARY':
+        base = '/results/primary-results/';
+        break;
+      case 'JUNIOR_SECONDARY':
+        base = '/results/junior-secondary-results/';
+        break;
+      case 'SENIOR_SECONDARY':
+        base = '/results/senior-secondary-results/';
+        break;
+      default:
+        base = '/results/student-results/';
+    }
+
+    const qs = new URLSearchParams({
+      student: String(params.student),
+      subject: String(params.subject),
+      exam_session: String(params.exam_session),
+    }).toString();
+
+    const res = await api.get(`${base}?${qs}`);
+    const array = Array.isArray(res) ? res : (res?.results || res?.data || []);
+    if (Array.isArray(array) && array.length > 0) {
+      const first = array[0];
+      const id = first?.id ?? first?.pk;
+      if (id != null && id !== '') {
+        return String(id);
+      }
+    }
+    return null;
   }
 
   // Delete a student result
-  async deleteStudentResult(resultId: string) {
-    return api.delete(`/results/student-results/${resultId}/`);
+  async deleteStudentResult(resultId: string, educationLevel?: string) {
+    // Determine the correct endpoint based on education level
+    let endpoint = '';
+    
+    if (educationLevel) {
+      switch (educationLevel.toUpperCase()) {
+        case 'NURSERY':
+          endpoint = `/results/nursery-results/${resultId}/`;
+          break;
+        case 'PRIMARY':
+          endpoint = `/results/primary-results/${resultId}/`;
+          break;
+        case 'JUNIOR_SECONDARY':
+          endpoint = `/results/junior-secondary-results/${resultId}/`;
+          break;
+        case 'SENIOR_SECONDARY':
+          endpoint = `/results/senior-secondary-results/${resultId}/`;
+          break;
+        default:
+          // Fallback to the old endpoint if education level is not specified
+          endpoint = `/results/student-results/${resultId}/`;
+      }
+    } else {
+      // Fallback to the old endpoint if education level is not specified
+      endpoint = `/results/student-results/${resultId}/`;
+    }
+    
+    // DELETE requests often return 204 No Content, so we need to handle empty responses
+    try {
+      const response = await api.delete(endpoint);
+      return response;
+    } catch (error: any) {
+      // If it's a JSON parse error but the status is 204, it's actually successful
+      if (error.message?.includes('Unexpected end of JSON input') && error.response?.status === 204) {
+        return { data: null, status: 204 };
+      }
+      throw error;
+    }
   }
 
   // Approve a student result
@@ -497,4 +625,4 @@ class ResultService {
   }
 }
 
-export default new ResultService(); 
+export default new ResultService();

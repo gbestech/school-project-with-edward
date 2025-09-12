@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import StudentService, { Student } from '@/services/StudentService';
-import ResultService from '../../../services/ResultService';
+import ResultService from '@/services/ResultService';
 import EnhancedResultRecording from './EnhancedResultRecording';
 import EditResultForm from './EditResultForm';
 import { toast } from 'react-toastify';

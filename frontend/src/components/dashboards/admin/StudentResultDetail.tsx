@@ -164,40 +164,7 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
   if (normalized in ENDPOINTS) return normalized as keyof typeof ENDPOINTS;
   return undefined;
 };
-
-
-
-  // const handleStatusChange = async (resultId: string, newStatus: string, educationLevel: string) => {
-  //   try {
-  //     setUpdatingStatus(resultId);
-  //     let endpoint = '';
-  //     switch (educationLevel) {
-  //       case 'NURSERY':
-  //         endpoint = `/api/results/nursery-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-  //         break;
-  //       case 'PRIMARY':
-  //         endpoint = `/api/results/primary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-  //         break;
-  //       case 'JUNIOR_SECONDARY':
-  //         endpoint = `/api/results/junior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-  //         break;
-  //       case 'SENIOR_SECONDARY':
-  //         endpoint = `/api/results/senior-secondary-results/${resultId}/${newStatus === 'APPROVED' ? 'approve' : 'publish'}/`;
-  //         break;
-  //       default:
-  //         throw new Error('Invalid education level');
-  //     }
-
-  //     await api.post(endpoint, {});
-  //     toast.success(`Result ${newStatus.toLowerCase()} successfully`);
-  //     loadData(); // Reload data to reflect changes
-  //   } catch (error) {
-  //     console.error('Error changing status:', error);
-  //     toast.error(`Failed to ${newStatus.toLowerCase()} result`);
-  //   } finally {
-  //     setUpdatingStatus(null);
-  //   }
-  // };
+  
   const handleStatusChange = async (resultId: string, newStatus: ResultStatus, educationLevel: string) => {
   try {
     setUpdatingStatus(resultId);

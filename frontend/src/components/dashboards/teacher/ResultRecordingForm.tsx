@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
 import ResultService from '@/services/ResultService';
+import ResultSettingsService from '@/services/ResultSettingsService';
 import { toast } from 'react-toastify';
 import { 
   X, 
@@ -125,12 +126,95 @@ interface ResultRecordingFormProps {
 }
 
 // Helper functions for education level assessment structures
-const getAssessmentStructure = (educationLevel: string) => {
+const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => {
   const level = (educationLevel || '')
     .toString()
     .replace(/_/g, ' ')
     .toLowerCase()
     .trim();
+
+  // If a scoring configuration is provided, prefer it to build dynamic fields
+  if (scoringConfig) {
+    const upperLevel = (educationLevel || '')
+      .toString()
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+
+    if (upperLevel === 'SENIOR_SECONDARY') {
+      return {
+        type: 'senior',
+        fields: ['test1', 'test2', 'test3', 'exam'],
+        labels: [
+          `1st Test (${Number(scoringConfig.first_test_max_score) || 10})`,
+          `2nd Test (${Number(scoringConfig.second_test_max_score) || 10})`,
+          `3rd Test (${Number(scoringConfig.third_test_max_score) || 10})`,
+          `Exam (${Number(scoringConfig.exam_max_score) || 70})`
+        ],
+        maxValues: [
+          Number(scoringConfig.first_test_max_score) || 10,
+          Number(scoringConfig.second_test_max_score) || 10,
+          Number(scoringConfig.third_test_max_score) || 10,
+          Number(scoringConfig.exam_max_score) || 70
+        ],
+        showPhysicalDevelopment: false,
+        showClassStatistics: true
+      };
+    }
+
+    if (upperLevel === 'PRIMARY' || upperLevel === 'JUNIOR_SECONDARY') {
+      return {
+        type: upperLevel === 'PRIMARY' ? 'primary' : 'junior',
+        fields: [
+          'ca_score',
+          'take_home_marks',
+          'take_home_test',
+          'appearance_marks',
+          'practical_marks',
+          'project_marks',
+          'note_copying_marks',
+          'ca_total',
+          'exam_score'
+        ],
+        labels: [
+          `C.A (${Number(scoringConfig.continuous_assessment_max_score) || 15})`,
+          'Take Home',
+          `Take Home Test (${Number(scoringConfig.take_home_test_max_score) || 10})`,
+          `Appearance (${Number(scoringConfig.appearance_max_score) || 10})`,
+          `Practical (${Number(scoringConfig.practical_max_score) || 10})`,
+          `Project (${Number(scoringConfig.project_max_score) || 10})`,
+          `Note Copying (${Number(scoringConfig.note_copying_max_score) || 10})`,
+          `C.A Total (${Number(scoringConfig.total_ca_max_score) || 75})`,
+          `Exam (${Number(scoringConfig.exam_max_score) || 60})`
+        ],
+        maxValues: [
+          Number(scoringConfig.continuous_assessment_max_score) || 15,
+          10,
+          Number(scoringConfig.take_home_test_max_score) || 10,
+          Number(scoringConfig.appearance_max_score) || 10,
+          Number(scoringConfig.practical_max_score) || 10,
+          Number(scoringConfig.project_max_score) || 10,
+          Number(scoringConfig.note_copying_max_score) || 10,
+          Number(scoringConfig.total_ca_max_score) || 75,
+          Number(scoringConfig.exam_max_score) || 60
+        ],
+        showPhysicalDevelopment: true,
+        showClassStatistics: true
+      };
+    }
+
+    if (upperLevel === 'NURSERY') {
+      const totalMax = Number(scoringConfig.total_max_score) || 100;
+      return {
+        type: 'nursery',
+        fields: ['max_marks', 'mark_obtained'],
+        labels: ['Max Marks', 'Mark Obtained'],
+        maxValues: [totalMax, totalMax],
+        showPhysicalDevelopment: true,
+        showClassStatistics: false
+      };
+    }
+  }
+
   switch (level) {
     case 'nursery':
       return {
@@ -225,6 +309,8 @@ const ResultRecordingForm = ({
   const [availableClasses, setAvailableClasses] = useState<ClassOption[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [gradingSystemId, setGradingSystemId] = useState<number | null>(null);
+  const [scoringConfigs, setScoringConfigs] = useState<any[]>([]);
+  const [activeScoringConfig, setActiveScoringConfig] = useState<any | null>(null);
 
   const normalizeEducationLevelForApi = (level: string) =>
     (level || '')
@@ -272,9 +358,9 @@ useEffect(() => {
     const setupEditResult = async () => {
       try {
         // Set form data first
-        const studentId = (editResult.student?.id ?? editResult.student)?.toString();
-        const subjectId = (editResult.subject?.id ?? editResult.subject)?.toString();
-        const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session)?.toString();
+        const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
+        const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
+        const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
         
         setFormData({
           student: studentId,
@@ -492,6 +578,15 @@ useEffect(() => {
       // Load exam sessions
       const sessions = await ResultService.getExamSessions();
       setExamSessions(sessions.data || sessions || []);
+      // Load scoring configurations once
+      try {
+        const configsResponse = await ResultSettingsService.getScoringConfigurations();
+        const configsArray = Array.isArray(configsResponse) ? configsResponse : (configsResponse?.results || configsResponse?.data || []);
+        setScoringConfigs(configsArray || []);
+      } catch (e) {
+        console.warn('Could not load scoring configurations.', e);
+        setScoringConfigs([]);
+      }
       // Load active grading systems and pick a default
       try {
         const gsResp = await ResultService.getGradingSystems({ is_active: true });
@@ -548,6 +643,14 @@ useEffect(() => {
       .toLowerCase()
       .trim();
     setSelectedEducationLevel(normalizedLevel);
+
+    // Pick active scoring config for this education level
+    const upperLevel = (subjectAssignments[0].education_level || '')
+      .toString()
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+    const configForLevel = scoringConfigs.find((c: any) => c.education_level === upperLevel && (c.is_default || c.is_active));
+    setActiveScoringConfig(configForLevel || null);
 
     // Create class options from assignments
     const classOptions: ClassOption[] = subjectAssignments.map(assignment => ({
@@ -713,7 +816,50 @@ useEffect(() => {
       }
 
       if (editResult) {
-        await ResultService.updateStudentResult(editResult.id, resultData);
+        console.log('Edit result object:', editResult);
+        console.log('Edit result keys:', Object.keys(editResult));
+        
+        const candidates = [
+          editResult?.id,
+          editResult?.pk,
+          editResult?.result_id,
+          editResult?.student_result_id,
+          editResult?.studentResultId,
+          editResult?.result?.id
+        ];
+        console.log('ID candidates:', candidates);
+        
+        const numeric = candidates
+          .map((v) => (v !== null && v !== undefined ? Number(v) : NaN))
+          .find((n) => Number.isFinite(n) && n > 0);
+        const safeId = numeric ? String(numeric) : '';
+        
+        console.log('Selected ID:', safeId);
+        
+        let finalId = safeId;
+        if (!finalId) {
+          // Attempt to resolve by composite keys
+          try {
+            const resolvedId = await ResultService.findResultIdByComposite({
+              student: formData.student,
+              subject: formData.subject,
+              exam_session: formData.exam_session,
+              education_level: education_level,
+            });
+            if (resolvedId) {
+              finalId = resolvedId;
+              console.log('Resolved result id via composite lookup:', finalId);
+            }
+          } catch (e) {
+            console.warn('Composite id lookup failed', e);
+          }
+        }
+        if (!finalId) {
+          console.error('No valid ID found in editResult or via lookup:', editResult);
+          toast.error('Cannot update: missing result ID. Please refresh and try again.');
+          throw new Error('Invalid result id for update');
+        }
+        await ResultService.updateStudentResult(finalId, resultData);
         toast.success('Result updated successfully!');
       } else {
         await ResultService.createStudentResult(resultData);
@@ -811,6 +957,8 @@ useEffect(() => {
             remarks: result.assessment_scores.remarks || '',
             status: 'DRAFT',
             education_level,
+            class_statistics: result.class_statistics || {},
+            physical_development: result.physical_development || {}
           };
         }
 
@@ -1027,7 +1175,7 @@ useEffect(() => {
 
   // Component to render assessment fields dynamically
   const renderAssessmentFields = (scores: AssessmentScores, onUpdate: (field: keyof AssessmentScores, value: string) => void) => {
-    const structure = getAssessmentStructure(selectedEducationLevel);
+    const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
     
     return (
       <div className="space-y-4">
@@ -1395,7 +1543,7 @@ useEffect(() => {
                       >
                         <option value="DRAFT">Draft</option>
                         <option value="PUBLISHED">Published</option>
-                        <option value="REVIEWED">Reviewed</option>
+                        <option value="APPROVED">Approved</option>
                       </select>
                     </div>
 
@@ -1420,10 +1568,10 @@ useEffect(() => {
                         />
                       </div>
 
-                      {/* Class Statistics */}
+                      {/* Class Statistics - Always show for create form */}
                       {renderClassStatistics(classStatistics)}
 
-                      {/* Physical Development */}
+                      {/* Physical Development - Always show for create form */}
                       {renderPhysicalDevelopment(physicalDevelopment, updatePhysicalDevelopment)}
                     </>
                   )}
@@ -1530,7 +1678,7 @@ useEffect(() => {
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                       <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
                         <GraduationCap className="w-5 h-5 mr-2" />
-                        Enter Scores for Students ({getAssessmentStructure(selectedEducationLevel).type.toUpperCase()})
+                        Enter Scores for Students ({getAssessmentStructure(selectedEducationLevel, activeScoringConfig).type.toUpperCase()})
                       </h4>
                       <div className="overflow-x-auto">
                         <table className="min-w-full">
@@ -1539,9 +1687,9 @@ useEffect(() => {
                               <th className="text-left py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Student
                               </th>
-                              {getAssessmentStructure(selectedEducationLevel).fields.map((field, index) => (
+                              {getAssessmentStructure(selectedEducationLevel, activeScoringConfig).fields.map((field, index) => (
                                 <th key={field} className="text-left py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                  {getAssessmentStructure(selectedEducationLevel).labels[index]}
+                                  {getAssessmentStructure(selectedEducationLevel, activeScoringConfig).labels[index]}
                                 </th>
                               ))}
                               <th className="text-left py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1564,12 +1712,12 @@ useEffect(() => {
                                   <td className="py-2 px-3 text-sm text-gray-900 dark:text-white">
                                     {result.student_name}
                                   </td>
-                                  {getAssessmentStructure(selectedEducationLevel).fields.map((field, fieldIndex) => (
+                                  {getAssessmentStructure(selectedEducationLevel, activeScoringConfig).fields.map((field, fieldIndex) => (
                                     <td key={field} className="py-2 px-3">
                                       <input
                                         type="number"
                                         min="0"
-                                        max={getAssessmentStructure(selectedEducationLevel).maxValues[fieldIndex]}
+                                        max={getAssessmentStructure(selectedEducationLevel, activeScoringConfig).maxValues[fieldIndex]}
                                         step="0.1"
                                         value={result.assessment_scores[field as keyof AssessmentScores] || ''}
                                         onChange={(e) => updateBulkResult(index, field, e.target.value)}

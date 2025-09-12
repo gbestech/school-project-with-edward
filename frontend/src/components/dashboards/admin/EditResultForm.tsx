@@ -10,7 +10,7 @@ import {
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import SubjectService from '@/services/SubjectService';
 import { toast } from 'react-toastify';
-import api from '../../../services/api';
+import api from '@/services/api';
 
 interface EditResultFormProps {
   result: any;
@@ -51,17 +51,58 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
   };
 
   // Initialize form data based on education level
+  // useEffect(() => {
+  //   if (result) {
+  //     const initialData = {
+  //       subject: result.subject?.id || result.subject,
+  //       exam_session: result.exam_session?.id || result.exam_session,
+  //       status: result.status || 'DRAFT',
+  //       comments: result.comments || result.teacher_remark || '',
+  //       // Education level specific fields
+  //       test1_score: result.first_test_score || 0,
+  //       test2_score: result.second_test_score || 0,
+  //       test3_score: result.third_test_score || 0,
+  //       continuous_assessment_score: result.continuous_assessment_score || result.ca_score || 0,
+  //       take_home_test_score: result.take_home_test_score || result.take_home_score || 0,
+  //       practical_score: result.practical_score || 0,
+  //       project_score: result.project_score || 0,
+  //       note_copying_score: result.note_copying_score || 0,
+  //       exam_score: result.exam_score || 0,
+  //       // Optional stream if present
+  //       grading_system: result.grading_system?.id || result.grading_system,
+  //       ...result
+  //     };
+  //     setFormData(initialData);
+  //   }
+  // }, [result]);
+
   useEffect(() => {
-    if (result) {
-      const initialData = {
-        subject: result.subject?.id || result.subject,
-        exam_session: result.exam_session?.id || result.exam_session,
-        grading_system: result.grading_system?.id || result.grading_system,
-        ...result
-      };
-      setFormData(initialData);
-    }
-  }, [result]);
+  if (result) {
+    const initialData = {
+      subject: result.subject?.id || result.subject,
+      exam_session: result.exam_session?.id || result.exam_session,
+      status: result.status || 'DRAFT',
+      teacher_remark: result.comments || result.teacher_remark || '',
+      exam_score: result.exam_score || 0,
+      grading_system: result.grading_system?.id || result.grading_system,
+      
+      // Use backend field names directly
+      first_test_score: result.first_test_score || 0,
+      second_test_score: result.second_test_score || 0,
+      third_test_score: result.third_test_score || 0,
+      continuous_assessment_score: result.continuous_assessment_score || result.ca_score || 0,
+      take_home_test_score: result.take_home_test_score || result.take_home_score || 0,
+      practical_score: result.practical_score || 0,
+      project_score: result.project_score || 0,
+      note_copying_score: result.note_copying_score || 0,
+      
+      // Optional stream if present
+      stream: result.stream?.id || result.stream,
+    };
+    setFormData(initialData);
+  }
+}, [result]);
+
 
   // Load subjects for the student's education level
   useEffect(() => {
@@ -95,68 +136,132 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
     }
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  // const validateForm = () => {
+  //   const newErrors: Record<string, string> = {};
 
-    if (!formData.subject) {
-      newErrors.subject = 'Subject is required';
-    }
+  //   if (!formData.subject) {
+  //     newErrors.subject = 'Subject is required';
+  //   }
 
-    if (!formData.exam_session) {
-      newErrors.exam_session = 'Exam session is required';
-    }
+  //   if (!formData.exam_session) {
+  //     newErrors.exam_session = 'Exam session is required';
+  //   }
 
-    if (!formData.grading_system) {
-      newErrors.grading_system = 'Grading system is required';
-    }
+  //   if (!formData.grading_system) {
+  //     newErrors.grading_system = 'Grading system is required';
+  //   }
 
-    // Education level specific validations
-    switch (student.education_level) {
-      case 'SENIOR_SECONDARY':
-        if (formData.test1_score && (formData.test1_score < 0 || formData.test1_score > 10)) {
-          newErrors.test1_score = 'Test 1 score must be between 0 and 10';
-        }
-        if (formData.test2_score && (formData.test2_score < 0 || formData.test2_score > 10)) {
-          newErrors.test2_score = 'Test 2 score must be between 0 and 10';
-        }
-        if (formData.test3_score && (formData.test3_score < 0 || formData.test3_score > 10)) {
-          newErrors.test3_score = 'Test 3 score must be between 0 and 10';
-        }
-        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 70)) {
-          newErrors.exam_score = 'Exam score must be between 0 and 70';
-        }
-        break;
-      case 'PRIMARY':
-      case 'JUNIOR_SECONDARY':
-        if (formData.continuous_assessment_score && (formData.continuous_assessment_score < 0 || formData.continuous_assessment_score > 15)) {
-          newErrors.continuous_assessment_score = 'CA score must be between 0 and 15';
-        }
-        if (formData.practical_score && (formData.practical_score < 0 || formData.practical_score > 5)) {
-          newErrors.practical_score = 'Practical score must be between 0 and 5';
-        }
-        if (formData.take_home_test_score && (formData.take_home_test_score < 0 || formData.take_home_test_score > 5)) {
-          newErrors.take_home_test_score = 'Take Home Test score must be between 0 and 5';
-        }
-        if (formData.project_score && (formData.project_score < 0 || formData.project_score > 5)) {
-          newErrors.project_score = 'Project score must be between 0 and 5';
-        }
-        if (formData.note_copying_score && (formData.note_copying_score < 0 || formData.note_copying_score > 5)) {
-          newErrors.note_copying_score = 'Note copying score must be between 0 and 5';
-        }
-        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 60)) {
-          newErrors.exam_score = 'Exam score must be between 0 and 60';
-        }
-        break;
-      case 'NURSERY':
-        if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 100)) {
-          newErrors.exam_score = 'Exam score must be between 0 and 100';
-        }
-        break;
-    }
+  //   // Education level specific validations
+  //   switch (student.education_level) {
+  //     case 'SENIOR_SECONDARY':
+  //       if (formData.test1_score && (formData.test1_score < 0 || formData.test1_score > 10)) {
+  //         newErrors.test1_score = 'Test 1 score must be between 0 and 10';
+  //       }
+  //       if (formData.test2_score && (formData.test2_score < 0 || formData.test2_score > 10)) {
+  //         newErrors.test2_score = 'Test 2 score must be between 0 and 10';
+  //       }
+  //       if (formData.test3_score && (formData.test3_score < 0 || formData.test3_score > 10)) {
+  //         newErrors.test3_score = 'Test 3 score must be between 0 and 10';
+  //       }
+  //       if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 70)) {
+  //         newErrors.exam_score = 'Exam score must be between 0 and 70';
+  //       }
+  //       break;
+  //     case 'PRIMARY':
+  //     case 'JUNIOR_SECONDARY':
+  //       if (formData.continuous_assessment_score && (formData.continuous_assessment_score < 0 || formData.continuous_assessment_score > 15)) {
+  //         newErrors.continuous_assessment_score = 'CA score must be between 0 and 15';
+  //       }
+  //       if (formData.practical_score && (formData.practical_score < 0 || formData.practical_score > 5)) {
+  //         newErrors.practical_score = 'Practical score must be between 0 and 5';
+  //       }
+  //       if (formData.take_home_test_score && (formData.take_home_test_score < 0 || formData.take_home_test_score > 5)) {
+  //         newErrors.take_home_test_score = 'Take Home Test score must be between 0 and 5';
+  //       }
+  //       if (formData.project_score && (formData.project_score < 0 || formData.project_score > 5)) {
+  //         newErrors.project_score = 'Project score must be between 0 and 5';
+  //       }
+  //       if (formData.note_copying_score && (formData.note_copying_score < 0 || formData.note_copying_score > 5)) {
+  //         newErrors.note_copying_score = 'Note copying score must be between 0 and 5';
+  //       }
+  //       if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 60)) {
+  //         newErrors.exam_score = 'Exam score must be between 0 and 60';
+  //       }
+  //       break;
+  //     case 'NURSERY':
+  //       if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 100)) {
+  //         newErrors.exam_score = 'Exam score must be between 0 and 100';
+  //       }
+  //       break;
+  //   }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  //   setErrors(newErrors);
+  //   return Object.keys(newErrors).length === 0;
+  // };
+
+  // 2. UPDATE VALIDATION FUNCTION
+const validateForm = () => {
+  const newErrors: Record<string, string> = {};
+
+  if (!formData.subject) {
+    newErrors.subject = 'Subject is required';
+  }
+
+  if (!formData.exam_session) {
+    newErrors.exam_session = 'Exam session is required';
+  }
+
+  if (!formData.grading_system) {
+    newErrors.grading_system = 'Grading system is required';
+  }
+
+  // Education level specific validations with backend field names
+  switch (student.education_level) {
+    case 'SENIOR_SECONDARY':
+      if (formData.first_test_score && (formData.first_test_score < 0 || formData.first_test_score > 10)) {
+        newErrors.first_test_score = 'Test 1 score must be between 0 and 10';
+      }
+      if (formData.second_test_score && (formData.second_test_score < 0 || formData.second_test_score > 10)) {
+        newErrors.second_test_score = 'Test 2 score must be between 0 and 10';
+      }
+      if (formData.third_test_score && (formData.third_test_score < 0 || formData.third_test_score > 10)) {
+        newErrors.third_test_score = 'Test 3 score must be between 0 and 10';
+      }
+      if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 70)) {
+        newErrors.exam_score = 'Exam score must be between 0 and 70';
+      }
+      break;
+    case 'PRIMARY':
+    case 'JUNIOR_SECONDARY':
+      if (formData.continuous_assessment_score && (formData.continuous_assessment_score < 0 || formData.continuous_assessment_score > 15)) {
+        newErrors.continuous_assessment_score = 'CA score must be between 0 and 15';
+      }
+      if (formData.practical_score && (formData.practical_score < 0 || formData.practical_score > 5)) {
+        newErrors.practical_score = 'Practical score must be between 0 and 5';
+      }
+      if (formData.take_home_test_score && (formData.take_home_test_score < 0 || formData.take_home_test_score > 5)) {
+        newErrors.take_home_test_score = 'Take Home Test score must be between 0 and 5';
+      }
+      if (formData.project_score && (formData.project_score < 0 || formData.project_score > 5)) {
+        newErrors.project_score = 'Project score must be between 0 and 5';
+      }
+      if (formData.note_copying_score && (formData.note_copying_score < 0 || formData.note_copying_score > 5)) {
+        newErrors.note_copying_score = 'Note copying score must be between 0 and 5';
+      }
+      if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 60)) {
+        newErrors.exam_score = 'Exam score must be between 0 and 60';
+      }
+      break;
+    case 'NURSERY':
+      if (formData.exam_score && (formData.exam_score < 0 || formData.exam_score > 100)) {
+        newErrors.exam_score = 'Exam score must be between 0 and 100';
+      }
+      break;
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,24 +306,36 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
       if (student.education_level === 'SENIOR_SECONDARY') {
         payload = {
           ...payload,
-          first_test_score: formData.first_test_score ?? formData.test1_score ?? 0,
-          second_test_score: formData.second_test_score ?? formData.test2_score ?? 0,
-          third_test_score: formData.third_test_score ?? formData.test3_score ?? 0,
-          exam_score: formData.exam_score ?? 0,
-          teacher_remark: formData.teacher_remark || formData.comments || '',
+          // first_test_score: formData.first_test_score ?? formData.test1_score ?? 0,
+          // second_test_score: formData.second_test_score ?? formData.test2_score ?? 0,
+          // third_test_score: formData.third_test_score ?? formData.test3_score ?? 0,
+          // exam_score: formData.exam_score ?? 0,
+          // teacher_remark: formData.teacher_remark || formData.comments || '',
+          first_test_score: formData.first_test_score ?? 0,
+        second_test_score: formData.second_test_score ?? 0,
+        third_test_score: formData.third_test_score ?? 0,
+        exam_score: formData.exam_score ?? 0,
+        teacher_remark: formData.teacher_remark || '',
           // Optional stream if present
           ...(formData.stream ? { stream: formData.stream?.id ?? formData.stream } : {}),
         };
       } else if (student.education_level === 'PRIMARY' || student.education_level === 'JUNIOR_SECONDARY') {
         payload = {
           ...payload,
-          continuous_assessment_score: formData.continuous_assessment_score ?? formData.ca_score ?? 0,
-          take_home_test_score: formData.take_home_test_score ?? formData.take_home_score ?? 0,
-          practical_score: formData.practical_score ?? 0,
-          project_score: formData.project_score ?? 0,
-          note_copying_score: formData.note_copying_score ?? 0,
-          exam_score: formData.exam_score ?? 0,
-          teacher_remark: formData.teacher_remark || formData.comments || '',
+          // continuous_assessment_score: formData.continuous_assessment_score ?? formData.ca_score ?? 0,
+          // take_home_test_score: formData.take_home_test_score ?? formData.take_home_score ?? 0,
+          // practical_score: formData.practical_score ?? 0,
+          // project_score: formData.project_score ?? 0,
+          // note_copying_score: formData.note_copying_score ?? 0,
+          // exam_score: formData.exam_score ?? 0,
+          // teacher_remark: formData.teacher_remark || formData.comments || '',
+          continuous_assessment_score: formData.continuous_assessment_score ?? 0,
+        take_home_test_score: formData.take_home_test_score ?? 0,
+        practical_score: formData.practical_score ?? 0,
+        project_score: formData.project_score ?? 0,
+        note_copying_score: formData.note_copying_score ?? 0,
+        exam_score: formData.exam_score ?? 0,
+        teacher_remark: formData.teacher_remark || '',
         };
       } else if (student.education_level === 'NURSERY') {
         payload = {
@@ -246,76 +363,147 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
     switch (student.education_level) {
       case 'SENIOR_SECONDARY':
         return (
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                Test 1 Score
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.01"
-                value={formData.test1_score || ''}
-                onChange={(e) => handleInputChange('test1_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test1_score ? 'border-red-500' : ''}`}
-                placeholder="0-10"
-              />
-              {errors.test1_score && <p className="text-red-500 text-xs mt-1">{errors.test1_score}</p>}
-            </div>
+    <div>
+      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        Test 1 Score
+      </label>
+      <input
+        type="number"
+        min="0"
+        max="10"
+        step="0.01"
+        value={formData.first_test_score || ''}
+        onChange={(e) => handleInputChange('first_test_score', parseFloat(e.target.value) || 0)}
+        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.first_test_score ? 'border-red-500' : ''}`}
+        placeholder="0-10"
+      />
+      {errors.first_test_score && <p className="text-red-500 text-xs mt-1">{errors.first_test_score}</p>}
+    </div>
+    
+    <div>
+      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        Test 2 Score
+      </label>
+      <input
+        type="number"
+        min="0"
+        max="10"
+        step="0.01"
+        value={formData.second_test_score || ''}
+        onChange={(e) => handleInputChange('second_test_score', parseFloat(e.target.value) || 0)}
+        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.second_test_score ? 'border-red-500' : ''}`}
+        placeholder="0-10"
+      />
+      {errors.second_test_score && <p className="text-red-500 text-xs mt-1">{errors.second_test_score}</p>}
+    </div>
+    
+    <div>
+      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        Test 3 Score
+      </label>
+      <input
+        type="number"
+        min="0"
+        max="10"
+        step="0.01"
+        value={formData.third_test_score || ''}
+        onChange={(e) => handleInputChange('third_test_score', parseFloat(e.target.value) || 0)}
+        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.third_test_score ? 'border-red-500' : ''}`}
+        placeholder="0-10"
+      />
+      {errors.third_test_score && <p className="text-red-500 text-xs mt-1">{errors.third_test_score}</p>}
+    </div>
+    
+    <div>
+      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        Exam Score
+      </label>
+      <input
+        type="number"
+        min="0"
+        max="70"
+        step="0.01"
+        value={formData.exam_score || ''}
+        onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
+        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
+        placeholder="0-70"
+      />
+      {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
+    </div>
+  </div>
+);
+        //   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        //     <div>
+        //       <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        //         Test 1 Score
+        //       </label>
+        //       <input
+        //         type="number"
+        //         min="0"
+        //         max="10"
+        //         step="0.01"
+        //         value={formData.test1_score || ''}
+        //         onChange={(e) => handleInputChange('test1_score', parseFloat(e.target.value) || 0)}
+        //         className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test1_score ? 'border-red-500' : ''}`}
+        //         placeholder="0-10"
+        //       />
+        //       {errors.test1_score && <p className="text-red-500 text-xs mt-1">{errors.test1_score}</p>}
+        //     </div>
             
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                Test 2 Score
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.01"
-                value={formData.test2_score || ''}
-                onChange={(e) => handleInputChange('test2_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test2_score ? 'border-red-500' : ''}`}
-                placeholder="0-10"
-              />
-              {errors.test2_score && <p className="text-red-500 text-xs mt-1">{errors.test2_score}</p>}
-            </div>
+        //     <div>
+        //       <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        //         Test 2 Score
+        //       </label>
+        //       <input
+        //         type="number"
+        //         min="0"
+        //         max="10"
+        //         step="0.01"
+        //         value={formData.test2_score || ''}
+        //         onChange={(e) => handleInputChange('test2_score', parseFloat(e.target.value) || 0)}
+        //         className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test2_score ? 'border-red-500' : ''}`}
+        //         placeholder="0-10"
+        //       />
+        //       {errors.test2_score && <p className="text-red-500 text-xs mt-1">{errors.test2_score}</p>}
+        //     </div>
             
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                Test 3 Score
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.01"
-                value={formData.test3_score || ''}
-                onChange={(e) => handleInputChange('test3_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test3_score ? 'border-red-500' : ''}`}
-                placeholder="0-10"
-              />
-              {errors.test3_score && <p className="text-red-500 text-xs mt-1">{errors.test3_score}</p>}
-            </div>
+        //     <div>
+        //       <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        //         Test 3 Score
+        //       </label>
+        //       <input
+        //         type="number"
+        //         min="0"
+        //         max="10"
+        //         step="0.01"
+        //         value={formData.test3_score || ''}
+        //         onChange={(e) => handleInputChange('test3_score', parseFloat(e.target.value) || 0)}
+        //         className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.test3_score ? 'border-red-500' : ''}`}
+        //         placeholder="0-10"
+        //       />
+        //       {errors.test3_score && <p className="text-red-500 text-xs mt-1">{errors.test3_score}</p>}
+        //     </div>
             
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                Exam Score
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="70"
-                step="0.01"
-                value={formData.exam_score || ''}
-                onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
-                placeholder="0-70"
-              />
-              {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
-            </div>
-          </div>
-        );
+        //     <div>
+        //       <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+        //         Exam Score
+        //       </label>
+        //       <input
+        //         type="number"
+        //         min="0"
+        //         max="70"
+        //         step="0.01"
+        //         value={formData.exam_score || ''}
+        //         onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
+        //         className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
+        //         placeholder="0-70"
+        //       />
+        //       {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
+        //     </div>
+        //   </div>
+        // );
 
       case 'PRIMARY':
       case 'JUNIOR_SECONDARY':

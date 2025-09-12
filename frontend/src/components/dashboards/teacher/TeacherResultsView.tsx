@@ -1,12 +1,13 @@
+// TeacherResults.tsx (Complete)
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
 import ResultService from '@/services/ResultService';
-import ResultRecordingForm from '@/components/dashboards/teacher/ResultRecordingForm';
-import ViewResultModal from '@/components/dashboards/teacher/ViewResultModal';
+import ResultCreateTab from '@/components/dashboards/teacher/ResultCreateTab';
+import useResultActionsManager from '@/components/dashboards/teacher/ResultActionsManager ';
 import { toast } from 'react-toastify';
-import { TeacherAssignment, StudentResult, Student, Subject } from '@/types/types';
+import { TeacherAssignment, StudentResult } from '@/types/types';
 import {
   Plus,
   Edit,
@@ -29,12 +30,10 @@ type EducationLevel =
   | 'SENIOR_SECONDARY'
   | 'UNKNOWN'
   | 'MIXED'
-  | string; // keep flexible for unexpected values
+  | string;
 
 type ResultStatus = 'DRAFT' | 'PUBLISHED' | 'APPROVED' | 'ARCHIVED' | string;
 
-
-// Define a type for table columns to include optional 'sticky'
 type TableColumn = {
   key:
     | 'student'
@@ -60,31 +59,7 @@ type TableColumn = {
   sticky?: 'left' | 'right';
 };
 
-
-// interface ResultRecordingFormProps {
-//   isOpen: boolean;
-//   onClose: () => void;
-//   onResultCreated?: () => void;
-//   onSuccess?: () => void;
-//   editResult?: StudentResult | null;
-//   mode?: 'create' | 'edit';
-// }
-
-interface ResultRecordingFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onResultCreated?: () => void;
-  onSuccess?: () => void;
-  editResult?: StudentResult | null;
-  mode?: 'create' | 'edit';
-  // Check if it expects these:
-  initialStudent?: Student;
-  initialSubject?: Subject;
-initialexamSessionId?: number;
-}
-
-
-const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
+const TeacherResults: React.FC = () => {
   const { user, isLoading } = useAuth();
 
   const [results, setResults] = useState<StudentResult[]>([]);
@@ -95,16 +70,18 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEducationLevel, setFilterEducationLevel] = useState<EducationLevel | 'all'>('all');
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
-  const [selectedResult, setSelectedResult] = useState<StudentResult | null>(null);
-  const [showViewModal, setShowViewModal] = useState(false);
- const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
 
-
+  // Initialize the result actions manager
+  const { 
+    handleEditResult, 
+    handleViewResult, 
+    handleDeleteResult, 
+    ResultModalsComponent,
+  } = useResultActionsManager(loadTeacherData);
 
   // ---- Data loading ----
-  const loadTeacherData = useCallback(async () => {
+  async function loadTeacherData() {
     try {
       setLoading(true);
       setError(null);
@@ -130,7 +107,6 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
         section_id: subject.section_id ?? null,
         student_count: subject.student_count ?? 0,
         periods_per_week: subject.periods_per_week ?? 0,
-        // Add missing properties with fallback/defaults
         teacher: subject.teacher ?? null,
         grade_level: subject.grade_level ?? null,
         section: subject.section ?? null,
@@ -165,12 +141,13 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
           const ca_score = caFromTotalField ?? (caFromSenior > 0 ? caFromSenior : caFromPrimary || 0);
 
           return {
-            id: Number(r.id ?? `${subjectId}-${studentId}-${examSessionId}`),
+            id: r.id ? Number(r.id) : 0,
             student: {
               id: Number(studentId),
               full_name: r.student?.full_name ?? r.student_name ?? '',
               registration_number: r.student?.registration_number ?? r.registration_number ?? '',
               profile_picture: r.student?.profile_picture ?? r.student_profile_picture ?? null,
+              education_level: (r.student?.education_level || 'UNKNOWN') as EducationLevel,
             },
             subject: {
               id: Number(subjectId),
@@ -201,7 +178,6 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
             education_level: (r.education_level || r.student?.education_level || 'UNKNOWN') as EducationLevel,
             grade: r.grade,
             status: (typeof r.status === 'string' ? r.status.toUpperCase() : 'DRAFT') as ResultStatus,
-            // Add missing properties with fallback/defaults
             remarks: r.remarks ?? '',
             created_at: r.created_at ?? '',
             updated_at: r.updated_at ?? '',
@@ -221,66 +197,27 @@ const TeacherResults: React.FC<ResultRecordingFormProps> = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }
 
   useEffect(() => {
     if (user && !isLoading) {
       void loadTeacherData();
     }
-  }, [user, isLoading, loadTeacherData]);
+  }, [user, isLoading]);
 
   // ---- Actions ----
   const handleCreateResult = () => {
-  setSelectedResult(null);
-  setModalMode('create');
-  setShowCreateModal(true);
-};
-
-const handleEditResult = (result: StudentResult) => {
-  console.log('Edit button clicked for result:', result);
-  
-  // Transform the result data to match what the form expects
-  const transformedResult = {
-    ...result,
-    // Flatten nested objects if needed
-    student_id: result.student.id,
-    subject_id: result.subject.id,
-    exam_session_id: result.exam_session.id,
-    // Add any other transformations needed
+    setActiveTab('record');
   };
-  
-  setSelectedResult(transformedResult);
-  setModalMode('edit');
-  setShowCreateModal(true);
-};
-// const handleEditResult = (result: StudentResult) => {
-//   console.log('Edit button clicked for result:', result); // Debug log
-//   setSelectedResult(result);
-//   setModalMode('edit');
-//   setShowCreateModal(true); // This will now trigger the edit modal overlay
-//   // Don't switch tabs for editing - keep user on current tab
-// };
-const handleViewResult = (result: StudentResult) => {
-  setSelectedResult(result);
-  setShowViewModal(true);
-};
 
-const handleCloseModal = () => {
-  setShowCreateModal(false);
-  setShowViewModal(false);
-  setSelectedResult(null);
-  setModalMode('create');
-};
-
-  const handleDeleteResult = async (resultId: number) => {
-    if (!window.confirm('Are you sure you want to delete this result?')) return;
+  const handleResultSuccess = async (): Promise<void> => {
     try {
-      await ResultService.deleteStudentResult(String(resultId));
-      toast.success('Result deleted successfully');
-      await loadTeacherData();
-    } catch (err) {
-      console.error('Error deleting result:', err);
-      toast.error('Failed to delete result');
+      await loadTeacherData(); // Reload the data
+      setActiveTab('results'); // Switch back to results tab
+      toast.success('Result saved successfully');
+    } catch (error) {
+      console.error('Error handling result success:', error);
+      toast.error('Failed to reload data');
     }
   };
 
@@ -421,16 +358,6 @@ const handleCloseModal = () => {
     );
   }
 
-  const handleResultSuccess = async (): Promise<void> => {
-  try {
-    await loadTeacherData(); // Reload the data
-    handleCloseModal(); // Close the modal
-    toast.success('Result saved successfully');
-  } catch (error) {
-    console.error('Error handling result success:', error);
-    toast.error('Failed to reload data');
-  }
-};
   return (
     <TeacherDashboardLayout>
       <div className="p-6 space-y-9">
@@ -441,10 +368,16 @@ const handleCloseModal = () => {
             <p className="text-gray-600 dark:text-gray-400 mt-1">Record and manage student results for your subjects</p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <button onClick={loadTeacherData} className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+            <button 
+              onClick={loadTeacherData} 
+              className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            >
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
             </button>
-            <button onClick={handleCreateResult} className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button 
+              onClick={handleCreateResult} 
+              className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
               <Plus className="w-4 h-4 mr-2" /> Record Result
             </button>
           </div>
@@ -476,74 +409,85 @@ const handleCloseModal = () => {
           </nav>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search students or subjects..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              />
+        {/* Record form tab */}
+        {activeTab === 'record' && (
+          <ResultCreateTab
+            onResultCreated={loadTeacherData}
+            onSuccess={handleResultSuccess}
+            onClose={() => setActiveTab('results')}
+          />
+        )}
+
+        {/* Filters - only show on results tab */}
+        {activeTab === 'results' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search students or subjects..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <select
+                value={filterEducationLevel}
+                onChange={(e) => setFilterEducationLevel(e.target.value as EducationLevel | 'all')}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="all">All Education Levels</option>
+                {availableEducationLevels.map((level) => (
+                  <option key={level} value={level}>
+                    {String(level)
+                      .replace(/_/g, ' ')
+                      .toLowerCase()
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filterSubject}
+                onChange={(e) => setFilterSubject(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="all">All Subjects</option>
+                {availableSubjects.map((subject) => (
+                  <option key={subject.id} value={subject.id}>
+                    {subject.name} ({subject.code})
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              >
+                <option value="all">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="archived">Archived</option>
+              </select>
+
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterSubject('all');
+                  setFilterStatus('all');
+                  setFilterEducationLevel('all');
+                }}
+                className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              >
+                <X className="w-4 h-4 mr-2" /> Clear
+              </button>
             </div>
-
-            <select
-              value={filterEducationLevel}
-              onChange={(e) => setFilterEducationLevel(e.target.value as EducationLevel | 'all')}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            >
-              <option value="all">All Education Levels</option>
-              {availableEducationLevels.map((level) => (
-                <option key={level} value={level}>
-                  {String(level)
-                    .replace(/_/g, ' ')
-                    .toLowerCase()
-                    .replace(/\b\w/g, (l) => l.toUpperCase())}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterSubject}
-              onChange={(e) => setFilterSubject(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            >
-              <option value="all">All Subjects</option>
-              {availableSubjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name} ({subject.code})
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="reviewed">Reviewed</option>
-              <option value="archived">Archived</option>
-            </select>
-
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setFilterSubject('all');
-                setFilterStatus('all');
-                setFilterEducationLevel('all');
-              }}
-              className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            >
-              <X className="w-4 h-4 mr-2" /> Clear
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Results Table */}
         {activeTab === 'results' && (
@@ -573,15 +517,23 @@ const handleCloseModal = () => {
                   <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
                     <div className="flex items-center">
                       {result.student.profile_picture ? (
-                        <img className="h-10 w-10 rounded-full object-cover" src={result.student.profile_picture} alt={result.student.full_name} />
+                        <img 
+                          className="h-10 w-10 rounded-full object-cover" 
+                          src={result.student.profile_picture} 
+                          alt={result.student.full_name} 
+                        />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
                           <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
                         </div>
                       )}
                       <div className="ml-3">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{result.student.full_name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{result.student.registration_number}</div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {result.student.full_name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {result.student.registration_number}
+                        </div>
                       </div>
                     </div>
 
@@ -617,7 +569,7 @@ const handleCloseModal = () => {
 
                     <div className="mt-3 flex items-center space-x-2">
                       <button
-                         onClick={() => handleViewResult(result)}
+                        onClick={() => handleViewResult(result)}
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded"
                         title="View Details"
                       >
@@ -631,7 +583,7 @@ const handleCloseModal = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteResult(result.id)}
+                        onClick={() => handleDeleteResult(result)}
                         className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded"
                         title="Delete Result"
                       >
@@ -897,7 +849,7 @@ const handleCloseModal = () => {
                                             <Edit className="w-4 h-4" />
                                           </button>
                                           <button
-                                            onClick={() => handleDeleteResult(result.id)}
+                                            onClick={() => handleDeleteResult(result)}
                                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded"
                                             title="Delete Result"
                                           >
@@ -925,7 +877,10 @@ const handleCloseModal = () => {
                                   ? 'Try adjusting your search criteria'
                                   : 'Start by recording results for your students'}
                               </p>
-                              <button onClick={handleCreateResult} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                              <button 
+                                onClick={handleCreateResult} 
+                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                              >
                                 <Plus className="w-4 h-4 mr-2" /> Record First Result
                               </button>
                             </div>
@@ -940,86 +895,11 @@ const handleCloseModal = () => {
           </div>
         )}
 
-        {/* Record form tab placeholder (render your form component here) */}
-{/* Record form tab */}
-{activeTab === 'record' && (
-  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-    <ResultRecordingForm
-      isOpen={true} // Always true when this tab is active
-      onClose={() => setActiveTab('results')} // Switch back to results tab
-      onResultCreated={loadTeacherData}
-      onSuccess={handleResultSuccess}
-      editResult={null} // Always null for new records
-      mode="create" // Always create mode for this tab
-    />
-  </div>
-)}
-{showViewModal && selectedResult && (
-  <ViewResultModal
-    result={selectedResult}
-    isOpen={showViewModal}
-    onClose={() => setShowViewModal(false)}
-  />
-)}
-
-{/* Edit modal overlay */}
-{/* {showCreateModal && selectedResult && modalMode === 'edit' && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Result</h2>
-          <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <ResultRecordingForm
-          isOpen={true}
-          onClose={handleCloseModal}
-          onResultCreated={loadTeacherData}
-          onSuccess={handleResultSuccess}
-          editResult={selectedResult}
-          mode="edit" // Only if this prop actually exists in the component
-        />
+        {/* Render the modals from the actions manager */}
+        <ResultModalsComponent />
       </div>
-    </div>
-  </div>
-)} */}
-
-{showCreateModal && selectedResult && modalMode === 'edit' && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Result</h2>
-          <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        
-        {/* Add this debug info temporarily */}
-        <div className="mb-4 p-2 bg-gray-100 text-xs">
-          <strong>Debug - Selected Result:</strong>
-          <pre>{JSON.stringify(selectedResult, null, 2)}</pre>
-        </div>
-        
-        <ResultRecordingForm
-          isOpen={true}
-          onClose={handleCloseModal}
-          onResultCreated={loadTeacherData}
-          onSuccess={handleResultSuccess}
-          editResult={selectedResult}
-          mode="edit"
-        />
-      </div>
-    </div>
-  </div>
-)}
-
-  </div>
     </TeacherDashboardLayout>
   );
 };
 
 export default TeacherResults;
-
