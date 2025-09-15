@@ -1083,6 +1083,78 @@ class LessonViewSet(viewsets.ModelViewSet):
             logger.error(f"Failed to delete lesson '{instance.title}': {e}")
             raise Exception(f"Lesson cannot be deleted: {e}")
 
+    @action(detail=True, methods=["post"])
+    def start_lesson(self, request, pk=None):
+        """Start a lesson (role-restricted)"""
+        lesson = self.get_object()
+
+        if not self.can_modify_lesson(lesson):
+            return Response(
+                {"error": "You can only start lessons you created"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if lesson.start_lesson():
+            serializer = self.get_serializer(lesson)
+            logger.info(f"Lesson '{lesson.title}' started by {request.user}")
+            return Response({"message": "Lesson started successfully", "lesson": serializer.data})
+
+        return Response({"error": "Lesson cannot be started"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"])
+    def complete_lesson(self, request, pk=None):
+        """Complete a lesson (role-restricted)"""
+        lesson = self.get_object()
+
+        if not self.can_modify_lesson(lesson):
+            return Response(
+                {"error": "You can only complete lessons you created"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if lesson.complete_lesson():
+            serializer = self.get_serializer(lesson)
+            logger.info(f"Lesson '{lesson.title}' completed by {request.user}")
+            return Response({"message": "Lesson completed successfully", "lesson": serializer.data})
+
+        return Response({"error": "Lesson cannot be completed"}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"])
+    def cancel_lesson(self, request, pk=None):
+        """Cancel a lesson (role-restricted)"""
+        lesson = self.get_object()
+
+        if not self.can_modify_lesson(lesson):
+            return Response(
+                {"error": "You can only cancel lessons you created"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not lesson.can_cancel():
+            return Response({"error": "Lesson cannot be cancelled"}, status=status.HTTP_400_BAD_REQUEST)
+
+        lesson.status = "cancelled"
+        lesson.save()
+        logger.info(f"Lesson '{lesson.title}' cancelled by {request.user}")
+        serializer = self.get_serializer(lesson)
+        return Response({"message": "Lesson cancelled successfully", "lesson": serializer.data})
+
+    @action(detail=True, methods=["get"])
+    def get_progress(self, request, pk=None):
+        """Get current progress of a lesson"""
+        lesson = self.get_object()
+        progress = lesson.update_progress()
+        serializer = self.get_serializer(lesson)
+        return Response({"progress": progress, "lesson": serializer.data})
+
+    @action(detail=True, methods=["post"])
+    def update_progress(self, request, pk=None):
+        """Manually update lesson progress and return latest state"""
+        lesson = self.get_object()
+        progress = lesson.update_progress()
+        serializer = self.get_serializer(lesson)
+        return Response({"progress": progress, "lesson": serializer.data})
+
     @action(detail=False, methods=["get"])
     def my_lessons(self, request):
         """Get lessons for the current user based on their role"""

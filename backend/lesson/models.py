@@ -293,7 +293,7 @@ class Lesson(models.Model):
     @property
     def enrolled_students_count(self):
         """Get count of enrolled students"""
-        return self.get_enrolled_students().count()
+        return len(self.get_enrolled_students())
     
     def generate_lesson_report(self):
         """Generate a comprehensive lesson report for download"""

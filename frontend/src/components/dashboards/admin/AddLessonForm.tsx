@@ -47,6 +47,7 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
   const [classrooms, setClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string; stream_name?: string; stream_type?: string }>>([]);
   const [subjects, setSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
   const [sections, setSections] = useState<Array<{ id: number; name: string; grade_level_name: string }>>([]);
+  const [availableSections, setAvailableSections] = useState<Array<{ id: number; name: string; grade_level_name: string }>>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
   const [filteredClassrooms, setFilteredClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string; stream_name?: string; stream_type?: string }>>([]);
@@ -99,6 +100,17 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
         setFilteredTeachers(Array.isArray(teachersData?.results) ? teachersData.results : Array.isArray(teachersData) ? teachersData : []);
         setFilteredSubjects(Array.isArray(subjectsData?.results) ? subjectsData.results : Array.isArray(subjectsData) ? subjectsData : []);
         setFilteredClassrooms(Array.isArray(classroomsData?.results) ? classroomsData.results : Array.isArray(classroomsData) ? classroomsData : []);
+        
+        // Initialize available sections from loaded classrooms
+        const sectionMap = new Map<number, { id: number; name: string; grade_level_name: string }>();
+        const cls = Array.isArray(classroomsData?.results) ? classroomsData.results : Array.isArray(classroomsData) ? classroomsData : [];
+        cls.forEach(c => {
+          const sec = c.section;
+          if (sec && !sectionMap.has(sec.id)) {
+            sectionMap.set(sec.id, { id: sec.id, name: sec.name, grade_level_name: sec.grade_level?.name || '' });
+          }
+        });
+        setAvailableSections(Array.from(sectionMap.values()));
       } catch (error) {
         console.error('Error loading dropdown data:', error);
         setError('Failed to load form data. Please make sure you are logged in and try again.');
@@ -121,6 +133,24 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       }
     }
   }, [formData.start_time, formData.end_time]);
+
+  useEffect(() => {
+    // If current classroom is no longer in the filtered list, clear it
+    if (formData.classroom && !filteredClassrooms.some(c => c.id === formData.classroom)) {
+      setFormData(prev => ({ ...prev, classroom: 0 }));
+    }
+
+    // If no classroom selected and exactly one option available, auto-select it
+    if (!formData.classroom) {
+      const list = selectedSection
+        ? filteredClassrooms.filter(c => c.section?.id === selectedSection)
+        : filteredClassrooms;
+
+      if (list.length === 1) {
+        setFormData(prev => ({ ...prev, classroom: list[0].id }));
+      }
+    }
+  }, [filteredClassrooms, selectedSection]);
 
   const handleInputChange = (field: keyof LessonCreateData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -155,6 +185,16 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${teacherId}`);
       setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
       
+      // Derive available sections from these classrooms
+      const sectionMap = new Map<number, { id: number; name: string; grade_level_name: string }>();
+      (Array.isArray(teacherClassrooms) ? teacherClassrooms : []).forEach((c: any) => {
+        const sec = c.section;
+        if (sec && !sectionMap.has(sec.id)) {
+          sectionMap.set(sec.id, { id: sec.id, name: sec.name, grade_level_name: sec.grade_level?.name || '' });
+        }
+      });
+      setAvailableSections(Array.from(sectionMap.values()));
+      
       // Reset dependent fields when teacher changes
       setFormData(prev => ({ ...prev, subject: 0, classroom: 0 }));
       setSelectedSection(0);
@@ -173,6 +213,15 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
         try {
           const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${formData.teacher}`);
           setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
+          // Update available sections based on filtered classrooms
+          const sectionMap = new Map<number, { id: number; name: string; grade_level_name: string }>();
+          (Array.isArray(teacherClassrooms) ? teacherClassrooms : []).forEach((c: any) => {
+            const sec = c.section;
+            if (sec && !sectionMap.has(sec.id)) {
+              sectionMap.set(sec.id, { id: sec.id, name: sec.name, grade_level_name: sec.grade_level?.name || '' });
+            }
+          });
+          setAvailableSections(Array.from(sectionMap.values()));
         } catch (error) {
           console.error('Error loading teacher classrooms:', error);
         }
@@ -188,6 +237,15 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       if (formData.teacher) {
         const teacherClassrooms = await api.get(`/api/lessons/lessons/teacher_classrooms/?teacher_id=${formData.teacher}&subject_id=${subjectId}`);
         setFilteredClassrooms(Array.isArray(teacherClassrooms) ? teacherClassrooms : []);
+        // Update available sections based on filtered classrooms
+        const sectionMap = new Map<number, { id: number; name: string; grade_level_name: string }>();
+        (Array.isArray(teacherClassrooms) ? teacherClassrooms : []).forEach((c: any) => {
+          const sec = c.section;
+          if (sec && !sectionMap.has(sec.id)) {
+            sectionMap.set(sec.id, { id: sec.id, name: sec.name, grade_level_name: sec.grade_level?.name || '' });
+          }
+        });
+        setAvailableSections(Array.from(sectionMap.values()));
       }
       
       // Reset dependent fields when subject changes
@@ -212,15 +270,15 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       const filtered = filteredClassrooms.filter(classroom => classroom.section?.id === sectionId);
       setFilteredClassrooms(filtered);
       
-      // Reset classroom when section changes (but keep teacher and subject)
-      setFormData(prev => ({ ...prev, classroom: 0 }));
+      // Keep current classroom if it still exists in filtered list; otherwise clear
+      if (!filtered.some(c => c.id === formData.classroom)) {
+        setFormData(prev => ({ ...prev, classroom: 0 }));
+      }
     }
   };
 
   const handleClassroomChange = async (classroomId: number) => {
     if (classroomId === 0) {
-      // Reset section selection
-      setSelectedSection(0);
       return;
     }
 
@@ -229,10 +287,7 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
       const selectedClassroom = filteredClassrooms.find(c => c.id === classroomId);
       if (!selectedClassroom) return;
 
-      // The classroom change doesn't need to filter subjects or teachers anymore
-      // since they're already filtered by the teacher selection
-      // Just reset section selection
-      setSelectedSection(0);
+      // Do not reset section here; allow section to remain as selected
     } catch (error) {
       console.error('Error handling classroom change:', error);
     }
@@ -257,8 +312,27 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim() || !formData.teacher || !formData.classroom || !formData.subject || !formData.date || !formData.start_time || !formData.end_time) {
-      setError('Please fill in all required fields');
+    const missingFields: string[] = [];
+    if (!formData.title.trim()) missingFields.push('Lesson Title / Topic');
+    if (!formData.teacher) missingFields.push('Teacher');
+    if (!formData.subject) missingFields.push('Subject');
+    if (!formData.classroom) missingFields.push('Classroom');
+    if (!formData.date) missingFields.push('Date');
+    if (!formData.start_time) missingFields.push('Start Time');
+    if (!formData.end_time) missingFields.push('End Time');
+
+    // Validate time ordering when both provided
+    if (formData.start_time && formData.end_time) {
+      const start = new Date(`2000-01-01T${formData.start_time}`);
+      const end = new Date(`2000-01-01T${formData.end_time}`);
+      if (!(end > start)) {
+        setError('End time must be after start time');
+        return;
+      }
+    }
+    
+    if (missingFields.length > 0) {
+      setError(`Please fill in the following required field(s): ${missingFields.join(', ')}`);
       return;
     }
 
@@ -418,8 +492,9 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
                   </option>
                   {Array.isArray(filteredClassrooms) && filteredClassrooms.map(classroom => (
                     <option key={classroom.id} value={classroom.id}>
-                      {classroom.name} - {classroom.grade_level_name || classroom.section?.grade_level?.name || 'Unknown Grade'}
-                      {classroom.stream_name && ` (${classroom.stream_name})`}
+                      {classroom.name}
+                      {classroom.section?.name ? ` - ${classroom.section.name}` : ''}
+                      {classroom.stream_name ? ` (${classroom.stream_name})` : ''}
                     </option>
                   ))}
                 </select>
@@ -440,12 +515,12 @@ const AddLessonForm: React.FC<AddLessonFormProps> = ({ onClose, onSuccess }) => 
                   value={selectedSection}
                   onChange={(e) => handleSectionChange(parseInt(e.target.value))}
                   className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgSecondary} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  disabled={loadingData || !formData.classroom}
+                  disabled={loadingData || !formData.teacher}
                 >
                   <option value={0}>
-                    {!formData.classroom ? 'Select a classroom first' : 'All Sections'}
+                    {!formData.teacher ? 'Select a teacher first' : 'All Sections'}
                   </option>
-                  {Array.isArray(sections) && sections.map(section => (
+                  {Array.isArray(availableSections) && availableSections.map(section => (
                     <option key={section.id} value={section.id}>
                       {section.name} - {section.grade_level_name}
                     </option>
