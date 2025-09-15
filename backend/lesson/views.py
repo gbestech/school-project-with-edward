@@ -712,8 +712,11 @@ from .serializers import (
     LessonResourceSerializer,
     LessonAssessmentSerializer,
 )
-from teacher.models import Teacher
-from parent.models import ParentProfile as Parent, ParentStudentRelationship as StudentParentRelationship
+from teacher.models import Teacher, TeacherSchedule
+from parent.models import (
+    ParentProfile as Parent,
+    ParentStudentRelationship as StudentParentRelationship,
+)
 from teacher.serializers import TeacherSerializer
 from subject.models import Subject
 from subject.serializers import SubjectSerializer
@@ -842,7 +845,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         # Check Parent role
         try:
             # Align with actual app and model names
-            from parent.models import ParentProfile as Parent, ParentStudentRelationship as StudentParentRelationship
+            from parent.models import (
+                ParentProfile as Parent,
+                ParentStudentRelationship as StudentParentRelationship,
+            )
 
             parent = Parent.objects.get(user=user, is_active=True)
 
@@ -946,6 +952,14 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         # Apply additional filters if request has query_params
         if hasattr(self.request, "query_params"):
+            # Support date_from/date_to as aliases for date__gte/date__lte
+            date_from = self.request.query_params.get("date_from")
+            date_to = self.request.query_params.get("date_to")
+            if date_from:
+                queryset = queryset.filter(date__gte=date_from)
+            if date_to:
+                queryset = queryset.filter(date__lte=date_to)
+
             # Date filtering
             date_filter = self.request.query_params.get("date_filter")
             if date_filter:
@@ -1128,21 +1142,21 @@ class LessonViewSet(viewsets.ModelViewSet):
         }
 
         if role == "teacher":
+            # Use ClassroomTeacherAssignment for teacher assignments
+            from classroom.models import ClassroomTeacherAssignment
+
+            assignments = ClassroomTeacherAssignment.objects.filter(
+                teacher=instance, is_active=True
+            ).select_related("subject", "classroom")
+
+            subjects_taught = sorted({a.subject.name for a in assignments})
+            classrooms_taught = sorted({a.classroom.name for a in assignments})
+
             response_data["teacher_info"] = {
                 "teacher_id": instance.id,
                 "teacher_name": f"{instance.user.first_name} {instance.user.last_name}",
-                "subjects_taught": [
-                    assignment.subject.name
-                    for assignment in instance.classroom_assignments.filter(
-                        is_active=True
-                    )
-                ],
-                "classrooms_taught": [
-                    assignment.classroom.name
-                    for assignment in instance.classroom_assignments.filter(
-                        is_active=True
-                    )
-                ],
+                "subjects_taught": subjects_taught,
+                "classrooms_taught": classrooms_taught,
             }
         elif role == "student":
             response_data["student_info"] = {
@@ -1268,6 +1282,153 @@ class LessonViewSet(viewsets.ModelViewSet):
         return Response({"role": role, "lessons": serializer.data})
 
 
+    # Expose helper endpoints used by the router under /lessons/
+    @action(detail=False, methods=["get"])
+    def teacher_subjects(self, request):
+        """Get subjects for a selected teacher using ClassroomTeacherAssignment"""
+        teacher_id = request.query_params.get("teacher_id")
+        if not teacher_id:
+            return Response({"error": "teacher_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            teacher = Teacher.objects.get(id=teacher_id)
+        except Teacher.DoesNotExist:
+            return Response({"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        from classroom.models import ClassroomTeacherAssignment
+
+        assignments = ClassroomTeacherAssignment.objects.filter(
+            teacher=teacher, is_active=True
+        ).select_related("subject")
+
+        # Collect subjects; expand component subjects for Junior Secondary if needed
+        subjects = {a.subject for a in assignments}
+        filtered_subjects = set()
+        for subj in subjects:
+            try:
+                # If parent subject and has components for JUNIOR_SECONDARY, prefer components
+                if hasattr(subj, "component_subjects") and subj.component_subjects.exists():
+                    components = subj.component_subjects.filter(education_levels=["JUNIOR_SECONDARY"])  # type: ignore[arg-type]
+                    if components.exists():
+                        filtered_subjects.update(list(components))
+                        continue
+                filtered_subjects.add(subj)
+            except Exception:
+                filtered_subjects.add(subj)
+
+        subjects_list = list(filtered_subjects) if filtered_subjects else list(Subject.objects.filter(is_active=True))
+        serializer = SubjectSerializer(subjects_list, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def subject_teachers(self, request):
+        """Get teachers for a selected subject using ClassroomTeacherAssignment"""
+        subject_id = request.query_params.get("subject_id")
+        if not subject_id:
+            return Response({"error": "subject_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            subject = Subject.objects.get(id=subject_id)
+        except Subject.DoesNotExist:
+            return Response({"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        from classroom.models import ClassroomTeacherAssignment
+
+        assignments = ClassroomTeacherAssignment.objects.filter(subject=subject, is_active=True).select_related("teacher__user")
+        teachers = {a.teacher for a in assignments}
+
+        # If component subject, include parent subject teachers as well
+        if getattr(subject, "parent_subject", None):
+            parent_assignments = ClassroomTeacherAssignment.objects.filter(subject=subject.parent_subject, is_active=True)
+            teachers.update({a.teacher for a in parent_assignments})
+
+        if not teachers:
+            teachers = set(Teacher.objects.filter(is_active=True))
+
+        serializer = TeacherSerializer(list(teachers), many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def teacher_classrooms(self, request):
+        """Get classrooms for a selected teacher, optionally filtered by subject"""
+        teacher_id = request.query_params.get("teacher_id")
+        subject_id = request.query_params.get("subject_id")
+        if not teacher_id:
+            return Response({"error": "teacher_id parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            teacher = Teacher.objects.get(id=teacher_id)
+        except Teacher.DoesNotExist:
+            return Response({"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        from classroom.models import ClassroomTeacherAssignment
+
+        assignments = ClassroomTeacherAssignment.objects.filter(teacher=teacher, is_active=True).select_related("classroom")
+        if subject_id:
+            assignments = assignments.filter(subject_id=subject_id)
+
+        classrooms = sorted({a.classroom for a in assignments}, key=lambda c: c.name)
+        if not classrooms:
+            classrooms = list(Classroom.objects.filter(is_active=True))
+
+        serializer = ClassroomSerializer(classrooms, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def classroom_sections(self, request):
+        """Get all classroom sections for filtering"""
+        from classroom.models import Section
+
+        sections = Section.objects.filter(is_active=True)
+        serializer = SectionSerializer(sections, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def subjects_by_level(self, request):
+        """Get subjects filtered by education level, grade level, and stream"""
+        education_level = request.query_params.get("education_level")
+        grade_level_id = request.query_params.get("grade_level_id")
+        stream = request.query_params.get("stream")
+
+        if not education_level:
+            return Response({"error": "education_level parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        subjects = Subject.get_subjects_by_education_level(education_level)
+
+        if grade_level_id:
+            subjects = [s for s in subjects if s.grade_levels.filter(id=grade_level_id).exists()]
+        if stream:
+            subjects = [s for s in subjects if s.compatible_streams.filter(name=stream).exists()]
+
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def download_report(self, request, pk=None):
+        """Download lesson report as JSON"""
+        try:
+            lesson = self.get_object()
+            report_data = lesson.generate_lesson_report()
+            from django.http import JsonResponse
+            response = JsonResponse(report_data, json_dumps_params={"indent": 2})
+            response["Content-Disposition"] = f'attachment; filename="lesson_report_{lesson.id}_{lesson.date}.json"'
+            return response
+        except Lesson.DoesNotExist:
+            return Response({"error": "Lesson not found"}, status=404)
+
+    @action(detail=True, methods=["get"])
+    def enrolled_students(self, request, pk=None):
+        """Get list of students enrolled in the lesson's classroom"""
+        try:
+            lesson = self.get_object()
+            enrolled_students = lesson.get_enrolled_students()
+            from students.serializers import StudentDetailSerializer as StudentSerializer
+            serializer = StudentSerializer(enrolled_students, many=True)
+            return Response({"count": getattr(lesson, "enrolled_students_count", len(enrolled_students)), "students": serializer.data})
+        except Lesson.DoesNotExist:
+            return Response({"error": "Lesson not found"}, status=404)
+
+
 # Updated related ViewSets to support multi-role access
 class LessonAttendanceViewSet(viewsets.ModelViewSet):
     """ViewSet for lesson attendance management with multi-role access"""
@@ -1308,7 +1469,10 @@ class LessonAttendanceViewSet(viewsets.ModelViewSet):
         # Parent - see attendance for their children
         try:
             # Align with actual app and model names
-            from parent.models import ParentProfile as Parent, ParentStudentRelationship as StudentParentRelationship
+            from parent.models import (
+                ParentProfile as Parent,
+                ParentStudentRelationship as StudentParentRelationship,
+            )
 
             parent = Parent.objects.get(user=user, is_active=True)
 
@@ -1358,7 +1522,9 @@ class LessonResourceViewSet(viewsets.ModelViewSet):
             from students.models import Student, StudentEnrollment
 
             student = Student.objects.get(user=user, is_active=True)
-            enrollments = StudentEnrollment.objects.filter(student=student, is_active=True)
+            enrollments = StudentEnrollment.objects.filter(
+                student=student, is_active=True
+            )
             classrooms = [enrollment.classroom for enrollment in enrollments]
             return queryset.filter(lesson__classroom__in=classrooms)
         except Exception:
@@ -1366,7 +1532,10 @@ class LessonResourceViewSet(viewsets.ModelViewSet):
 
         # Parent - see resources for their children's classrooms
         try:
-            from parent.models import ParentProfile as Parent, ParentStudentRelationship as StudentParentRelationship
+            from parent.models import (
+                ParentProfile as Parent,
+                ParentStudentRelationship as StudentParentRelationship,
+            )
             from students.models import StudentEnrollment
 
             parent = Parent.objects.get(user=user)
@@ -1374,9 +1543,14 @@ class LessonResourceViewSet(viewsets.ModelViewSet):
             children = [rel.student for rel in relationships]
             classrooms = []
             for child in children:
-                classrooms.extend([
-                    e.classroom for e in StudentEnrollment.objects.filter(student=child, is_active=True)
-                ])
+                classrooms.extend(
+                    [
+                        e.classroom
+                        for e in StudentEnrollment.objects.filter(
+                            student=child, is_active=True
+                        )
+                    ]
+                )
             return queryset.filter(lesson__classroom__in=classrooms)
         except Exception:
             pass
@@ -1417,7 +1591,9 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
             from students.models import Student, StudentEnrollment
 
             student = Student.objects.get(user=user, is_active=True)
-            enrollments = StudentEnrollment.objects.filter(student=student, is_active=True)
+            enrollments = StudentEnrollment.objects.filter(
+                student=student, is_active=True
+            )
             classrooms = [enrollment.classroom for enrollment in enrollments]
             return queryset.filter(lesson__classroom__in=classrooms)
         except Exception:
@@ -1425,7 +1601,10 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
 
         # Parent - see assessments for their children's classrooms
         try:
-            from parent.models import ParentProfile as Parent, ParentStudentRelationship as StudentParentRelationship
+            from parent.models import (
+                ParentProfile as Parent,
+                ParentStudentRelationship as StudentParentRelationship,
+            )
             from students.models import StudentEnrollment
 
             parent = Parent.objects.get(user=user)
@@ -1433,9 +1612,14 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
             children = [rel.student for rel in relationships]
             classrooms = []
             for child in children:
-                classrooms.extend([
-                    e.classroom for e in StudentEnrollment.objects.filter(student=child, is_active=True)
-                ])
+                classrooms.extend(
+                    [
+                        e.classroom
+                        for e in StudentEnrollment.objects.filter(
+                            student=child, is_active=True
+                        )
+                    ]
+                )
             return queryset.filter(lesson__classroom__in=classrooms)
         except Exception:
             pass

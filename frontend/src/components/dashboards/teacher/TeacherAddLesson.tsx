@@ -43,9 +43,9 @@ const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess 
   const [newMaterial, setNewMaterial] = useState('');
 
   // Data for dropdowns
-  const [teachers, setTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
-  const [classrooms, setClassrooms] = useState<Array<{ id: number; name: string; section: { id: number; name: string; grade_level: { name: string } }; grade_level_name?: string; stream_name?: string; stream_type?: string }>>([]);
-  const [subjects, setSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
+  const [teacherId, setTeacherId] = useState<number | null>(null);
+const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
+const [teacherClassrooms, setTeacherClassrooms] = useState<any[]>([]);
   const [sections, setSections] = useState<Array<{ id: number; name: string; grade_level_name: string }>>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Array<{ id: number; user: { first_name: string; last_name: string; full_name: string } }>>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<Array<{ id: number; name: string; code: string }>>([]);
@@ -67,48 +67,56 @@ const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess 
 
   // Load dropdown data
   useEffect(() => {
-    const loadDropdownData = async () => {
-      try {
-        setLoadingData(true);
-        
-        // Load teachers
-        console.log('Loading teachers...');
-        const teachersData = await lessonAPI.getSubjectTeachers(teacherId);
-        console.log('Teachers data:', teachersData);
-        setTeachers(Array.isArray(teachersData?.results) ? teachersData.results : Array.isArray(teachersData) ? teachersData : []);
+  const fetchTeacherData = async () => {
+    try {
+      const roleInfo = await lessonAPI.getUserRoleInfo();
 
-        // Load classrooms
-        console.log('Loading classrooms...');
-        const classroomsData = await lessonAPI.getTeacherClassrooms(teacherId);
-        console.log('Classrooms data:', classroomsData);
-        setClassrooms(Array.isArray(classroomsData?.results) ? classroomsData.results : Array.isArray(classroomsData) ? classroomsData : []);
+      if (roleInfo.role === "teacher" && roleInfo.teacher_info) {
+        const tid = roleInfo.teacher_info.teacher_id;
+        setTeacherId(tid);
+        // Prefill teacher dropdown with current teacher
+        const teacherOption = roleInfo.teacher_info && roleInfo.teacher_info.teacher_name
+          ? [{ id: tid, user: { first_name: roleInfo.teacher_info.teacher_name.split(' ')[0] || '', last_name: roleInfo.teacher_info.teacher_name.split(' ')[1] || '', full_name: roleInfo.teacher_info.teacher_name } }]
+          : [{ id: tid, user: { first_name: '', last_name: '', full_name: `Teacher ${tid}` } }];
+        setFilteredTeachers(teacherOption);
 
-        // Load subjects
-        console.log('Loading subjects...');
-        const subjectsData = await lessonAPI.getTeacherSubjects(teacherId);
-        console.log('Subjects data:', subjectsData);
-        setSubjects(Array.isArray(subjectsData?.results) ? subjectsData.results : Array.isArray(subjectsData) ? subjectsData : []);
+        // ✅ Fetch only this teacher’s subjects & classrooms
+        const subjects = await lessonAPI.getTeacherSubjects(tid);
+        const classrooms = await lessonAPI.getTeacherClassrooms(tid);
 
-        // Load sections
-        console.log('Loading sections...');
-        const sectionsData = await api.get('/api/lessons/lessons/classroom_sections/');
-        console.log('Sections data:', sectionsData);
-        setSections(Array.isArray(sectionsData) ? sectionsData : []);
+        const subjectsList = subjects?.results || subjects || [];
+        const classroomsList = classrooms?.results || classrooms || [];
 
-        // Initialize filtered arrays with all data
-        setFilteredTeachers(Array.isArray(teachersData?.results) ? teachersData.results : Array.isArray(teachersData) ? teachersData : []);
-        setFilteredSubjects(Array.isArray(subjectsData?.results) ? subjectsData.results : Array.isArray(subjectsData) ? subjectsData : []);
-        setFilteredClassrooms(Array.isArray(classroomsData?.results) ? classroomsData.results : Array.isArray(classroomsData) ? classroomsData : []);
-      } catch (error) {
-        console.error('Error loading dropdown data:', error);
-        setError('Failed to load form data. Please make sure you are logged in and try again.');
-      } finally {
-        setLoadingData(false);
+        setTeacherSubjects(subjectsList);
+        setTeacherClassrooms(classroomsList);
+        setFilteredSubjects(subjectsList);
+        setFilteredClassrooms(classroomsList);
+
+        // Preselect teacher in form to unlock dependent selects
+        setFormData(prev => ({ ...prev, teacher: tid }));
       }
-    };
 
-    loadDropdownData();
-  }, []);
+      // Load sections for filter dropdown
+      try {
+        const sectionData = await api.get('/api/lessons/lessons/classroom_sections/');
+        const mapped = Array.isArray(sectionData)
+          ? sectionData.map((s: any) => ({ id: s.id, name: s.name, grade_level_name: s.grade_level_name || s.grade_level?.name || '' }))
+          : [];
+        setSections(mapped);
+      } catch (e) {
+        // Silent fail; sections are optional
+        setSections([]);
+      }
+
+      setLoadingData(false);
+    } catch (error) {
+      console.error("Error fetching teacher data:", error);
+      setLoadingData(false);
+    }
+  };
+
+  fetchTeacherData();
+}, []);
 
   useEffect(() => {
     if (formData.start_time && formData.end_time) {
@@ -138,8 +146,8 @@ const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess 
   const handleTeacherChange = async (teacherId: number) => {
     if (teacherId === 0) {
       // Reset to all options
-      setFilteredSubjects(subjects);
-      setFilteredClassrooms(classrooms);
+      setFilteredSubjects(teacherSubjects);
+      setFilteredClassrooms(teacherClassrooms);
       // Reset form data when teacher is deselected
       setFormData(prev => ({ ...prev, subject: 0, classroom: 0 }));
       setSelectedSection(0);
@@ -161,8 +169,8 @@ const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess 
     } catch (error) {
       console.error('Error loading teacher dependencies:', error);
       // Fallback to all options on error
-      setFilteredSubjects(subjects);
-      setFilteredClassrooms(classrooms);
+      setFilteredSubjects(teacherSubjects);
+      setFilteredClassrooms(teacherClassrooms);
     }
   };
 
@@ -200,39 +208,23 @@ const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess 
 
   const handleSectionChange = (sectionId: number) => {
     setSelectedSection(sectionId);
-    
-    if (sectionId === 0) {
-      // When deselecting section, restore all teacher's classrooms
-      if (formData.teacher) {
-        handleTeacherChange(formData.teacher);
-      }
-      // Don't reset form data when deselecting section
-    } else {
-      // When selecting a section, filter classrooms to only those in that section
-      const filtered = filteredClassrooms.filter(classroom => classroom.section?.id === sectionId);
-      setFilteredClassrooms(filtered);
-      
-      // Reset classroom when section changes (but keep teacher and subject)
-      setFormData(prev => ({ ...prev, classroom: 0 }));
-    }
+    // Sections should be tied to the selected classroom only; do not refilter classroom lists here.
   };
 
   const handleClassroomChange = async (classroomId: number) => {
     if (classroomId === 0) {
-      // Reset section selection
       setSelectedSection(0);
       return;
     }
 
     try {
-      // Find the selected classroom to get its section
+      // When classroom changes, derive and pin the section from the selected classroom
       const selectedClassroom = filteredClassrooms.find(c => c.id === classroomId);
-      if (!selectedClassroom) return;
-
-      // The classroom change doesn't need to filter subjects or teachers anymore
-      // since they're already filtered by the teacher selection
-      // Just reset section selection
-      setSelectedSection(0);
+      if (selectedClassroom?.section?.id) {
+        setSelectedSection(selectedClassroom.section.id);
+      } else {
+        setSelectedSection(0);
+      }
     } catch (error) {
       console.error('Error handling classroom change:', error);
     }
@@ -266,7 +258,13 @@ const TeacherAddLesson: React.FC<TeacherAddLessonProps> = ({ onClose, onSuccess 
       setLoading(true);
       setError(null);
       
-      await lessonAPI.createLesson(formData);
+      // For non-admin teachers, backend auto-assigns teacher; ignore any zero teacher IDs
+      const payload = { ...formData } as any;
+      if (!payload.teacher) {
+        delete payload.teacher;
+      }
+      const created = await lessonAPI.createLesson(payload);
+      console.log('✅ Lesson created:', created);
       setSuccess(true);
       
       setTimeout(() => {

@@ -12,12 +12,9 @@ django-filter==25.1
 django-rangefilter==0.9.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
-gunicorn==23.0.0
 idna==3.10
 oauthlib==3.3.1
-packaging==25.0
 pillow==11.2.1
-psycopg2-binary==2.9.10
 pycparser==2.22
 PyJWT==2.9.0
 python-decouple==3.8
@@ -27,4 +24,4 @@ requests-oauthlib==2.0.0
 sqlparse==0.5.3
 tzdata==2025.2
 urllib3==2.4.0
-twilio==9.3.0
+gunicorn==21.2.0

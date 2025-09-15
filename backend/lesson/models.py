@@ -240,9 +240,18 @@ class Lesson(models.Model):
         return self.completion_percentage
     
     def set_data_retention_expiry(self):
-        """Set data retention expiry to 24 hours from now"""
-        from datetime import timedelta
-        self.data_retention_expires_at = timezone.now() + timedelta(hours=24)
+        """Set data retention expiry to 12 hours after lesson ends (or now if unknown)"""
+        from datetime import datetime, timedelta
+        expiry_base = timezone.now()
+        # Prefer actual end time on the lesson date when available
+        try:
+            if self.actual_end_time and self.date:
+                naive_dt = datetime.combine(self.date, self.actual_end_time)
+                expiry_base = timezone.make_aware(naive_dt)
+        except Exception:
+            expiry_base = timezone.now()
+
+        self.data_retention_expires_at = expiry_base + timedelta(hours=12)
         self.save()
     
     def cleanup_lesson_data(self):
@@ -251,16 +260,11 @@ class Lesson(models.Model):
         self.lesson_notes = ""
         self.student_feedback = ""
         self.admin_notes = ""
-        self.attendance_count = 0
-        self.participation_score = 0
         self.resources = []
         self.attachments = []
         self.data_retention_expires_at = None
         self.save()
-        
-        # Also clean up related attendance records
-        from .models import LessonAttendance
-        LessonAttendance.objects.filter(lesson=self).delete()
+        # Note: Preserve attendance records and participation metrics
     
     @classmethod
     def cleanup_expired_lessons(cls):

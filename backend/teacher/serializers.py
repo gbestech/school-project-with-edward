@@ -137,16 +137,22 @@ class TeacherSerializer(serializers.ModelSerializer):
     def get_total_students(self, obj):
         """Get total number of students taught by this teacher"""
         from classroom.models import ClassroomTeacherAssignment
+        # Collect unique classrooms to avoid double-counting the same class across multiple subjects
         assignments = ClassroomTeacherAssignment.objects.filter(
-            teacher=obj, 
-            is_active=True
-        ).select_related('classroom')
-        
-        total_students = 0
+            teacher=obj,
+            is_active=True,
+        ).select_related("classroom")
+
+        unique_classroom_ids = set()
+        unique_classrooms = []
         for assignment in assignments:
-            total_students += assignment.classroom.current_enrollment
-        
-        return total_students
+            classroom = assignment.classroom
+            if classroom and classroom.id not in unique_classroom_ids:
+                unique_classroom_ids.add(classroom.id)
+                unique_classrooms.append(classroom)
+
+        # Sum enrollment once per classroom
+        return sum(c.current_enrollment for c in unique_classrooms)
 
     def get_total_subjects(self, obj):
         """Get total number of subjects taught by this teacher"""

@@ -35,9 +35,9 @@ const TeacherSubjectDetail = lazy(() => import('./../pages/teacher/SubjectDetail
 const StudentList = lazy(() => import('./../pages/student/Allstudents').catch(() => ({ default: () => <div>Error loading Student List</div> })));
 const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard').catch(() => ({ default: () => <div>Error loading Parent Dashboard</div> })));
 const NotFound = lazy(() => import('./../pages/NotFound').catch(() => ({ default: () => <div>Page Not Found</div> })));
-const AdminDashboardLayout = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Admin Layout</div> })));
-const DashboardHome = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Dashboard Home</div> })));
-const DashboardMainContent = lazy(() => import('./../components/dashboards/admin/DashboardMainContent'));
+// const AdminDashboardLayout = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Admin Layout</div> })));
+// const DashboardHome = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Dashboard Home</div> })));
+// const DashboardMainContent = lazy(() => import('./../components/dashboards/admin/DashboardMainContent'));
 const AdminClassroomManagement = lazy(() => import('./../pages/admin/AdminClassroomManagement').catch(() => ({ default: () => <div>Error loading Classroom Management</div> })));
 const AdminLessonsManagement = lazy(() => import('./../pages/admin/AdminLessonsManagement').catch(() => ({ default: () => <div>Error loading Lessons Management</div> })));
 const AdminExamsManagement = lazy(() => import('./../pages/admin/AdminExamsManagement').catch(() => ({ default: () => <div>Error loading Exams Management</div> })));

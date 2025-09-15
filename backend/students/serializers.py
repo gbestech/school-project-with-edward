@@ -6,6 +6,276 @@ from django.contrib.auth.models import BaseUserManager, User
 from django.contrib.auth.base_user import AbstractBaseUser
 from utils import generate_unique_username
 from classroom.models import Stream
+from classroom.models import ClassSchedule, ClassroomTeacherAssignment
+
+
+class StudentScheduleSerializer(serializers.ModelSerializer):
+    """Enhanced schedule serializer for students based on teacher serializer patterns"""
+
+    # Subject information
+    subject_name = serializers.CharField(source="subject.name", read_only=True)
+    subject_code = serializers.CharField(source="subject.code", read_only=True)
+    subject_id = serializers.IntegerField(source="subject.id", read_only=True)
+
+    # Teacher information
+    teacher_name = serializers.SerializerMethodField()
+    teacher_id = serializers.IntegerField(source="teacher.id", read_only=True)
+    teacher_qualification = serializers.CharField(
+        source="teacher.qualification", read_only=True
+    )
+
+    # Classroom information
+    classroom_name = serializers.CharField(source="classroom.name", read_only=True)
+    classroom_id = serializers.IntegerField(source="classroom.id", read_only=True)
+    room_number = serializers.CharField(source="classroom.room_number", read_only=True)
+
+    # Section and Grade information
+    section_name = serializers.CharField(
+        source="classroom.section.name", read_only=True
+    )
+    section_id = serializers.IntegerField(source="classroom.section.id", read_only=True)
+    grade_level_name = serializers.CharField(
+        source="classroom.section.grade_level.name", read_only=True
+    )
+    grade_level_id = serializers.IntegerField(
+        source="classroom.section.grade_level.id", read_only=True
+    )
+    education_level = serializers.CharField(
+        source="classroom.section.grade_level.education_level", read_only=True
+    )
+
+    # Stream information (for Senior Secondary students)
+    stream_name = serializers.CharField(source="classroom.stream.name", read_only=True)
+    stream_type = serializers.CharField(
+        source="classroom.stream.stream_type", read_only=True
+    )
+
+    # Academic period information
+    academic_year = serializers.CharField(
+        source="classroom.academic_year.name", read_only=True
+    )
+    term = serializers.CharField(
+        source="classroom.term.get_name_display", read_only=True
+    )
+
+    # Time formatting
+    start_time_display = serializers.SerializerMethodField()
+    end_time_display = serializers.SerializerMethodField()
+    duration = serializers.SerializerMethodField()
+    day_display = serializers.SerializerMethodField()
+
+    # Additional computed fields
+    is_current_period = serializers.SerializerMethodField()
+    periods_per_week = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ClassSchedule
+        fields = [
+            "id",
+            "day_of_week",
+            "start_time",
+            "end_time",
+            # Subject fields
+            "subject_id",
+            "subject_name",
+            "subject_code",
+            # Teacher fields
+            "teacher_id",
+            "teacher_name",
+            "teacher_qualification",
+            # Classroom fields
+            "classroom_id",
+            "classroom_name",
+            "room_number",
+            # Section and Grade fields
+            "section_id",
+            "section_name",
+            "grade_level_id",
+            "grade_level_name",
+            "education_level",
+            # Stream fields (for Senior Secondary)
+            "stream_name",
+            "stream_type",
+            # Academic period fields
+            "academic_year",
+            "term",
+            # Time display fields
+            "start_time_display",
+            "end_time_display",
+            "duration",
+            "day_display",
+            # Computed fields
+            "is_current_period",
+            "periods_per_week",
+            "is_active",
+        ]
+        read_only_fields = ["id", "is_active"]
+
+    def get_start_time_display(self, obj):
+        """Format start time for display"""
+        if obj.start_time:
+            return obj.start_time.strftime("%I:%M %p")
+        return None
+
+    def get_teacher_name(self, obj):
+        user = getattr(getattr(obj, "teacher", None), "user", None)
+        if not user:
+            return ""
+        # Try common attributes safely
+        full = getattr(user, "full_name", None)
+        if full:
+            return full
+        first = getattr(user, "first_name", "") or ""
+        last = getattr(user, "last_name", "") or ""
+        name = f"{first} {last}".strip()
+        return name or getattr(user, "username", "")
+
+    def get_end_time_display(self, obj):
+        """Format end time for display"""
+        if obj.end_time:
+            return obj.end_time.strftime("%I:%M %p")
+        return None
+
+    def get_duration(self, obj):
+        """Calculate class duration in minutes"""
+        if obj.start_time and obj.end_time:
+            from datetime import datetime, timedelta
+
+            start = datetime.combine(datetime.today(), obj.start_time)
+            end = datetime.combine(datetime.today(), obj.end_time)
+            duration = end - start
+            return int(duration.total_seconds() / 60)
+        return None
+
+    def get_day_display(self, obj):
+        """Get full day name"""
+        day_mapping = {
+            "MON": "Monday",
+            "TUE": "Tuesday",
+            "WED": "Wednesday",
+            "THU": "Thursday",
+            "FRI": "Friday",
+            "SAT": "Saturday",
+            "SUN": "Sunday",
+        }
+        return day_mapping.get(obj.day_of_week, obj.day_of_week)
+
+    def get_is_current_period(self, obj):
+        """Check if this is the current period"""
+        from datetime import datetime, time
+
+        now = datetime.now()
+        current_day = now.strftime("%a").upper()
+        current_time = now.time()
+
+        # Map day abbreviations
+        day_map = {
+            "MON": "MONDAY",
+            "TUE": "TUESDAY",
+            "WED": "WEDNESDAY",
+            "THU": "THURSDAY",
+            "FRI": "FRIDAY",
+            "SAT": "SATURDAY",
+            "SUN": "SUNDAY",
+        }
+
+        schedule_day = day_map.get(current_day[:3])
+
+        return (
+            obj.day_of_week == schedule_day
+            and obj.start_time <= current_time <= obj.end_time
+        )
+
+    def get_periods_per_week(self, obj):
+        """Get number of periods per week for this subject"""
+        if (
+            hasattr(obj, "teacher")
+            and hasattr(obj, "classroom")
+            and hasattr(obj, "subject")
+        ):
+            try:
+                assignment = ClassroomTeacherAssignment.objects.get(
+                    teacher=obj.teacher,
+                    classroom=obj.classroom,
+                    subject=obj.subject,
+                    is_active=True,
+                )
+                return assignment.periods_per_week
+            except ClassroomTeacherAssignment.DoesNotExist:
+                return 1
+        return 1
+
+
+class StudentWeeklyScheduleSerializer(serializers.Serializer):
+    """Serializer for student's complete weekly schedule"""
+
+    student_id = serializers.IntegerField()
+    student_name = serializers.CharField()
+    classroom_name = serializers.CharField()
+    education_level = serializers.CharField()
+    academic_year = serializers.CharField()
+    term = serializers.CharField()
+
+    # Weekly schedule grouped by days
+    monday = StudentScheduleSerializer(many=True)
+    tuesday = StudentScheduleSerializer(many=True)
+    wednesday = StudentScheduleSerializer(many=True)
+    thursday = StudentScheduleSerializer(many=True)
+    friday = StudentScheduleSerializer(many=True)
+    saturday = StudentScheduleSerializer(many=True, required=False)
+    sunday = StudentScheduleSerializer(many=True, required=False)
+
+    # Summary statistics
+    total_periods_per_week = serializers.IntegerField()
+    total_subjects = serializers.IntegerField()
+    total_teachers = serializers.IntegerField()
+    average_daily_periods = serializers.FloatField()
+
+
+class StudentDailyScheduleSerializer(serializers.Serializer):
+    """Serializer for student's daily schedule"""
+
+    student_id = serializers.IntegerField()
+    student_name = serializers.CharField()
+    classroom_name = serializers.CharField()
+    date = serializers.DateField()
+    day_of_week = serializers.CharField()
+
+    # Daily periods
+    periods = StudentScheduleSerializer(many=True)
+
+    # Daily statistics
+    total_periods = serializers.IntegerField()
+    current_period = StudentScheduleSerializer(required=False, allow_null=True)
+    next_period = StudentScheduleSerializer(required=False, allow_null=True)
+
+    # Break times (if applicable)
+    break_times = serializers.ListField(child=serializers.DictField(), required=False)
+
+
+class StudentSubjectScheduleSerializer(serializers.Serializer):
+    """Serializer for a specific subject's schedule for a student"""
+
+    student_id = serializers.IntegerField()
+    student_name = serializers.CharField()
+    subject_id = serializers.IntegerField()
+    subject_name = serializers.CharField()
+    subject_code = serializers.CharField()
+
+    # Teacher information
+    teacher_id = serializers.IntegerField()
+    teacher_name = serializers.CharField()
+    teacher_qualification = serializers.CharField()
+
+    # Schedule periods for this subject
+    weekly_periods = StudentScheduleSerializer(many=True)
+
+    # Subject statistics
+    periods_per_week = serializers.IntegerField()
+    total_duration_per_week = serializers.IntegerField()  # in minutes
+
+    # Next class information
+    next_class = StudentScheduleSerializer(required=False, allow_null=True)
 
 
 class StudentDetailSerializer(serializers.ModelSerializer):
@@ -34,10 +304,10 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         queryset=Stream.objects.all(),
         required=False,
         allow_null=True,
-        help_text="Stream for Senior Secondary students"
+        help_text="Stream for Senior Secondary students",
     )
-    stream_name = serializers.CharField(source='stream.name', read_only=True)
-    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
 
     class Meta:
         model = Student
@@ -90,8 +360,9 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         """Returns detailed parent information including contact details and relationship."""
         parent_data = []
         from parent.models import ParentStudentRelationship
+
         relationships = ParentStudentRelationship.objects.filter(student=obj)
-        for rel in relationships.select_related('parent__user'):
+        for rel in relationships.select_related("parent__user"):
             parent_profile = rel.parent
             parent_info = {
                 "id": parent_profile.id,
@@ -131,11 +402,11 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         # Check if student has a profile picture
         if obj.profile_picture:
             return obj.profile_picture
-        
+
         # Fallback to user profile picture if available
         if hasattr(obj.user, "profile_picture") and obj.user.profile_picture:
             return obj.user.profile_picture
-        
+
         # Return null if no profile picture
         return None
 
@@ -143,57 +414,59 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         # Try to get the section PK based on student's class and classroom section
         if obj.classroom:
             from classroom.models import Section, GradeLevel
-            
+
             # Extract section letter from classroom (e.g., "Nursery 1 A" -> "A")
             classroom_parts = obj.classroom.split()
             if len(classroom_parts) >= 2:
                 section_letter = classroom_parts[-1]  # Last part should be the section
-                
+
                 # Map student class to grade level
                 class_to_grade = {
-                    'NURSERY_1': 'Nursery 1',
-                    'NURSERY_2': 'Nursery 2',
-                    'PRE_K': 'Pre-K',
-                    'KINDERGARTEN': 'Kindergarten',
-                    'GRADE_1': 'Primary 1',
-                    'GRADE_2': 'Primary 2',
-                    'GRADE_3': 'Primary 3',
-                    'GRADE_4': 'Primary 4',
-                    'GRADE_5': 'Primary 5',
-                    'GRADE_6': 'Primary 6',
-                    'GRADE_7': 'JSS 1',
-                    'GRADE_8': 'JSS 2',
-                    'GRADE_9': 'JSS 3',
-                    'GRADE_10': 'SS 1',
-                    'GRADE_11': 'SS 2',
-                    'GRADE_12': 'SS 3',
+                    "NURSERY_1": "Nursery 1",
+                    "NURSERY_2": "Nursery 2",
+                    "PRE_K": "Pre-K",
+                    "KINDERGARTEN": "Kindergarten",
+                    "GRADE_1": "Primary 1",
+                    "GRADE_2": "Primary 2",
+                    "GRADE_3": "Primary 3",
+                    "GRADE_4": "Primary 4",
+                    "GRADE_5": "Primary 5",
+                    "GRADE_6": "Primary 6",
+                    "GRADE_7": "JSS 1",
+                    "GRADE_8": "JSS 2",
+                    "GRADE_9": "JSS 3",
+                    "GRADE_10": "SS 1",
+                    "GRADE_11": "SS 2",
+                    "GRADE_12": "SS 3",
                     # Add direct mappings for the actual class names used in database
-                    'SS1': 'SS 1',
-                    'SS2': 'SS 2',
-                    'SS3': 'SS 3',
-                    'SS_1': 'SS 1',
-                    'SS_2': 'SS 2',
-                    'SS_3': 'SS 3',
-                    'JSS1': 'JSS 1',
-                    'JSS2': 'JSS 2',
-                    'JSS3': 'JSS 3',
-                    'JSS_1': 'JSS 1',
-                    'JSS_2': 'JSS 2',
-                    'JSS_3': 'JSS 3',
+                    "SS1": "SS 1",
+                    "SS2": "SS 2",
+                    "SS3": "SS 3",
+                    "SS_1": "SS 1",
+                    "SS_2": "SS 2",
+                    "SS_3": "SS 3",
+                    "JSS1": "JSS 1",
+                    "JSS2": "JSS 2",
+                    "JSS3": "JSS 3",
+                    "JSS_1": "JSS 1",
+                    "JSS_2": "JSS 2",
+                    "JSS_3": "JSS 3",
                     # Add mappings for the actual classroom names used
-                    'PRIMARY_1': 'Primary 1',
-                    'PRIMARY_2': 'Primary 2',
-                    'PRIMARY_3': 'Primary 3',
-                    'PRIMARY_4': 'Primary 4',
-                    'PRIMARY_5': 'Primary 5',
-                    'PRIMARY_6': 'Primary 6',
+                    "PRIMARY_1": "Primary 1",
+                    "PRIMARY_2": "Primary 2",
+                    "PRIMARY_3": "Primary 3",
+                    "PRIMARY_4": "Primary 4",
+                    "PRIMARY_5": "Primary 5",
+                    "PRIMARY_6": "Primary 6",
                 }
-                
+
                 grade_name = class_to_grade.get(obj.student_class)
                 if grade_name:
                     try:
                         grade_level = GradeLevel.objects.get(name=grade_name)
-                        section = Section.objects.get(name=section_letter, grade_level=grade_level)
+                        section = Section.objects.get(
+                            name=section_letter, grade_level=grade_level
+                        )
                         return section.id
                     except (GradeLevel.DoesNotExist, Section.DoesNotExist):
                         return None
@@ -230,7 +503,10 @@ class StudentDetailSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Selected class is not valid for primary level students."
                 )
-            elif education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"] and value not in secondary_classes:
+            elif (
+                education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
+                and value not in secondary_classes
+            ):
                 raise serializers.ValidationError(
                     "Selected class is not valid for secondary level students."
                 )
@@ -289,10 +565,10 @@ class StudentListSerializer(serializers.ModelSerializer):
         queryset=Stream.objects.all(),
         required=False,
         allow_null=True,
-        help_text="Stream for Senior Secondary students"
+        help_text="Stream for Senior Secondary students",
     )
-    stream_name = serializers.CharField(source='stream.name', read_only=True)
-    stream_type = serializers.CharField(source='stream.stream_type', read_only=True)
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
 
     class Meta:
         model = Student
@@ -327,17 +603,18 @@ class StudentListSerializer(serializers.ModelSerializer):
     def get_user(self, obj):
         """Returns user data including date_joined for sorting."""
         return {
-            'id': obj.user.id,
-            'first_name': obj.user.first_name,
-            'last_name': obj.user.last_name,
-            'email': obj.user.email,
-            'date_joined': obj.user.date_joined,
-            'is_active': obj.user.is_active
+            "id": obj.user.id,
+            "first_name": obj.user.first_name,
+            "last_name": obj.user.last_name,
+            "email": obj.user.email,
+            "date_joined": obj.user.date_joined,
+            "is_active": obj.user.is_active,
         }
 
     def get_parent_count(self, obj):
         """Returns the number of registered parents."""
         from parent.models import ParentStudentRelationship
+
         return ParentStudentRelationship.objects.filter(student=obj).count()
 
     def get_profile_picture(self, obj):
@@ -345,11 +622,11 @@ class StudentListSerializer(serializers.ModelSerializer):
         # Check if student has a profile picture
         if obj.profile_picture:
             return obj.profile_picture
-        
+
         # Fallback to user profile picture if available
         if hasattr(obj.user, "profile_picture") and obj.user.profile_picture:
             return obj.user.profile_picture
-        
+
         # Return null if no profile picture
         return None
 
@@ -357,57 +634,59 @@ class StudentListSerializer(serializers.ModelSerializer):
         # Try to get the section PK based on student's class and classroom section
         if obj.classroom:
             from classroom.models import Section, GradeLevel
-            
+
             # Extract section letter from classroom (e.g., "Nursery 1 A" -> "A")
             classroom_parts = obj.classroom.split()
             if len(classroom_parts) >= 2:
                 section_letter = classroom_parts[-1]  # Last part should be the section
-                
+
                 # Map student class to grade level
                 class_to_grade = {
-                    'NURSERY_1': 'Nursery 1',
-                    'NURSERY_2': 'Nursery 2',
-                    'PRE_K': 'Pre-K',
-                    'KINDERGARTEN': 'Kindergarten',
-                    'GRADE_1': 'Primary 1',
-                    'GRADE_2': 'Primary 2',
-                    'GRADE_3': 'Primary 3',
-                    'GRADE_4': 'Primary 4',
-                    'GRADE_5': 'Primary 5',
-                    'GRADE_6': 'Primary 6',
-                    'GRADE_7': 'JSS 1',
-                    'GRADE_8': 'JSS 2',
-                    'GRADE_9': 'JSS 3',
-                    'GRADE_10': 'SS 1',
-                    'GRADE_11': 'SS 2',
-                    'GRADE_12': 'SS 3',
+                    "NURSERY_1": "Nursery 1",
+                    "NURSERY_2": "Nursery 2",
+                    "PRE_K": "Pre-K",
+                    "KINDERGARTEN": "Kindergarten",
+                    "GRADE_1": "Primary 1",
+                    "GRADE_2": "Primary 2",
+                    "GRADE_3": "Primary 3",
+                    "GRADE_4": "Primary 4",
+                    "GRADE_5": "Primary 5",
+                    "GRADE_6": "Primary 6",
+                    "GRADE_7": "JSS 1",
+                    "GRADE_8": "JSS 2",
+                    "GRADE_9": "JSS 3",
+                    "GRADE_10": "SS 1",
+                    "GRADE_11": "SS 2",
+                    "GRADE_12": "SS 3",
                     # Add direct mappings for the actual class names used in database
-                    'SS1': 'SS 1',
-                    'SS2': 'SS 2',
-                    'SS3': 'SS 3',
-                    'SS_1': 'SS 1',
-                    'SS_2': 'SS 2',
-                    'SS_3': 'SS 3',
-                    'JSS1': 'JSS 1',
-                    'JSS2': 'JSS 2',
-                    'JSS3': 'JSS 3',
-                    'JSS_1': 'JSS 1',
-                    'JSS_2': 'JSS 2',
-                    'JSS_3': 'JSS 3',
+                    "SS1": "SS 1",
+                    "SS2": "SS 2",
+                    "SS3": "SS 3",
+                    "SS_1": "SS 1",
+                    "SS_2": "SS 2",
+                    "SS_3": "SS 3",
+                    "JSS1": "JSS 1",
+                    "JSS2": "JSS 2",
+                    "JSS3": "JSS 3",
+                    "JSS_1": "JSS 1",
+                    "JSS_2": "JSS 2",
+                    "JSS_3": "JSS 3",
                     # Add mappings for the actual classroom names used
-                    'PRIMARY_1': 'Primary 1',
-                    'PRIMARY_2': 'Primary 2',
-                    'PRIMARY_3': 'Primary 3',
-                    'PRIMARY_4': 'Primary 4',
-                    'PRIMARY_5': 'Primary 5',
-                    'PRIMARY_6': 'Primary 6',
+                    "PRIMARY_1": "Primary 1",
+                    "PRIMARY_2": "Primary 2",
+                    "PRIMARY_3": "Primary 3",
+                    "PRIMARY_4": "Primary 4",
+                    "PRIMARY_5": "Primary 5",
+                    "PRIMARY_6": "Primary 6",
                 }
-                
+
                 grade_name = class_to_grade.get(obj.student_class)
                 if grade_name:
                     try:
                         grade_level = GradeLevel.objects.get(name=grade_name)
-                        section = Section.objects.get(name=section_letter, grade_level=grade_level)
+                        section = Section.objects.get(
+                            name=section_letter, grade_level=grade_level
+                        )
                         return section.id
                     except (GradeLevel.DoesNotExist, Section.DoesNotExist):
                         return None
@@ -483,8 +762,8 @@ class StudentCreateSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        print('DEBUG validated_data:', validated_data)
-        print('DEBUG profile_picture:', validated_data.get('profile_picture', None))
+        print("DEBUG validated_data:", validated_data)
+        print("DEBUG profile_picture:", validated_data.get("profile_picture", None))
         # Extract profile_picture and registration_number before creating student
         profile_picture = validated_data.pop("profile_picture", None)
         registration_number = validated_data.pop("registration_number", None)
@@ -568,10 +847,10 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             is_active=True,
         )
         student = Student.objects.create(
-            user=student_user, 
-            profile_picture=profile_picture, 
+            user=student_user,
+            profile_picture=profile_picture,
             registration_number=registration_number,
-            **validated_data
+            **validated_data,
         )
 
         print(
@@ -665,16 +944,19 @@ class StudentCreateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         f"{field.replace('_', ' ').title()} is required when creating a new parent."
                     )
-        
+
         # Validate registration number uniqueness
         registration_number = data.get("registration_number")
         if registration_number:
             from utils import generate_unique_username
             from users.models import CustomUser
+
             base_username = generate_unique_username("student", registration_number)
             if CustomUser.objects.filter(username=base_username).exists():
-                raise serializers.ValidationError(f"Student with registration number '{registration_number}' already exists.")
-        
+                raise serializers.ValidationError(
+                    f"Student with registration number '{registration_number}' already exists."
+                )
+
         return data
 
     def validate_student_class(self, value):

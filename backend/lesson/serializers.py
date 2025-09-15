@@ -195,6 +195,7 @@ class LessonCreateSerializer(serializers.Serializer):
     materials_needed = serializers.JSONField(required=False, default=list)
     assessment_criteria = serializers.JSONField(required=False, default=list)
     teacher_notes = serializers.CharField(required=False, allow_blank=True)
+    lesson_notes = serializers.CharField(required=False, allow_blank=True)
     is_recurring = serializers.BooleanField(required=False, default=False)
     recurring_pattern = serializers.CharField(required=False, allow_blank=True, max_length=50)
     requires_special_equipment = serializers.BooleanField(required=False, default=False)

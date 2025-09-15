@@ -116,7 +116,7 @@ export const lessonAPI = {
   async getLessons(filters?: LessonFilters) {
     try {
       console.log('🔍 Fetching lessons with filters:', filters);
-      const response = await api.get('/lessons/', filters);
+      const response = await api.get('/lessons/lessons/', filters);
       console.log('✅ Lessons fetched successfully:', response);
       return response;
     } catch (error) {
@@ -131,7 +131,7 @@ export const lessonAPI = {
   async getMyLessons() {
     try {
       console.log('🔍 Fetching my lessons');
-      const response = await api.get('/lessons/my_lessons/');
+      const response = await api.get('/lessons/lessons/my_lessons/');
       console.log('✅ My lessons fetched successfully:', response);
       return response;
     } catch (error) {
@@ -146,7 +146,7 @@ export const lessonAPI = {
   async getUserRoleInfo(): Promise<UserRoleInfo> {
     try {
       console.log('🔍 Fetching user role info');
-      const response = await api.get('/lessons/role_info/');
+      const response = await api.get('lessons/lessons/role_info/');
       console.log('✅ User role info fetched successfully:', response);
       return response;
     } catch (error) {
@@ -161,7 +161,7 @@ export const lessonAPI = {
   async getLesson(lessonId: number) {
     try {
       console.log(`🔍 Fetching lesson ${lessonId}`);
-      const response = await api.get(`/lessons/${lessonId}/`);
+      const response = await api.get(`/lessons/lessons/${lessonId}/`);
       console.log('✅ Lesson fetched successfully:', response);
       return response;
     } catch (error) {
@@ -177,7 +177,7 @@ export const lessonAPI = {
   async createLesson(lessonData: LessonCreateData) {
     try {
       console.log('📝 Creating new lesson:', lessonData);
-      const response = await api.post('/lessons/', lessonData);
+      const response = await api.post('/lessons/lessons/', lessonData);
       console.log('✅ Lesson created successfully:', response);
       return response;
     } catch (error) {
@@ -192,7 +192,7 @@ export const lessonAPI = {
   async updateLesson(lessonId: number, lessonData: any) {
     try {
       console.log(`📝 Updating lesson ${lessonId}:`, lessonData);
-      const response = await api.put(`/lessons/${lessonId}/`, lessonData);
+      const response = await api.put(`/lessons/lessons/${lessonId}/`, lessonData);
       console.log('✅ Lesson updated successfully:', response);
       return response;
     } catch (error) {
@@ -207,7 +207,7 @@ export const lessonAPI = {
   async deleteLesson(lessonId: number) {
     try {
       console.log(`🗑️ Deleting lesson ${lessonId}`);
-      const response = await api.delete(`/lessons/${lessonId}/`);
+      const response = await api.delete(`/lessons/lessons/${lessonId}/`);
       console.log('✅ Lesson deleted successfully');
       return response;
     } catch (error) {
@@ -224,7 +224,7 @@ export const lessonAPI = {
   async startLesson(lessonId: number) {
     try {
       console.log(`▶️ Starting lesson ${lessonId}`);
-      const response = await api.post(`/lessons/${lessonId}/start_lesson/`, {});
+      const response = await api.post(`/lessons/lessons/${lessonId}/start_lesson/`, {});
       console.log('✅ Lesson started successfully:', response);
       return response;
     } catch (error) {
@@ -239,7 +239,7 @@ export const lessonAPI = {
   async completeLesson(lessonId: number) {
     try {
       console.log(`✅ Completing lesson ${lessonId}`);
-      const response = await api.post(`/lessons/${lessonId}/complete_lesson/`, {});
+      const response = await api.post(`/lessons/lessons/${lessonId}/complete_lesson/`, {});
       console.log('✅ Lesson completed successfully:', response);
       return response;
     } catch (error) {
@@ -254,7 +254,7 @@ export const lessonAPI = {
   async cancelLesson(lessonId: number) {
     try {
       console.log(`Cancelling lesson ${lessonId}`);
-      const response = await api.post(`/lessons/${lessonId}/cancel_lesson/`, {});
+      const response = await api.post(`/lessons/lessons/${lessonId}/cancel_lesson/`, {});
       console.log('Lesson cancelled successfully:', response);
       return response;
     } catch (error) {
@@ -269,7 +269,7 @@ export const lessonAPI = {
   async updateLessonStatus(lessonId: number, statusData: { status: string; actual_start_time?: string; actual_end_time?: string; completion_percentage?: number }) {
     try {
       console.log(`Updating lesson ${lessonId} status:`, statusData);
-      const response = await api.post(`/lessons/${lessonId}/update_status/`, statusData);
+      const response = await api.post(`/lessons/lessons/${lessonId}/update_status/`, statusData);
       console.log('Lesson status updated successfully:', response);
       return response;
     } catch (error) {
@@ -284,7 +284,7 @@ export const lessonAPI = {
   async getLessonProgress(lessonId: number) {
     try {
       console.log(`Getting progress for lesson ${lessonId}`);
-      const response = await api.get(`/lessons/${lessonId}/get_progress/`);
+      const response = await api.get(`/lessons/lessons/${lessonId}/get_progress/`);
       console.log('Lesson progress fetched successfully:', response);
       return response;
     } catch (error) {
@@ -305,7 +305,7 @@ export const lessonAPI = {
       if (endDate) params.end_date = endDate;
       
       console.log('Getting calendar lessons:', params);
-      const response = await api.get('/lessons/calendar/', params);
+      const response = await api.get('/lessons/lessons/calendar/', params);
       console.log('Calendar lessons fetched successfully:', response);
       return response;
     } catch (error) {
@@ -328,7 +328,7 @@ export const lessonAPI = {
       };
       
       console.log('Checking lesson conflicts:', params);
-      const response = await api.get('/lessons/conflicts/', params);
+      const response = await api.get('/lessons/lessons/conflicts/', params);
       console.log('Conflict check completed:', response);
       return response;
     } catch (error) {
@@ -345,7 +345,7 @@ export const lessonAPI = {
   async getLessonStatistics(): Promise<LessonStatistics> {
     try {
       console.log('Fetching lesson statistics');
-      const response = await api.get('/lessons/statistics/');
+      const response = await api.get('/lessons/lessons/statistics/');
       console.log('Lesson statistics fetched successfully:', response);
       return response;
     } catch (error) {
@@ -429,7 +429,7 @@ export const lessonAPI = {
   async getLessonEnrolledStudents(lessonId: number) {
     try {
       console.log(`Getting enrolled students for lesson ${lessonId}`);
-      const response = await api.get(`/lessons/${lessonId}/enrolled_students/`);
+      const response = await api.get(`/lessons/lessons/${lessonId}/enrolled_students/`);
       console.log('Enrolled students fetched successfully:', response);
       return response;
     } catch (error) {
@@ -444,7 +444,7 @@ export const lessonAPI = {
   async downloadLessonReport(lessonId: number) {
     try {
       console.log(`Downloading report for lesson ${lessonId}`);
-      const response = await api.get(`/lessons/${lessonId}/download_report/`);
+      const response = await api.get(`/lessons/lessons/${lessonId}/download_report/`);
       console.log('Lesson report downloaded successfully');
       return response;
     } catch (error) {
@@ -461,7 +461,7 @@ export const lessonAPI = {
   async bulkCreateLessons(lessonsData: any[]) {
     try {
       console.log('Creating bulk lessons:', lessonsData);
-      const response = await api.post('/lessons/bulk_create/', { lessons: lessonsData });
+      const response = await api.post('/lessons/lessons/bulk_create/', { lessons: lessonsData });
       console.log('Bulk lessons created successfully:', response);
       return response;
     } catch (error) {

@@ -28,8 +28,8 @@ import {
   Zap
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-import { Lesson, getLessonAttendance, updateLessonAttendance, getLessonEnrolledStudents, LessonAttendanceRecordBackend, LessonService } from '@/services/LessonService';
-import { lessonAPI } from '@/services/TeacherLessonService';
+import { Lesson, updateLessonAttendance, LessonAttendanceRecordBackend, LessonService } from '@/services/LessonService';
+import { lessonAPI, attendanceAPI } from '@/services/TeacherLessonService';
 import LessonProgressTracker from '../admin/LessonProgressTracker'
 
 interface LessonViewModalProps {
@@ -43,12 +43,25 @@ type TabType = 'overview' | 'details' | 'progress' | 'resources' | 'attendance';
 
 const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, onEdit, onLessonUpdate }) => {
   const { isDarkMode } = useGlobalTheme();
+  const [fullLesson, setFullLesson] = useState<Lesson | null>(null);
+  // Fetch full lesson details to include description, objectives, materials, notes
+  useEffect(() => {
+    (async () => {
+      try {
+        const detailed = await LessonService.getLesson(lesson.id);
+        setFullLesson(detailed);
+      } catch (e) {
+        setFullLesson(null);
+      }
+    })();
+  }, [lesson.id]);
+
+  const displayLesson = fullLesson || lesson;
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [expandedSections, setExpandedSections] = useState<string[]>(['overview']);
   const [attendanceTabLoading, setAttendanceTabLoading] = useState(false);
   const [attendanceTabError, setAttendanceTabError] = useState<string | null>(null);
   const [lessonAttendance, setLessonAttendance] = useState<LessonAttendanceRecordBackend[]>([]);
-  const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
   const [enrolledStudentsCount, setEnrolledStudentsCount] = useState(0);
 
   // Fetch lesson attendance when attendance tab is active
@@ -57,16 +70,25 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
       setAttendanceTabLoading(true);
       setAttendanceTabError(null);
       
-      // Fetch attendance records first
-      lessonAPI.getAttendance({ lesson_id: lesson.id })
-        .then((attendanceData) => {
+      // Use Promise.allSettled to handle both requests properly
+      Promise.allSettled([
+        // Fetch attendance records
+        attendanceAPI.getAttendance({ lesson_id: lesson.id }),
+        // Fetch enrolled students
+        lessonAPI.getLessonEnrolledStudents(lesson.id)
+      ]).then((results) => {
+        // Handle attendance data
+        const attendanceResult = results[0];
+        if (attendanceResult.status === 'fulfilled') {
+          const attendanceData = attendanceResult.value;
           const attendanceRecords = attendanceData.results || attendanceData || [];
           setLessonAttendance(Array.isArray(attendanceRecords) ? attendanceRecords : []);
-        })
-        .catch((error) => {
+        } else {
+          const error = attendanceResult.reason;
           console.error('Error loading lesson attendance:', error);
+          
           // Handle different types of errors
-          if (error.response) {
+          if (error?.response) {
             const status = error.response.status;
             if (status === 404) {
               // No attendance records found - this is normal
@@ -78,26 +100,26 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
             } else {
               setAttendanceTabError('Failed to load attendance data');
             }
-          } else if (error.message && error.message.includes('Network')) {
+          } else if (error?.message && error.message.includes('Network')) {
             setAttendanceTabError('Network error. Please check your connection.');
           } else {
             setAttendanceTabError('Failed to load attendance data');
           }
-        });
+        }
 
-      // Fetch enrolled students (optional - if this fails, we'll just not show the count)
-      getLessonEnrolledStudents(lesson.id)
-        .then((enrolledData) => {
-          setEnrolledStudents(enrolledData.students || []);
+        // Handle enrolled students data
+        const enrolledResult = results[1];
+        if (enrolledResult.status === 'fulfilled') {
+          const enrolledData = enrolledResult.value;
           setEnrolledStudentsCount(enrolledData.count || 0);
-        })
-        .catch((error) => {
-          console.error('Error loading enrolled students:', error);
+        } else {
+          console.error('Error loading enrolled students:', enrolledResult.reason);
           // Don't show error for this - just set defaults
-          setEnrolledStudents([]);
           setEnrolledStudentsCount(0);
-        })
-        .finally(() => setAttendanceTabLoading(false));
+        }
+      }).finally(() => {
+        setAttendanceTabLoading(false);
+      });
     }
   }, [activeTab, lesson.id]);
 
@@ -188,22 +210,22 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                   <BookOpen size={24} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold mb-2">{lesson.title}</h1>
+                  <h1 className="text-3xl font-bold mb-2">{displayLesson.title}</h1>
                   <div className="flex items-center space-x-4 text-white text-opacity-90">
                     <span className="flex items-center space-x-1">
                       <Users size={16} />
-                      <span>{lesson.teacher_name}</span>
+                      <span>{displayLesson.teacher_name}</span>
                     </span>
                     <span>•</span>
-                    <span>{lesson.classroom_name}</span>
-                    {lesson.classroom_stream_name && (
+                    <span>{displayLesson.classroom_name}</span>
+                    {displayLesson.classroom_stream_name && (
                       <>
                         <span>•</span>
-                        <span>{lesson.classroom_stream_name}</span>
+                        <span>{displayLesson.classroom_stream_name}</span>
                       </>
                     )}
                     <span>•</span>
-                    <span>{lesson.subject_name}</span>
+                    <span>{displayLesson.subject_name}</span>
                   </div>
                 </div>
               </div>
@@ -244,20 +266,20 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
             {/* Status and Priority */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(lesson.status)}`}>
-                  {lesson.status_display}
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(displayLesson.status)}`}>
+                  {displayLesson.status_display}
                 </span>
                 <div className={`flex items-center space-x-1 ${getPriorityColor()}`}>
                   {getPriorityIcon()}
                   <span className="text-sm font-medium">
-                    {lesson.is_overdue ? 'Overdue' : lesson.is_today ? 'Today' : lesson.is_upcoming ? 'Upcoming' : 'Scheduled'}
+                    {displayLesson.is_overdue ? 'Overdue' : displayLesson.is_today ? 'Today' : displayLesson.is_upcoming ? 'Upcoming' : 'Scheduled'}
                   </span>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-white text-opacity-80">ID: {lesson.id}</span>
+                <span className="text-sm text-white text-opacity-80">ID: {displayLesson.id}</span>
                 <div className="w-2 h-2 bg-white bg-opacity-60 rounded-full"></div>
-                <span className="text-sm text-white text-opacity-80">{lesson.time_slot}</span>
+                <span className="text-sm text-white text-opacity-80">{displayLesson.time_slot}</span>
               </div>
             </div>
           </div>
@@ -294,7 +316,7 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                     <div className="p-3 bg-blue-100 rounded-full">
                       <Clock size={20} className="text-blue-600" />
                     </div>
-                    <span className="text-2xl font-bold text-blue-600">{lesson.duration_formatted}</span>
+                    <span className="text-2xl font-bold text-blue-600">{displayLesson.duration_formatted}</span>
                   </div>
                   <h3 className="font-semibold mb-1">Duration</h3>
                   <p className={`text-sm ${themeClasses.textSecondary}`}>Total lesson time</p>
@@ -305,7 +327,7 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                     <div className="p-3 bg-green-100 rounded-full">
                       <TrendingUp size={20} className="text-green-600" />
                     </div>
-                    <span className="text-2xl font-bold text-green-600">{lesson.completion_percentage}%</span>
+                    <span className="text-2xl font-bold text-green-600">{displayLesson.completion_percentage}%</span>
                   </div>
                   <h3 className="font-semibold mb-1">Progress</h3>
                   <p className={`text-sm ${themeClasses.textSecondary}`}>Completion rate</p>
@@ -316,7 +338,7 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                     <div className="p-3 bg-purple-100 rounded-full">
                       <Users size={20} className="text-purple-600" />
                     </div>
-                    <span className="text-2xl font-bold text-purple-600">{lesson.attendance_count || 0}</span>
+                    <span className="text-2xl font-bold text-purple-600">{displayLesson.attendance_count || 0}</span>
                   </div>
                   <h3 className="font-semibold mb-1">Attendance</h3>
                   <p className={`text-sm ${themeClasses.textSecondary}`}>Students present</p>
@@ -327,7 +349,7 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                     <div className="p-3 bg-orange-100 rounded-full">
                       <Star size={20} className="text-orange-600" />
                     </div>
-                    <span className="text-2xl font-bold text-orange-600">{lesson.participation_score || 0}%</span>
+                    <span className="text-2xl font-bold text-orange-600">{displayLesson.participation_score || 0}%</span>
                   </div>
                   <h3 className="font-semibold mb-1">Participation</h3>
                   <p className={`text-sm ${themeClasses.textSecondary}`}>Student engagement</p>
@@ -341,7 +363,7 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                   <h3 className="text-lg font-semibold">Description</h3>
                 </div>
                 <p className={`${themeClasses.textSecondary} leading-relaxed`}>
-                  {lesson.description || 'No description provided for this lesson.'}
+                  {displayLesson.description || 'No description provided for this lesson.'}
                 </p>
               </div>
 
@@ -394,13 +416,13 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                 </div>
                 {expandedSections.includes('objectives') && (
                   <div className="space-y-3">
-                                    {Array.isArray(lesson.learning_objectives) && lesson.learning_objectives.length > 0 ? (
-                  lesson.learning_objectives.map((objective, index) => (
-                        <div key={index} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                    {Array.isArray(displayLesson.learning_objectives) && displayLesson.learning_objectives.length > 0 ? (
+                      displayLesson.learning_objectives.map((objective, index) => (
+                        <div key={index} className={`flex items-start space-x-3 p-3 rounded-lg ${isDarkMode ? 'bg-blue-900' : 'bg-blue-50'}`}>
                           <div className="p-1 bg-blue-600 rounded-full mt-1">
                             <CheckCircle size={12} className="text-white" />
                           </div>
-                          <span className="text-blue-800">{objective}</span>
+                          <span className={`${isDarkMode ? 'text-blue-200' : 'text-blue-800'}`}>{objective}</span>
                         </div>
                       ))
                     ) : (
@@ -426,13 +448,13 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                 </div>
                 {expandedSections.includes('concepts') && (
                   <div className="space-y-3">
-                                    {Array.isArray(lesson.key_concepts) && lesson.key_concepts.length > 0 ? (
-                  lesson.key_concepts.map((concept, index) => (
-                        <div key={index} className="flex items-start space-x-3 p-3 bg-yellow-50 rounded-lg">
+                    {Array.isArray(displayLesson.key_concepts) && displayLesson.key_concepts.length > 0 ? (
+                      displayLesson.key_concepts.map((concept, index) => (
+                        <div key={index} className={`flex items-start space-x-3 p-3 rounded-lg ${isDarkMode ? 'bg-yellow-900' : 'bg-yellow-50'}`}>
                           <div className="p-1 bg-yellow-600 rounded-full mt-1">
                             <Zap size={12} className="text-white" />
                           </div>
-                          <span className="text-yellow-800">{concept}</span>
+                          <span className={`${isDarkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>{concept}</span>
                         </div>
                       ))
                     ) : (
@@ -458,13 +480,13 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                 </div>
                 {expandedSections.includes('materials') && (
                   <div className="space-y-3">
-                                    {Array.isArray(lesson.materials_needed) && lesson.materials_needed.length > 0 ? (
-                  lesson.materials_needed.map((material, index) => (
-                        <div key={index} className="flex items-start space-x-3 p-3 bg-orange-50 rounded-lg">
+                    {Array.isArray(displayLesson.materials_needed) && displayLesson.materials_needed.length > 0 ? (
+                      displayLesson.materials_needed.map((material, index) => (
+                        <div key={index} className={`flex items-start space-x-3 p-3 rounded-lg ${isDarkMode ? 'bg-orange-900' : 'bg-orange-50'}`}>
                           <div className="p-1 bg-orange-600 rounded-full mt-1">
                             <Package size={12} className="text-white" />
                           </div>
-                          <span className="text-orange-800">{material}</span>
+                          <span className={`${isDarkMode ? 'text-orange-200' : 'text-orange-800'}`}>{material}</span>
                         </div>
                       ))
                     ) : (
@@ -490,28 +512,28 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                 </div>
                 {expandedSections.includes('notes') && (
                   <div className="space-y-4">
-                    {lesson.teacher_notes && (
+                    {displayLesson.teacher_notes && (
                       <div>
                         <h4 className="font-medium mb-2 text-green-700">Teacher Notes</h4>
-                        <p className={`${themeClasses.textSecondary} bg-green-50 p-3 rounded-lg`}>{lesson.teacher_notes}</p>
+                        <p className={`${themeClasses.textSecondary} p-3 rounded-lg ${isDarkMode ? 'bg-green-900' : 'bg-green-50'}`}>{displayLesson.teacher_notes}</p>
                       </div>
                     )}
-                    {lesson.lesson_notes && (
+                    {displayLesson.lesson_notes && (
                       <div>
                         <h4 className="font-medium mb-2 text-blue-700">Lesson Notes</h4>
-                        <p className={`${themeClasses.textSecondary} bg-blue-50 p-3 rounded-lg`}>{lesson.lesson_notes}</p>
+                        <p className={`${themeClasses.textSecondary} p-3 rounded-lg ${isDarkMode ? 'bg-blue-900' : 'bg-blue-50'}`}>{displayLesson.lesson_notes}</p>
                       </div>
                     )}
-                    {lesson.student_feedback && (
+                    {displayLesson.student_feedback && (
                       <div>
                         <h4 className="font-medium mb-2 text-purple-700">Student Feedback</h4>
-                        <p className={`${themeClasses.textSecondary} bg-purple-50 p-3 rounded-lg`}>{lesson.student_feedback}</p>
+                        <p className={`${themeClasses.textSecondary} p-3 rounded-lg ${isDarkMode ? 'bg-purple-900' : 'bg-purple-50'}`}>{displayLesson.student_feedback}</p>
                       </div>
                     )}
-                    {lesson.admin_notes && (
+                    {displayLesson.admin_notes && (
                       <div>
                         <h4 className="font-medium mb-2 text-gray-700">Admin Notes</h4>
-                        <p className={`${themeClasses.textSecondary} bg-gray-50 p-3 rounded-lg`}>{lesson.admin_notes}</p>
+                        <p className={`${themeClasses.textSecondary} p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>{displayLesson.admin_notes}</p>
                       </div>
                     )}
                   </div>
@@ -623,17 +645,17 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
               <div className={`${themeClasses.bgSecondary} rounded-2xl p-6 border ${themeClasses.border}`}>
                 <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                  <div className={`text-center p-4 rounded-xl ${isDarkMode ? 'bg-gradient-to-br from-blue-900 to-blue-800' : 'bg-gradient-to-br from-blue-50 to-blue-100'}`}>
                     <Trophy size={24} className="text-blue-600 mx-auto mb-2" />
                     <div className="text-xl font-bold text-blue-600">{lesson.completion_percentage}%</div>
                     <div className="text-sm text-blue-700">Success Rate</div>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
+                  <div className={`text-center p-4 rounded-xl ${isDarkMode ? 'bg-gradient-to-br from-green-900 to-green-800' : 'bg-gradient-to-br from-green-50 to-green-100'}`}>
                     <Heart size={24} className="text-green-600 mx-auto mb-2" />
                     <div className="text-xl font-bold text-green-600">{lesson.participation_score || 0}%</div>
                     <div className="text-sm text-green-700">Engagement</div>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
+                  <div className={`text-center p-4 rounded-xl ${isDarkMode ? 'bg-gradient-to-br from-purple-900 to-purple-800' : 'bg-gradient-to-br from-purple-50 to-purple-100'}`}>
                     <Sparkles size={24} className="text-purple-600 mx-auto mb-2" />
                     <div className="text-xl font-bold text-purple-600">{lesson.attendance_count || 0}</div>
                     <div className="text-sm text-purple-700">Attendance</div>
@@ -677,25 +699,25 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
               
               {!attendanceTabLoading && !attendanceTabError && lessonAttendance.length > 0 && (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className={`min-w-full divide-y ${themeClasses.border}`}>
+                    <thead className={themeClasses.bgSecondary}>
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arrival Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary} uppercase tracking-wider`}>Student ID</th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary} uppercase tracking-wider`}>Status</th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary} uppercase tracking-wider`}>Arrival Time</th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary} uppercase tracking-wider`}>Notes</th>
+                        <th className={`px-6 py-3 text-left text-xs font-medium ${themeClasses.textSecondary} uppercase tracking-wider`}>Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className={`${themeClasses.bgCard} divide-y ${themeClasses.border}`}>
                       {lessonAttendance.map((record) => (
                         <tr key={record.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.student}</td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${themeClasses.textPrimary}`}>{record.student}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
                               value={record.status}
                               onChange={(e) => handleAttendanceStatusChange(record, e.target.value)}
-                              className="px-2 py-1 border rounded"
+                              className={`px-2 py-1 border rounded ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary}`}
                               disabled={attendanceTabLoading}
                             >
                               {attendanceStatuses.map((status) => (
@@ -703,8 +725,8 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                               ))}
                             </select>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.arrival_time || '-'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.notes || '-'}</td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${themeClasses.textSecondary}`}>{record.arrival_time || '-'}</td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${themeClasses.textSecondary}`}>{record.notes || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {/* Optionally add delete/edit buttons here */}
                           </td>
@@ -726,21 +748,21 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
                     <Package size={20} className={themeClasses.iconPrimary} />
                     <h3 className="text-lg font-semibold">Lesson Resources</h3>
                   </div>
-                  <button className={`px-4 py-2 rounded-lg ${themeClasses.buttonPrimary} transition-colors`}>
+                  <button className={`flex items-center px-4 py-2 rounded-lg ${themeClasses.buttonPrimary} transition-colors`}>
                     <Download size={16} className="mr-2" />
                     Add Resource
                   </button>
                 </div>
                 <div className="space-y-3">
-                                  {Array.isArray(lesson.resources) && lesson.resources.length > 0 ? (
-                  lesson.resources.map((resource, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                  {Array.isArray(lesson.resources) && lesson.resources.length > 0 ? (
+                    lesson.resources.map((resource, index) => (
+                      <div key={index} className={`flex items-center justify-between p-4 ${themeClasses.bgCard} rounded-lg border ${themeClasses.border}`}>
                         <div className="flex items-center space-x-3">
                           <div className="p-2 bg-blue-100 rounded-lg">
                             <FileText size={16} className="text-blue-600" />
                           </div>
                           <div>
-                            <div className="font-medium">{resource.title || `Resource ${index + 1}`}</div>
+                            <div className={`font-medium ${themeClasses.textPrimary}`}>{resource.title || `Resource ${index + 1}`}</div>
                             <div className={`text-sm ${themeClasses.textSecondary}`}>
                               {resource.type || 'Document'}
                             </div>
@@ -767,15 +789,15 @@ const TeacherLessonView: React.FC<LessonViewModalProps> = ({ lesson, onClose, on
               <div className={`${themeClasses.bgSecondary} rounded-2xl p-6 border ${themeClasses.border}`}>
                 <h3 className="text-lg font-semibold mb-4">Attachments</h3>
                 <div className="space-y-3">
-                                  {Array.isArray(lesson.attachments) && lesson.attachments.length > 0 ? (
-                  lesson.attachments.map((attachment, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                  {Array.isArray(lesson.attachments) && lesson.attachments.length > 0 ? (
+                    lesson.attachments.map((attachment, index) => (
+                      <div key={index} className={`flex items-center justify-between p-4 ${themeClasses.bgCard} rounded-lg border ${themeClasses.border}`}>
                         <div className="flex items-center space-x-3">
                           <div className="p-2 bg-green-100 rounded-lg">
                             <FileText size={16} className="text-green-600" />
                           </div>
                           <div>
-                            <div className="font-medium">{attachment.name || `Attachment ${index + 1}`}</div>
+                            <div className={`font-medium ${themeClasses.textPrimary}`}>{attachment.name || `Attachment ${index + 1}`}</div>
                             <div className={`text-sm ${themeClasses.textSecondary}`}>
                               {attachment.size || 'Unknown size'}
                             </div>

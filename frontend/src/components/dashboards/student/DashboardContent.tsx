@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart2, Users, BookOpen, Calendar, Loader2, Trophy, Clock, AlertCircle, DollarSign, TrendingUp, Bell, CheckCircle, XCircle, Target, GraduationCap, BookA, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, BookOpen, Calendar, Loader2, Trophy, Clock, AlertCircle, DollarSign, TrendingUp, Bell, CheckCircle, XCircle, Target, GraduationCap, BookA, MessageSquare } from 'lucide-react';
 import StudentService from '@/services/StudentService';
 
 interface DashboardData {

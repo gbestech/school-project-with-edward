@@ -86,16 +86,47 @@ class TeacherDashboardService {
       console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - classroomAssignments:', classroomAssignments);
       
       // Calculate total students
-      const totalStudents = classroomAssignments.reduce((sum: number, assignment: any) => sum + (assignment.student_count || 0), 0);
+      // Prefer backend-provided aggregates if available, else compute from assignments
+      const totalStudents = (typeof (teacherResponse as any).total_students === 'number'
+        ? (teacherResponse as any).total_students
+        : (() => {
+            // Avoid double counting: sum unique classrooms' student_count
+            const seen = new Set<number>();
+            let sum = 0;
+            classroomAssignments.forEach((a: any) => {
+              if (a && typeof a.classroom_id === 'number' && !seen.has(a.classroom_id)) {
+                seen.add(a.classroom_id);
+                sum += a.student_count || 0;
+              }
+            });
+            return sum;
+          })());
       console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - totalStudents:', totalStudents);
       
       // Calculate total classes
-      const totalClasses = classroomAssignments.length;
+      // Unique classrooms count
+      const totalClasses = (() => {
+        try {
+          const ids = new Set<number>();
+          classroomAssignments.forEach((a: any) => {
+            if (a && typeof a.classroom_id === 'number') ids.add(a.classroom_id);
+          });
+          return ids.size || classroomAssignments.length;
+        } catch (_e) {
+          return classroomAssignments.length;
+        }
+      })();
       console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - totalClasses:', totalClasses);
       
       // Calculate total subjects
-      const uniqueSubjects = new Set(classroomAssignments.map((assignment: any) => assignment.subject_name));
-      const totalSubjects = uniqueSubjects.size;
+      const totalSubjects = (typeof (teacherResponse as any).total_subjects === 'number'
+        ? (teacherResponse as any).total_subjects
+        : (() => {
+            const uniqueSubjects = new Set(
+              classroomAssignments.map((assignment: any) => assignment.subject_name).filter(Boolean)
+            );
+            return uniqueSubjects.size;
+          })());
       console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - totalSubjects:', totalSubjects);
       
       // Get attendance rate for the current month

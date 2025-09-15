@@ -17,6 +17,7 @@
 
 
 from django.urls import path, include
+from django.urls import re_path
 from rest_framework.routers import DefaultRouter
 from .views import (
     LessonViewSet,
@@ -35,6 +36,44 @@ router.register(r"assessments", LessonAssessmentViewSet, basename="lesson-assess
 urlpatterns = [
     # Include all router URLs
     path("", include(router.urls)),
+    # Fallback direct list/create routes to avoid any router resolution issues
+    path(
+        "lessons/",
+        LessonViewSet.as_view({"get": "list", "post": "create"}),
+        name="lesson-list-direct",
+    ),
+    re_path(r"^lessons$", LessonViewSet.as_view({"get": "list"}), name="lesson-list-direct-noslash"),
+    # Backward-compat direct paths for action endpoints under /api/lessons/
+    path(
+        "teacher_subjects/",
+        LessonViewSet.as_view({"get": "teacher_subjects"}),
+        name="lesson-teacher-subjects-direct",
+    ),
+    path(
+        "subject_teachers/",
+        LessonViewSet.as_view({"get": "subject_teachers"}),
+        name="lesson-subject-teachers-direct",
+    ),
+    path(
+        "teacher_classrooms/",
+        LessonViewSet.as_view({"get": "teacher_classrooms"}),
+        name="lesson-teacher-classrooms-direct",
+    ),
+    path(
+        "classroom_sections/",
+        LessonViewSet.as_view({"get": "classroom_sections"}),
+        name="lesson-classroom-sections-direct",
+    ),
+    path(
+        "subjects_by_level/",
+        LessonViewSet.as_view({"get": "subjects_by_level"}),
+        name="lesson-subjects-by-level-direct",
+    ),
+    path(
+        "role_info/",
+        LessonViewSet.as_view({"get": "role_info"}),
+        name="lesson-role-info-direct",
+    ),
     # Role-based lesson endpoints (these are handled by @action decorators in ViewSet)
     # Available endpoints:
     # === LESSON ENDPOINTS ===

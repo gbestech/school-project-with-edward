@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { 
-  User, Calendar, BookOpen, Trophy, Clock, Bell, CreditCard, MessageSquare, Settings,
-  GraduationCap, Home, Sun, Moon
+  User, Calendar, BookOpen, Trophy, Clock, CreditCard, MessageSquare, Settings,
+  GraduationCap, Home
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import StudentService from '@/services/StudentService';
-import api from '@/services/api';
-import { useSettings } from '@/contexts/SettingsContext';
-import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+// import StudentService from '@/services/StudentService';
+// import api from '@/services/api';
+// import { useSettings } from '@/contexts/SettingsContext';
+// import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import ResultSelection from './ResultSelection';
 import ResultDisplay from './ResultDisplay';
 import PortalLogin from './PortalLogin';
 import DashboardContent from './DashboardContent';
 import ProfileTab from './ProfileTab';
+import StudentLessons from '@/pages/student/StudentLessons';
 
 const StudentPortal = () => {
   const { user } = useAuth();
@@ -100,6 +101,7 @@ const StudentPortal = () => {
           )}
           {activeSection === 'dashboard' && <DashboardContent />}
           {activeSection === 'profile' && <ProfileTab />}
+          {activeSection === 'schedule' && (<StudentLessons/>)}
           {activeSection !== 'portal' && activeSection !== 'dashboard' && activeSection !== 'profile' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 text-center transition-colors duration-300">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
