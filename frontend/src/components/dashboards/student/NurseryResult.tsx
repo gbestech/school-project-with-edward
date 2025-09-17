@@ -14,6 +14,8 @@ type ResultSheetProps = {
     timesPresent?: string;
     // Add other fields as needed
   };
+  subjectResults?: any[];
+  termResults?: any[];
 };
 
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, GraduationCap, Calendar, BookOpen, ArrowRight, Download, Trophy, Eye, X } from 'lucide-react';
-import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
-import ResultService from '../../../services/ResultService';
+import { Search, User, GraduationCap, Calendar, ArrowRight, Trophy, X } from 'lucide-react';
+import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+// import ResultService from '@/services/ResultService';
 import ResultCheckerService from '../../../services/ResultCheckerService';
 import StudentResultDisplay from './StudentResultDisplay';
 import { toast } from 'react-hot-toast';
@@ -38,22 +38,32 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
     class: '',
     resultType: ''
   });
+  const [availableSessions, setAvailableSessions] = useState<Array<{ id: string; name: string }>>([]);
+  const [availableTerms, setAvailableTerms] = useState<Array<{ id: string; name: string }>>([]);
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string; section: string }>>([]);
+
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const [sessions, terms, classes] = await Promise.all([
+          ResultCheckerService.getAvailableSessions(),
+          ResultCheckerService.getAvailableTerms(),
+          ResultCheckerService.getAvailableClasses()
+        ]);
+        setAvailableSessions(sessions || []);
+        setAvailableTerms(terms || []);
+        setAvailableClasses(classes || []);
+      } catch (e) {
+        console.warn('Failed to load selections; falling back to defaults');
+      }
+    };
+    loadFilters();
+  }, []);
   const [currentStep, setCurrentStep] = useState(1);
   const [showResult, setShowResult] = useState(false);
 
-  // Mock data for selections
-  const academicSessions = ['2023/2024', '2024/2025', '2025/2026'];
-  const terms = ['1st Term', '2nd Term', '3rd Term'];
-  const classes = [
-    // Nursery Classes
-    'Nursery 1', 'Nursery 2', 'Nursery 3',
-    // Primary Classes
-    'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
-    // Junior Secondary Classes
-    'JSS 1', 'JSS 2', 'JSS 3',
-    // Senior Secondary Classes
-    'SSS 1', 'SSS 2', 'SSS 3'
-  ];
+  // Label helpers
+  const formatTermName = (t: string) => t;
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -84,7 +94,7 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
 
     try {
       // Search for student by username using the working ResultCheckerService
-      const students = await ResultCheckerService.getStudents({ search: username });
+      const students = await ResultCheckerService.searchStudents({ search: username });
       
       if (students.length === 0) {
         setError('No student found with this username');
@@ -164,7 +174,7 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
               <p className="text-gray-600">Choose the academic year for the result</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {academicSessions.map((session) => (
+              {(availableSessions.length ? availableSessions.map(s => s.name) : ['2023/2024', '2024/2025', '2025/2026']).map((session) => (
                 <button
                   key={session}
                   onClick={() => handleSelection('academicSession', session)}
@@ -189,7 +199,7 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
               <p className="text-gray-600">Choose the term for the result</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {terms.map((term) => (
+              {(availableTerms.length ? availableTerms.map(t => t.name) : ['1st Term','2nd Term','3rd Term']).map((term) => (
                 <button
                   key={term}
                   onClick={() => handleSelection('term', term)}
@@ -199,7 +209,7 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
                       : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-lg font-semibold">{term}</div>
+                  <div className="text-lg font-semibold">{formatTermName(term)}</div>
                 </button>
               ))}
             </div>
@@ -214,7 +224,7 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
               <p className="text-gray-600">Choose the class for the result</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {classes.map((className) => (
+              {(availableClasses.length ? availableClasses.map(c => c.name) : ['Primary 1','JSS 1','SSS 1']).map((className) => (
                 <button
                   key={className}
                   onClick={() => handleSelection('class', className)}

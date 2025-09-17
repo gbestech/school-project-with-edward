@@ -80,6 +80,8 @@ const api = {
     }
   },
 
+  
+
   async post(endpoint: string, data: any) {
     // If endpoint already starts with /api/, remove the /api prefix and use the base URL
     const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;

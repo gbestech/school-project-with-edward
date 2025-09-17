@@ -148,12 +148,18 @@ export interface WeeklySchedule {
 }
 
 export interface ScheduleFilters {
+  // Date range filters
   date?: string;
   week_start?: string;
   week_end?: string;
+  // Subject/Teacher filters (canonical)
   subject?: string;
   teacher?: string;
   include_breaks?: boolean;
+  // Legacy/UI-friendly aliases (optional)
+  show_breaks?: boolean;
+  subject_filter?: string;
+  teacher_filter?: string;
 }
 
 export interface CreateStudentData {

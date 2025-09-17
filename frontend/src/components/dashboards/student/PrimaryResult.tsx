@@ -83,6 +83,8 @@ interface StudentData {
 
 interface ResultSheetProps {
   studentData?: StudentData;
+  subjectResults?: any[];
+  termResults?: any[];
 }
 
 export default function PrimaryResult({ studentData }: ResultSheetProps) {

@@ -1,65 +1,963 @@
+// import api from './api';
+
+// // Base interfaces matching Django models
+// export interface StudentInfo {
+//   id: string;
+//   full_name: string;
+//   username?: string;
+//   student_class: string;
+//   education_level: string;
+//   profile_picture?: string;
+// }
+
+// export interface SubjectInfo {
+//   id: string;
+//   name: string;
+//   code: string;
+// }
+
+// export interface ExamSessionInfo {
+//   id: string;
+//   name: string;
+//   exam_type: string;
+//   term: string;
+//   academic_session: {
+//     id: string;
+//     name: string;
+//   };
+//   start_date: string;
+//   end_date: string;
+//   is_published: boolean;
+//   is_active: boolean;
+// }
+
+// export interface StreamInfo {
+//   id: string;
+//   name: string;
+//   stream_type: string;
+// }
+
+// export interface GradingSystemInfo {
+//   id: string;
+//   name: string;
+//   grading_type: string;
+//   min_score: number;
+//   max_score: number;
+//   pass_mark: number;
+// }
+
+// // Education-level specific result interfaces
+// export interface NurseryResult {
+//   id: string;
+//   student: StudentInfo;
+//   subject: SubjectInfo;
+//   exam_session: ExamSessionInfo;
+//   grading_system: GradingSystemInfo;
+//   max_marks_obtainable: number;
+//   mark_obtained: number;
+//   percentage: number;
+//   grade: string;
+//   grade_point?: number;
+//   is_passed: boolean;
+//   position?: number;
+//   academic_comment?: string;
+//   physical_development?: string;
+//   health?: string;
+//   cleanliness?: string;
+//   general_conduct?: string;
+//   physical_development_comment?: string;
+//   status: string;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// export interface PrimaryResult {
+//   id: string;
+//   student: StudentInfo;
+//   subject: SubjectInfo;
+//   exam_session: ExamSessionInfo;
+//   grading_system: GradingSystemInfo;
+//   continuous_assessment_score: number;
+//   take_home_test_score: number;
+//   practical_score: number;
+//   project_score: number;
+//   appearance_score?: number;
+//   note_copying_score: number;
+//   exam_score: number;
+//   ca_total: number;
+//   total_score: number;
+//   ca_percentage: number;
+//   exam_percentage: number;
+//   total_percentage: number;
+//   grade: string;
+//   grade_point?: number;
+//   is_passed: boolean;
+//   class_average: number;
+//   highest_in_class: number;
+//   lowest_in_class: number;
+//   subject_position?: number;
+//   previous_term_score: number;
+//   cumulative_score: number;
+//   teacher_remark?: string;
+//   status: string;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// export interface JuniorSecondaryResult {
+//   id: string;
+//   student: StudentInfo;
+//   subject: SubjectInfo;
+//   exam_session: ExamSessionInfo;
+//   grading_system: GradingSystemInfo;
+//   continuous_assessment_score: number;
+//   take_home_test_score: number;
+//   practical_score: number;
+//   appearance_score?: number;
+//   project_score: number;
+//   note_copying_score: number;
+//   exam_score: number;
+//   ca_total: number;
+//   total_score: number;
+//   ca_percentage: number;
+//   exam_percentage: number;
+//   total_percentage: number;
+//   grade: string;
+//   grade_point?: number;
+//   is_passed: boolean;
+//   class_average: number;
+//   highest_in_class: number;
+//   lowest_in_class: number;
+//   subject_position?: number;
+//   previous_term_score: number;
+//   cumulative_score: number;
+//   teacher_remark?: string;
+//   status: string;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// export interface SeniorSecondaryResult {
+//   id: string;
+//   student: StudentInfo;
+//   subject: SubjectInfo;
+//   exam_session: ExamSessionInfo;
+//   grading_system: GradingSystemInfo;
+//   stream?: StreamInfo;
+//   first_test_score: number;
+//   second_test_score: number;
+//   third_test_score: number;
+//   exam_score: number;
+//   total_ca_score: number;
+//   total_score: number;
+//   percentage: number;
+//   grade: string;
+//   grade_point?: number;
+//   is_passed: boolean;
+//   class_average: number;
+//   highest_in_class: number;
+//   lowest_in_class: number;
+//   subject_position?: number;
+//   teacher_remark?: string;
+//   status: string;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// export interface SeniorSecondarySessionResult {
+//   id: string;
+//   student: StudentInfo;
+//   subject: SubjectInfo;
+//   academic_session: {
+//     id: string;
+//     name: string;
+//   };
+//   stream?: StreamInfo;
+//   first_term_score: number;
+//   second_term_score: number;
+//   third_term_score: number;
+//   average_for_year: number;
+//   obtainable: number;
+//   obtained: number;
+//   class_average: number;
+//   highest_in_class: number;
+//   lowest_in_class: number;
+//   subject_position?: number;
+//   teacher_remark?: string;
+//   status: string;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// // Unified result type for components
+// export interface StandardResult {
+//   id: string;
+//   student: StudentInfo;
+//   subject: SubjectInfo;
+//   exam_session?: ExamSessionInfo;
+//   academic_session?: { id: string; name: string };
+//   education_level: string;
+//   stream?: StreamInfo;
+  
+//   // Standardized score fields
+//   total_score: number;
+//   percentage: number;
+//   grade: string;
+//   grade_point?: number;
+//   is_passed: boolean;
+//   position?: number;
+  
+//   // Education-level specific breakdown
+//   breakdown?: {
+//     // Senior Secondary
+//     first_test_score?: number;
+//     second_test_score?: number;
+//     third_test_score?: number;
+//     exam_score?: number;
+    
+//     // Primary/Junior Secondary
+//     continuous_assessment_score?: number;
+//     take_home_test_score?: number;
+//     practical_score?: number;
+//     appearance_score?: number;
+//     project_score?: number;
+//     note_copying_score?: number;
+//     ca_total?: number;
+//     ca_percentage?: number;
+//     exam_percentage?: number;
+    
+//     // Nursery
+//     max_marks_obtainable?: number;
+//     mark_obtained?: number;
+//     physical_development?: string;
+//     health?: string;
+//     cleanliness?: string;
+//     general_conduct?: string;
+//   };
+  
+//   // Class statistics
+//   class_average?: number;
+//   highest_in_class?: number;
+//   lowest_in_class?: number;
+  
+//   // Status and metadata
+//   status: string;
+//   remarks?: string;
+//   created_at: string;
+// }
+
+// export interface StudentTermResult {
+//   id: string;
+//   student: StudentInfo;
+//   academic_session: {
+//     id: string;
+//     name: string;
+//     start_date: string;
+//     end_date: string;
+//   };
+//   term: string;
+//   total_subjects: number;
+//   subjects_passed: number;
+//   subjects_failed: number;
+//   total_score: number;
+//   average_score: number;
+//   gpa: number;
+//   class_position?: number;
+//   total_students: number;
+//   status: string;
+//   remarks: string;
+//   next_term_begins?: string;
+//   subject_results: StandardResult[];
+//   comments: ResultComment[];
+//   created_at: string;
+// }
+
+// export interface ResultComment {
+//   id: string;
+//   comment_type: string;
+//   comment: string;
+//   commented_by: {
+//     id: string;
+//     username: string;
+//     full_name: string;
+//   };
+//   created_at: string;
+// }
+
+// export interface ExamSession {
+//   id: string;
+//   name: string;
+//   exam_type: string;
+//   term: string;
+//   academic_session: {
+//     id: string;
+//     name: string;
+//   };
+//   start_date: string;
+//   end_date: string;
+//   result_release_date?: string;
+//   is_published: boolean;
+//   is_active: boolean;
+// }
+
+// export interface FilterParams {
+//   student?: string;
+//   subject?: string;
+//   exam_session?: string;
+//   academic_session?: string;
+//   term?: string;
+//   status?: string;
+//   is_passed?: boolean;
+//   stream?: string;
+//   search?: string;
+//   education_level?: string;
+//   result_type?: 'termly' | 'session';
+// }
+
+// export interface TranscriptOptions {
+//   include_assessment_details?: boolean;
+//   include_comments?: boolean;
+//   include_subject_remarks?: boolean;
+//   format?: 'PDF' | 'HTML' | 'DOCX';
+// }
+
+// class ResultService {
+//   private baseURL = '/api/results';
+//   private cache = new Map<string, {data: any; timestamp: number}>();
+//   private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+//   async getCachedOrFetch(key: string, fetcher: () => Promise<any>) {
+//     const cached = this.cache.get(key);
+//     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+//       return cached.data;
+//     }
+    
+//     const data = await fetcher();
+//     this.cache.set(key, { data, timestamp: Date.now() });
+//     return data;
+//   }
+
+//   // Education level determination helper
+//   private getEducationLevelFromClass(className: string): string {
+//     const classLower = className.toLowerCase();
+//     if (classLower.includes('nursery')) return 'NURSERY';
+//     if (classLower.includes('primary')) return 'PRIMARY';
+//     if (classLower.includes('jss') || classLower.includes('junior')) return 'JUNIOR_SECONDARY';
+//     if (classLower.includes('sss') || classLower.includes('senior')) return 'SENIOR_SECONDARY';
+//     return 'UNKNOWN';
+//   }
+
+//   // Data transformation methods
+//   private transformNurseryResults(results: NurseryResult[]): StandardResult[] {
+//     return results.map(result => ({
+//       id: result.id,
+//       student: result.student,
+//       subject: result.subject,
+//       exam_session: result.exam_session,
+//       education_level: 'NURSERY',
+//       total_score: result.mark_obtained,
+//       percentage: result.percentage,
+//       grade: result.grade,
+//       grade_point: result.grade_point,
+//       is_passed: result.is_passed,
+//       position: result.position,
+//       breakdown: {
+//         max_marks_obtainable: result.max_marks_obtainable,
+//         mark_obtained: result.mark_obtained,
+//         physical_development: result.physical_development,
+//         health: result.health,
+//         cleanliness: result.cleanliness,
+//         general_conduct: result.general_conduct,
+//       },
+//       status: result.status,
+//       remarks: result.academic_comment,
+//       created_at: result.created_at,
+//     }));
+//   }
+
+//   private transformPrimaryResults(results: PrimaryResult[]): StandardResult[] {
+//     return results.map(result => ({
+//       id: result.id,
+//       student: result.student,
+//       subject: result.subject,
+//       exam_session: result.exam_session,
+//       education_level: 'PRIMARY',
+//       total_score: result.total_score,
+//       percentage: result.total_percentage,
+//       grade: result.grade,
+//       grade_point: result.grade_point,
+//       is_passed: result.is_passed,
+//       position: result.subject_position,
+//       breakdown: {
+//         continuous_assessment_score: result.continuous_assessment_score,
+//         take_home_test_score: result.take_home_test_score,
+//         practical_score: result.practical_score,
+//         appearance_score: result.appearance_score,
+//         project_score: result.project_score,
+//         note_copying_score: result.note_copying_score,
+//         exam_score: result.exam_score,
+//         ca_total: result.ca_total,
+//         ca_percentage: result.ca_percentage,
+//         exam_percentage: result.exam_percentage,
+//       },
+//       class_average: result.class_average,
+//       highest_in_class: result.highest_in_class,
+//       lowest_in_class: result.lowest_in_class,
+//       status: result.status,
+//       remarks: result.teacher_remark,
+//       created_at: result.created_at,
+//     }));
+//   }
+
+//   private transformJuniorSecondaryResults(results: JuniorSecondaryResult[]): StandardResult[] {
+//     return results.map(result => ({
+//       id: result.id,
+//       student: result.student,
+//       subject: result.subject,
+//       exam_session: result.exam_session,
+//       education_level: 'JUNIOR_SECONDARY',
+//       total_score: result.total_score,
+//       percentage: result.total_percentage,
+//       grade: result.grade,
+//       grade_point: result.grade_point,
+//       is_passed: result.is_passed,
+//       position: result.subject_position,
+//       breakdown: {
+//         continuous_assessment_score: result.continuous_assessment_score,
+//         take_home_test_score: result.take_home_test_score,
+//         practical_score: result.practical_score,
+//         appearance_score: result.appearance_score,
+//         project_score: result.project_score,
+//         note_copying_score: result.note_copying_score,
+//         exam_score: result.exam_score,
+//         ca_total: result.ca_total,
+//         ca_percentage: result.ca_percentage,
+//         exam_percentage: result.exam_percentage,
+//       },
+//       class_average: result.class_average,
+//       highest_in_class: result.highest_in_class,
+//       lowest_in_class: result.lowest_in_class,
+//       status: result.status,
+//       remarks: result.teacher_remark,
+//       created_at: result.created_at,
+//     }));
+//   }
+
+//   private transformSeniorSecondaryResults(results: SeniorSecondaryResult[]): StandardResult[] {
+//     return results.map(result => ({
+//       id: result.id,
+//       student: result.student,
+//       subject: result.subject,
+//       exam_session: result.exam_session,
+//       education_level: 'SENIOR_SECONDARY',
+//       stream: result.stream,
+//       total_score: result.total_score,
+//       percentage: result.percentage,
+//       grade: result.grade,
+//       grade_point: result.grade_point,
+//       is_passed: result.is_passed,
+//       position: result.subject_position,
+//       breakdown: {
+//         first_test_score: result.first_test_score,
+//         second_test_score: result.second_test_score,
+//         third_test_score: result.third_test_score,
+//         exam_score: result.exam_score,
+//       },
+//       class_average: result.class_average,
+//       highest_in_class: result.highest_in_class,
+//       lowest_in_class: result.lowest_in_class,
+//       status: result.status,
+//       remarks: result.teacher_remark,
+//       created_at: result.created_at,
+//     }));
+//   }
+
+//   private transformSeniorSessionResults(results: SeniorSecondarySessionResult[]): StandardResult[] {
+//     return results.map(result => ({
+//       id: result.id,
+//       student: result.student,
+//       subject: result.subject,
+//       academic_session: result.academic_session,
+//       education_level: 'SENIOR_SECONDARY',
+//       stream: result.stream,
+//       total_score: result.obtained,
+//       percentage: result.average_for_year,
+//       grade: 'N/A', // Session results might not have grades
+//       is_passed: result.average_for_year >= 40, // Assuming 40% pass mark
+//       position: result.subject_position,
+//       class_average: result.class_average,
+//       highest_in_class: result.highest_in_class,
+//       lowest_in_class: result.lowest_in_class,
+//       status: result.status,
+//       remarks: result.teacher_remark,
+//       created_at: result.created_at,
+//     }));
+//   }
+
+//   // Core API methods - education level specific
+//   async getNurseryResults(params?: FilterParams): Promise<NurseryResult[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/nursery-results/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching nursery results:', error);
+//       return [];
+//     }
+//   }
+
+//   async getPrimaryResults(params?: FilterParams): Promise<PrimaryResult[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/primary-results/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching primary results:', error);
+//       return [];
+//     }
+//   }
+
+//   async getJuniorSecondaryResults(params?: FilterParams): Promise<JuniorSecondaryResult[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/junior-secondary-results/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching junior secondary results:', error);
+//       return [];
+//     }
+//   }
+
+//   async getSeniorSecondaryResults(params?: FilterParams): Promise<SeniorSecondaryResult[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/senior-secondary-results/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching senior secondary results:', error);
+//       return [];
+//     }
+//   }
+
+//   async getSeniorSecondarySessionResults(params?: FilterParams): Promise<SeniorSecondarySessionResult[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/senior-secondary-session-results/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching senior secondary session results:', error);
+//       return [];
+//     }
+//   }
+
+//   // Unified method that routes to appropriate endpoint
+//   async getStudentResults(params: FilterParams): Promise<StandardResult[]> {
+//     const { education_level, result_type = 'termly' } = params;
+
+//     if (!education_level) {
+//       throw new Error('education_level is required');
+//     }
+
+//     try {
+//       switch (education_level.toUpperCase()) {
+//         case 'NURSERY':
+//           const nurseryResults = await this.getNurseryResults(params);
+//           return this.transformNurseryResults(nurseryResults);
+        
+//         case 'PRIMARY':
+//           const primaryResults = await this.getPrimaryResults(params);
+//           return this.transformPrimaryResults(primaryResults);
+        
+//         case 'JUNIOR_SECONDARY':
+//           const juniorResults = await this.getJuniorSecondaryResults(params);
+//           return this.transformJuniorSecondaryResults(juniorResults);
+        
+//         case 'SENIOR_SECONDARY':
+//           if (result_type === 'session') {
+//             const sessionResults = await this.getSeniorSecondarySessionResults(params);
+//             return this.transformSeniorSessionResults(sessionResults);
+//           } else {
+//             const seniorResults = await this.getSeniorSecondaryResults(params);
+//             return this.transformSeniorSecondaryResults(seniorResults);
+//           }
+        
+//         default:
+//           throw new Error(`Unsupported education level: ${education_level}`);
+//       }
+//     } catch (error) {
+//       console.error('Error in getStudentResults:', error);
+//       throw error;
+//     }
+//   }
+
+//   // Convenience methods
+//   async getResultsByStudent(studentId: string, educationLevel: string): Promise<StandardResult[]> {
+//     return this.getStudentResults({ 
+//       student: studentId, 
+//       education_level: educationLevel 
+//     });
+//   }
+
+//   async getResultsByExamSession(examSessionId: string, educationLevel: string): Promise<StandardResult[]> {
+//     return this.getStudentResults({ 
+//       exam_session: examSessionId, 
+//       education_level: educationLevel 
+//     });
+//   }
+
+//   // Term results
+//   async getTermResults(params?: FilterParams) {
+//     try {
+//       const response = await api.get(`${this.baseURL}/student-term-results/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching term results:', error);
+//       return [];
+//     }
+//   }
+
+//   async getDetailedTermResult(termResultId: string): Promise<StudentTermResult> {
+//     return api.get(`${this.baseURL}/student-term-results/${termResultId}/detailed/`);
+//   }
+
+//   async getTermResultsByStudent(studentId: string): Promise<StudentTermResult[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/student-term-results/by_student/?student_id=${studentId}`);
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching term results by student:', error);
+//       return [];
+//     }
+//   }
+
+//   // Exam sessions
+//   async getExamSessions(params?: FilterParams): Promise<ExamSession[]> {
+//     try {
+//       const response = await api.get(`${this.baseURL}/exam-sessions/`, { params });
+//       return Array.isArray(response) ? response : (response?.results || []);
+//     } catch (error) {
+//       console.error('Error fetching exam sessions:', error);
+//       return [];
+//     }
+//   }
+
+//   // CRUD operations
+//   async createStudentResult(data: any, educationLevel: string) {
+//     const endpoints = {
+//       'NURSERY': `${this.baseURL}/nursery-results/`,
+//       'PRIMARY': `${this.baseURL}/primary-results/`,
+//       'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary-results/`,
+//       'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary-results/`,
+//     };
+    
+//     const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+//     if (!endpoint) {
+//       throw new Error(`Unsupported education level: ${educationLevel}`);
+//     }
+    
+//     return api.post(endpoint, data);
+//   }
+
+//   async updateStudentResult(resultId: string, data: any, educationLevel: string) {
+//     const endpoints = {
+//       'NURSERY': `${this.baseURL}/nursery-results/${resultId}/`,
+//       'PRIMARY': `${this.baseURL}/primary-results/${resultId}/`,
+//       'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary-results/${resultId}/`,
+//       'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary-results/${resultId}/`,
+//     };
+    
+//     const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+//     if (!endpoint) {
+//       throw new Error(`Unsupported education level: ${educationLevel}`);
+//     }
+    
+//     return api.put(endpoint, data);
+//   }
+
+//   async deleteStudentResult(resultId: string, educationLevel: string) {
+//     const endpoints = {
+//       'NURSERY': `${this.baseURL}/nursery-results/${resultId}/`,
+//       'PRIMARY': `${this.baseURL}/primary-results/${resultId}/`,
+//       'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary-results/${resultId}/`,
+//       'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary-results/${resultId}/`,
+//     };
+    
+//     const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+//     if (!endpoint) {
+//       throw new Error(`Unsupported education level: ${educationLevel}`);
+//     }
+    
+//     return api.delete(endpoint);
+//   }
+
+//   // Additional utility methods
+//   async generateTranscript(studentId: string, options?: TranscriptOptions) {
+//     return api.post(`${this.baseURL}/transcripts/generate/`, {
+//       student_id: studentId,
+//       ...options
+//     });
+//   }
+
+//   async verifyResult(resultId: string, verificationCode: string) {
+//     return api.post(`${this.baseURL}/verify/`, {
+//       result_id: resultId,
+//       code: verificationCode
+//     });
+//   }
+
+//   async getAvailableStreams(classLevel?: string) {
+//     return api.get('/api/academic/streams/', { class_level: classLevel });
+//   }
+// }
+
+// export default new ResultService();
+
 import api from './api';
 
-export interface SubjectResult {
+// Base interfaces matching Django models
+export interface StudentInfo {
   id: string;
-  subject: {
+  full_name: string;
+  username?: string;
+  student_class: string;
+  education_level: string;
+  profile_picture?: string;
+}
+
+export interface SubjectInfo {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ExamSessionInfo {
+  id: string;
+  name: string;
+  exam_type: string;
+  term: string;
+  academic_session: {
     id: string;
     name: string;
-    code: string;
   };
-  exam_session: {
-    id: string;
-    name: string;
-    exam_type: string;
-    term: string;
-  };
-  // Stream support for Senior Secondary
-  stream?: {
-    id: string;
-    name: string;
-    stream_type: string;
-  } | null;
-  stream_name?: string;
-  stream_type?: string;
-  ca_score: number;
+  start_date: string;
+  end_date: string;
+  is_published: boolean;
+  is_active: boolean;
+}
+
+export interface StreamInfo {
+  id: string;
+  name: string;
+  stream_type: string;
+}
+
+export interface GradingSystemInfo {
+  id: string;
+  name: string;
+  grading_type: string;
+  min_score: number;
+  max_score: number;
+  pass_mark: number;
+}
+
+// Education-level specific result interfaces
+export interface NurseryResult {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  max_marks_obtainable: number;
+  mark_obtained: number;
+  percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  position?: number;
+  academic_comment?: string;
+  physical_development?: string;
+  health?: string;
+  cleanliness?: string;
+  general_conduct?: string;
+  physical_development_comment?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PrimaryResult {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  project_score: number;
+  appearance_score?: number;
+  note_copying_score: number;
   exam_score: number;
+  ca_total: number;
+  total_score: number;
+  ca_percentage: number;
+  exam_percentage: number;
+  total_percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  previous_term_score: number;
+  cumulative_score: number;
+  teacher_remark?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JuniorSecondaryResult {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  appearance_score?: number;
+  project_score: number;
+  note_copying_score: number;
+  exam_score: number;
+  ca_total: number;
+  total_score: number;
+  ca_percentage: number;
+  exam_percentage: number;
+  total_percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  previous_term_score: number;
+  cumulative_score: number;
+  teacher_remark?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SeniorSecondaryResult {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  stream?: StreamInfo;
+  first_test_score: number;
+  second_test_score: number;
+  third_test_score: number;
+  exam_score: number;
+  total_ca_score: number;
   total_score: number;
   percentage: number;
   grade: string;
-  grade_point: number;
+  grade_point?: number;
   is_passed: boolean;
-  position: number | null;
-  remarks: string;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  teacher_remark?: string;
   status: string;
-  assessment_scores: AssessmentScore[];
   created_at: string;
+  updated_at: string;
 }
 
-export interface AssessmentScore {
+export interface SeniorSecondarySessionResult {
   id: string;
-  assessment_type: {
+  student: StudentInfo;
+  subject: SubjectInfo;
+  academic_session: {
     id: string;
     name: string;
-    code: string;
-    weight_percentage: number;
   };
-  score: number;
-  max_score: number;
+  stream?: StreamInfo;
+  first_term_score: number;
+  second_term_score: number;
+  third_term_score: number;
+  average_for_year: number;
+  obtainable: number;
+  obtained: number;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  teacher_remark?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Unified result type for components
+export interface StandardResult {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session?: ExamSessionInfo;
+  academic_session?: { id: string; name: string };
+  education_level: string;
+  stream?: StreamInfo;
+  
+  // Standardized score fields
+  total_score: number;
   percentage: number;
-  remarks: string;
-  date_assessed: string;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  position?: number;
+  
+  // Education-level specific breakdown
+  breakdown?: {
+    // Senior Secondary
+    first_test_score?: number;
+    second_test_score?: number;
+    third_test_score?: number;
+    exam_score?: number;
+    
+    // Primary/Junior Secondary
+    continuous_assessment_score?: number;
+    take_home_test_score?: number;
+    practical_score?: number;
+    appearance_score?: number;
+    project_score?: number;
+    note_copying_score?: number;
+    ca_total?: number;
+    ca_percentage?: number;
+    exam_percentage?: number;
+    
+    // Nursery
+    max_marks_obtainable?: number;
+    mark_obtained?: number;
+    physical_development?: string;
+    health?: string;
+    cleanliness?: string;
+    general_conduct?: string;
+  };
+  
+  // Class statistics
+  class_average?: number;
+  highest_in_class?: number;
+  lowest_in_class?: number;
+  
+  // Status and metadata
+  status: string;
+  remarks?: string;
+  created_at: string;
 }
 
 export interface StudentTermResult {
   id: string;
-  student: {
-    id: string;
-    full_name: string;
-    username: string;
-    student_class: string;
-    education_level: string;
-    profile_picture?: string;
-  };
+  student: StudentInfo;
   academic_session: {
     id: string;
     name: string;
@@ -73,12 +971,12 @@ export interface StudentTermResult {
   total_score: number;
   average_score: number;
   gpa: number;
-  class_position: number | null;
+  class_position?: number;
   total_students: number;
   status: string;
   remarks: string;
   next_term_begins?: string;
-  subject_results: SubjectResult[];
+  subject_results: StandardResult[];
   comments: ResultComment[];
   created_at: string;
 }
@@ -111,442 +1009,442 @@ export interface ExamSession {
   is_active: boolean;
 }
 
-export interface ClassStatistics {
-  total_students: number;
-  average_score: number;
-  highest_score: number;
-  lowest_score: number;
-  passed_count: number;
-  failed_count: number;
+export interface FilterParams {
+  student?: string;
+  subject?: string;
+  exam_session?: string;
+  academic_session?: string;
+  term?: string;
+  status?: string;
+  is_passed?: boolean;
+  stream?: string;
+  search?: string;
+  education_level?: string;
+  result_type?: 'termly' | 'session';
+}
+
+export interface TranscriptOptions {
+  include_assessment_details?: boolean;
+  include_comments?: boolean;
+  include_subject_remarks?: boolean;
+  format?: 'PDF' | 'HTML' | 'DOCX';
 }
 
 class ResultService {
-  // Get all student results
-  async getStudentResults(params?: {
-    student?: string;
-    subject?: string;
-    exam_session?: string;
-    status?: string;
-    is_passed?: boolean;
-    stream?: string;
-    search?: string;
-  }) {
+  private baseURL = '/api/results';
+  private cache = new Map<string, {data: any; timestamp: number}>();
+  private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  async getCachedOrFetch(key: string, fetcher: () => Promise<any>) {
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.data;
+    }
+    
+    const data = await fetcher();
+    this.cache.set(key, { data, timestamp: Date.now() });
+    return data;
+  }
+
+  // Education level determination helper
+  private getEducationLevelFromClass(className: string): string {
+    const classLower = className.toLowerCase();
+    if (classLower.includes('nursery')) return 'NURSERY';
+    if (classLower.includes('primary')) return 'PRIMARY';
+    if (classLower.includes('jss') || classLower.includes('junior')) return 'JUNIOR_SECONDARY';
+    if (classLower.includes('sss') || classLower.includes('senior')) return 'SENIOR_SECONDARY';
+    return 'UNKNOWN';
+  }
+
+  // Data transformation methods
+  private transformNurseryResults(results: NurseryResult[]): StandardResult[] {
+    return results.map(result => ({
+      id: result.id,
+      student: result.student,
+      subject: result.subject,
+      exam_session: result.exam_session,
+      education_level: 'NURSERY',
+      total_score: result.mark_obtained,
+      percentage: result.percentage,
+      grade: result.grade,
+      grade_point: result.grade_point,
+      is_passed: result.is_passed,
+      position: result.position,
+      breakdown: {
+        max_marks_obtainable: result.max_marks_obtainable,
+        mark_obtained: result.mark_obtained,
+        physical_development: result.physical_development,
+        health: result.health,
+        cleanliness: result.cleanliness,
+        general_conduct: result.general_conduct,
+      },
+      status: result.status,
+      remarks: result.academic_comment,
+      created_at: result.created_at,
+    }));
+  }
+
+  private transformPrimaryResults(results: PrimaryResult[]): StandardResult[] {
+    return results.map(result => ({
+      id: result.id,
+      student: result.student,
+      subject: result.subject,
+      exam_session: result.exam_session,
+      education_level: 'PRIMARY',
+      total_score: result.total_score,
+      percentage: result.total_percentage,
+      grade: result.grade,
+      grade_point: result.grade_point,
+      is_passed: result.is_passed,
+      position: result.subject_position,
+      breakdown: {
+        continuous_assessment_score: result.continuous_assessment_score,
+        take_home_test_score: result.take_home_test_score,
+        practical_score: result.practical_score,
+        appearance_score: result.appearance_score,
+        project_score: result.project_score,
+        note_copying_score: result.note_copying_score,
+        exam_score: result.exam_score,
+        ca_total: result.ca_total,
+        ca_percentage: result.ca_percentage,
+        exam_percentage: result.exam_percentage,
+      },
+      class_average: result.class_average,
+      highest_in_class: result.highest_in_class,
+      lowest_in_class: result.lowest_in_class,
+      status: result.status,
+      remarks: result.teacher_remark,
+      created_at: result.created_at,
+    }));
+  }
+
+  private transformJuniorSecondaryResults(results: JuniorSecondaryResult[]): StandardResult[] {
+    return results.map(result => ({
+      id: result.id,
+      student: result.student,
+      subject: result.subject,
+      exam_session: result.exam_session,
+      education_level: 'JUNIOR_SECONDARY',
+      total_score: result.total_score,
+      percentage: result.total_percentage,
+      grade: result.grade,
+      grade_point: result.grade_point,
+      is_passed: result.is_passed,
+      position: result.subject_position,
+      breakdown: {
+        continuous_assessment_score: result.continuous_assessment_score,
+        take_home_test_score: result.take_home_test_score,
+        practical_score: result.practical_score,
+        appearance_score: result.appearance_score,
+        project_score: result.project_score,
+        note_copying_score: result.note_copying_score,
+        exam_score: result.exam_score,
+        ca_total: result.ca_total,
+        ca_percentage: result.ca_percentage,
+        exam_percentage: result.exam_percentage,
+      },
+      class_average: result.class_average,
+      highest_in_class: result.highest_in_class,
+      lowest_in_class: result.lowest_in_class,
+      status: result.status,
+      remarks: result.teacher_remark,
+      created_at: result.created_at,
+    }));
+  }
+
+  private transformSeniorSecondaryResults(results: SeniorSecondaryResult[]): StandardResult[] {
+    return results.map(result => ({
+      id: result.id,
+      student: result.student,
+      subject: result.subject,
+      exam_session: result.exam_session,
+      education_level: 'SENIOR_SECONDARY',
+      stream: result.stream,
+      total_score: result.total_score,
+      percentage: result.percentage,
+      grade: result.grade,
+      grade_point: result.grade_point,
+      is_passed: result.is_passed,
+      position: result.subject_position,
+      breakdown: {
+        first_test_score: result.first_test_score,
+        second_test_score: result.second_test_score,
+        third_test_score: result.third_test_score,
+        exam_score: result.exam_score,
+      },
+      class_average: result.class_average,
+      highest_in_class: result.highest_in_class,
+      lowest_in_class: result.lowest_in_class,
+      status: result.status,
+      remarks: result.teacher_remark,
+      created_at: result.created_at,
+    }));
+  }
+
+  private transformSeniorSessionResults(results: SeniorSecondarySessionResult[]): StandardResult[] {
+    return results.map(result => ({
+      id: result.id,
+      student: result.student,
+      subject: result.subject,
+      academic_session: result.academic_session,
+      education_level: 'SENIOR_SECONDARY',
+      stream: result.stream,
+      total_score: result.obtained,
+      percentage: result.average_for_year,
+      grade: 'N/A', // Session results might not have grades
+      is_passed: result.average_for_year >= 40, // Assuming 40% pass mark
+      position: result.subject_position,
+      class_average: result.class_average,
+      highest_in_class: result.highest_in_class,
+      lowest_in_class: result.lowest_in_class,
+      status: result.status,
+      remarks: result.teacher_remark,
+      created_at: result.created_at,
+    }));
+  }
+
+  // Core API methods - education level specific
+  async getNurseryResults(params?: FilterParams): Promise<NurseryResult[]> {
     try {
-      // Try to get results from individual endpoints
-      if (import.meta.env.DEV) {
-        console.log('ResultService.getStudentResults called with params:', params);
-      }
-      const [nurseryResults, primaryResults, jssResults, sssResults] = await Promise.allSettled([
-        api.get('/api/results/nursery-results/'),
-        api.get('/api/results/primary-results/'),
-        api.get('/api/results/junior-secondary-results/'),
-        api.get('/api/results/senior-secondary-results/')
-      ]);
-      
-      let allResults: any[] = [];
-      
-      // Process nursery results
-      if (nurseryResults.status === 'fulfilled') {
-        const nurseryData = nurseryResults.value;
-        const nurseryArray = Array.isArray(nurseryData) ? nurseryData : (nurseryData?.results || []);
-        allResults = allResults.concat(nurseryArray.map((result: any) => ({
-          ...result,
-          education_level: 'NURSERY'
-        })));
-      }
-      
-      // Process primary results
-      if (primaryResults.status === 'fulfilled') {
-        const primaryData = primaryResults.value;
-        const primaryArray = Array.isArray(primaryData) ? primaryData : (primaryData?.results || []);
-        allResults = allResults.concat(primaryArray.map((result: any) => ({
-          ...result,
-          education_level: 'PRIMARY'
-        })));
-      }
-      
-      // Process JSS results
-      if (jssResults.status === 'fulfilled') {
-        const jssData = jssResults.value;
-        const jssArray = Array.isArray(jssData) ? jssData : (jssData?.results || []);
-        allResults = allResults.concat(jssArray.map((result: any) => ({
-          ...result,
-          education_level: 'JUNIOR_SECONDARY'
-        })));
-      }
-      
-      // Process SSS results
-      if (sssResults.status === 'fulfilled') {
-        const sssData = sssResults.value;
-        const sssArray = Array.isArray(sssData) ? sssData : (sssData?.results || []);
-        allResults = allResults.concat(sssArray.map((result: any) => ({
-          ...result,
-          education_level: 'SENIOR_SECONDARY'
-        })));
-      }
-      
-      // Apply filters if provided
-      if (params) {
-        const toIdSet = (value?: string | boolean): Set<string> | null => {
-          if (value === undefined || value === null) return null;
-          if (typeof value !== 'string') return new Set([String(value)]);
-          const parts = value.split(',').map(v => v.trim()).filter(Boolean);
-          return new Set(parts.length ? parts : [value]);
-        };
-        if (import.meta.env.DEV) {
-          console.log('ResultService.getStudentResults before filter count:', allResults.length);
-        }
-        if (params.student) {
-          const targets = toIdSet(params.student);
-          if (targets) {
-            allResults = allResults.filter(result => {
-              const candidate = (result.student?.id ?? result.student ?? result.student_id);
-              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
-            });
-          }
-        }
-        if (params.subject) {
-          const targets = toIdSet(params.subject);
-          if (import.meta.env.DEV) {
-            console.log('Filtering by subject targets:', Array.from(targets || []));
-          }
-          if (targets) {
-            allResults = allResults.filter(result => {
-              const candidate = (result.subject?.id ?? result.subject ?? result.subject_id);
-              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
-            });
-          }
-        }
-        if (params.exam_session) {
-          const targets = toIdSet(params.exam_session);
-          if (targets) {
-            allResults = allResults.filter(result => {
-              const candidate = (result.exam_session?.id ?? result.exam_session ?? result.exam_session_id);
-              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
-            });
-          }
-        }
-        if (params.status) {
-          allResults = allResults.filter(result => result.status === params.status);
-        }
-        if (params.is_passed !== undefined) {
-          allResults = allResults.filter(result => result.is_passed === params.is_passed);
-        }
-        if (params.stream) {
-          const targets = toIdSet(params.stream);
-          if (targets) {
-            allResults = allResults.filter(result => {
-              const candidate = (result.stream?.id ?? result.stream ?? result.stream_id);
-              return candidate !== undefined && candidate !== null && targets.has(candidate.toString());
-            });
-          }
-        }
-        if (params.search) {
-          const searchLower = params.search.toLowerCase();
-          allResults = allResults.filter(result => 
-            (result.student?.full_name ?? result.student_name ?? '').toLowerCase().includes(searchLower) ||
-            (result.subject?.name ?? result.subject_name ?? '').toLowerCase().includes(searchLower)
-          );
-        }
-        if (import.meta.env.DEV) {
-          console.log('ResultService.getStudentResults after filter count:', allResults.length, 'sample:', allResults.slice(0,3));
-        }
-      }
-      
-      return allResults;
+      const response = await api.get(`${this.baseURL}/nursery-results/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
     } catch (error) {
-      console.error('Error fetching student results:', error);
+      console.error('Error fetching nursery results:', error);
       return [];
     }
   }
 
-  // Get results by student
-  async getResultsByStudent(studentId: string) {
-    return api.get(`/results/student-results/by_student/?student_id=${studentId}`);
-  }
-
-  // Get results by exam session
-  async getResultsByExamSession(examSessionId: string) {
-    return api.get(`/results/student-results/by_exam_session/?exam_session_id=${examSessionId}`);
-  }
-
-  // Get class statistics
-  async getClassStatistics(examSessionId: string, className: string): Promise<ClassStatistics> {
-    return api.get(`/results/student-results/class_statistics/?exam_session_id=${examSessionId}&class=${className}`);
-  }
-
-  // Get all term results
-  async getTermResults(params?: {
-    student?: string;
-    academic_session?: string;
-    term?: string;
-    status?: string;
-    search?: string;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
+  async getPrimaryResults(params?: FilterParams): Promise<PrimaryResult[]> {
+    try {
+      const response = await api.get(`${this.baseURL}/primary-results/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching primary results:', error);
+      return [];
     }
-    
-    const queryString = queryParams.toString();
-    const endpoint = `/results/student-term-results/${queryString ? `?${queryString}` : ''}`;
-    return api.get(endpoint);
   }
 
-  // Get detailed term result
-  async getDetailedTermResult(termResultId: string): Promise<StudentTermResult> {
-    return api.get(`/results/student-term-results/${termResultId}/detailed/`);
-  }
-
-  // Get term results by student
-  async getTermResultsByStudent(studentId: string): Promise<StudentTermResult[]> {
-    return api.get(`/results/student-term-results/by_student/?student_id=${studentId}`);
-  }
-
-  // Get term results by academic session
-  async getTermResultsByAcademicSession(sessionId: string, term?: string): Promise<StudentTermResult[]> {
-    const params = new URLSearchParams({ session_id: sessionId });
-    if (term) {
-      params.append('term', term);
+  async getJuniorSecondaryResults(params?: FilterParams): Promise<JuniorSecondaryResult[]> {
+    try {
+      const response = await api.get(`${this.baseURL}/junior-secondary-results/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching junior secondary results:', error);
+      return [];
     }
-    return api.get(`/results/student-term-results/by_academic_session/?${params.toString()}`);
   }
 
-  // Get all exam sessions
-  async getExamSessions(params?: {
-    exam_type?: string;
-    term?: string;
-    academic_session?: string;
-    is_published?: boolean;
-    is_active?: boolean;
-    search?: string;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
+  async getSeniorSecondaryResults(params?: FilterParams): Promise<SeniorSecondaryResult[]> {
+    try {
+      const response = await api.get(`${this.baseURL}/senior-secondary-results/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching senior secondary results:', error);
+      return [];
     }
-    
-    const queryString = queryParams.toString();
-    const endpoint = `/results/exam-sessions/${queryString ? `?${queryString}` : ''}`;
-    return api.get(endpoint);
   }
 
-  // Create a new student result
-  async createStudentResult(data: {
-    student: string;
-    subject: string;
-    exam_session: string;
-    grading_system?: number | string;
-    stream?: string;
-    // Primary/Junior fields
-    ca_score?: number;
-    exam_score?: number;
-    // Senior fields
-    first_test_score?: number;
-    second_test_score?: number;
-    third_test_score?: number;
-    total_score?: number;
-    percentage?: number;
-    grade?: string;
-    grade_point?: number;
-    is_passed?: boolean;
-    position?: number;
-    remarks?: string;
-    status?: string;
-    education_level?: string;
-  }) {
-    // Determine the correct endpoint based on education level
-    let endpoint = '';
-    
-    if (data.education_level) {
-      switch (data.education_level.toUpperCase()) {
+  async getSeniorSecondarySessionResults(params?: FilterParams): Promise<SeniorSecondarySessionResult[]> {
+    try {
+      const response = await api.get(`${this.baseURL}/senior-secondary-session-results/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching senior secondary session results:', error);
+      return [];
+    }
+  }
+
+  // Fixed unified method with proper parameter validation
+  async getStudentResults(params: FilterParams = {}): Promise<StandardResult[]> {
+    const { education_level, result_type = 'termly' } = params;
+
+    // If no education level specified, return empty array instead of throwing error
+    if (!education_level) {
+      console.warn('No education_level specified in getStudentResults, returning empty array');
+      return [];
+    }
+
+    try {
+      switch (education_level.toUpperCase()) {
         case 'NURSERY':
-          endpoint = '/api/results/nursery-results/';
-          break;
+          const nurseryResults = await this.getNurseryResults(params);
+          return this.transformNurseryResults(nurseryResults);
+        
         case 'PRIMARY':
-          endpoint = '/api/results/primary-results/';
-          break;
+          const primaryResults = await this.getPrimaryResults(params);
+          return this.transformPrimaryResults(primaryResults);
+        
         case 'JUNIOR_SECONDARY':
-          endpoint = '/api/results/junior-secondary-results/';
-          break;
+          const juniorResults = await this.getJuniorSecondaryResults(params);
+          return this.transformJuniorSecondaryResults(juniorResults);
+        
         case 'SENIOR_SECONDARY':
-          endpoint = '/api/results/senior-secondary-results/';
-          break;
+          if (result_type === 'session') {
+            const sessionResults = await this.getSeniorSecondarySessionResults(params);
+            return this.transformSeniorSessionResults(sessionResults);
+          } else {
+            const seniorResults = await this.getSeniorSecondaryResults(params);
+            return this.transformSeniorSecondaryResults(seniorResults);
+          }
+        
         default:
-          // Fallback to the old endpoint if education level is not specified
-          endpoint = '/results/student-results/';
+          console.warn(`Unsupported education level: ${education_level}`);
+          return [];
       }
-    } else {
-      // Fallback to the old endpoint if education level is not specified
-      endpoint = '/results/student-results/';
+    } catch (error) {
+      console.error('Error in getStudentResults:', error);
+      return [];
+    }
+  }
+
+  // Fixed method to get all results without education level requirement
+  async getAllResults(): Promise<StandardResult[]> {
+    try {
+      const [nursery, primary, juniorSecondary, seniorSecondary] = await Promise.all([
+        this.getNurseryResults(),
+        this.getPrimaryResults(),
+        this.getJuniorSecondaryResults(),
+        this.getSeniorSecondaryResults()
+      ]);
+
+      return [
+        ...this.transformNurseryResults(nursery),
+        ...this.transformPrimaryResults(primary),
+        ...this.transformJuniorSecondaryResults(juniorSecondary),
+        ...this.transformSeniorSecondaryResults(seniorSecondary)
+      ];
+    } catch (error) {
+      console.error('Error fetching all results:', error);
+      return [];
+    }
+  }
+
+  // Convenience methods
+  async getResultsByStudent(studentId: string, educationLevel?: string): Promise<StandardResult[]> {
+    if (educationLevel) {
+      return this.getStudentResults({ 
+        student: studentId, 
+        education_level: educationLevel 
+      });
+    }
+    
+    // If no education level provided, get all results and filter by student
+    const allResults = await this.getAllResults();
+    return allResults.filter(result => {
+      const resultStudentId = typeof result.student === 'object' ? result.student.id : result.student;
+      return resultStudentId === studentId;
+    });
+  }
+
+  async getResultsByExamSession(examSessionId: string, educationLevel: string): Promise<StandardResult[]> {
+    return this.getStudentResults({ 
+      exam_session: examSessionId, 
+      education_level: educationLevel 
+    });
+  }
+
+  // Term results
+  async getTermResults(params?: FilterParams) {
+    try {
+      const response = await api.get(`${this.baseURL}/student-term-results/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching term results:', error);
+      return [];
+    }
+  }
+
+  async getDetailedTermResult(termResultId: string): Promise<StudentTermResult> {
+    return api.get(`${this.baseURL}/student-term-results/${termResultId}/detailed/`);
+  }
+
+  async getTermResultsByStudent(studentId: string): Promise<StudentTermResult[]> {
+    try {
+      const response = await api.get(`${this.baseURL}/student-term-results/by_student/?student_id=${studentId}`);
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching term results by student:', error);
+      return [];
+    }
+  }
+
+  // Exam sessions
+  async getExamSessions(params?: FilterParams): Promise<ExamSession[]> {
+    try {
+      const response = await api.get(`${this.baseURL}/exam-sessions/`, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error('Error fetching exam sessions:', error);
+      return [];
+    }
+  }
+
+  // CRUD operations
+  async createStudentResult(data: any, educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery-results/`,
+      'PRIMARY': `${this.baseURL}/primary-results/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary-results/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary-results/`,
+    };
+    
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
     }
     
     return api.post(endpoint, data);
   }
 
-  // Update a student result
-  async updateStudentResult(resultId: string, data: Partial<{
-    ca_score: number;
-    exam_score: number;
-    remarks: string;
-    status: string;
-    education_level?: string;
-  }>) {
-    // Determine the correct endpoint based on education level
-    let endpoint = '';
+  async updateStudentResult(resultId: string, data: any, educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery-results/${resultId}/`,
+      'PRIMARY': `${this.baseURL}/primary-results/${resultId}/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary-results/${resultId}/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary-results/${resultId}/`,
+    };
     
-    if (data.education_level) {
-      switch (data.education_level.toUpperCase()) {
-        case 'NURSERY':
-          endpoint = `/api/results/nursery-results/${resultId}/`;
-          break;
-        case 'PRIMARY':
-          endpoint = `/api/results/primary-results/${resultId}/`;
-          break;
-        case 'JUNIOR_SECONDARY':
-          endpoint = `/api/results/junior-secondary-results/${resultId}/`;
-          break;
-        case 'SENIOR_SECONDARY':
-          endpoint = `/api/results/senior-secondary-results/${resultId}/`;
-          break;
-        default:
-          // Fallback to the old endpoint if education level is not specified
-          endpoint = `/results/student-results/${resultId}/`;
-      }
-    } else {
-      // Fallback to the old endpoint if education level is not specified
-      endpoint = `/results/student-results/${resultId}/`;
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
     }
     
     return api.put(endpoint, data);
   }
 
-  // Delete a student result
-  async deleteStudentResult(resultId: string, educationLevel?: string) {
-    // Determine the correct endpoint based on education level
-    let endpoint = '';
+  async deleteStudentResult(resultId: string, educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery-results/${resultId}/`,
+      'PRIMARY': `${this.baseURL}/primary-results/${resultId}/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary-results/${resultId}/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary-results/${resultId}/`,
+    };
     
-    if (educationLevel) {
-      switch (educationLevel.toUpperCase()) {
-        case 'NURSERY':
-          endpoint = `/api/results/nursery-results/${resultId}/`;
-          break;
-        case 'PRIMARY':
-          endpoint = `/api/results/primary-results/${resultId}/`;
-          break;
-        case 'JUNIOR_SECONDARY':
-          endpoint = `/api/results/junior-secondary-results/${resultId}/`;
-          break;
-        case 'SENIOR_SECONDARY':
-          endpoint = `/api/results/senior-secondary-results/${resultId}/`;
-          break;
-        default:
-          // Fallback to the old endpoint if education level is not specified
-          endpoint = `/results/student-results/${resultId}/`;
-      }
-    } else {
-      // Fallback to the old endpoint if education level is not specified
-      endpoint = `/results/student-results/${resultId}/`;
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
     }
     
     return api.delete(endpoint);
   }
 
-  // Approve a student result
-  async approveStudentResult(resultId: string) {
-    return api.post(`/results/student-results/${resultId}/approve/`, {});
+  // Additional utility methods
+  async generateTranscript(studentId: string, options?: TranscriptOptions) {
+    return api.post(`${this.baseURL}/transcripts/generate/`, {
+      student_id: studentId,
+      ...options
+    });
   }
 
-  // Publish a student result
-  async publishStudentResult(resultId: string) {
-    return api.post(`/results/student-results/${resultId}/publish/`, {});
+  async verifyResult(resultId: string, verificationCode: string) {
+    return api.post(`${this.baseURL}/verify/`, {
+      result_id: resultId,
+      code: verificationCode
+    });
   }
 
-  // Get result summary statistics
-  async getResultSummary() {
-    return api.get('/results/student-results/summary/');
-  }
-
-  // Bulk create results
-  async bulkCreateResults(results: any[]) {
-    return api.post('/results/student-results/bulk_create/', { results });
-  }
-
-  // Create a new term result
-  async createTermResult(data: {
-    student: string;
-    academic_session: string;
-    term: string;
-    remarks?: string;
-    next_term_begins?: string;
-  }) {
-    return api.post('/results/term-results/', data);
-  }
-
-  // Update a term result
-  async updateTermResult(termResultId: string, data: Partial<{
-    remarks: string;
-    status: string;
-    next_term_begins: string;
-  }>) {
-    return api.put(`/results/term-results/${termResultId}/`, data);
-  }
-
-  // Add a comment to a result
-  async addResultComment(data: {
-    student_result?: string;
-    term_result?: string;
-    comment_type: string;
-    comment: string;
-  }) {
-    return api.post('/results/result-comments/', data);
-  }
-
-  // Get grading systems
-  async getGradingSystems(params?: {
-    grading_type?: string;
-    is_active?: boolean;
-    search?: string;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
-    }
-    
-    const queryString = queryParams.toString();
-    const endpoint = `/results/grading-systems/${queryString ? `?${queryString}` : ''}`;
-    return api.get(endpoint);
-  }
-
-  // Get assessment types
-  async getAssessmentTypes(params?: {
-    is_active?: boolean;
-    search?: string;
-  }) {
-    const queryParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          queryParams.append(key, value.toString());
-        }
-      });
-    }
-    
-    const queryString = queryParams.toString();
-    const endpoint = `/results/assessment-types/${queryString ? `?${queryString}` : ''}`;
-    return api.get(endpoint);
+  async getAvailableStreams(classLevel?: string) {
+    return api.get('/api/academic/streams/', { class_level: classLevel });
   }
 }
 

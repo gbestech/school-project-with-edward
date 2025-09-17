@@ -51,6 +51,8 @@ interface StudentData {
 
 interface ResultSheetProps {
     studentData?: StudentData;
+    subjectResults?: any[];
+    termResults?: any[];
 }
 
 

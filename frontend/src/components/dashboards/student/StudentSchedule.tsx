@@ -23,14 +23,9 @@ import {
   ScheduleItem as Period, // Alias to match component naming
   Subject,
   Teacher,
-  Classroom
+  Classroom,
+  ScheduleFilters
 } from '@/services/StudentService';
-
-interface ScheduleFilters {
-  show_breaks?: boolean;
-  subject_filter?: string;
-  teacher_filter?: string;
-}
 
 interface StudentScheduleProps {
   scheduleData: StudentScheduleType | null;

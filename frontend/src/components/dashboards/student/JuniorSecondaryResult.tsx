@@ -3,12 +3,6 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import resultSettingsService, { GradingSystem } from "../../../services/ResultSettingsService";
 
-/**
- * PrimaryResultSheet
- * - Ultra modern design with subtle colors
- * - Professional watermark
- * - Optimized PDF generation with proper margins
- */
 
 const SUBJECTS = [
   "ENGLISH STUDIES",
@@ -24,8 +18,6 @@ const SUBJECTS = [
   "HISTORY",
   "BUSINESS STUDIES",
   "HAUSA",
-  "",
-  "",
   "",
 ];
 
@@ -83,6 +75,8 @@ interface StudentData {
 
 interface ResultSheetProps {
   studentData?: StudentData;
+  subjectResults?: any[];
+  termResults?: any[];
 }
 
 export default function JuniorSecondaryResult({ studentData }: ResultSheetProps) {
@@ -252,12 +246,12 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
                     </div>
                   ) : (
                     <div className="text-[8px] leading-tight space-y-0.5 text-slate-600">
-                      <div>A DISTINCTION 80 - 100%</div>
-                      <div>B+ VERY GOOD 70 - 79%</div>
-                      <div>B GOOD 60 - 69%</div>
-                      <div>C FAIRLY GOOD 50 - 59%</div>
-                      <div>D 40 - 49%</div>
-                      <div>E VERY WEAK BELOW 40%</div>
+                      <div>A DISTINCTION 70 - 100%</div>
+                      <div>B+ VERY GOOD 60 - 69%</div>
+                      <div>B GOOD 50 - 59%</div>
+                      <div>C FAIRLY GOOD 45 - 49%</div>
+                      <div>D PASS 40 - 45%</div>
+                      <div>E VERY WEAK BELOW 39%</div>
                     </div>
                   )}
                 </th>
