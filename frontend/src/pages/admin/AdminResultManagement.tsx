@@ -1,4 +1,4 @@
-import React from 'react'
+
 import EnhancedResultManagement from '@/components/dashboards/admin/EnhancedResultManagement'
 
 const AdminResultManagement = () => {

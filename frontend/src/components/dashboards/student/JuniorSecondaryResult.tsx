@@ -1,33 +1,97 @@
 import { useRef, useState, useEffect } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import resultSettingsService, { GradingSystem } from "../../../services/ResultSettingsService";
+import { useResultService } from "@/hooks/useResultService";
+import { SchoolSettings } from '@/types/types';
+import type { 
+  GradingSystem, 
+  GradeRange,
+  ScoringConfiguration,
+  ExamSession 
+} from "@/services/ResultSettingsService";
 
+// Updated interfaces to match your data structure
+export interface StudentBasicInfo {
+  id: string;
+  name: string;
+  full_name?: string;
+  class: string;
+  house?: string;
+  age?: number;
+}
+
+export interface TermInfo {
+  name: string;
+  session: string;
+  year: string;
+}
+
+export interface SubjectResult {
+  id: string;
+  subject: {
+    id: string;
+    name: string;
+  };
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  project_score: number;
+  appearance_score: number;
+  note_copying_score: number;
+  practical_score: number;
+  ca_total: number; // 40 marks (15+5+5+5+5+5)
+  exam_marks: number; // 60 marks
+  total_obtainable: number; // 100 marks
+  mark_obtained: number;
+  grade?: string;
+  position?: string;
+  teacher_remark?: string;
+  is_passed?: boolean;
+}
+
+export interface JuniorSecondaryResultData {
+  id: string;
+  student: StudentBasicInfo;
+  term: TermInfo;
+  subjects: SubjectResult[];
+  total_score: number;
+  average_score: number;
+  overall_grade: string;
+  class_position: number;
+  total_students: number;
+  attendance: {
+    times_opened: number;
+    times_present: number;
+  };
+  next_term_begins: string;
+  class_teacher_remark?: string;
+  head_teacher_remark?: string;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const SUBJECTS = [
   "ENGLISH STUDIES",
   "MATHEMATICS",
-  "BASIC SCIENCE TECHNOLOGY (BST)",
+  "BASIC SCIENCE & TECHNOLOGY (BST)",
   "NATIONAL VALUE (NV)",
   "CULTURAL & CREATIVE ARTS (CCA)",
-  "PRE VOCATIONAL STUDIES (PVS)",
-  "NIGERIAN LANGUAGE (YORUBA/HAUSA/IGBO)",
-  "CHRISTIAN RELIGIOUS STUDIES / ARABIC",
+  "PREVOCATIONAL STUDIES (PVS)",
+  "YORUBA/HAUSA/IGBO",
+  "CRS / ARABIC",
   "FRENCH LANGUAGE",
   "HAND WRITING",
   "HISTORY",
   "BUSINESS STUDIES",
-  "HAUSA",
-  "",
+  "HAUSA"
 ];
 
 const COLUMN_HEADERS = [
   "C.A\n(15 MARKS)",
-  "TAKE HOME\nMARKS",
   "TAKE HOME\nTEST",
+  "PROJECT\nMARKS",
   "APPEARANCE\nMARKS",
   "PRACTICAL\nMARKS",
-  "PROJECT\nMARKS",
   "NOTE COPYING\nMARKS",
   "C.A\nTOTAL",
   "EXAM\n(60%)",
@@ -37,9 +101,7 @@ const COLUMN_HEADERS = [
   "REMARKS BY\nCLASS TEACHER",
 ];
 
-
-
-const WatermarkLogo = () => (
+const WatermarkLogo = ({ schoolInfo }: { schoolInfo: SchoolSettings }) => (
   <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-3 z-0">
     <div className="text-center">
       <div 
@@ -50,125 +112,373 @@ const WatermarkLogo = () => (
         }}
       >
         <div className="text-center" style={{ color: 'rgba(30, 64, 175, 0.3)' }}>
-          <div className="text-4xl font-bold mb-2">GTS</div>
-          <div className="text-sm font-semibold">GOD'S TREASURE</div>
-          <div className="text-sm font-semibold">SCHOOLS</div>
+          {schoolInfo?.logo ? (
+            <img 
+              src={schoolInfo.logo} 
+              alt="School Logo" 
+              className="w-16 h-16 opacity-30 mx-auto mb-2" 
+            />
+          ) : (
+            <div className="text-4xl font-bold mb-2">
+              {schoolInfo?.school_name?.split(' ').map((word: string) => word[0]).join('') || 'GTS'}
+            </div>
+          )}
+          <div className="text-sm font-semibold">
+            {schoolInfo?.school_name?.toUpperCase() || "SCHOOL NAME HERE"}
+          </div>
         </div>
       </div>
       <div 
         className="text-5xl font-bold tracking-wider"
         style={{ color: 'rgba(30, 64, 175, 0.15)' }}
       >
-        GOD'S TREASURE SCHOOLS
+        {schoolInfo?.school_name?.toUpperCase() || "GOD'S TREASURE SCHOOLS"}
       </div>
     </div>
   </div>
 );
 
-interface StudentData {
-  name?: string;
-  class?: string;
-  term?: string;
-  academicSession?: string;
-  resultType?: string;
+// Enhanced interface with additional props
+interface JuniorSecondaryResultProps {
+  data: JuniorSecondaryResultData;
+  studentId?: string;
+  examSessionId?: string;
+  templateId?: string;
+  onDataChange?: (data: JuniorSecondaryResultData) => void;
+  onPDFGenerated?: (pdfUrl: string) => void;
+  enableEnhancedFeatures?: boolean;
 }
 
-interface ResultSheetProps {
-  studentData?: StudentData;
-  subjectResults?: any[];
-  termResults?: any[];
-}
-
-export default function JuniorSecondaryResult({ studentData }: ResultSheetProps) {
+export default function JuniorSecondaryResult({ 
+  data, 
+  studentId, 
+  examSessionId, 
+  templateId,
+  onDataChange,
+  onPDFGenerated,
+  enableEnhancedFeatures = true
+}: JuniorSecondaryResultProps) {
   const ref = useRef(null);
+  const { service, schoolSettings, loading: serviceLoading } = useResultService();
+  
   const [gradingSystem, setGradingSystem] = useState<GradingSystem | null>(null);
+  const [grades, setGrades] = useState<GradeRange[]>([]);
+  const [scoringConfig, setScoringConfig] = useState<ScoringConfiguration | null>(null);
+  const [examSession, setExamSession] = useState<ExamSession | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchGradingSystem = async () => {
+    const fetchGradingData = async () => {
+      if (!service || serviceLoading) return;
+
       try {
         setLoading(true);
-        // Get the first active grading system (you might want to make this configurable)
-        const gradingSystems = await resultSettingsService.getGradingSystems();
+        setError(null);
+
+        // Get active grading systems
+        const gradingSystems = await service.getGradingSystems();
         const activeSystem = gradingSystems.find((system: GradingSystem) => system.is_active);
+        
         if (activeSystem) {
           setGradingSystem(activeSystem);
+          
+          // Get grades for this grading system
+          const systemGrades = await service.getGrades(activeSystem.id);
+          setGrades(systemGrades);
         }
-      } catch (error) {
-        console.error('Error fetching grading system:', error);
+
+        // Get scoring configuration for primary level
+        const scoringConfigs = await service.getScoringConfigurationsByEducationLevel('JUNIOR_SECONDARY');
+        const primaryScoringConfig = scoringConfigs.find((config: ScoringConfiguration) => 
+          config.education_level === 'JUNIOR_SECONDARY' && config.is_active
+        );
+        if (primaryScoringConfig) {
+          setScoringConfig(primaryScoringConfig);
+        }
+
+        // Load exam session data if examSessionId is provided
+        if (examSessionId && enableEnhancedFeatures) {
+          try {
+            const sessions = await service.getExamSessions();
+            const currentSession = sessions.find((session: ExamSession) => session.id === examSessionId);
+            if (currentSession) {
+              setExamSession(currentSession);
+            }
+          } catch (sessionError) {
+            console.warn('Failed to load exam session:', sessionError);
+          }
+        }
+
+      } catch (err) {
+        console.error('Error fetching grading system:', err);
+        setError('Failed to load grading system');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchGradingSystem();
-  }, []);
+    fetchGradingData();
+  }, [service, serviceLoading, examSessionId, enableEnhancedFeatures]);
 
+  // Enhanced PDF generation with better naming and metadata
   const downloadPDF = async () => {
     const element = ref.current;
     if (!element) return;
 
-    // Capture with optimized settings
-    const canvas = await html2canvas(element, { 
-      scale: 1.5, 
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      removeContainer: true,
-      scrollX: 0,
-      scrollY: 0
-    });
+    try {
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        removeContainer: true,
+        scrollX: 0,
+        scrollY: 0
+      });
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    
-    const imgProps = (pdf as any).getImageProperties(imgData);
-    const imgWidth = pdfWidth;
-    const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    
-    // If taller than page, shrink proportionally
-    let finalHeight = imgHeight;
-    let finalWidth = imgWidth;
-    if (imgHeight > pdfHeight) {
-      finalHeight = pdfHeight;
-      finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Get image properties and calculate dimensions
+      const imgProps = (pdf as any).getImageProperties(imgData);
+      const imgWidth = pdfWidth;
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      let finalHeight = imgHeight;
+      let finalWidth = imgWidth;
+      if (imgHeight > pdfHeight) {
+        finalHeight = pdfHeight;
+        finalWidth = (imgProps.width * pdfHeight) / imgProps.height;
+      }
+
+      // Add image to PDF
+      (pdf as any).addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
+      
+      // Enhanced filename with more context
+      const studentName = data.student?.name || data.student?.full_name || 'student';
+      const term = data.term?.name || 'term';
+      const session = data.term?.session || data.term?.year || 'session';
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      const filename = `${studentName.replace(/\s+/g, '_')}_primary_result_${term}_${session}_${timestamp}.pdf`;
+      
+      // Save PDF
+      pdf.save(filename);
+
+      // Call the callback if provided
+      if (onPDFGenerated) {
+        const pdfBlob = (pdf as any).output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        onPDFGenerated(pdfUrl);
+      }
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setError('Failed to generate PDF');
     }
-
-    (pdf as any).addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
-    pdf.save(`${studentData?.name || 'student'}_junior_secondary_result.pdf`);
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading grading system...</div>;
+  // Enhanced result generation using enhanced result service
+  const generateEnhancedPDF = async () => {
+    if (!studentId || !examSessionId || !service || !enableEnhancedFeatures) {
+      // Fall back to regular PDF generation
+      return downloadPDF();
+    }
+
+    try {
+      const enhancedResult = await service.generateEnhancedResultSheet(studentId, examSessionId);
+      
+      // Check if enhanced result has a PDF download URL or similar
+      if (enhancedResult && 'download_url' in enhancedResult && enhancedResult.download_url) {
+        // Open the generated PDF
+        window.open(enhancedResult.download_url as string, '_blank');
+        
+        if (onPDFGenerated) {
+          onPDFGenerated(enhancedResult.download_url as string);
+        }
+      } else {
+        // Fall back to client-side PDF generation
+        await downloadPDF();
+      }
+    } catch (error) {
+      console.error('Enhanced PDF generation failed:', error);
+      // Fall back to client-side PDF generation
+      await downloadPDF();
+    }
+  };
+
+  // Helper function to get grade for a score
+  const getGradeForScore = (score: number): { grade: string; remark: string; isPass: boolean } => {
+    if (!gradingSystem || grades.length === 0) {
+      // Default grading if no system is available
+      if (score >= 70) return { grade: 'A', remark: 'Distinction', isPass: true };
+      if (score >= 60) return { grade: 'B', remark: 'Very Good', isPass: true };
+      if (score >= 50) return { grade: 'C', remark: 'Good', isPass: true };
+      if (score >= 45) return { grade: 'D', remark: 'Fair', isPass: true };
+      if (score >= 40) return { grade: 'E', remark: 'Pass', isPass: true };
+      return { grade: 'F', remark: 'Fail', isPass: false };
+    }
+
+    const gradeRange = grades.find(g => score >= g.min_score && score <= g.max_score);
+    
+    if (gradeRange) {
+      return {
+        grade: gradeRange.grade,
+        remark: gradeRange.remark,
+        isPass: gradeRange.is_passing
+      };
+    }
+
+    const isPass = score >= gradingSystem.pass_mark;
+    return {
+      grade: isPass ? 'P' : 'F',
+      remark: isPass ? 'Pass' : 'Fail',
+      isPass
+    };
+  };
+
+  // Get subject result data
+  const getSubjectData = (subjectName: string) => {
+    if (!data.subjects || data.subjects.length === 0) return null;
+    
+    return data.subjects.find(subject => 
+      subject.subject.name.toUpperCase().includes(subjectName.toUpperCase()) ||
+      subjectName.toUpperCase().includes(subject.subject.name.toUpperCase())
+    );
+  };
+
+  // Helper function to get position with ordinal suffix
+  const getOrdinalSuffix = (num: number): string => {
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return "st";
+    if (j === 2 && k !== 12) return "nd";
+    if (j === 3 && k !== 13) return "rd";
+    return "th";
+  };
+
+  // Handle data changes and propagate to parent
+  const handleDataUpdate = (updates: Partial<JuniorSecondaryResultData>) => {
+    const updatedData = { ...data, ...updates };
+    if (onDataChange) {
+      onDataChange(updatedData);
+    }
+  };
+
+  if (serviceLoading || loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading result data...</p>
+          {examSessionId && (
+            <p className="text-sm text-gray-600 mt-2">Loading exam session: {examSessionId}</p>
+          )}
+        </div>
+      </div>
+    );
   }
 
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center text-red-600">
+          <p className="text-lg font-semibold mb-2">Error</p>
+          <p>{error}</p>
+          {studentId && (
+            <p className="text-sm mt-2">Student ID: {studentId}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const schoolInfo = schoolSettings;
+
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <button
-        onClick={downloadPDF}
-        className="mb-4 px-4 py-2 bg-indigo-700 text-white rounded shadow hover:bg-indigo-800 transition-colors"
-      >
-        Download PDF
-      </button>
+    <div className="p-3 bg-gray-100 min-h-screen">
+      <div className="mb-4 flex gap-4 flex-wrap">
+        <button
+          onClick={enableEnhancedFeatures ? generateEnhancedPDF : downloadPDF}
+          className="px-4 py-2 bg-indigo-700 text-white rounded shadow hover:bg-indigo-800 transition-colors"
+        >
+          {enableEnhancedFeatures ? 'Generate Enhanced PDF' : 'Download PDF'}
+        </button>
+        
+        <div className="text-sm text-gray-600 flex items-center gap-4 flex-wrap">
+          <span>Student: {data.student?.name}</span>
+          <span>Class: {data.student?.class}</span>
+          <span>Term: {data.term?.name}</span>
+          <span>Session: {data.term?.session || data.term?.year}</span>
+          {studentId && <span>ID: {studentId}</span>}
+          {examSessionId && <span>Exam Session: {examSessionId}</span>}
+          {templateId && <span>Template: {templateId}</span>}
+          {data.is_published && (
+            <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+              ✓ Published
+            </span>
+          )}
+          {examSession && (
+            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+              Session: {examSession.name}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div
         ref={ref}
         className="bg-white mx-auto p-6 border border-gray-300 relative"
         style={{ width: '850px' }}
       >
-        <WatermarkLogo />
+        {schoolInfo && <WatermarkLogo schoolInfo={schoolInfo} />}
 
         {/* Header */}
-        <div className="text-center mb-6 relative z-10">
-          <h1 className="text-3xl font-bold text-blue-900 mb-2">GOD'S TREASURE SCHOOLS</h1>
-          <p className="text-sm text-gray-600 mb-1">No 54 Dagbana Road, Opp. St. Kevin's Catholic Church, Phase III Jikwoyi, Abuja</p>
-          <p className="text-sm text-gray-600 mb-4">Phone: (123) 456-7890 | Email: info@godstreasureschools.com</p>
-          
-          <div className="bg-blue-900 text-white py-2 px-4 rounded-lg inline-block">
-            <h2 className="text-lg font-semibold">JUNIOR SECONDARY SCHOOL TERMLY REPORT</h2>
-            <p className="text-sm">{studentData?.term || '1st'} Term, {studentData?.academicSession || '2025'} Academic Session</p>
+        <div className="text-center mb-6">
+          <div className="grid grid-cols-[20%_60%_20%] gap-4 mb-4">
+            {/* Logo section - 30% width */}
+            <div className="flex justify-start items-center">
+              {schoolSettings?.logo ? (
+                <img 
+                  src={schoolSettings.logo} 
+                  alt="School Logo" 
+                  className="w-16 h-16 object-contain rounded-full"
+                />
+              ) : (
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">
+                  {schoolSettings?.school_name?.split(' ').map((word: string) => word[0]).join('') || 'LOGO'}
+                </div>
+              )}
+            </div>
+
+            {/* School name block - 70% width, centered */}
+            <div className="text-center relative z-10">
+              <h1 className="text-3xl font-bold text-blue-900 mb-2">
+                {schoolInfo?.school_name?.toUpperCase() || "SCHOOL NAME HERE"}
+              </h1>
+              <p className="text-xs text-gray-600">
+                {schoolSettings?.address || "School Address, City, State"}
+              </p>
+              <p className="text-sm text-gray-600">
+                Phone: {schoolSettings?.phone || "(123) 456-7890"} | Email: {schoolSettings?.email || "info@school.com"}
+              </p>
+            </div>
+          </div>
+
+          {/* Student report block - below the grid */}
+          <div className="bg-blue-900 text-white py-1 px-2 rounded-lg inline-block">
+            <h5 className="text-sm font-semibold">STUDENT'S TERMLY REPORT</h5>
+            <p className="text-xs">
+              {data.term?.name || '1st Term'}, {data.term?.session || data.term?.year || '2025'} Academic Session
+            </p>
+            {examSession && (
+              <p className="text-xs mt-1 opacity-90">
+                Exam Session: {examSession.name} ({examSession.exam_type})
+              </p>
+            )}
           </div>
         </div>
 
@@ -177,50 +487,90 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
           <div className="mb-3">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-slate-700">NAME</span>
-              <div className="w-64 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-64 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.student?.name || data.student?.full_name || ""}
+                </span>
+              </div>
               <span className="ml-4 font-semibold text-slate-700">AGE</span>
-              <div className="w-24 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-24 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.student?.age || ""}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-slate-700">CLASS</span>
-              <div className="w-36 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-36 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.student?.class || 'PRIMARY 1'}
+                </span>
+              </div>
               <span className="ml-4 font-semibold text-slate-700">NO IN CLASS</span>
-              <div className="w-36 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-36 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.total_students || ''}
+                </span>
+              </div>
               <span className="ml-4 font-semibold text-slate-700">POSITION IN CLASS</span>
-              <div className="w-36 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-36 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.class_position ? `${data.class_position}${getOrdinalSuffix(data.class_position)}` : ''}
+                </span>
+              </div>
             </div>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-slate-700">NUMBER OF TIMES SCHOOL OPENED:</span>
-              <div className="w-40 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-40 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.attendance?.times_opened || ""}
+                </span>
+              </div>
               <span className="ml-4 font-semibold text-slate-700">NUMBER OF TIMES PRESENT:</span>
-              <div className="w-40 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-40 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.attendance?.times_present || ""}
+                </span>
+              </div>
               <span className="ml-4 font-semibold text-slate-700">NEXT TERM BEGINS</span>
-              <div className="w-40 border-b border-slate-400" style={{ height: 1 }} />
+              <div className="w-40 border-b border-slate-400 text-center" style={{ height: 1 }}>
+                <span className="bg-white px-2 text-slate-800 font-medium">
+                  {data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : ""}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Grading System Information */}
-          {gradingSystem && (
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-sm mb-2 text-blue-900">Grading System: {gradingSystem.name}</h3>
-              <div className="text-xs space-y-1 text-blue-800">
-                <div><span className="font-medium">Score Range:</span> {gradingSystem.min_score} - {gradingSystem.max_score}</div>
-                <div><span className="font-medium">Pass Mark:</span> {gradingSystem.pass_mark}</div>
-                <div><span className="font-medium">Grading Type:</span> {gradingSystem.grading_type}</div>
+          {/* Enhanced Information Panel */}
+                    {/* Template and Session Info */}
+          {(templateId || examSession) && (
+            <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+              <div className="text-xs text-gray-700 space-y-1">
+                {templateId && (
+                  <div><span className="font-medium">Template ID:</span> {templateId}</div>
+                )}
+                {examSession && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><span className="font-medium">Session Type:</span> {examSession.exam_type}</div>
+                    <div><span className="font-medium">Term:</span> {examSession.term}</div>
+                    <div><span className="font-medium">Start Date:</span> {new Date(examSession.start_date).toLocaleDateString()}</div>
+                    <div><span className="font-medium">End Date:</span> {new Date(examSession.end_date).toLocaleDateString()}</div>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
 
         {/* Academic Performance title */}
-        <div className="text-center font-semibold text-base py-3 mb-4 bg-blue-900 text-white rounded-lg relative z-10">
-          {studentData?.resultType === 'yearly' ? 'YEARLY' : studentData?.resultType === 'annually' ? 'ANNUAL' : 'ACADEMIC'} PERFORMANCE
+        <div className="text-center font-semibold text-base mb-2 text-blue-900 rounded-lg relative z-10">
+          ACADEMIC PERFORMANCE
         </div>
 
         {/* Main table area */}
@@ -233,25 +583,25 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
                   style={{ width: '180px', height: '100px' }}
                 >
                   <div className="text-[10px] font-bold mb-1 text-slate-800">SUBJECTS/KEY TO GRADING</div>
-                  {gradingSystem ? (
-                    <div className="text-[8px] leading-tight space-y-0.5 text-slate-600">
-                      {gradingSystem.grades
+                  {grades.length > 0 ? (
+                    <div className="text-[9px] leading-tight space-y-0.5 text-slate-600">
+                      {grades
                         .sort((a, b) => b.min_score - a.min_score)
-                        .slice(0, 6) // Show top 6 grades
+                        .slice(0, 6)
                         .map(grade => (
                           <div key={grade.id}>
-                            {grade.grade} {grade.description} {grade.min_score} - {grade.max_score}%
+                            {grade.grade} {grade.description || grade.remark} {grade.min_score} - {grade.max_score}%
                           </div>
                         ))}
                     </div>
                   ) : (
                     <div className="text-[8px] leading-tight space-y-0.5 text-slate-600">
-                      <div>A DISTINCTION 70 - 100%</div>
-                      <div>B+ VERY GOOD 60 - 69%</div>
-                      <div>B GOOD 50 - 59%</div>
-                      <div>C FAIRLY GOOD 45 - 49%</div>
-                      <div>D PASS 40 - 45%</div>
-                      <div>E VERY WEAK BELOW 39%</div>
+                      <div>A DISTINCTION 70.00 - 100.00%</div>
+                      <div>B VERY GOOD 60.00 - 69.00%</div>
+                      <div>C GOOD 50.00 - 59.00%</div>
+                      <div>D PASS 45.00 - 49.00%</div>
+                      <div>D FAIR 40.00 - 44.00%</div>
+                      <div>F 0.00 - 39.00%</div>
                     </div>
                   )}
                 </th>
@@ -269,7 +619,7 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div 
-                        className="transform -rotate-90 origin-center text-[7px] font-medium text-center leading-tight text-slate-700"
+                        className="transform -rotate-90 origin-center text-[9px] font-medium text-center leading-tight text-slate-700"
                         style={{ 
                           writingMode: 'horizontal-tb',
                           transformOrigin: 'center center',
@@ -304,31 +654,89 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
             </thead>
 
             <tbody>
-              {SUBJECTS.map((subject, idx) => (
-                <tr key={idx}>
-                  <td 
-                    className={`border border-slate-600 p-3 font-semibold text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
-                    style={{ minHeight: '24px' }}
-                  >
-                    {subject}
-                  </td>
-                  
-                  {COLUMN_HEADERS.map((_, colIdx) => (
+              {SUBJECTS.map((subject, idx) => {
+                const subjectData = getSubjectData(subject);
+                const totalScore = subjectData ? subjectData.mark_obtained || 0 : 0;
+                const gradeInfo = getGradeForScore(totalScore);
+                
+                return (
+                  <tr key={idx}>
                     <td 
-                      key={colIdx}
-                      className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
-                      style={{ width: '32px', height: '24px' }}
+                      className={`border border-slate-600 p-2 font-semibold text-[10px] ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                      style={{ minHeight: '24px' }}
                     >
+                      {subject}
                     </td>
-                  ))}
-                  
-                  <td 
-                    className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
-                    style={{ width: '40px' }}
-                  >
-                  </td>
-                </tr>
-              ))}
+                    
+                    {/* Continuous Assessment Score (15 marks) */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.continuous_assessment_score ? Math.round(subjectData.continuous_assessment_score) : ''}
+                    </td>
+                    
+                    {/* Take Home Test */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.take_home_test_score ? Math.round(subjectData.take_home_test_score) : ''}
+                    </td>
+                    
+                    {/* Project Marks */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.project_score ? Math.round(subjectData.project_score) : ''}
+                    </td>
+                    
+                    {/* Appearance Marks */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.appearance_score ? Math.round(subjectData.appearance_score) : ''}
+                    </td>
+                    
+                    {/* Practical Marks */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.practical_score ? Math.round(subjectData.practical_score) : ''}
+                    </td>
+                    
+                    {/* Note Copying Marks */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.note_copying_score ? Math.round(subjectData.note_copying_score) : ''}
+                    </td>
+                    
+                    {/* CA Total */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs font-semibold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.ca_total ? Math.round(subjectData.ca_total) : ''}
+                    </td>
+                    
+                    {/* Exam Score */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.exam_marks ? Math.round(subjectData.exam_marks) : ''}
+                    </td>
+                    
+                    {/* Total Score */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs font-bold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.mark_obtained ? Math.round(subjectData.mark_obtained) : ''}
+                    </td>
+                    
+                    {/* Position */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.position || ''}
+                    </td>
+                    
+                    {/* Grade */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-xs font-bold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.grade || (subjectData ? gradeInfo.grade : '')}
+                    </td>
+                    
+                    {/* Teacher Remarks */}
+                    <td className={`border border-slate-600 p-0.5 text-center text-[8px] ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      {subjectData?.teacher_remark || ''}
+                    </td>
+                    
+                    <td 
+                      className={`border border-slate-600 p-0.5 text-center text-xs font-bold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                      style={{ width: '40px' }}
+                    >
+                      {subjectData?.grade || (subjectData ? gradeInfo.grade : '')}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -337,10 +745,22 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
         <div className="flex justify-between text-sm relative z-10">
           {/* Left side - Totals and Physical Development */}
           <div className="flex-1 pr-6">
-            <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-              <div className="mb-1 text-xs font-semibold text-slate-700">Total Scores: <span className="border-b border-slate-400 inline-block w-16"></span></div>
-              <div className="mb-1 text-xs font-semibold text-slate-700">Average Scores: <span className="border-b border-slate-400 inline-block w-16"></span></div>
-              <div className="text-xs font-semibold text-slate-700">Grade: <span className="border-b border-slate-400 inline-block w-16"></span></div>
+            <div className="mb-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div className="mb-2 text-xs font-semibold text-slate-700">
+                Total Scores: <span className="inline-block w-20 text-center">
+                  {data.total_score ? Math.round(data.total_score) : ''}
+                </span>
+              </div>
+              <div className="mb-2 text-xs font-semibold text-slate-700">
+                Average Scores: <span className="inline-block w-20 text-center">
+                  {data.average_score ? Math.round(data.average_score) : ''}
+                </span>
+              </div>
+              <div className="text-xs font-semibold text-slate-700">
+                Grade: <span className="inline-block w-20 text-center">
+                  {data.overall_grade || (data.average_score ? getGradeForScore(data.average_score).grade : '')}
+                </span>
+              </div>
             </div>
 
             {/* Physical Development Table */}
@@ -375,7 +795,7 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
                       End of<br />Term
                     </td>
                   </tr>
-                  <tr className="text-[9px] text-left">
+                  <tr className="text-[8px] text-left">
                     <td className="border border-slate-600 p-1 text-center">cm</td>
                     <td className="border border-slate-600 p-1 text-center">cm</td>
                     <td className="border border-slate-600 p-1 text-center">cm</td>
@@ -395,7 +815,9 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
           <div className="flex-1">
             <div className="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="font-semibold text-[10px] text-slate-800">CLASS TEACHER'S COMMENT:</div>
-              <div className="text-[10px] mt-1 text-slate-600 italic">Good and intelligent pupil keep it up</div>
+              <div className="text-[10px] mt-1 text-slate-600">
+                {data.class_teacher_remark || "Good and intelligent pupil keep it up"}
+              </div>
             </div>
             
             <div className="mb-4">
@@ -404,7 +826,9 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
 
             <div className="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="font-semibold text-[10px] text-slate-800">HEAD TEACHER'S COMMENT:</div>
-              <div className="text-[10px] mt-1 text-slate-600 italic">Such a zealous and hard working child. impressive</div>
+              <div className="text-[10px] mt-1 text-slate-600">
+                {data.head_teacher_remark || "Such a zealous and hard working child. Impressive"}
+              </div>
             </div>
             
             <div className="mb-4">
@@ -414,6 +838,15 @@ export default function JuniorSecondaryResult({ studentData }: ResultSheetProps)
             <div>
               <div className="text-[10px] font-medium text-slate-700">PARENT'S SIGNATURE/DATE: <span className="border-b border-slate-400 inline-block w-32"></span></div>
             </div>
+          </div>
+        </div>
+
+       {/* Enhanced Publication and Template Status */}
+        <div className="mt-1 text-center relative z-10">
+          {/* Generation timestamp */}
+          <div className="mt-2 text-xs text-slate-500">
+            Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
+            {studentId && ` | Student ID: ${studentId}`}
           </div>
         </div>
       </div>

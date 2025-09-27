@@ -773,6 +773,382 @@ class ResultTemplate(models.Model):
         return f"{self.name} ({self.get_template_type_display()})"
 
 
+# Add these new models to your results/models.py
+
+
+class SeniorSecondaryTermReport(models.Model):
+    """Consolidated senior secondary term report for termly results"""
+
+    RESULT_STATUS = [
+        ("DRAFT", "Draft"),
+        ("APPROVED", "Approved"),
+        ("PUBLISHED", "Published"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="senior_secondary_term_reports"
+    )
+    exam_session = models.ForeignKey(
+        ExamSession,
+        on_delete=models.CASCADE,
+        related_name="senior_secondary_term_reports",
+    )
+    stream = models.ForeignKey(
+        Stream,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="senior_secondary_term_reports",
+    )
+
+    # Consolidated Academic Metrics
+    total_score = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total Score Across All Subjects",
+    )
+    average_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Average Score Percentage",
+    )
+    overall_grade = models.CharField(
+        max_length=5, blank=True, verbose_name="Overall Grade"
+    )
+
+    # Class Position and Statistics
+    class_position = models.PositiveIntegerField(null=True, blank=True)
+    total_students = models.PositiveIntegerField(
+        default=0, verbose_name="Total Students in Class"
+    )
+
+    # Attendance Information
+    times_opened = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times School Opened"
+    )
+    times_present = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times Student was Present"
+    )
+
+    # Term Information
+    next_term_begins = models.DateField(null=True, blank=True)
+
+    # Teacher Comments
+    class_teacher_remark = models.TextField(blank=True)
+    head_teacher_remark = models.TextField(blank=True)
+
+    # Status and Tracking
+    status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
+    is_published = models.BooleanField(default=False)
+
+    # Publishing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_senior_secondary_term_reports",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "results_senior_secondary_term_report"
+        unique_together = ["student", "exam_session"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student", "exam_session"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_published"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.exam_session.name} Senior Secondary Term Report"
+
+    def calculate_metrics(self):
+        """Calculate consolidated metrics from individual subject results"""
+        from django.db.models import Sum, Count, Avg
+
+        # Get all senior secondary results for this student and exam session
+        subject_results = SeniorSecondaryResult.objects.filter(
+            student=self.student,
+            exam_session=self.exam_session,
+            status__in=["APPROVED", "PUBLISHED"],
+        )
+
+        if subject_results.exists():
+            totals = subject_results.aggregate(
+                total_score_sum=Sum("total_score"),
+                subject_count=Count("id"),
+                avg_percentage=Avg("percentage"),
+            )
+
+            self.total_score = totals["total_score_sum"] or 0
+            self.average_score = totals["avg_percentage"] or 0
+
+            # Determine overall grade based on average percentage
+            if hasattr(subject_results.first(), "grading_system"):
+                grading_system = subject_results.first().grading_system
+                grade_obj = grading_system.grades.filter(
+                    min_score__lte=self.average_score, max_score__gte=self.average_score
+                ).first()
+
+                if grade_obj:
+                    self.overall_grade = grade_obj.grade
+                else:
+                    self.overall_grade = self._get_default_grade(self.average_score)
+            else:
+                self.overall_grade = self._get_default_grade(self.average_score)
+
+        self.save()
+
+    def _get_default_grade(self, percentage):
+        """Fallback grading system"""
+        if percentage >= 80:
+            return "A"
+        if percentage >= 70:
+            return "B+"
+        if percentage >= 60:
+            return "B"
+        if percentage >= 50:
+            return "C"
+        if percentage >= 40:
+            return "D"
+        return "E"
+
+    def calculate_class_position(self):
+        """Calculate class position among peers"""
+        same_class_reports = SeniorSecondaryTermReport.objects.filter(
+            exam_session=self.exam_session,
+            student__student_class=self.student.student_class,
+            student__education_level=self.student.education_level,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).exclude(id=self.id)
+
+        if same_class_reports.exists():
+            higher_performers = same_class_reports.filter(
+                average_score__gt=self.average_score
+            ).count()
+
+            self.class_position = higher_performers + 1
+            self.total_students = same_class_reports.count() + 1
+        else:
+            self.class_position = 1
+            self.total_students = 1
+
+        self.save()
+
+
+class SeniorSecondarySessionReport(models.Model):
+    """Consolidated senior secondary session report with TAA"""
+
+    RESULT_STATUS = [
+        ("DRAFT", "Draft"),
+        ("APPROVED", "Approved"),
+        ("PUBLISHED", "Published"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name="senior_secondary_session_reports",
+    )
+    academic_session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.CASCADE,
+        related_name="senior_secondary_session_reports",
+    )
+    stream = models.ForeignKey(
+        Stream,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="senior_secondary_session_reports",
+    )
+
+    # Session totals (matching frontend interface)
+    term1_total = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, verbose_name="First Term Total Score"
+    )
+    term2_total = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name="Second Term Total Score",
+    )
+    term3_total = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, verbose_name="Third Term Total Score"
+    )
+
+    # TAA Calculations (matching frontend interface)
+    taa_score = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, verbose_name="Total Annual Average"
+    )
+    average_for_year = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, verbose_name="Average for the Year"
+    )
+    obtainable = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, verbose_name="Total Obtainable Marks"
+    )
+    obtained = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, verbose_name="Total Obtained Marks"
+    )
+    overall_grade = models.CharField(
+        max_length=5, blank=True, verbose_name="Overall Grade for Session"
+    )
+
+    # Class Position and Statistics
+    class_position = models.PositiveIntegerField(null=True, blank=True)
+    total_students = models.PositiveIntegerField(
+        default=0, verbose_name="Total Students in Class"
+    )
+
+    # Teacher Comments (matching frontend interface)
+    teacher_remark = models.TextField(blank=True, verbose_name="Form Master's Remark")
+    head_teacher_remark = models.TextField(
+        blank=True, verbose_name="Principal's Remark"
+    )
+
+    # Status and Tracking
+    status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
+    is_published = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "results_senior_secondary_session_report"
+        unique_together = ["student", "academic_session"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student", "academic_session"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_published"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.academic_session.name} Senior Secondary Session Report"
+
+    def calculate_session_metrics(self):
+        """Calculate session metrics from individual subject session results"""
+        from django.db.models import Sum, Count, Avg
+
+        # Get all session results for this student and academic session
+        session_results = SeniorSecondarySessionResult.objects.filter(
+            student=self.student,
+            academic_session=self.academic_session,
+            status__in=["APPROVED", "PUBLISHED"],
+        )
+
+        if session_results.exists():
+            # Calculate session totals
+            totals = session_results.aggregate(
+                total_obtained=Sum("obtained"),
+                total_obtainable=Sum("obtainable"),
+                avg_for_year=Avg("average_for_year"),
+            )
+
+            self.obtained = totals["total_obtained"] or 0
+            self.obtainable = totals["total_obtainable"] or 0
+            self.average_for_year = totals["avg_for_year"] or 0
+
+            # Calculate TAA score (Total Annual Average)
+            if self.obtainable > 0:
+                self.taa_score = (self.obtained / self.obtainable) * 100
+            else:
+                self.taa_score = 0
+
+            # Calculate term totals from term reports if available
+            self._calculate_term_totals()
+
+            # Determine overall grade
+            self.overall_grade = self._get_default_grade(self.average_for_year)
+
+        self.save()
+
+    def _calculate_term_totals(self):
+        """Calculate individual term totals from term reports"""
+        try:
+            # Get term reports for this student in this academic session
+            first_term_session = ExamSession.objects.filter(
+                academic_session=self.academic_session, term="FIRST"
+            ).first()
+            second_term_session = ExamSession.objects.filter(
+                academic_session=self.academic_session, term="SECOND"
+            ).first()
+            third_term_session = ExamSession.objects.filter(
+                academic_session=self.academic_session, term="THIRD"
+            ).first()
+
+            if first_term_session:
+                first_term_report = SeniorSecondaryTermReport.objects.filter(
+                    student=self.student, exam_session=first_term_session
+                ).first()
+                if first_term_report:
+                    self.term1_total = first_term_report.total_score
+
+            if second_term_session:
+                second_term_report = SeniorSecondaryTermReport.objects.filter(
+                    student=self.student, exam_session=second_term_session
+                ).first()
+                if second_term_report:
+                    self.term2_total = second_term_report.total_score
+
+            if third_term_session:
+                third_term_report = SeniorSecondaryTermReport.objects.filter(
+                    student=self.student, exam_session=third_term_session
+                ).first()
+                if third_term_report:
+                    self.term3_total = third_term_report.total_score
+
+        except Exception as e:
+            # Log error but don't fail
+            print(f"Error calculating term totals: {e}")
+
+    def _get_default_grade(self, percentage):
+        """Fallback grading system"""
+        if percentage >= 80:
+            return "A"
+        if percentage >= 70:
+            return "B+"
+        if percentage >= 60:
+            return "B"
+        if percentage >= 50:
+            return "C"
+        if percentage >= 40:
+            return "D"
+        return "E"
+
+    def calculate_class_position(self):
+        """Calculate class position for session results"""
+        same_class_reports = SeniorSecondarySessionReport.objects.filter(
+            academic_session=self.academic_session,
+            student__student_class=self.student.student_class,
+            student__education_level=self.student.education_level,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).exclude(id=self.id)
+
+        if same_class_reports.exists():
+            higher_performers = same_class_reports.filter(
+                average_for_year__gt=self.average_for_year
+            ).count()
+
+            self.class_position = higher_performers + 1
+            self.total_students = same_class_reports.count() + 1
+        else:
+            self.class_position = 1
+            self.total_students = 1
+
+        self.save()
+
+
+# Updated SeniorSecondaryResult model to work with SeniorSecondaryTermReport
 class SeniorSecondaryResult(models.Model):
     """Senior Secondary specific result model with detailed test scores"""
 
@@ -806,7 +1182,17 @@ class SeniorSecondaryResult(models.Model):
         help_text="Stream for Senior Secondary results (Science, Arts, Commercial, Technical)",
     )
 
-    # Detailed test scores for Senior Secondary
+    # Link to consolidated term report
+    term_report = models.ForeignKey(
+        SeniorSecondaryTermReport,
+        on_delete=models.CASCADE,
+        related_name="subject_results",
+        null=True,
+        blank=True,
+        help_text="Link to consolidated term report",
+    )
+
+    # Detailed test scores for Senior Secondary (matching frontend interface)
     first_test_score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -879,6 +1265,16 @@ class SeniorSecondaryResult(models.Model):
 
     # Teacher remarks
     teacher_remark = models.TextField(blank=True, verbose_name="Teacher's Remark")
+    class_teacher_remark = models.TextField(
+        blank=True, verbose_name="Class Teacher's Remark"
+    )
+    head_teacher_remark = models.TextField(
+        blank=True, verbose_name="Head Teacher's Remark"
+    )
+
+    class_teacher_signature_url = models.URLField(blank=True, null=True)
+    head_teacher_signature_url = models.URLField(blank=True, null=True)
+    principal_signature_url = models.URLField(blank=True, null=True)
 
     # Status and tracking
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
@@ -926,6 +1322,7 @@ class SeniorSecondaryResult(models.Model):
             models.Index(fields=["student", "exam_session"]),
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["term_report"]),
         ]
 
     def __str__(self):
@@ -939,6 +1336,9 @@ class SeniorSecondaryResult(models.Model):
         # Calculate class statistics
         self.calculate_class_statistics()
         super().save(*args, **kwargs)
+
+        # Update or create consolidated report
+        self.update_term_report()
 
     def calculate_scores(self):
         """Calculate total CA score, total score, and percentage"""
@@ -986,9 +1386,7 @@ class SeniorSecondaryResult(models.Model):
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             status__in=["APPROVED", "PUBLISHED"],
-        ).exclude(
-            id=self.id
-        )  # Exclude current result
+        ).exclude(id=self.id)
 
         if class_results.exists():
             # Calculate statistics
@@ -1009,7 +1407,67 @@ class SeniorSecondaryResult(models.Model):
             all_scores.sort(reverse=True)
             self.subject_position = all_scores.index(self.total_score) + 1
 
+    def update_term_report(self):
+        """Update or create the consolidated term report"""
+        if self.status not in ["APPROVED", "PUBLISHED"]:
+            return
 
+        # Get or create the term report
+        term_report, created = SeniorSecondaryTermReport.objects.get_or_create(
+            student=self.student,
+            exam_session=self.exam_session,
+            defaults={"status": "DRAFT"},
+        )
+
+        # Link this result to the term report (avoid recursive calls)
+        if not self.term_report:
+            SeniorSecondaryResult.objects.filter(id=self.id).update(
+                term_report=term_report.id
+            )
+
+        # Recalculate term report metrics
+        term_report.calculate_metrics()
+        term_report.calculate_class_position()
+
+    # Properties to match frontend interface expectations
+    @property
+    def test1_score(self):
+        """Alias for first_test_score to match frontend interface"""
+        return self.first_test_score
+
+    @property
+    def test2_score(self):
+        """Alias for second_test_score to match frontend interface"""
+        return self.second_test_score
+
+    @property
+    def test3_score(self):
+        """Alias for third_test_score to match frontend interface"""
+        return self.third_test_score
+
+    @property
+    def total_obtainable(self):
+        """Return total obtainable marks (always 100 for senior secondary)"""
+        return 100
+
+    @property
+    def position(self):
+        """Format position with ordinal suffix for frontend"""
+        if self.subject_position:
+            suffix = (
+                "st"
+                if self.subject_position == 1
+                else (
+                    "nd"
+                    if self.subject_position == 2
+                    else "rd" if self.subject_position == 3 else "th"
+                )
+            )
+            return f"{self.subject_position}{suffix}"
+        return ""
+
+
+# Updated SeniorSecondarySessionResult model to work with SeniorSecondarySessionReport
 class SeniorSecondarySessionResult(models.Model):
     """Senior Secondary session result with Termly Accumulative Average (TAA)"""
 
@@ -1037,7 +1495,17 @@ class SeniorSecondarySessionResult(models.Model):
         related_name="senior_session_results",
     )
 
-    # Term scores
+    # Link to consolidated session report
+    session_report = models.ForeignKey(
+        SeniorSecondarySessionReport,
+        on_delete=models.CASCADE,
+        related_name="subject_results",
+        null=True,
+        blank=True,
+        help_text="Link to consolidated session report",
+    )
+
+    # Term scores (matching frontend interface)
     first_term_score = models.DecimalField(
         max_digits=5, decimal_places=2, default=0, verbose_name="1st Term Total Score"
     )
@@ -1078,6 +1546,16 @@ class SeniorSecondarySessionResult(models.Model):
 
     # Teacher remarks
     teacher_remark = models.TextField(blank=True, verbose_name="Teacher's Remark")
+    class_teacher_remark = models.TextField(
+        blank=True, verbose_name="Class Teacher's Remark"
+    )
+    head_teacher_remark = models.TextField(
+        blank=True, verbose_name="Head Teacher's Remark"
+    )
+
+    class_teacher_signature_url = models.URLField(blank=True, null=True)
+    head_teacher_signature_url = models.URLField(blank=True, null=True)
+    principal_signature_url = models.URLField(blank=True, null=True)
 
     # Status
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
@@ -1089,6 +1567,12 @@ class SeniorSecondarySessionResult(models.Model):
         db_table = "results_senior_secondary_session_result"
         unique_together = ["student", "subject", "academic_session"]
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student", "academic_session"]),
+            models.Index(fields=["subject", "academic_session"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["session_report"]),
+        ]
 
     def __str__(self):
         return f"{self.student.full_name} - {self.subject.name} Session Result"
@@ -1099,6 +1583,9 @@ class SeniorSecondarySessionResult(models.Model):
         # Calculate class statistics
         self.calculate_class_statistics()
         super().save(*args, **kwargs)
+
+        # Update consolidated session report
+        self.update_session_report()
 
     def calculate_taa(self):
         """Calculate Termly Accumulative Average"""
@@ -1144,13 +1631,274 @@ class SeniorSecondarySessionResult(models.Model):
             all_scores.sort(reverse=True)
             self.subject_position = all_scores.index(self.average_for_year) + 1
 
-    def get_default_for_level(cls, education_level):
-        """Get the default configuration for a specific education level"""
-        return cls.objects.filter(
-            education_level=education_level, is_default=True, is_active=True
-        ).first()
+    def update_session_report(self):
+        """Update or create the consolidated session report"""
+        if self.status not in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get or create the session report
+        session_report, created = SeniorSecondarySessionReport.objects.get_or_create(
+            student=self.student,
+            academic_session=self.academic_session,
+            defaults={"status": "DRAFT"},
+        )
+
+        # Link this result to the session report (avoid recursive calls)
+        if not self.session_report:
+            SeniorSecondarySessionResult.objects.filter(id=self.id).update(
+                session_report=session_report.id
+            )
+
+        # Recalculate session report metrics
+        session_report.calculate_session_metrics()
+        session_report.calculate_class_position()
+
+    # Properties to match frontend interface expectations
+    @property
+    def term1_score(self):
+        """Alias for first_term_score to match frontend interface"""
+        return self.first_term_score
+
+    @property
+    def term2_score(self):
+        """Alias for second_term_score to match frontend interface"""
+        return self.second_term_score
+
+    @property
+    def term3_score(self):
+        """Alias for third_term_score to match frontend interface"""
+        return self.third_term_score
+
+    @property
+    def average_score(self):
+        """Alias for average_for_year to match frontend interface"""
+        return self.average_for_year
+
+    @property
+    def position(self):
+        """Format position with ordinal suffix for frontend"""
+        if self.subject_position:
+            suffix = (
+                "st"
+                if self.subject_position == 1
+                else (
+                    "nd"
+                    if self.subject_position == 2
+                    else "rd" if self.subject_position == 3 else "th"
+                )
+            )
+            return f"{self.subject_position}{suffix}"
+        return ""
 
 
+# Signal handlers to maintain data consistency
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=SeniorSecondaryResult)
+def update_senior_secondary_term_report_on_save(sender, instance, **kwargs):
+    """Update term report when individual result is saved"""
+    if instance.term_report and instance.status in ["APPROVED", "PUBLISHED"]:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+@receiver(post_delete, sender=SeniorSecondaryResult)
+def update_senior_secondary_term_report_on_delete(sender, instance, **kwargs):
+    """Update term report when individual result is deleted"""
+    if instance.term_report:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+@receiver(post_save, sender=SeniorSecondarySessionResult)
+def update_senior_secondary_session_report_on_save(sender, instance, **kwargs):
+    """Update session report when individual session result is saved"""
+    if instance.session_report and instance.status in ["APPROVED", "PUBLISHED"]:
+        instance.session_report.calculate_session_metrics()
+        instance.session_report.calculate_class_position()
+
+
+@receiver(post_delete, sender=SeniorSecondarySessionResult)
+def update_senior_secondary_session_report_on_delete(sender, instance, **kwargs):
+    """Update session report when individual session result is deleted"""
+    if instance.session_report:
+        instance.session_report.calculate_session_metrics()
+        instance.session_report.calculate_class_position()
+
+
+# Add these new models to your results/models.py
+
+
+class JuniorSecondaryTermReport(models.Model):
+    """Consolidated junior secondary term report matching frontend expectations"""
+
+    RESULT_STATUS = [
+        ("DRAFT", "Draft"),
+        ("APPROVED", "Approved"),
+        ("PUBLISHED", "Published"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="junior_secondary_term_reports"
+    )
+    exam_session = models.ForeignKey(
+        ExamSession,
+        on_delete=models.CASCADE,
+        related_name="junior_secondary_term_reports",
+    )
+
+    # Consolidated Academic Metrics (matching frontend JuniorSecondaryResultData interface)
+    total_score = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total Score Across All Subjects",
+    )
+    average_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Average Score Percentage",
+    )
+    overall_grade = models.CharField(
+        max_length=5, blank=True, verbose_name="Overall Grade"
+    )
+
+    # Class Position and Statistics
+    class_position = models.PositiveIntegerField(null=True, blank=True)
+    total_students = models.PositiveIntegerField(
+        default=0, verbose_name="Total Students in Class"
+    )
+
+    # Attendance Information (matching frontend attendance interface)
+    times_opened = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times School Opened"
+    )
+    times_present = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times Student was Present"
+    )
+
+    # Term Information
+    next_term_begins = models.DateField(null=True, blank=True)
+
+    # Teacher Comments (matching frontend structure)
+    class_teacher_remark = models.TextField(blank=True)
+    head_teacher_remark = models.TextField(blank=True)
+
+    # Status and Tracking
+    status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
+    is_published = models.BooleanField(default=False)
+
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_junior_secondary_reports",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "results_junior_secondary_term_report"
+        unique_together = ["student", "exam_session"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student", "exam_session"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_published"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.exam_session.name} Junior Secondary Report"
+
+    def calculate_metrics(self):
+        """Calculate consolidated metrics from individual subject results"""
+        from django.db.models import Sum, Count, Avg
+
+        # Get all junior secondary results for this student and exam session
+        subject_results = JuniorSecondaryResult.objects.filter(
+            student=self.student,
+            exam_session=self.exam_session,
+            status__in=["APPROVED", "PUBLISHED"],
+        )
+
+        if subject_results.exists():
+            # Calculate totals using the total_score field from JuniorSecondaryResult
+            totals = subject_results.aggregate(
+                total_score_sum=Sum("total_score"),
+                subject_count=Count("id"),
+                avg_percentage=Avg("total_percentage"),
+            )
+
+            self.total_score = totals["total_score_sum"] or 0
+            total_subjects = totals["subject_count"] or 0
+
+            # Calculate average score as percentage (matching frontend expectation)
+            self.average_score = totals["avg_percentage"] or 0
+
+            # Determine overall grade based on average percentage
+            if hasattr(subject_results.first(), "grading_system"):
+                grading_system = subject_results.first().grading_system
+                grade_obj = grading_system.grades.filter(
+                    min_score__lte=self.average_score, max_score__gte=self.average_score
+                ).first()
+
+                if grade_obj:
+                    self.overall_grade = grade_obj.grade
+                else:
+                    self.overall_grade = self._get_default_grade(self.average_score)
+            else:
+                self.overall_grade = self._get_default_grade(self.average_score)
+
+        self.save()
+
+    def _get_default_grade(self, percentage):
+        """Fallback grading system if no grading system is available"""
+        if percentage >= 80:
+            return "A"
+        if percentage >= 70:
+            return "B+"
+        if percentage >= 60:
+            return "B"
+        if percentage >= 50:
+            return "C"
+        if percentage >= 40:
+            return "D"
+        return "E"
+
+    def calculate_class_position(self):
+        """Calculate class position among peers"""
+        # Get all students in the same class for this exam session
+        same_class_reports = JuniorSecondaryTermReport.objects.filter(
+            exam_session=self.exam_session,
+            student__student_class=self.student.student_class,
+            student__education_level=self.student.education_level,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).exclude(id=self.id)
+
+        if same_class_reports.exists():
+            # Count students with higher average scores
+            higher_performers = same_class_reports.filter(
+                average_score__gt=self.average_score
+            ).count()
+
+            self.class_position = higher_performers + 1
+            self.total_students = same_class_reports.count() + 1
+        else:
+            self.class_position = 1
+            self.total_students = 1
+
+        self.save()
+
+
+# Updated JuniorSecondaryResult model to work with JuniorSecondaryTermReport
 class JuniorSecondaryResult(models.Model):
     """Junior Secondary specific result model with detailed CA breakdown"""
 
@@ -1175,7 +1923,17 @@ class JuniorSecondaryResult(models.Model):
         GradingSystem, on_delete=models.CASCADE, related_name="junior_secondary_results"
     )
 
-    # Continuous Assessment Breakdown (Total 40%)
+    # Link to consolidated report
+    term_report = models.ForeignKey(
+        JuniorSecondaryTermReport,
+        on_delete=models.CASCADE,
+        related_name="subject_results",
+        null=True,
+        blank=True,
+        help_text="Link to consolidated term report",
+    )
+
+    # Continuous Assessment Breakdown (matching frontend SubjectResult interface)
     continuous_assessment_score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -1288,8 +2046,18 @@ class JuniorSecondaryResult(models.Model):
         max_digits=5, decimal_places=2, default=0, verbose_name="Cumulative Score"
     )
 
-    # Teacher remarks
+    # Teacher remarks (matching frontend expectation)
     teacher_remark = models.TextField(blank=True, verbose_name="Teacher's Remark")
+    class_teacher_remark = models.TextField(
+        blank=True, verbose_name="Class Teacher's Remark"
+    )
+    head_teacher_remark = models.TextField(
+        blank=True, verbose_name="Head Teacher's Remark"
+    )
+
+    class_teacher_signature_url = models.URLField(blank=True, null=True)
+    head_teacher_signature_url = models.URLField(blank=True, null=True)
+    principal_signature_url = models.URLField(blank=True, null=True)
 
     # Status and tracking
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
@@ -1337,6 +2105,7 @@ class JuniorSecondaryResult(models.Model):
             models.Index(fields=["student", "exam_session"]),
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["term_report"]),
         ]
 
     def __str__(self):
@@ -1351,9 +2120,12 @@ class JuniorSecondaryResult(models.Model):
         self.calculate_class_statistics()
         super().save(*args, **kwargs)
 
+        # Update or create consolidated report
+        self.update_term_report()
+
     def calculate_scores(self):
         """Calculate CA total, total score, and percentages"""
-        # Calculate CA total (sum of all CA components)
+        # Calculate CA total (sum of all CA components) - matching frontend ca_total field
         self.ca_total = (
             self.continuous_assessment_score
             + self.take_home_test_score
@@ -1362,7 +2134,7 @@ class JuniorSecondaryResult(models.Model):
             + self.note_copying_score
         )
 
-        # Calculate total score (CA + Exam)
+        # Calculate total score (CA + Exam) - this maps to frontend mark_obtained
         self.total_score = self.ca_total + self.exam_score
 
         # Calculate percentages
@@ -1405,9 +2177,7 @@ class JuniorSecondaryResult(models.Model):
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             status__in=["APPROVED", "PUBLISHED"],
-        ).exclude(
-            id=self.id
-        )  # Exclude current result
+        ).exclude(id=self.id)
 
         if class_results.exists():
             # Calculate statistics
@@ -1428,7 +2198,251 @@ class JuniorSecondaryResult(models.Model):
             all_scores.sort(reverse=True)
             self.subject_position = all_scores.index(self.total_percentage) + 1
 
+    def update_term_report(self):
+        """Update or create the consolidated term report"""
+        if self.status not in ["APPROVED", "PUBLISHED"]:
+            return
 
+        # Get or create the term report
+        term_report, created = JuniorSecondaryTermReport.objects.get_or_create(
+            student=self.student,
+            exam_session=self.exam_session,
+            defaults={"status": "DRAFT"},
+        )
+
+        # Link this result to the term report (avoid recursive calls)
+        if not self.term_report:
+            JuniorSecondaryResult.objects.filter(id=self.id).update(
+                term_report=term_report.id
+            )
+
+        # Recalculate term report metrics
+        term_report.calculate_metrics()
+        term_report.calculate_class_position()
+
+    # Properties to match frontend interface expectations
+    @property
+    def exam_marks(self):
+        """Alias for exam_score to match frontend interface"""
+        return self.exam_score
+
+    @property
+    def mark_obtained(self):
+        """Alias for total_score to match frontend interface"""
+        return self.total_score
+
+    @property
+    def total_obtainable(self):
+        """Return the total obtainable marks (always 100 for junior secondary)"""
+        return 100
+
+    @property
+    def position(self):
+        """Format position with ordinal suffix for frontend"""
+        if self.subject_position:
+            suffix = (
+                "st"
+                if self.subject_position == 1
+                else (
+                    "nd"
+                    if self.subject_position == 2
+                    else "rd" if self.subject_position == 3 else "th"
+                )
+            )
+            return f"{self.subject_position}{suffix}"
+        return ""
+
+
+# Signal handlers to maintain data consistency
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=JuniorSecondaryResult)
+def update_junior_secondary_term_report_on_save(sender, instance, **kwargs):
+    """Update term report when individual result is saved"""
+    if instance.term_report and instance.status in ["APPROVED", "PUBLISHED"]:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+@receiver(post_delete, sender=JuniorSecondaryResult)
+def update_junior_secondary_term_report_on_delete(sender, instance, **kwargs):
+    """Update term report when individual result is deleted"""
+    if instance.term_report:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+# Add these new models to your results/models.py
+
+
+class PrimaryTermReport(models.Model):
+    """Consolidated primary term report matching frontend expectations"""
+
+    RESULT_STATUS = [
+        ("DRAFT", "Draft"),
+        ("APPROVED", "Approved"),
+        ("PUBLISHED", "Published"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="primary_term_reports"
+    )
+    exam_session = models.ForeignKey(
+        ExamSession, on_delete=models.CASCADE, related_name="primary_term_reports"
+    )
+
+    # Consolidated Academic Metrics (matching frontend PrimaryResultData interface)
+    total_score = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total Score Across All Subjects",
+    )
+    average_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Average Score Percentage",
+    )
+    overall_grade = models.CharField(
+        max_length=5, blank=True, verbose_name="Overall Grade"
+    )
+
+    # Class Position and Statistics
+    class_position = models.PositiveIntegerField(null=True, blank=True)
+    total_students = models.PositiveIntegerField(
+        default=0, verbose_name="Total Students in Class"
+    )
+
+    # Attendance Information (matching frontend attendance interface)
+    times_opened = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times School Opened"
+    )
+    times_present = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times Student was Present"
+    )
+
+    # Term Information
+    next_term_begins = models.DateField(null=True, blank=True)
+
+    # Teacher Comments (matching frontend structure)
+    class_teacher_remark = models.TextField(blank=True)
+    head_teacher_remark = models.TextField(blank=True)
+
+    # Status and Tracking
+    status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
+    is_published = models.BooleanField(default=False)
+
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_primary_reports",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "results_primary_term_report"
+        unique_together = ["student", "exam_session"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student", "exam_session"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_published"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.exam_session.name} Primary Report"
+
+    def calculate_metrics(self):
+        """Calculate consolidated metrics from individual subject results"""
+        from django.db.models import Sum, Count, Avg
+
+        # Get all primary results for this student and exam session
+        subject_results = PrimaryResult.objects.filter(
+            student=self.student,
+            exam_session=self.exam_session,
+            status__in=["APPROVED", "PUBLISHED"],
+        )
+
+        if subject_results.exists():
+            # Calculate totals using the total_score field from PrimaryResult
+            totals = subject_results.aggregate(
+                total_score_sum=Sum("total_score"),
+                subject_count=Count("id"),
+                avg_percentage=Avg("total_percentage"),
+            )
+
+            self.total_score = totals["total_score_sum"] or 0
+            total_subjects = totals["subject_count"] or 0
+
+            # Calculate average score as percentage (matching frontend expectation)
+            self.average_score = totals["avg_percentage"] or 0
+
+            # Determine overall grade based on average percentage
+            if hasattr(subject_results.first(), "grading_system"):
+                grading_system = subject_results.first().grading_system
+                grade_obj = grading_system.grades.filter(
+                    min_score__lte=self.average_score, max_score__gte=self.average_score
+                ).first()
+
+                if grade_obj:
+                    self.overall_grade = grade_obj.grade
+                else:
+                    self.overall_grade = self._get_default_grade(self.average_score)
+            else:
+                self.overall_grade = self._get_default_grade(self.average_score)
+
+        self.save()
+
+    def _get_default_grade(self, percentage):
+        """Fallback grading system if no grading system is available"""
+        if percentage >= 80:
+            return "A"
+        if percentage >= 70:
+            return "B+"
+        if percentage >= 60:
+            return "B"
+        if percentage >= 50:
+            return "C"
+        if percentage >= 40:
+            return "D"
+        return "E"
+
+    def calculate_class_position(self):
+        """Calculate class position among peers"""
+        # Get all students in the same class for this exam session
+        same_class_reports = PrimaryTermReport.objects.filter(
+            exam_session=self.exam_session,
+            student__student_class=self.student.student_class,
+            student__education_level=self.student.education_level,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).exclude(id=self.id)
+
+        if same_class_reports.exists():
+            # Count students with higher average scores
+            higher_performers = same_class_reports.filter(
+                average_score__gt=self.average_score
+            ).count()
+
+            self.class_position = higher_performers + 1
+            self.total_students = same_class_reports.count() + 1
+        else:
+            self.class_position = 1
+            self.total_students = 1
+
+        self.save()
+
+
+# Updated PrimaryResult model to work with PrimaryTermReport
 class PrimaryResult(models.Model):
     """Primary School specific result model with detailed CA breakdown"""
 
@@ -1453,7 +2467,17 @@ class PrimaryResult(models.Model):
         GradingSystem, on_delete=models.CASCADE, related_name="primary_results"
     )
 
-    # Continuous Assessment Breakdown (Total 40%)
+    # Link to consolidated report
+    term_report = models.ForeignKey(
+        PrimaryTermReport,
+        on_delete=models.CASCADE,
+        related_name="subject_results",
+        null=True,
+        blank=True,
+        help_text="Link to consolidated term report",
+    )
+
+    # Continuous Assessment Breakdown (matching frontend SubjectResult interface)
     continuous_assessment_score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -1474,6 +2498,13 @@ class PrimaryResult(models.Model):
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(5)],
         verbose_name="Practical (5 marks)",
+    )
+    appearance_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+        verbose_name="Appearance (5 marks)",
     )
     project_score = models.DecimalField(
         max_digits=5,
@@ -1559,8 +2590,18 @@ class PrimaryResult(models.Model):
         max_digits=5, decimal_places=2, default=0, verbose_name="Cumulative Score"
     )
 
-    # Teacher remarks
+    # Teacher remarks (matching frontend expectation)
     teacher_remark = models.TextField(blank=True, verbose_name="Teacher's Remark")
+    class_teacher_remark = models.TextField(
+        blank=True, verbose_name="Class Teacher's Remark"
+    )
+    head_teacher_remark = models.TextField(
+        blank=True, verbose_name="Head Teacher's Remark"
+    )
+
+    class_teacher_signature_url = models.URLField(blank=True, null=True)
+    head_teacher_signature_url = models.URLField(blank=True, null=True)
+    principal_signature_url = models.URLField(blank=True, null=True)
 
     # Status and tracking
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
@@ -1608,6 +2649,7 @@ class PrimaryResult(models.Model):
             models.Index(fields=["student", "exam_session"]),
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["term_report"]),
         ]
 
     def __str__(self):
@@ -1622,9 +2664,12 @@ class PrimaryResult(models.Model):
         self.calculate_class_statistics()
         super().save(*args, **kwargs)
 
+        # Update or create consolidated report
+        self.update_term_report()
+
     def calculate_scores(self):
         """Calculate CA total, total score, and percentages"""
-        # Calculate CA total (sum of all CA components)
+        # Calculate CA total (sum of all CA components) - matching frontend ca_total field
         self.ca_total = (
             self.continuous_assessment_score
             + self.take_home_test_score
@@ -1633,7 +2678,7 @@ class PrimaryResult(models.Model):
             + self.note_copying_score
         )
 
-        # Calculate total score (CA + Exam)
+        # Calculate total score (CA + Exam) - this maps to frontend mark_obtained
         self.total_score = self.ca_total + self.exam_score
 
         # Calculate percentages
@@ -1676,9 +2721,7 @@ class PrimaryResult(models.Model):
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             status__in=["APPROVED", "PUBLISHED"],
-        ).exclude(
-            id=self.id
-        )  # Exclude current result
+        ).exclude(id=self.id)
 
         if class_results.exists():
             # Calculate statistics
@@ -1699,20 +2742,92 @@ class PrimaryResult(models.Model):
             all_scores.sort(reverse=True)
             self.subject_position = all_scores.index(self.total_percentage) + 1
 
+    def update_term_report(self):
+        """Update or create the consolidated term report"""
+        if self.status not in ["APPROVED", "PUBLISHED"]:
+            return
 
-class NurseryResult(models.Model):
-    """Nursery School specific result model with academic performance and physical development"""
+        # Get or create the term report
+        term_report, created = PrimaryTermReport.objects.get_or_create(
+            student=self.student,
+            exam_session=self.exam_session,
+            defaults={"status": "DRAFT"},
+        )
+
+        # Link this result to the term report (avoid recursive calls)
+        if not self.term_report:
+            PrimaryResult.objects.filter(id=self.id).update(term_report=term_report.id)
+
+        # Recalculate term report metrics
+        term_report.calculate_metrics()
+        term_report.calculate_class_position()
+
+    # Properties to match frontend interface expectations
+    @property
+    def exam_marks(self):
+        """Alias for exam_score to match frontend interface"""
+        return self.exam_score
+
+    @property
+    def mark_obtained(self):
+        """Alias for total_score to match frontend interface"""
+        return self.total_score
+
+    @property
+    def total_obtainable(self):
+        """Return the total obtainable marks (always 100 for primary)"""
+        return 100
+
+    @property
+    def position(self):
+        """Format position with ordinal suffix for frontend"""
+        if self.subject_position:
+            suffix = (
+                "st"
+                if self.subject_position == 1
+                else (
+                    "nd"
+                    if self.subject_position == 2
+                    else "rd" if self.subject_position == 3 else "th"
+                )
+            )
+            return f"{self.subject_position}{suffix}"
+        return ""
+
+
+# Signal handlers to maintain data consistency
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=PrimaryResult)
+def update_primary_term_report_on_save(sender, instance, **kwargs):
+    """Update term report when individual result is saved"""
+    if instance.term_report and instance.status in ["APPROVED", "PUBLISHED"]:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+@receiver(post_delete, sender=PrimaryResult)
+def update_primary_term_report_on_delete(sender, instance, **kwargs):
+    """Update term report when individual result is deleted"""
+    if instance.term_report:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+class NurseryTermReport(models.Model):
+    """Consolidated nursery term report matching frontend expectations"""
 
     RESULT_STATUS = [
         ("DRAFT", "Draft"),
-        ("SUBMITTED", "Submitted"),
         ("APPROVED", "Approved"),
         ("PUBLISHED", "Published"),
     ]
 
     PHYSICAL_DEVELOPMENT_CHOICES = [
         ("EXCELLENT", "Excellent"),
-        ("VERY_GOOD", "Very Good"),
+        ("VERY GOOD", "Very Good"),
         ("GOOD", "Good"),
         ("FAIR", "Fair"),
         ("POOR", "Poor"),
@@ -1720,39 +2835,44 @@ class NurseryResult(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, related_name="nursery_results"
-    )
-    subject = models.ForeignKey(
-        Subject, on_delete=models.CASCADE, related_name="nursery_results"
+        Student, on_delete=models.CASCADE, related_name="nursery_term_reports"
     )
     exam_session = models.ForeignKey(
-        ExamSession, on_delete=models.CASCADE, related_name="nursery_results"
-    )
-    grading_system = models.ForeignKey(
-        GradingSystem, on_delete=models.CASCADE, related_name="nursery_results"
+        ExamSession, on_delete=models.CASCADE, related_name="nursery_term_reports"
     )
 
-    # Academic Performance
-    max_marks_obtainable = models.DecimalField(
+    # Consolidated Academic Metrics
+    total_subjects = models.PositiveIntegerField(default=0)
+    total_max_marks = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total Maximum Marks Obtainable",
+    )
+    total_marks_obtained = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0, verbose_name="Total Marks Obtained"
+    )
+    overall_percentage = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(0)],
-        verbose_name="Max Marks Obtainable",
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Overall Percentage",
     )
-    mark_obtained = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=0,
-        validators=[MinValueValidator(0)],
-        verbose_name="Mark Obtained",
-    )
-    position = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Position"
-    )
-    academic_comment = models.TextField(blank=True, verbose_name="Academic Comment")
 
-    # Physical Development / Special Reports
+    # Class Position and Statistics
+    class_position = models.PositiveIntegerField(null=True, blank=True)
+    total_students_in_class = models.PositiveIntegerField(default=0)
+
+    # Attendance Information
+    times_school_opened = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times School Opened"
+    )
+    times_student_present = models.PositiveIntegerField(
+        default=0, verbose_name="Number of Times Student was Present"
+    )
+
+    # Physical Development (stored once per term, not per subject)
     physical_development = models.CharField(
         max_length=20,
         choices=PHYSICAL_DEVELOPMENT_CHOICES,
@@ -1780,6 +2900,156 @@ class NurseryResult(models.Model):
     physical_development_comment = models.TextField(
         blank=True, verbose_name="Physical Development Comment"
     )
+
+    # Term Information
+    next_term_begins = models.DateField(null=True, blank=True)
+
+    # Teacher Comments
+    class_teacher_remark = models.TextField(blank=True)
+    head_teacher_remark = models.TextField(blank=True)
+
+    # Status and Tracking
+    status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
+    is_published = models.BooleanField(default=False)
+
+    # Publishing and editing metadata
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="published_nursery_reports",
+    )
+    published_date = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "results_nursery_term_report"
+        unique_together = ["student", "exam_session"]
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student", "exam_session"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_published"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student.full_name} - {self.exam_session.name} Report"
+
+    def calculate_metrics(self):
+        """Calculate consolidated metrics from individual subject results"""
+        from django.db.models import Sum, Count
+
+        # Get all nursery results for this student and exam session
+        subject_results = NurseryResult.objects.filter(
+            student=self.student,
+            exam_session=self.exam_session,
+            status__in=["APPROVED", "PUBLISHED"],
+        )
+
+        if subject_results.exists():
+            # Calculate totals
+            totals = subject_results.aggregate(
+                total_max=Sum("max_marks_obtainable"),
+                total_obtained=Sum("mark_obtained"),
+                subject_count=Count("id"),
+            )
+
+            self.total_subjects = totals["subject_count"] or 0
+            self.total_max_marks = totals["total_max"] or 0
+            self.total_marks_obtained = totals["total_obtained"] or 0
+
+            # Calculate overall percentage
+            if self.total_max_marks > 0:
+                self.overall_percentage = (
+                    self.total_marks_obtained / self.total_max_marks
+                ) * 100
+            else:
+                self.overall_percentage = 0
+
+        self.save()
+
+    def calculate_class_position(self):
+        """Calculate class position among peers"""
+        # Get all students in the same class for this exam session
+        same_class_reports = NurseryTermReport.objects.filter(
+            exam_session=self.exam_session,
+            student__student_class=self.student.student_class,
+            student__education_level=self.student.education_level,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).exclude(id=self.id)
+
+        if same_class_reports.exists():
+            # Count students with higher percentages
+            higher_performers = same_class_reports.filter(
+                overall_percentage__gt=self.overall_percentage
+            ).count()
+
+            self.class_position = higher_performers + 1
+            self.total_students_in_class = same_class_reports.count() + 1
+        else:
+            self.class_position = 1
+            self.total_students_in_class = 1
+
+        self.save()
+
+
+# Updated NurseryResult model to work with NurseryTermReport
+class NurseryResult(models.Model):
+    """Individual subject results for nursery students"""
+
+    RESULT_STATUS = [
+        ("DRAFT", "Draft"),
+        ("SUBMITTED", "Submitted"),
+        ("APPROVED", "Approved"),
+        ("PUBLISHED", "Published"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="nursery_results"
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, related_name="nursery_results"
+    )
+    exam_session = models.ForeignKey(
+        ExamSession, on_delete=models.CASCADE, related_name="nursery_results"
+    )
+    grading_system = models.ForeignKey(
+        GradingSystem, on_delete=models.CASCADE, related_name="nursery_results"
+    )
+
+    # Link to consolidated report
+    term_report = models.ForeignKey(
+        NurseryTermReport,
+        on_delete=models.CASCADE,
+        related_name="subject_results",
+        null=True,
+        blank=True,
+        help_text="Link to consolidated term report",
+    )
+
+    # Academic Performance
+    max_marks_obtainable = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Max Marks Obtainable",
+    )
+    mark_obtained = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="Mark Obtained",
+    )
+    subject_position = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Position in Subject"
+    )
+    academic_comment = models.TextField(blank=True, verbose_name="Academic Comment")
 
     # Calculated scores
     percentage = models.DecimalField(
@@ -1843,6 +3113,7 @@ class NurseryResult(models.Model):
             models.Index(fields=["student", "exam_session"]),
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
+            models.Index(fields=["term_report"]),
         ]
 
     def __str__(self):
@@ -1853,7 +3124,12 @@ class NurseryResult(models.Model):
         self.calculate_percentage()
         # Determine grade
         self.determine_grade()
+        # Calculate subject position
+        self.calculate_subject_position()
         super().save(*args, **kwargs)
+
+        # Update or create consolidated report
+        self.update_term_report()
 
     def calculate_percentage(self):
         """Calculate percentage based on marks obtained and max marks"""
@@ -1881,3 +3157,70 @@ class NurseryResult(models.Model):
             self.grade = "N/A"
             self.grade_point = None
             self.is_passed = False
+
+    def calculate_subject_position(self):
+        """Calculate position in this specific subject"""
+        if self.status not in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get all results for this subject and exam session in the same class
+        class_results = NurseryResult.objects.filter(
+            subject=self.subject,
+            exam_session=self.exam_session,
+            student__student_class=self.student.student_class,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).exclude(id=self.id)
+
+        if class_results.exists():
+            # Count students with higher marks
+            higher_performers = class_results.filter(
+                mark_obtained__gt=self.mark_obtained
+            ).count()
+
+            self.subject_position = higher_performers + 1
+        else:
+            self.subject_position = 1
+
+    def update_term_report(self):
+        """Update or create the consolidated term report"""
+        if self.status not in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get or create the term report
+        term_report, created = NurseryTermReport.objects.get_or_create(
+            student=self.student,
+            exam_session=self.exam_session,
+            defaults={"status": "DRAFT"},
+        )
+
+        # Link this result to the term report
+        if not self.term_report:
+            self.term_report = term_report
+            # Use update to avoid recursive save calls
+            NurseryResult.objects.filter(id=self.id).update(term_report=term_report)
+
+        # Recalculate term report metrics
+        term_report.calculate_metrics()
+        term_report.calculate_class_position()
+
+    # Signal handlers to maintain data consistency
+
+
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+
+@receiver(post_save, sender=NurseryResult)
+def update_nursery_term_report_on_save(sender, instance, **kwargs):
+    """Update term report when individual result is saved"""
+    if instance.term_report and instance.status in ["APPROVED", "PUBLISHED"]:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()
+
+
+@receiver(post_delete, sender=NurseryResult)
+def update_nursery_term_report_on_delete(sender, instance, **kwargs):
+    """Update term report when individual result is deleted"""
+    if instance.term_report:
+        instance.term_report.calculate_metrics()
+        instance.term_report.calculate_class_position()

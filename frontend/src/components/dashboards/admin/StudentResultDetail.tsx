@@ -23,24 +23,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import StudentService, { Student } from '@/services/StudentService';
 import ResultService from '@/services/ResultService';
+import {SubjectInfo} from '@/types/types'
 import { toast } from 'react-toastify';
-import api from '@/services/api';
 
+
+// Updated Result interface in StudentResultDetail.tsx
 
 interface NamedUserRef {
   full_name?: string;
 }
 
-type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED' | string;
 
 interface Result {
   id: string;
-  subject_name?: string;
-  subject?: { name?: string };
-  exam_session?: { name?: string };
+  subject?: SubjectInfo | { id: string | number; name?: string };
+  exam_session?: { name?: string; term?: string } | string | number;
   term?: string;
   status: ResultStatus;
   education_level: string;
+  student?: string | number | { id: string | number; full_name?: string };
 
   // Senior secondary fields
   first_test_score?: number | string;
@@ -55,34 +57,39 @@ interface Result {
   continuous_assessment_score?: number | string;
   practical_score?: number | string;
   take_home_test_score?: number | string;
+  appearance_score?: number | string;
   project_score?: number | string;
   note_copying_score?: number | string;
   ca_total?: number | string;
 
-  // Class statistics
+  // Class statistics (handle both string and number formats)
   class_average?: number | string;
   highest_in_class?: number | string;
   lowest_in_class?: number | string;
 
-  // Audit fields
-  entered_by?: NamedUserRef;
+  // Audit fields with both object and string formats
+  entered_by?: NamedUserRef | { full_name?: string };
   entered_by_name?: string;
   created_at?: string;
-  approved_by?: NamedUserRef;
+  approved_by?: NamedUserRef | { full_name?: string };
   approved_by_name?: string;
   approved_date?: string;
-  last_edited_by?: NamedUserRef;
+  last_edited_by?: NamedUserRef | { full_name?: string };
   last_edited_by_name?: string;
   last_edited_at?: string;
-  published_by?: NamedUserRef;
+  published_by?: NamedUserRef | { full_name?: string };
   published_by_name?: string;
   published_date?: string;
+
+  // Serializer fields that might be present
+  subject_name?: string;
+  exam_session_name?: string;
+  student_name?: string;
 
   // Nursery specifics
   grade?: string;
   position?: number | string;
 }
-
 
 interface StudentResultDetailProps {}
 
@@ -118,67 +125,124 @@ const StudentResultDetail: React.FC<StudentResultDetailProps> = () => {
   };
 
   // Load data on component mount
-  useEffect(() => {
-    if (studentId) {
-      loadData();
-    }
-  }, [studentId]);
+ useEffect(() => {
+  if (studentId) {
+    loadData();
+  } else {
+    setError('Student ID is required');
+    setLoading(false);
+  }
+}, [studentId]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [studentData, resultsData] = await Promise.all([
-        StudentService.getStudent(parseInt(studentId!)),
-        ResultService.getStudentResults({ student: studentId })
-      ]);
-      
-      setStudent(studentData);
-      setResults(resultsData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Failed to load student data');
-      toast.error('Failed to load student data');
-    } finally {
-      setLoading(false);
-    }
+
+  // Education level normalization function
+  const normalizeEducationLevel = (level: string | undefined | null): string => {
+    if (!level) return 'UNKNOWN';
+    const normalized = String(level).toUpperCase().replace(/\s+/g, '_').trim();
+    if (normalized === 'SECONDARY') return 'SENIOR_SECONDARY';
+    return normalized;
   };
+
+    // Fixed loadData function in StudentResultDetail.tsx
+const loadData = async () => {
+  if (!studentId) {
+    setError('Student ID is required');
+    setLoading(false);
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError(null);
+    
+    console.log('Loading data for student ID:', studentId);
+
+    // Parse studentId to number with validation
+    const parsedStudentId = parseInt(studentId, 10);
+    if (isNaN(parsedStudentId)) {
+      throw new Error('Invalid student ID format');
+    }
+
+    // Load student data first
+    const studentData = await StudentService.getStudent(parsedStudentId);
+    console.log('Loaded student data:', studentData);
+    setStudent(studentData);
+
+    let finalResults: Result[] = [];
+
+    try {
+      // Pass the string version of studentId to ResultService
+      console.log('Attempting to get student-specific results with education level...');
+      const specificResults = await ResultService.getStudentResults({ 
+        student: studentId, // Use the string version
+        education_level: studentData.education_level
+      });
+      console.log('Student-specific results:', specificResults);
+      
+      if (specificResults && Array.isArray(specificResults) && specificResults.length > 0) {
+        finalResults = specificResults;
+      }
+      console.log('Results after student-specific fetch:', finalResults);
+    } catch (error) {
+      console.log('Student-specific results failed:', error);
+    }
+
+    // If no specific results found, try the alternative method
+    if (finalResults.length === 0) {
+      try {
+        console.log('Attempting alternative method with getResultsByStudent...');
+        const altResults = await ResultService.getResultsByStudent(
+          studentId, // Use the string version
+          studentData.education_level
+        );
+        console.log('Alternative results:', altResults);
+        finalResults = altResults;
+      } catch (error) {
+        console.log('Alternative results fetch failed:', error);
+      }
+    }
+
+    console.log('Final results for student:', finalResults);
+    setResults(finalResults);
+    
+  } catch (error) {
+    console.error('Error loading data:', error);
+    setError('Failed to load student data');
+    toast.error('Failed to load student data');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Handle edit result
   const handleEditResult = (result: any) => {
+    console.log('Editing result:', result);
     setEditingResult(result);
   };
 
-  // Handle status change
-const ENDPOINTS = {
-  NURSERY: 'nursery-results',
-  PRIMARY: 'primary-results',
-  JUNIOR_SECONDARY: 'junior-secondary-results',
-  SENIOR_SECONDARY: 'senior-secondary-results',
-} as const;
+  // // Handle status change
+  // const ENDPOINTS = {
+  //   NURSERY: 'nursery-results',
+  //   PRIMARY: 'primary-results',
+  //   JUNIOR_SECONDARY: 'junior-secondary-results',
+  //   SENIOR_SECONDARY: 'senior-secondary-results',
+  // } as const;
 
-// Normalize possible variants/legacy values to canonical keys used in this component/backend
-const normalizeEducationLevel = (level: string | undefined | null): keyof typeof ENDPOINTS | undefined => {
-  if (!level) return undefined;
-  const normalized = String(level).toUpperCase().replace(/\s+/g, '_').trim();
-  if (normalized === 'SECONDARY') return 'SENIOR_SECONDARY';
-  if (normalized in ENDPOINTS) return normalized as keyof typeof ENDPOINTS;
-  return undefined;
-};
-  
-  const handleStatusChange = async (resultId: string, newStatus: ResultStatus, educationLevel: string) => {
+ const handleStatusChange = async (resultId: string, newStatus: ResultStatus, educationLevel: string) => {
   try {
     setUpdatingStatus(resultId);
-    const levelKey = normalizeEducationLevel(educationLevel);
-    const base = levelKey ? ENDPOINTS[levelKey] : undefined;
-    if (!base) throw new Error('Invalid education level');
-
-    const action: 'approve' | 'publish' = newStatus === 'APPROVED' ? 'approve' : 'publish';
-    const endpoint = `/api/results/${base}/${resultId}/${action}/`;
-
-    await api.post(endpoint, {});
+    
+    if (newStatus === 'APPROVED') {
+      await ResultService.approveResult(resultId, educationLevel);
+    } else if (newStatus === 'PUBLISHED') {
+      await ResultService.publishResult(resultId, educationLevel);
+    } else {
+      throw new Error(`Unsupported status change: ${newStatus}`);
+    }
+    
     toast.success(`Result ${newStatus.toLowerCase()} successfully`);
 
-    // Instead of reloading everything:
+    // Update the result in state
     setResults(prev =>
       prev.map(r => r.id === resultId ? { ...r, status: newStatus } : r)
     );
@@ -210,9 +274,39 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
     );
   };
 
+  // Safe value extraction helpers
+const getSubjectName = (result: Result): string => {
+  if (typeof result.subject === 'object' && result.subject?.name) {
+    return result.subject.name;
+  }
+  return result.subject_name || 'Unknown Subject';
+};
+
+const getExamSessionName = (result: Result): string => {
+  if (typeof result.exam_session === 'object' && result.exam_session?.name) {
+    return result.exam_session.name;
+  }
+  return result.exam_session_name || 'N/A';
+};
+
+const getTermName = (result: Result): string => {
+  if (typeof result.exam_session === 'object' && result.exam_session?.term) {
+    return result.exam_session.term;
+  }
+  return result.term || 'N/A';
+};
+
+  // Safe number conversion helper
+const safeNumber = (value: string | number | undefined | null, defaultValue: number = 0): number => {
+  if (value === null || value === undefined) return defaultValue;
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return isNaN(num) ? defaultValue : num;
+};
+
   // Get detailed result information based on education level
-  const getResultDetails = (result: any, educationLevel: string) => {
+  const getResultDetails = (result: Result, educationLevel: string) => {
     const levelKey = normalizeEducationLevel(educationLevel);
+    
     switch (levelKey) {
       case 'SENIOR_SECONDARY':
         return (
@@ -222,156 +316,233 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Test 1</span>
               </div>
-              <div className="text-2xl font-bold">{result.first_test_score || 0}</div>
+              <div className="text-2xl font-bold">{safeNumber(result.first_test_score).toFixed(2)}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Test 2</span>
               </div>
-              <div className="text-2xl font-bold">{result.second_test_score || 0}</div>
+              <div className="text-2xl font-bold">{safeNumber(result.second_test_score).toFixed(2)}</div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Test 3</span>
               </div>
-              <div className="text-2xl font-bold">{result.third_test_score || 0}</div>
+              <div className="text-2xl font-bold">{safeNumber(result.third_test_score).toFixed(2)}</div>
             </div>
-            {/* CA Total (sum of tests) */}
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Star className="w-4 h-4 mr-2 text-orange-500" />
                 <span className="text-sm font-medium">CA Total</span>
               </div>
-              <div className="text-2xl font-bold">{(Number(result.first_test_score||0)+Number(result.second_test_score||0)+Number(result.third_test_score||0)).toFixed(2)}</div>
+              <div className="text-2xl font-bold">
+              {(safeNumber(result.first_test_score) + 
+                safeNumber(result.second_test_score) + 
+                safeNumber(result.third_test_score)).toFixed(2)}
             </div>
-            {/* Exam */}
+            </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Award className="w-4 h-4 mr-2 text-green-500" />
                 <span className="text-sm font-medium">Exam Score</span>
               </div>
-              <div className="text-2xl font-bold">{Number(result.exam_score||0).toFixed(2)}</div>
+              <div className="text-2xl font-bold">{safeNumber(result.exam_score).toFixed(2)}</div>
             </div>
-            {/* Overall Total */}
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Target className="w-4 h-4 mr-2 text-blue-500" />
                 <span className="text-sm font-medium">Overall Total</span>
               </div>
-              <div className="text-2xl font-bold">{Number(result.total_score||((Number(result.first_test_score||0)+Number(result.second_test_score||0)+Number(result.third_test_score||0))+Number(result.exam_score||0))).toFixed(2)}</div>
+              <div className="text-2xl font-bold">
+              {safeNumber(result.total_score, (
+                safeNumber(result.first_test_score) + 
+                safeNumber(result.second_test_score) + 
+                safeNumber(result.third_test_score) + 
+                safeNumber(result.exam_score)
+              )).toFixed(2)}
             </div>
-            {/* Class Statistics */}
+            </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
                 <span className="text-sm font-medium">Class Average</span>
               </div>
-              <div className="text-2xl font-bold">{Number(result.class_average||0).toFixed(2)}</div>
+              <div className="text-2xl font-bold">
+              {safeNumber(result.class_average) > 0 ? 
+                safeNumber(result.class_average).toFixed(2) : 
+                <span className="text-gray-500 text-sm">Not Available</span>
+              }
+            </div>
+              
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
                 <span className="text-sm font-medium">Highest in Class</span>
+   
               </div>
-              <div className="text-2xl font-bold">{Number(result.highest_in_class||0).toFixed(2)}</div>
+              <div className="text-2xl font-bold">
+              {safeNumber(result.highest_in_class) > 0 ? 
+                safeNumber(result.highest_in_class).toFixed(2) : 
+                <span className="text-gray-500 text-sm">Not Available</span>
+              }
+            </div>
             </div>
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <div className="flex items-center mb-2">
                 <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
                 <span className="text-sm font-medium">Lowest in Class</span>
+              
               </div>
-              <div className="text-2xl font-bold">{Number(result.lowest_in_class||0).toFixed(2)}</div>
+              <div className="text-2xl font-bold">
+              {safeNumber(result.lowest_in_class) > 0 ? 
+                safeNumber(result.lowest_in_class).toFixed(2) : 
+                <span className="text-gray-500 text-sm">Not Available</span>
+              }
+            </div>
             </div>
           </div>
         );
+      
       case 'PRIMARY':
-      case 'JUNIOR_SECONDARY':
-        return (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <BookOpen className="w-4 h-4 mr-2 text-blue-500" />
-                <span className="text-sm font-medium">CA Score</span>
-              </div>
-              <div className="text-2xl font-bold">{result.continuous_assessment_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <User className="w-4 h-4 mr-2 text-green-500" />
-                <span className="text-sm font-medium">Practical</span>
-              </div>
-              <div className="text-2xl font-bold">{result.practical_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <BookOpen className="w-4 h-4 mr-2 text-purple-500" />
-                <span className="text-sm font-medium">Take Home Test</span>
-              </div>
-              <div className="text-2xl font-bold">{result.take_home_test_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Award className="w-4 h-4 mr-2 text-orange-500" />
-                <span className="text-sm font-medium">Project</span>
-              </div>
-              <div className="text-2xl font-bold">{result.project_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <FileText className="w-4 h-4 mr-2 text-indigo-500" />
-                <span className="text-sm font-medium">Note Copying</span>
-              </div>
-              <div className="text-2xl font-bold">{result.note_copying_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Award className="w-4 h-4 mr-2 text-green-500" />
-                <span className="text-sm font-medium">Exam Score</span>
-              </div>
-              <div className="text-2xl font-bold">{Number(result.exam_score||0).toFixed(2)}</div>
-            </div>
-            {/* CA Total */}
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Star className="w-4 h-4 mr-2 text-orange-500" />
-                <span className="text-sm font-medium">CA Total</span>
-              </div>
-              <div className="text-2xl font-bold">{Number(result.ca_total ?? ((Number(result.continuous_assessment_score||0)+Number(result.take_home_test_score||0)+Number(result.practical_score||0)+Number(result.project_score||0)+Number(result.note_copying_score||0))).toFixed(2))}</div>
-            </div>
-            {/* Overall Total */}
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Target className="w-4 h-4 mr-2 text-blue-500" />
-                <span className="text-sm font-medium">Overall Total</span>
-              </div>
-              <div className="text-2xl font-bold">{Number(result.total_score ?? ((Number(result.continuous_assessment_score||0)+Number(result.take_home_test_score||0)+Number(result.practical_score||0)+Number(result.project_score||0)+Number(result.note_copying_score||0)+Number(result.exam_score||0))).toFixed(2))}</div>
-            </div>
-            {/* Class Statistics */}
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
-                <span className="text-sm font-medium">Class Average</span>
-              </div>
-              <div className="text-2xl font-bold">{Number(result.class_average||0).toFixed(2)}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
-                <span className="text-sm font-medium">Highest in Class</span>
-              </div>
-              <div className="text-2xl font-bold">{Number(result.highest_in_class||0).toFixed(2)}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
-                <span className="text-sm font-medium">Lowest in Class</span>
-              </div>
-              <div className="text-2xl font-bold">{Number(result.lowest_in_class||0).toFixed(2)}</div>
-            </div>
-          </div>
-        );
+case 'JUNIOR_SECONDARY':
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <BookOpen className="w-4 h-4 mr-2 text-blue-500" />
+          <span className="text-sm font-medium">CA Score</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.continuous_assessment_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <User className="w-4 h-4 mr-2 text-green-500" />
+          <span className="text-sm font-medium">Appearance</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.appearance_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <User className="w-4 h-4 mr-2 text-green-500" />
+          <span className="text-sm font-medium">Practical</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.practical_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <BookOpen className="w-4 h-4 mr-2 text-purple-500" />
+          <span className="text-sm font-medium">Take Home Test</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.take_home_test_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Award className="w-4 h-4 mr-2 text-orange-500" />
+          <span className="text-sm font-medium">Project</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.project_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <FileText className="w-4 h-4 mr-2 text-indigo-500" />
+          <span className="text-sm font-medium">Note Copying</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.note_copying_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Award className="w-4 h-4 mr-2 text-green-500" />
+          <span className="text-sm font-medium">Exam Score</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.exam_score).toFixed(2)}</div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Star className="w-4 h-4 mr-2 text-orange-500" />
+          <span className="text-sm font-medium">CA Total</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {(
+            safeNumber(result.continuous_assessment_score) + 
+            safeNumber(result.take_home_test_score) + 
+            safeNumber(result.appearance_score) + 
+            safeNumber(result.practical_score) + 
+            safeNumber(result.project_score) + 
+            safeNumber(result.note_copying_score)
+          ).toFixed(2)}
+        </div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Target className="w-4 h-4 mr-2 text-blue-500" />
+          <span className="text-sm font-medium">Overall Total</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.total_score, (
+            safeNumber(result.continuous_assessment_score) + 
+            safeNumber(result.take_home_test_score) + 
+            safeNumber(result.appearance_score) + 
+            safeNumber(result.practical_score) + 
+            safeNumber(result.project_score) + 
+            safeNumber(result.note_copying_score) + 
+            safeNumber(result.exam_score)
+          )).toFixed(2)}
+        </div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
+          <span className="text-sm font-medium">Class Average</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.class_average) > 0 ? 
+            safeNumber(result.class_average).toFixed(2) : 
+            <span className="text-gray-500 text-sm">Not Available</span>
+          }
+        </div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
+          <span className="text-sm font-medium">Highest in Class</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.highest_in_class) > 0 ? 
+            safeNumber(result.highest_in_class).toFixed(2) : 
+            <span className="text-gray-500 text-sm">Not Available</span>
+          }
+        </div>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
+          <span className="text-sm font-medium">Lowest in Class</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.lowest_in_class) > 0 ? 
+            safeNumber(result.lowest_in_class).toFixed(2) : 
+            <span className="text-gray-500 text-sm">Not Available</span>
+          }
+        </div>
+      </div>
+    </div>
+  );
+       
+      
       case 'NURSERY':
         return (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -405,8 +576,14 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
             </div>
           </div>
         );
+      
       default:
-        return <div className="text-sm text-gray-500">No details available</div>;
+        return (
+          <div className="text-center py-8">
+            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <div className="text-sm text-gray-500">No details available for this education level</div>
+          </div>
+        );
     }
   };
 
@@ -414,7 +591,10 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
     return (
       <div className={`min-h-screen ${themeClasses.bgPrimary} ${themeClasses.textPrimary}`}>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-lg">Loading student data...</p>
+          </div>
         </div>
       </div>
     );
@@ -428,13 +608,22 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Error Loading Data</h2>
             <p className="text-gray-500 mb-4">{error || 'Student not found'}</p>
-            <button
-              onClick={() => navigate('/admin/results')}
-              className={`px-4 py-2 rounded-lg ${themeClasses.buttonPrimary}`}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Results
-            </button>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={loadData}
+                className={`px-4 py-2 rounded-lg ${themeClasses.buttonPrimary} flex items-center`}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </button>
+              <button
+                onClick={() => navigate('/admin/results')}
+                className={`px-4 py-2 rounded-lg ${themeClasses.buttonSecondary} flex items-center`}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Results
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -446,75 +635,75 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
       {/* Header */}
       <div className={`sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-gray-800/60 border-b ${themeClasses.border}`}>
         <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between gap-4 mb-2">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate('/admin/results')}
-              className={`p-2 rounded-lg mr-4 ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Student Results</h1>
-              <p className={`text-sm ${themeClasses.textSecondary}`}>
-                Detailed results for {student.full_name}
-              </p>
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center">
+              <button
+                onClick={() => navigate('/admin/results')}
+                className={`p-2 rounded-lg mr-4 ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Student Results</h1>
+                <p className={`text-sm ${themeClasses.textSecondary}`}>
+                  Detailed results for {student.full_name}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                onClick={loadData}
+                className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print
+              </button>
             </div>
           </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={loadData}
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </button>
-            <button
-              className={`px-4 py-2 rounded-lg flex items-center ${themeClasses.buttonSecondary} transition-all duration-200 active:scale-[.98] ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Print
-            </button>
-          </div>
-        </div>
 
-        {/* Student Info */}
-        <div className={`p-6 rounded-2xl shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'} ${themeClasses.bgSecondary}`}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex items-center">
-              <div className={`w-16 h-16 rounded-full ${themeClasses.bgCard} flex items-center justify-center mr-4 shadow-inner ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
-                <User className="w-8 h-8" />
+          {/* Student Info */}
+          <div className={`p-6 rounded-2xl shadow-sm ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'} ${themeClasses.bgSecondary}`}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex items-center">
+                <div className={`w-16 h-16 rounded-full ${themeClasses.bgCard} flex items-center justify-center mr-4 shadow-inner ring-1 ring-inset ${isDarkMode ? 'ring-gray-700' : 'ring-gray-200'}`}>
+                  <User className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold">{student.full_name}</h3>
+                  <p className={`text-sm ${themeClasses.textSecondary}`}>ID: {student.id}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold">{student.full_name}</h3>
-                <p className={`text-sm ${themeClasses.textSecondary}`}>ID: {student.id}</p>
+              
+              <div className="flex items-center">
+                <BookOpen className="w-5 h-5 mr-3 text-blue-500" />
+                <div>
+                  <p className={`text-sm ${themeClasses.textSecondary}`}>Class</p>
+                  <p className="font-semibold">{student.student_class}</p>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center">
-              <BookOpen className="w-5 h-5 mr-3 text-blue-500" />
-              <div>
-                <p className={`text-sm ${themeClasses.textSecondary}`}>Class</p>
-                <p className="font-semibold">{student.student_class}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center">
-              <Award className="w-5 h-5 mr-3 text-green-500" />
-              <div>
-                <p className={`text-sm ${themeClasses.textSecondary}`}>Education Level</p>
-                <p className="font-semibold">{student.education_level}</p>
+              
+              <div className="flex items-center">
+                <Award className="w-5 h-5 mr-3 text-green-500" />
+                <div>
+                  <p className={`text-sm ${themeClasses.textSecondary}`}>Education Level</p>
+                  <p className="font-semibold">{student.education_level}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -524,9 +713,16 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
           <div className="text-center py-16">
             <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold mb-2">No results found</h3>
-            <p className={`text-sm ${themeClasses.textSecondary}`}>
+            <p className={`text-sm ${themeClasses.textSecondary} mb-4`}>
               This student doesn't have any recorded results yet.
             </p>
+            <button
+              onClick={loadData}
+              className={`px-4 py-2 rounded-lg ${themeClasses.buttonPrimary} flex items-center mx-auto`}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -536,14 +732,14 @@ const normalizeEducationLevel = (level: string | undefined | null): keyof typeof
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-xl font-semibold mb-2">
-                      {result.subject?.name || result.subject_name || 'Unknown Subject'}
-                    </h3>
+                      {getSubjectName(result)}
+                      </h3>
                     <div className="flex items-center gap-4 text-sm">
-                      <span className={`${themeClasses.textSecondary}`}>
-                        Session: {result.exam_session?.name || 'N/A'}
+                     <span className={`${themeClasses.textSecondary}`}>
+                      Session: {getExamSessionName(result)}
                       </span>
                       <span className={`${themeClasses.textSecondary}`}>
-                        Term: {result.term || 'N/A'}
+                      Term: {getTermName(result)}
                       </span>
                     </div>
                   </div>

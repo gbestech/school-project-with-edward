@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   School,
   Plus,
@@ -11,98 +11,26 @@ import {
   BookOpen,
   Calendar,
   MapPin,
-  Clock,
   X,
   Check,
-  AlertCircle,
   Baby,
   GraduationCap,
-  ChevronDown,
   Save,
   UserCheck,
-  Building,
   Grid3X3,
   List,
-  Sun,
-  Moon
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { classroomService, Classroom, ClassroomStats, CreateClassroomData } from '@/services/ClassroomService';
 import { toast } from 'react-toastify';
-import DebugInfo from './DebugInfo';
 
-// Mock data (same as original)
-const mockSubjects = {
-  nursery: [
-    { id: 1, name: 'Play Activities', code: 'PA' },
-    { id: 2, name: 'Early Learning', code: 'EL' },
-    { id: 3, name: 'Creative Arts', code: 'CA' },
-    { id: 4, name: 'Physical Development', code: 'PD' },
-    { id: 5, name: 'Language Development', code: 'LD' }
-  ],
-  primary: [
-    { id: 6, name: 'Mathematics', code: 'MATH' },
-    { id: 7, name: 'English Language', code: 'ENG' },
-    { id: 8, name: 'Science', code: 'SCI' },
-    { id: 9, name: 'Social Studies', code: 'SS' },
-    { id: 10, name: 'Physical Education', code: 'PE' },
-    { id: 11, name: 'Art & Craft', code: 'ART' },
-    { id: 12, name: 'Computer Studies', code: 'CS' },
-    { id: 13, name: 'Religious Studies', code: 'RS' }
-  ],
-  secondary: [
-    { id: 14, name: 'Mathematics', code: 'MATH' },
-    { id: 15, name: 'English Language', code: 'ENG' },
-    { id: 16, name: 'Physics', code: 'PHY' },
-    { id: 17, name: 'Chemistry', code: 'CHEM' },
-    { id: 18, name: 'Biology', code: 'BIO' },
-    { id: 19, name: 'Geography', code: 'GEO' },
-    { id: 20, name: 'History', code: 'HIST' },
-    { id: 21, name: 'Economics', code: 'ECON' },
-    { id: 22, name: 'Government', code: 'GOV' },
-    { id: 23, name: 'Literature', code: 'LIT' },
-    { id: 24, name: 'Further Mathematics', code: 'FMATH' },
-    { id: 25, name: 'Computer Science', code: 'CS' },
-    { id: 26, name: 'Technical Drawing', code: 'TD' }
-  ]
-};
 
-const mockTeachers = [
-  { id: 1, name: 'Sarah Johnson', level: 'nursery' },
-  { id: 2, name: 'Michael Chen', level: 'secondary' },
-  { id: 3, name: 'Emily Rodriguez', level: 'primary' },
-  { id: 4, name: 'David Thompson', level: 'secondary' },
-  { id: 5, name: 'Lisa Anderson', level: 'nursery' },
-  { id: 6, name: 'James Wilson', level: 'primary' },
-  { id: 7, name: 'Maria Garcia', level: 'secondary' },
-  { id: 8, name: 'Robert Brown', level: 'primary' }
-];
-
-interface Classroom {
-  id: number;
-  name: string;
-  section: number;
-  section_name: string;
-  grade_level_name: string;
-  education_level: string;
-  academic_year: number;
-  academic_year_name: string;
-  term: number;
-  term_name: string;
-  class_teacher: number | null;
-  class_teacher_name: string;
-  room_number: string;
-  max_capacity: number;
-  current_enrollment: number;
-  available_spots: number;
-  enrollment_percentage: number;
-  is_full: boolean;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+interface DropdownData {
+  sections: any[];
+  academicYears: any[];
+  terms: any[];
+  teachers: any[];
 }
-
-// Mock data removed - using real API data
 
 const EnhancedClassroom = () => {
   const { isDarkMode } = useGlobalTheme();
@@ -133,7 +61,7 @@ const EnhancedClassroom = () => {
   });
 
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [dropdownData, setDropdownData] = useState({
+  const [dropdownData, setDropdownData] = useState<DropdownData>({
     sections: [],
     academicYears: [],
     terms: [],
@@ -147,52 +75,24 @@ const EnhancedClassroom = () => {
         setLoading(true);
         console.log('🔄 Loading classroom data...');
         
-        // Check authentication first
         const token = localStorage.getItem('authToken');
         console.log('🔑 Auth token exists:', !!token);
         
-        const [classroomsData, statsData, sectionsData, academicYearsData, termsData, teachersData] = await Promise.all([
+        const [classroomsData, statsData] = await Promise.all([
           classroomService.getClassrooms(),
           classroomService.getClassroomStats(),
-          classroomService.getSections(),
-          classroomService.getAcademicYears(),
-          classroomService.getTerms(),
-          classroomService.getTeachers()
         ]);
 
         console.log('📊 Data loaded successfully:');
         console.log('  - Classrooms:', classroomsData);
-        console.log('  - Sections:', sectionsData);
-        console.log('  - Academic Years:', academicYearsData);
-        console.log('  - Terms:', termsData);
-        console.log('  - Teachers:', teachersData);
 
         setClassrooms(classroomsData.results || classroomsData);
         setStats(statsData);
-        // Ensure all dropdown data is always an array
-        const safeSections = Array.isArray(sectionsData.results) ? sectionsData.results : 
-                           Array.isArray(sectionsData) ? sectionsData : [];
-        const safeAcademicYears = Array.isArray(academicYearsData.results) ? academicYearsData.results : 
-                                Array.isArray(academicYearsData) ? academicYearsData : [];
-        const safeTerms = Array.isArray(termsData.results) ? termsData.results : 
-                         Array.isArray(termsData) ? termsData : [];
-        const safeTeachers = Array.isArray(teachersData.results) ? teachersData.results : 
-                           Array.isArray(teachersData) ? teachersData : [];
-
-        setDropdownData({
-          sections: safeSections,
-          academicYears: safeAcademicYears,
-          terms: safeTerms,
-          teachers: safeTeachers
-        });
         
-        console.log('✅ Dropdown data set:', {
-          sectionsCount: (sectionsData.results || sectionsData).length,
-          academicYearsCount: (academicYearsData.results || academicYearsData).length,
-          termsCount: (termsData.results || termsData).length,
-          teachersCount: (teachersData.results || teachersData).length
-        });
-      } catch (error) {
+        // Load dropdown data
+        await loadDropdownData();
+        
+      } catch (error: any) {
         console.error('❌ Error loading classroom data:', error);
         console.error('Error details:', {
           message: error.message,
@@ -201,7 +101,6 @@ const EnhancedClassroom = () => {
         });
         toast.error('Failed to load classroom data');
         
-        // Set empty arrays to prevent mapping errors
         setDropdownData({
           sections: [],
           academicYears: [],
@@ -217,6 +116,66 @@ const EnhancedClassroom = () => {
 
     loadData();
   }, []);
+
+  // Load dropdown data separately
+  const loadDropdownData = async () => {
+    try {
+      // Load academic years first to get available years
+      const academicYearsData = await classroomService.getAcademicYears().catch(() => ({ results: [] }));
+      const safeAcademicYears = Array.isArray(academicYearsData.results) ? academicYearsData.results : 
+                              Array.isArray(academicYearsData) ? academicYearsData : [];
+      
+      // Load teachers
+      const teachersData = await classroomService.getAllTeachers().catch(() => ({ results: [] }));
+      const safeTeachers = Array.isArray(teachersData.results) ? teachersData.results : 
+                         Array.isArray(teachersData) ? teachersData : [];
+
+      // For sections and terms, you might need to modify your service to have endpoints that return all
+      // Or load them based on the first available academic year
+      let safeSections = [];
+      let safeTerms = [];
+
+      if (safeAcademicYears.length > 0) {
+        // Try to load terms for the first academic year
+        const termsData = await classroomService.getTerms(safeAcademicYears[0].id).catch(() => ({ results: [] }));
+        safeTerms = Array.isArray(termsData.results) ? termsData.results : 
+                   Array.isArray(termsData) ? termsData : [];
+      }
+
+      // For sections, you might need a different approach depending on your API structure
+      // This is a placeholder - adjust based on your actual API
+      try {
+        // Try to get grade levels first, then sections
+        const gradeLevelsData = await classroomService.getGradeLevels().catch(() => ({ results: [] }));
+        const gradeLevel = Array.isArray(gradeLevelsData.results) ? gradeLevelsData.results[0] : 
+                          Array.isArray(gradeLevelsData) ? gradeLevelsData[0] : null;
+        
+        if (gradeLevel) {
+          const sectionsData = await classroomService.getSections(gradeLevel.id).catch(() => ({ results: [] }));
+          safeSections = Array.isArray(sectionsData.results) ? sectionsData.results : 
+                        Array.isArray(sectionsData) ? sectionsData : [];
+        }
+      } catch (sectionError) {
+        console.warn('Could not load sections:', sectionError);
+      }
+
+      setDropdownData({
+        sections: safeSections,
+        academicYears: safeAcademicYears,
+        terms: safeTerms,
+        teachers: safeTeachers
+      });
+
+      console.log('✅ Dropdown data set:', {
+        sectionsCount: safeSections.length,
+        academicYearsCount: safeAcademicYears.length,
+        termsCount: safeTerms.length,
+        teachersCount: safeTeachers.length
+      });
+    } catch (error: any) {
+      console.error('Error loading dropdown data:', error);
+    }
+  };
 
   // Filter classrooms
   useEffect(() => {
@@ -315,6 +274,7 @@ const EnhancedClassroom = () => {
     if (!validateForm()) return;
 
     try {
+      console.log('Creating classroom with data:', formData);
       await classroomService.createClassroom(formData);
       toast.success('Classroom created successfully');
       setShowAddModal(false);
@@ -327,9 +287,17 @@ const EnhancedClassroom = () => {
       ]);
       setClassrooms(classroomsData.results || classroomsData);
       setStats(statsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating classroom:', error);
-      toast.error('Failed to create classroom');
+      if (error.response?.data) {
+        const backendErrors = error.response.data;
+        const errorMessages = Object.entries(backendErrors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        toast.error(`Failed to create classroom:\n${errorMessages}`);
+      } else {
+        toast.error('Failed to create classroom');
+      }
     }
   };
 
@@ -337,6 +305,8 @@ const EnhancedClassroom = () => {
     if (!validateForm() || !selectedClassroom) return;
 
     try {
+      console.log('Updating classroom with data:', formData);
+      // Use PATCH to only send the changed fields
       await classroomService.updateClassroom(selectedClassroom.id, formData);
       toast.success('Classroom updated successfully');
       setShowEditModal(false);
@@ -350,9 +320,17 @@ const EnhancedClassroom = () => {
       ]);
       setClassrooms(classroomsData.results || classroomsData);
       setStats(statsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating classroom:', error);
-      toast.error('Failed to update classroom');
+      if (error.response?.data) {
+        const backendErrors = error.response.data;
+        const errorMessages = Object.entries(backendErrors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        toast.error(`Failed to update classroom:\n${errorMessages}`);
+      } else {
+        toast.error('Failed to update classroom');
+      }
     }
   };
 
@@ -373,7 +351,7 @@ const EnhancedClassroom = () => {
       ]);
       setClassrooms(classroomsData.results || classroomsData);
       setStats(statsData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting classroom:', error);
       toast.error('Failed to delete classroom');
     }
@@ -381,13 +359,14 @@ const EnhancedClassroom = () => {
 
   const openEditModal = (classroom: Classroom) => {
     setSelectedClassroom(classroom);
+    // Pre-populate form with existing data to avoid validation errors
     setFormData({
       name: classroom.name,
       section: classroom.section,
       academic_year: classroom.academic_year,
       term: classroom.term,
       class_teacher: classroom.class_teacher || undefined,
-      room_number: classroom.room_number,
+      room_number: classroom.room_number || '',
       max_capacity: classroom.max_capacity
     });
     setShowEditModal(true);
@@ -398,9 +377,19 @@ const EnhancedClassroom = () => {
     setShowViewModal(true);
   };
 
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-xl p-8 flex flex-col items-center`}>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className={isDarkMode ? 'text-slate-300' : 'text-gray-600'}>Loading classrooms...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900 text-slate-100' : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'} p-6`}>
-      <DebugInfo isVisible={process.env.NODE_ENV === 'development'} />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -631,21 +620,6 @@ const EnhancedClassroom = () => {
                 <thead className={`${isDarkMode ? 'bg-slate-700' : 'bg-gray-50'}`}>
                   <tr>
                     <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                      Classroom
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                      Level
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                      Teacher
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                      Enrollment
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                      Status
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-500'} uppercase tracking-wider`}>
                       Actions
                     </th>
                   </tr>
@@ -683,7 +657,7 @@ const EnhancedClassroom = () => {
                         <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-1 mt-1">
                           <div 
                             className="bg-blue-600 h-1 rounded-full"
-                            style={{ width: `${(classroom.current_enrollment / classroom.max_capacity) * 100}%` }}
+                            style={{ width: `${classroom.enrollment_percentage}%` }}
                           ></div>
                         </div>
                       </td>
@@ -698,13 +672,25 @@ const EnhancedClassroom = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-2">
-                          <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                          <button 
+                            onClick={() => openViewModal(classroom)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                          >
                             <Eye size={16} />
                           </button>
-                          <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                          <button 
+                            onClick={() => openEditModal(classroom)}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                          >
                             <Edit3 size={16} />
                           </button>
-                          <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
+                          <button 
+                            onClick={() => {
+                              setClassroomToDelete(classroom);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -848,7 +834,7 @@ const EnhancedClassroom = () => {
                     <option value="">Select Teacher (Optional)</option>
                     {Array.isArray(dropdownData.teachers) && dropdownData.teachers.map((teacher: any) => (
                       <option key={teacher.id} value={teacher.id}>
-                        {teacher.full_name}
+                        {teacher.full_name || `${teacher.first_name} ${teacher.last_name}`}
                       </option>
                     ))}
                   </select>
@@ -956,12 +942,76 @@ const EnhancedClassroom = () => {
           </div>
         )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-xl p-8 flex flex-col items-center`}>
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-              <p className={isDarkMode ? 'text-slate-300' : 'text-gray-600'}>Loading classrooms...</p>
+        {/* View Classroom Modal */}
+        {showViewModal && selectedClassroom && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-white'} rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>Classroom Details</h2>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors duration-200"
+                >
+                  <X size={24} className={isDarkMode ? 'text-slate-400' : 'text-gray-600'} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Classroom Name:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.name}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Section:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.section_name}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Education Level:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.education_level}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Grade:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.grade_level_name}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Academic Year:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.academic_year_name}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Term:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.term_name}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Class Teacher:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.class_teacher_name || 'Not Assigned'}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Room Number:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.room_number || 'Not Assigned'}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Capacity:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.max_capacity}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Current Enrollment:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.current_enrollment}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Available Spots:</p>
+                  <p className={`text-lg font-semibold ${isDarkMode ? 'text-slate-100' : 'text-gray-900'}`}>{selectedClassroom.available_spots}</p>
+                </div>
+                <div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>Status:</p>
+                  <p className={`text-lg font-semibold ${
+                    selectedClassroom.is_active 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    {selectedClassroom.is_active ? 'ACTIVE' : 'INACTIVE'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -970,4 +1020,4 @@ const EnhancedClassroom = () => {
   );
 };
 
-export default EnhancedClassroom; 
+export default EnhancedClassroom;

@@ -1,14 +1,13 @@
 
 // router/index.tsx
-import React from 'react';
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import ErrorBoundary from './../components/ErrorBoundary';
 import { AuthProvider } from './../hooks/useAuth';
 import { AuthLostProvider } from './../components/common/AuthLostProvider';
-import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
+// import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { GlobalThemeProvider } from '@/contexts/GlobalThemeContext';
-import { lazy, Suspense } from "react";
-import ContactRibbon from './../components/home/ContactRibbon';
+import { lazy } from "react";
+// import ContactRibbon from './../components/home/ContactRibbon';
 import Navbar from '@/components/home/Nav';
 import Footer from '@/components/home/Footer';
 
@@ -68,17 +67,6 @@ const PublicTeacherBio = lazy(() => import('./../pages/PublicTeacherBio').catch(
 const ResultChecker = lazy(() => import('./../components/dashboards/admin/ResultChecker').catch(() => ({ default: () => <div>Error loading Result Checker</div> })));
 const StudentResultDetail = lazy(() => import('./../components/dashboards/admin/StudentResultDetail').catch(() => ({ default: () => <div>Error loading Student Result Detail</div> })));
 
-// Loading fallback component
-const LoadingSpinner = () => (
-  <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-    <div className="flex flex-col items-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      <p className="text-white/70 text-sm">Loading...</p>
-    </div>
-  </div>
-);
-
-// Enhanced Error element for route-level errors with debugging
 const RouteErrorElement = () => {
   const error = (window as any).__routerError || 'Unknown error';
   
@@ -121,56 +109,56 @@ const RouteErrorElement = () => {
 };
 
 // Root layout component with error handling
-const RootLayout = () => {
-  const { isDarkMode } = useGlobalTheme();
+// const RootLayout = () => {
+//   const { isDarkMode } = useGlobalTheme();
   
-  // Effect to adjust main content padding based on ContactRibbon visibility
-  React.useEffect(() => {
-    const adjustPadding = () => {
-      const mainContent = document.getElementById('main-content');
-      const contactRibbonVisible = localStorage.getItem('contactRibbonVisible') !== 'false';
+//   // Effect to adjust main content padding based on ContactRibbon visibility
+//   React.useEffect(() => {
+//     const adjustPadding = () => {
+//       const mainContent = document.getElementById('main-content');
+//       const contactRibbonVisible = localStorage.getItem('contactRibbonVisible') !== 'false';
       
-      if (mainContent) {
-        if (contactRibbonVisible) {
-          mainContent.style.paddingTop = '6rem'; // Reduced padding when ContactRibbon is visible
-        } else {
-          mainContent.style.paddingTop = '4rem'; // Minimal padding when ContactRibbon is hidden
-        }
-      }
-    };
+//       if (mainContent) {
+//         if (contactRibbonVisible) {
+//           mainContent.style.paddingTop = '6rem'; // Reduced padding when ContactRibbon is visible
+//         } else {
+//           mainContent.style.paddingTop = '4rem'; // Minimal padding when ContactRibbon is hidden
+//         }
+//       }
+//     };
 
-    // Initial adjustment
-    adjustPadding();
+//     // Initial adjustment
+//     adjustPadding();
 
-    // Listen for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'contactRibbonVisible') {
-        adjustPadding();
-      }
-    };
+//     // Listen for storage changes
+//     const handleStorageChange = (e: StorageEvent) => {
+//       if (e.key === 'contactRibbonVisible') {
+//         adjustPadding();
+//       }
+//     };
 
-    window.addEventListener('storage', handleStorageChange);
+//     window.addEventListener('storage', handleStorageChange);
     
-    // Also check periodically for immediate updates
-    const interval = setInterval(adjustPadding, 100);
+//     // Also check periodically for immediate updates
+//     const interval = setInterval(adjustPadding, 100);
 
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+//     return () => {
+//       window.removeEventListener('storage', handleStorageChange);
+//       clearInterval(interval);
+//     };
+//   }, []);
 
-  return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
-      <ContactRibbon />
-      <div className="pt-0" id="main-content"> {/* Let individual components handle their own padding */}
-        <Suspense fallback={<LoadingSpinner />}>
-          <Outlet />
-        </Suspense>
-      </div>
-    </div>
-  );
-};
+//   return (
+//     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
+//       <ContactRibbon />
+//       <div className="pt-0" id="main-content"> {/* Let individual components handle their own padding */}
+//         <Suspense fallback={<LoadingSpinner />}>
+//           <Outlet />
+//         </Suspense>
+//       </div>
+//     </div>
+//   );
+// };
 
 // MainLayout component
 const MainLayout = () => (
@@ -400,6 +388,11 @@ export const router = createBrowserRouter([
     ),
     errorElement: <RouteErrorElement />,
     children: [
+      {
+        index: true,
+        element: <AdminDashboardContentLoader />,
+        errorElement: <RouteErrorElement />
+      },
       {
         path: 'dashboard',
         element: <AdminDashboardContentLoader />,

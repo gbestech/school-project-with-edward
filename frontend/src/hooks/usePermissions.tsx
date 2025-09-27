@@ -45,7 +45,7 @@ export const usePermissions = () => {
     setError(null);
 
     try {
-      const response = await api.get(`/api/user-roles/user_permissions/?user_id=${user.id}`);
+      const response = await api.get(`school-settings/user-roles/user_permissions/?user_id=${user.id}`);
       setPermissions(response.data);
     } catch (err) {
       console.error('Failed to fetch permissions:', err);

@@ -3,11 +3,10 @@ import {
   GraduationCap, 
   BookOpen, 
   Users, 
-  Settings, 
+
   School, 
   Calendar, 
-  Clock, 
-  MapPin, 
+  
   Save,
   CheckCircle,
   AlertCircle,

@@ -31,7 +31,9 @@ export const useSettings = (): UseSettingsReturn => {
     setError(null);
     
     try {
+      console.log('Fetching school settings...');
       const fetchedSettings = await SettingsService.getSettings();
+      console.log('Fetched settings:', fetchedSettings);
       setSettings(fetchedSettings);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch settings';

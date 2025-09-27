@@ -224,6 +224,240 @@ export interface SoftDeletableEntity extends BaseEntity {
   is_deleted: boolean;
 }
 
+export interface SchoolSettings {
+  // General settings
+  site_name: string;
+  school_name: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo: string;
+  favicon: string;
+  academicYearStart: string;
+  academicYearEnd: string;
+  motto: string;
+  timezone: string;
+  dateFormat: string;
+  language: string;
+  
+  // Design settings
+  theme: string;
+  primaryColor: string;
+  secondaryColor: string;
+  fontFamily: string;
+  fontSize: string;
+  
+  // Communication settings
+  notifications: {
+    email: {
+      enabled: boolean;
+      welcomeEmail: boolean;
+      resultReleased: boolean;
+      absentNotice: boolean;
+      feeReminder: boolean;
+      examSchedule: boolean;
+      eventAnnouncement: boolean;
+      disciplinaryAction: boolean;
+      provider: string; // smtp, brevo, sendgrid, etc.
+      smtp: {
+        host: string;
+        port: number;
+        username: string;
+        password: string;
+        encryption: string;
+        fromName: string;
+        fromEmail: string;
+      };
+      brevo: {
+        apiKey: string;
+        fromName: string;
+        fromEmail: string;
+        templateId: string;
+        senderId: number;
+      };
+    };
+    sms: {
+      enabled: boolean;
+      welcomeSMS: boolean;
+      resultReleased: boolean;
+      absentNotice: boolean;
+      feeReminder: boolean;
+      examSchedule: boolean;
+      eventAnnouncement: boolean;
+      disciplinaryAction: boolean;
+      provider: string;
+      apiKey: string;
+      apiSecret: string;
+      senderID: string;
+    };
+    inApp: {
+      enabled: boolean;
+      welcomeMessage: boolean;
+      resultReleased: boolean;
+      absentNotice: boolean;
+      feeReminder: boolean;
+      examSchedule: boolean;
+      eventAnnouncement: boolean;
+      disciplinaryAction: boolean;
+      soundEnabled: boolean;
+      desktopNotifications: boolean;
+    };
+  };
+  
+  // Payment gateways
+  paymentGateways: {
+    paystack: {
+      enabled: boolean;
+      publicKey: string;
+      secretKey: string;
+      testMode: boolean;
+    };
+    stripe: {
+      enabled: boolean;
+      publishableKey: string;
+      secretKey: string;
+      testMode: boolean;
+    };
+    flutterwave: {
+      enabled: boolean;
+      publicKey: string;
+      secretKey: string;
+    };
+    bankTransfer: {
+      enabled: boolean;
+      bankName: string;
+      accountNumber: string;
+      accountName: string;
+    };
+  };
+  
+  // User role payment access
+  userRolePaymentAccess: {
+    teachers: {
+      paystack: boolean;
+      stripe: boolean;
+      flutterwave: boolean;
+      bankTransfer: boolean;
+    };
+    students: {
+      paystack: boolean;
+      stripe: boolean;
+      flutterwave: boolean;
+      bankTransfer: boolean;
+    };
+    parents: {
+      paystack: boolean;
+      stripe: boolean;
+      flutterwave: boolean;
+      bankTransfer: boolean;
+    };
+  };
+  
+  // Fee structure
+  feeStructure: {
+    categories: Array<{
+      id: number;
+      name: string;
+      amount: number;
+      mandatory: boolean;
+      description: string;
+    }>;
+    paymentPlans: {
+      fullPayment: boolean;
+      twoInstallments: boolean;
+      threeInstallments: boolean;
+    };
+  };
+  
+  // Discount rules
+  discountRules: {
+    siblingDiscount: {
+      enabled: boolean;
+      secondChild: number;
+      thirdChild: number;
+    };
+  };
+  
+  // Academic settings
+  classLevels: Array<{ id: number; name: string }>;
+  subjects: Array<{ id: number; name: string }>;
+  sessions: Array<{ id: number; name: string; terms: string[] }>;
+  grading: {
+    grades: Array<{ letter: string; min: number; max: number }>;
+    passMark: number;
+  };
+  markingScheme: {
+    continuousAssessment: number;
+    examination: number;
+    components: Array<{ name: string; weight: number; color: string }>;
+  };
+  
+  // Security settings
+  allowSelfRegistration: boolean;
+  emailVerificationRequired: boolean;
+  registrationApprovalRequired: boolean;
+  defaultUserRole: string;
+  passwordMinLength: number;
+  passwordResetInterval: number;
+  passwordRequireNumbers: boolean;
+  passwordRequireSymbols: boolean;
+  passwordRequireUppercase: boolean;
+  allowProfileImageUpload: boolean;
+  profileImageMaxSize: number;
+  
+  // Message templates
+  messageTemplates: {
+    welcomeEmail: { subject: string; content: string; active: boolean };
+    resultReleased: { subject: string; content: string; active: boolean };
+    absentNotice: { subject: string; content: string; active: boolean };
+    feeReminder: { subject: string; content: string; active: boolean };
+  };
+  
+  // Chat system
+  chatSystem: {
+    enabled: boolean;
+    adminToTeacher: {
+      enabled: boolean;
+      allowFileSharing: boolean;
+      maxFileSize: number;
+      allowedFileTypes: string[];
+      moderationEnabled: boolean;
+    };
+    teacherToParent: {
+      enabled: boolean;
+      allowFileSharing: boolean;
+      maxFileSize: number;
+      allowedFileTypes: string[];
+      moderationEnabled: boolean;
+      requireApproval: boolean;
+    };
+    teacherToStudent: {
+      enabled: boolean;
+      allowFileSharing: boolean;
+      maxFileSize: number;
+      allowedFileTypes: string[];
+      moderationEnabled: boolean;
+      requireApproval: boolean;
+    };
+    parentToParent: {
+      enabled: boolean;
+      allowFileSharing: boolean;
+      moderationEnabled: boolean;
+      requireApproval: boolean;
+    };
+    moderation: {
+      enabled: boolean;
+      profanityFilter: boolean;
+      keywordBlacklist: string[];
+      autoModeration: boolean;
+      flaggedContentAction: string;
+      moderators: string[];
+      businessHoursOnly: boolean;
+      businessHours: { start: string; end: string };
+    };
+  };
+}
+
 // ==========================================
 // USER TYPES
 // ==========================================
@@ -1795,6 +2029,322 @@ export interface Particle {
   opacity: number;
   angle: number;
 }
+
+export interface StudentInfo {
+  id: string;
+  full_name: string;
+  username?: string;
+  student_class: string;
+  education_level: string;
+  profile_picture?: string;
+}
+ 
+ export interface AcademicSession {
+  id: string;        // Django uses AutoField (int), but DRF usually serializes as string or number.
+  name: string;
+  start_date: string;  // "YYYY-MM-DD"
+  end_date: string;    // "YYYY-MM-DD"
+  is_current: boolean;
+  is_active: boolean;
+  created_at: string;  // ISO datetime string
+  updated_at: string;  // ISO datetime string
+}
+
+export interface SubjectInfo {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface ExamSessionInfo {
+  id: string;
+  name: string;
+  exam_type: string;
+  term: string;
+  academic_session?: AcademicSession;
+  start_date: string;
+  end_date: string;
+  is_published: boolean;
+  is_active: boolean;
+}
+
+export interface StreamInfo {
+  id: string;
+  name: string;
+  stream_type: string;
+}
+
+export interface GradingSystemInfo {
+  id: string;
+  name: string;
+  grading_type: string;
+  min_score: number;
+  max_score: number;
+  pass_mark: number;
+}
+
+export interface SelectionData {
+  academicSession: AcademicSession; 
+  term: {
+    id: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+    academic_session: AcademicSession;
+  };
+  class: {
+    id: string;
+    name: string;
+    section: string;
+    education_level?: string;
+  };
+  resultType?: string;
+  examSession?: string;
+}
+
+// Unified result type for components
+export interface StandardResult {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session?: ExamSessionInfo;
+  academic_session?: AcademicSession;
+  education_level: string;
+  stream?: StreamInfo;
+  grading_system?: GradingSystemInfo;
+  
+  // Standardized score fields
+  total_score: number;
+  percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  position?: number;
+  
+  // Raw score fields for editing (keep original field names)
+  first_test_score?: number;
+  second_test_score?: number;
+  third_test_score?: number;
+  continuous_assessment_score?: number;
+  take_home_test_score?: number;
+  appearance_score?: number;
+  practical_score?: number;
+  project_score?: number;
+  note_copying_score?: number;
+  exam_score: number;
+  
+  // Education-level specific breakdown
+  breakdown?: {
+    // Senior Secondary
+    first_test_score?: number;
+    second_test_score?: number;
+    third_test_score?: number;
+    exam_score?: number;
+    
+    // Primary/Junior Secondary
+    continuous_assessment_score?: number;
+    take_home_test_score?: number;
+    practical_score?: number;
+    appearance_score?: number;
+    project_score?: number;
+    note_copying_score?: number;
+    ca_total?: number;
+    ca_percentage?: number;
+    exam_percentage?: number;
+    
+    // Nursery
+    max_marks_obtainable?: number;
+    mark_obtained?: number;
+    physical_development?: string;
+    health?: string;
+    cleanliness?: string;
+    general_conduct?: string;
+  };
+  
+  // Class statistics
+  class_average?: number;
+  highest_in_class?: number;
+  lowest_in_class?: number;
+  
+  // Status and metadata
+  status: ResultStatus;
+  remarks?: string;
+  teacher_remark?: string;
+  created_at: string;
+}
+
+// Education-level specific result interfaces
+export interface NurseryResultData {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  max_marks_obtainable: number;
+  mark_obtained: number;
+  percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  position?: number;
+  academic_comment?: string;
+  physical_development?: string;
+  health?: string;
+  cleanliness?: string;
+  general_conduct?: string;
+  physical_development_comment?: string;
+  status: ResultStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PrimaryResultData {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  project_score: number;
+  appearance_score?: number;
+  note_copying_score: number;
+  exam_score: number;
+  ca_total: number;
+  total_score: number;
+  ca_percentage: number;
+  exam_percentage: number;
+  total_percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  previous_term_score: number;
+  cumulative_score: number;
+  teacher_remark?: string;
+  status: ResultStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JuniorSecondaryResultData {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  appearance_score?: number;
+  project_score: number;
+  note_copying_score: number;
+  exam_score: number;
+  ca_total: number;
+  total_score: number;
+  ca_percentage: number;
+  exam_percentage: number;
+  total_percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  previous_term_score: number;
+  cumulative_score: number;
+  teacher_remark?: string;
+  status: ResultStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SeniorSecondaryResultData {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSessionInfo;
+  grading_system: GradingSystemInfo;
+  stream?: StreamInfo;
+  first_test_score: number;
+  second_test_score: number;
+  third_test_score: number;
+  exam_score: number;
+  total_ca_score: number;
+  total_score: number;
+  percentage: number;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  teacher_remark?: string;
+  status: ResultStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SeniorSecondarySessionResultData {
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  academic_session?: AcademicSession;
+  stream?: StreamInfo;
+  first_term_score: number;
+  second_term_score: number;
+  third_term_score: number;
+  average_for_year: number;
+  obtainable: number;
+  obtained: number;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  teacher_remark?: string;
+  status: ResultStatus;
+  created_at: string;
+  updated_at: string;
+}
+export interface StudentTermResult {
+  id: string;
+  student: StudentInfo;
+  academic_session?: AcademicSession;
+  term: string;
+  total_subjects: number;
+  subjects_passed: number;
+  subjects_failed: number;
+  total_score: number;
+  average_score: number;
+  gpa: number;
+  class_position?: number;
+  total_students: number;
+  status: string;
+  remarks: string;
+  next_term_begins?: string;
+  subject_results: StandardResult[];
+  comments: ResultComment[];
+  created_at: string;
+}
+
+export interface ResultComment {
+  id: string;
+  comment_type: string;
+  comment: string;
+  commented_by: {
+    id: string;
+    username: string;
+    full_name: string;
+  };
+  created_at: string;
+}
+
 
 export interface StudentResult {
   id: number;

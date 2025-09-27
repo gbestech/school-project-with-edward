@@ -13,8 +13,6 @@ import {
   Users,
   Eye,
   EyeOff,
-  // ChevronDown,
-  // ChevronRight,
   CheckCircle,
   AlertCircle,
   Info,
@@ -24,7 +22,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { 
   GradingSystem, 
-  Grade, 
+  GradeRange, 
   AssessmentType, 
   ExamSession,
   ScoringConfiguration,
@@ -45,7 +43,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
   
   // Data states
   const [gradingSystems, setGradingSystems] = useState<GradingSystem[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
+  const [grades, setGrades] = useState<GradeRange[]>([]);
   const [assessmentTypes, setAssessmentTypes] = useState<AssessmentType[]>([]);
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [scoringConfigurations, setScoringConfigurations] = useState<ScoringConfiguration[]>([]);
@@ -162,236 +160,244 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
     setActiveSections(newSections);
   };
 
-  // Scoring Configuration handlers
-     const handleCreateScoringConfig = async () => {
-     try {
-       console.log('=== handleCreateScoringConfig START ===');
-       setSaving(true);
-       
-       // Check if data is loaded
-       if (loading) {
-         console.log('Loading check failed');
-         toast.error('Please wait for data to load before creating a configuration');
-         setSaving(false);
-         return;
-       }
-       console.log('Loading check passed');
-       
-       // Validate weight percentages before sending (only for TERMLY)
-       if (scoringConfigForm.result_type === 'TERMLY' && !validateWeightPercentages()) {
-         console.log('Weight validation failed');
-         toast.error('CA weight percentage and exam weight percentage must sum to 100%');
-         setSaving(false);
-         return;
-       }
-       console.log('Weight validation passed');
-      
-      // Validate default configuration
-      if (!validateDefaultConfiguration()) {
-        console.log('Default configuration validation failed');
-        toast.error('Only one default configuration is allowed per education level. Please set the existing default configuration to non-default first, or set this configuration as non-default.');
-        setSaving(false);
-        return;
-      }
-      console.log('Default configuration validation passed');
-      
-             // Prepare form data based on education level and result type
-       let formData: any = { ...scoringConfigForm };
-       
-       console.log('Original formData:', formData);
-       
-               // Remove fields that don't apply based on education level
-        if (scoringConfigForm.education_level === 'SENIOR_SECONDARY') {
-          // For Senior Secondary, remove Junior Secondary/Primary fields
-          delete formData.continuous_assessment_max_score;
-          delete formData.take_home_test_max_score;
-          delete formData.appearance_max_score;
-          delete formData.practical_max_score;
-          delete formData.project_max_score;
-          delete formData.note_copying_max_score;
-          console.log('After removing Junior/Primary fields for Senior Secondary:', formData);
-        } else if (scoringConfigForm.education_level === 'NURSERY') {
-          // For Nursery, remove all other fields except total_max_score
-          delete formData.first_test_max_score;
-          delete formData.second_test_max_score;
-          delete formData.third_test_max_score;
-          delete formData.continuous_assessment_max_score;
-          delete formData.take_home_test_max_score;
-          delete formData.appearance_max_score;
-          delete formData.practical_max_score;
-          delete formData.project_max_score;
-          delete formData.note_copying_max_score;
-          delete formData.exam_max_score;
-          delete formData.ca_weight_percentage;
-          delete formData.exam_weight_percentage;
-          console.log('After removing all fields except total_max_score for Nursery:', formData);
-        } else {
-          // For Junior Secondary and Primary, remove Senior Secondary fields
-          delete formData.first_test_max_score;
-          delete formData.second_test_max_score;
-          delete formData.third_test_max_score;
-          console.log('After removing Senior Secondary fields for Junior/Primary:', formData);
-        }
-       
-       if (scoringConfigForm.result_type === 'SESSION') {
-         // Remove fields that don't apply to SESSION result type
-         delete formData.exam_max_score;
-         delete formData.ca_weight_percentage;
-         delete formData.exam_weight_percentage;
-         delete formData.total_max_score;
-         console.log('After removing SESSION fields:', formData);
-       }
-       
-       console.log('Final formData being sent:', formData);
-      console.log('About to call resultSettingsService.createScoringConfiguration...');
-      const response = await resultSettingsService.createScoringConfiguration(formData);
-      console.log('API Response:', response);
-      toast.success('Scoring configuration created successfully');
-      setShowScoringConfigForm(false);
-      setScoringConfigForm({
-        name: '',
-        education_level: 'SENIOR_SECONDARY',
-        result_type: 'TERMLY',
-        description: '',
-        first_test_max_score: 10,
-        second_test_max_score: 10,
-        third_test_max_score: 10,
-        exam_max_score: 70,
-        total_max_score: 100,
-        ca_weight_percentage: 30,
-        exam_weight_percentage: 70,
-        continuous_assessment_max_score: 15,
-        take_home_test_max_score: 5,
-        appearance_max_score: 5,
-        practical_max_score: 5,
-        project_max_score: 5,
-        note_copying_max_score: 5,
-        is_active: true,
-        is_default: false
-      });
-      console.log('About to reload data...');
-      await loadData();
-      console.log('Data reloaded successfully');
-    } catch (error: any) {
-      console.error('Error creating scoring configuration:', error);
-      
-      // Show specific validation errors if available
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        if (errorData.non_field_errors) {
-          toast.error(errorData.non_field_errors[0]);
-        } else if (typeof errorData === 'object') {
-          const errorMessages = Object.values(errorData).flat();
-          toast.error(errorMessages[0] as string);
-        } else {
-          toast.error('Failed to create scoring configuration');
-        }
-      } else {
-        toast.error('Failed to create scoring configuration');
-      }
-    } finally {
-      setSaving(false);
-    }
+  // Add the missing handleManageGrades function
+  const handleManageGrades = (system: GradingSystem) => {
+    // Navigate to grades management page or show grades modal
+    // For now, we'll show a toast message
+    toast.success(`Manage grades for ${system.name} - Feature to be implemented`);
+    // TODO: Implement grades management functionality
   };
 
-     const handleUpdateScoringConfig = async (id: string) => {
-     try {
-       setSaving(true);
-       
-       // Check if data is loaded
-       if (loading) {
-         toast.error('Please wait for data to load before updating a configuration');
-         setSaving(false);
-         return;
-       }
-       
-       // Validate weight percentages before sending (only for TERMLY)
-       if (scoringConfigForm.result_type === 'TERMLY' && !validateWeightPercentages()) {
-         toast.error('CA weight percentage and exam weight percentage must sum to 100%');
-         setSaving(false);
-         return;
+  // Scoring Configuration handlers
+  const handleCreateScoringConfig = async () => {
+    try {
+      console.log('=== handleCreateScoringConfig START ===');
+      setSaving(true);
+      
+      // Check if data is loaded
+      if (loading) {
+        console.log('Loading check failed');
+        toast.error('Please wait for data to load before creating a configuration');
+        setSaving(false);
+        return;
+      }
+      console.log('Loading check passed');
+      
+      // Validate weight percentages before sending (only for TERMLY)
+      if (scoringConfigForm.result_type === 'TERMLY' && !validateWeightPercentages()) {
+        console.log('Weight validation failed');
+        toast.error('CA weight percentage and exam weight percentage must sum to 100%');
+        setSaving(false);
+        return;
+      }
+      console.log('Weight validation passed');
+     
+     // Validate default configuration
+     if (!validateDefaultConfiguration()) {
+       console.log('Default configuration validation failed');
+       toast.error('Only one default configuration is allowed per education level. Please set the existing default configuration to non-default first, or set this configuration as non-default.');
+       setSaving(false);
+       return;
+     }
+     console.log('Default configuration validation passed');
+     
+            // Prepare form data based on education level and result type
+      let formData: any = { ...scoringConfigForm };
+      
+      console.log('Original formData:', formData);
+      
+              // Remove fields that don't apply based on education level
+       if (scoringConfigForm.education_level === 'SENIOR_SECONDARY') {
+         // For Senior Secondary, remove Junior Secondary/Primary fields
+         delete formData.continuous_assessment_max_score;
+         delete formData.take_home_test_max_score;
+         delete formData.appearance_max_score;
+         delete formData.practical_max_score;
+         delete formData.project_max_score;
+         delete formData.note_copying_max_score;
+         console.log('After removing Junior/Primary fields for Senior Secondary:', formData);
+       } else if (scoringConfigForm.education_level === 'NURSERY') {
+         // For Nursery, remove all other fields except total_max_score
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
+         delete formData.continuous_assessment_max_score;
+         delete formData.take_home_test_max_score;
+         delete formData.appearance_max_score;
+         delete formData.practical_max_score;
+         delete formData.project_max_score;
+         delete formData.note_copying_max_score;
+         delete formData.exam_max_score;
+         delete formData.ca_weight_percentage;
+         delete formData.exam_weight_percentage;
+         console.log('After removing all fields except total_max_score for Nursery:', formData);
+       } else {
+         // For Junior Secondary and Primary, remove Senior Secondary fields
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
+         console.log('After removing Senior Secondary fields for Junior/Primary:', formData);
        }
       
-      // Validate default configuration
-      if (!validateDefaultConfiguration()) {
-        toast.error('Only one default configuration is allowed per education level. Please set the existing default configuration to non-default first, or set this configuration as non-default.');
+      if (scoringConfigForm.result_type === 'SESSION') {
+        // Remove fields that don't apply to SESSION result type
+        delete formData.exam_max_score;
+        delete formData.ca_weight_percentage;
+        delete formData.exam_weight_percentage;
+        delete formData.total_max_score;
+        console.log('After removing SESSION fields:', formData);
+      }
+      
+      console.log('Final formData being sent:', formData);
+     console.log('About to call resultSettingsService.createScoringConfiguration...');
+     const response = await resultSettingsService.createScoringConfiguration(formData);
+     console.log('API Response:', response);
+     toast.success('Scoring configuration created successfully');
+     setShowScoringConfigForm(false);
+     setScoringConfigForm({
+       name: '',
+       education_level: 'SENIOR_SECONDARY',
+       result_type: 'TERMLY',
+       description: '',
+       first_test_max_score: 10,
+       second_test_max_score: 10,
+       third_test_max_score: 10,
+       exam_max_score: 70,
+       total_max_score: 100,
+       ca_weight_percentage: 30,
+       exam_weight_percentage: 70,
+       continuous_assessment_max_score: 15,
+       take_home_test_max_score: 5,
+       appearance_max_score: 5,
+       practical_max_score: 5,
+       project_max_score: 5,
+       note_copying_max_score: 5,
+       is_active: true,
+       is_default: false
+     });
+     console.log('About to reload data...');
+     await loadData();
+     console.log('Data reloaded successfully');
+   } catch (error: any) {
+     console.error('Error creating scoring configuration:', error);
+     
+     // Show specific validation errors if available
+     if (error.response?.data) {
+       const errorData = error.response.data;
+       if (errorData.non_field_errors) {
+         toast.error(errorData.non_field_errors[0]);
+       } else if (typeof errorData === 'object') {
+         const errorMessages = Object.values(errorData).flat();
+         toast.error(errorMessages[0] as string);
+       } else {
+         toast.error('Failed to create scoring configuration');
+       }
+     } else {
+       toast.error('Failed to create scoring configuration');
+     }
+   } finally {
+     setSaving(false);
+   }
+ };
+
+    const handleUpdateScoringConfig = async (id: string) => {
+    try {
+      setSaving(true);
+      
+      // Check if data is loaded
+      if (loading) {
+        toast.error('Please wait for data to load before updating a configuration');
         setSaving(false);
         return;
       }
       
-                         // Prepare form data based on education level and result type
-       let formData: any = { ...scoringConfigForm };
-       
-       console.log('Original formData (update):', formData);
-       
-               // Remove fields that don't apply based on education level
-        if (scoringConfigForm.education_level === 'SENIOR_SECONDARY') {
-          // For Senior Secondary, remove Junior Secondary/Primary fields
-          delete formData.continuous_assessment_max_score;
-          delete formData.take_home_test_max_score;
-          delete formData.appearance_max_score;
-          delete formData.practical_max_score;
-          delete formData.project_max_score;
-          delete formData.note_copying_max_score;
-          console.log('After removing Junior/Primary fields for Senior Secondary (update):', formData);
-        } else if (scoringConfigForm.education_level === 'NURSERY') {
-          // For Nursery, remove all other fields except total_max_score
-          delete formData.first_test_max_score;
-          delete formData.second_test_max_score;
-          delete formData.third_test_max_score;
-          delete formData.continuous_assessment_max_score;
-          delete formData.take_home_test_max_score;
-          delete formData.appearance_max_score;
-          delete formData.practical_max_score;
-          delete formData.project_max_score;
-          delete formData.note_copying_max_score;
-          delete formData.exam_max_score;
-          delete formData.ca_weight_percentage;
-          delete formData.exam_weight_percentage;
-          console.log('After removing all fields except total_max_score for Nursery (update):', formData);
-        } else {
-          // For Junior Secondary and Primary, remove Senior Secondary fields
-          delete formData.first_test_max_score;
-          delete formData.second_test_max_score;
-          delete formData.third_test_max_score;
-          console.log('After removing Senior Secondary fields for Junior/Primary (update):', formData);
-        }
-       
-       if (scoringConfigForm.result_type === 'SESSION') {
-         // Remove fields that don't apply to SESSION result type
+      // Validate weight percentages before sending (only for TERMLY)
+      if (scoringConfigForm.result_type === 'TERMLY' && !validateWeightPercentages()) {
+        toast.error('CA weight percentage and exam weight percentage must sum to 100%');
+        setSaving(false);
+        return;
+      }
+     
+     // Validate default configuration
+     if (!validateDefaultConfiguration()) {
+       toast.error('Only one default configuration is allowed per education level. Please set the existing default configuration to non-default first, or set this configuration as non-default.');
+       setSaving(false);
+       return;
+     }
+     
+                        // Prepare form data based on education level and result type
+      let formData: any = { ...scoringConfigForm };
+      
+      console.log('Original formData (update):', formData);
+      
+              // Remove fields that don't apply based on education level
+       if (scoringConfigForm.education_level === 'SENIOR_SECONDARY') {
+         // For Senior Secondary, remove Junior Secondary/Primary fields
+         delete formData.continuous_assessment_max_score;
+         delete formData.take_home_test_max_score;
+         delete formData.appearance_max_score;
+         delete formData.practical_max_score;
+         delete formData.project_max_score;
+         delete formData.note_copying_max_score;
+         console.log('After removing Junior/Primary fields for Senior Secondary (update):', formData);
+       } else if (scoringConfigForm.education_level === 'NURSERY') {
+         // For Nursery, remove all other fields except total_max_score
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
+         delete formData.continuous_assessment_max_score;
+         delete formData.take_home_test_max_score;
+         delete formData.appearance_max_score;
+         delete formData.practical_max_score;
+         delete formData.project_max_score;
+         delete formData.note_copying_max_score;
          delete formData.exam_max_score;
          delete formData.ca_weight_percentage;
          delete formData.exam_weight_percentage;
-         delete formData.total_max_score;
-         console.log('After removing SESSION fields (update):', formData);
+         console.log('After removing all fields except total_max_score for Nursery (update):', formData);
+       } else {
+         // For Junior Secondary and Primary, remove Senior Secondary fields
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
+         console.log('After removing Senior Secondary fields for Junior/Primary (update):', formData);
        }
-       
-       console.log('Final formData being sent (update):', formData);
-      await resultSettingsService.updateScoringConfiguration(id, formData);
-      toast.success('Scoring configuration updated successfully');
-      setShowScoringConfigForm(false);
-      loadData();
-    } catch (error: any) {
-      console.error('Error updating scoring configuration:', error);
       
-      // Show specific validation errors if available
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        if (errorData.non_field_errors) {
-          toast.error(errorData.non_field_errors[0]);
-        } else if (typeof errorData === 'object') {
-          const errorMessages = Object.values(errorData).flat();
-          toast.error(errorMessages[0] as string);
-        } else {
-          toast.error('Failed to update scoring configuration');
-        }
-      } else {
-        toast.error('Failed to update scoring configuration');
+      if (scoringConfigForm.result_type === 'SESSION') {
+        // Remove fields that don't apply to SESSION result type
+        delete formData.exam_max_score;
+        delete formData.ca_weight_percentage;
+        delete formData.exam_weight_percentage;
+        delete formData.total_max_score;
+        console.log('After removing SESSION fields (update):', formData);
       }
-    } finally {
-      setSaving(false);
-    }
-  };
+      
+      console.log('Final formData being sent (update):', formData);
+     await resultSettingsService.updateScoringConfiguration(id, formData);
+     toast.success('Scoring configuration updated successfully');
+     setShowScoringConfigForm(false);
+     loadData();
+   } catch (error: any) {
+     console.error('Error updating scoring configuration:', error);
+     
+     // Show specific validation errors if available
+     if (error.response?.data) {
+       const errorData = error.response.data;
+       if (errorData.non_field_errors) {
+         toast.error(errorData.non_field_errors[0]);
+       } else if (typeof errorData === 'object') {
+         const errorMessages = Object.values(errorData).flat();
+         toast.error(errorMessages[0] as string);
+       } else {
+         toast.error('Failed to update scoring configuration');
+       }
+     } else {
+       toast.error('Failed to update scoring configuration');
+     }
+   } finally {
+     setSaving(false);
+   }
+ };
 
   const handleDeleteScoringConfig = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this scoring configuration?')) {
@@ -1035,22 +1041,22 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                          )}
                       </div>
                       
-                                                                     {/* Footer - Hide Total CA Score for Nursery */}
-                                                                     {config.education_level !== 'NURSERY' && (
-                                                                       <div className="mt-4 pt-4 border-t border-gray-200">
-                                                                         <div className="flex items-center justify-between text-sm">
-                                                                           <span className="text-gray-600">
-                                                                             {config.result_type === 'SESSION' ? 'Total Year Score:' : 'Total CA Score:'}
-                                                                           </span>
-                                                                           <span className="font-semibold text-gray-900">{config.total_ca_max_score}</span>
-                                                                         </div>
-                                                                         {config.result_type === 'SESSION' && (
-                                                                           <p className="text-xs text-gray-500 mt-1">
-                                                                             Sum of all three terms (1st + 2nd + 3rd Term cumulative scores)
-                                                                           </p>
-                                                                         )}
-                                                                       </div>
-                                                                     )}
+                  {/* Footer - Hide Total CA Score for Nursery */}
+                  {config.education_level !== 'NURSERY' && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                     <div className="flex items-center justify-between text-sm">
+                         <span className="text-gray-600">
+                         {config.result_type === 'SESSION' ? 'Total Year Score:' : 'Total CA Score:'}
+                         </span>
+                        <span className="font-semibold text-gray-900">{config.total_ca_max_score}</span>
+                        </div>
+                         {config.result_type === 'SESSION' && (
+                           <p className="text-xs text-gray-500 mt-1">
+                               Sum of all three terms (1st + 2nd + 3rd Term cumulative scores)
+                           </p>
+                        )}
+                        </div>
+                       )}
                     </div>
                   ))}
                 </div>
@@ -1301,12 +1307,14 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                         <div className="flex items-center space-x-2">
                           <button
                             className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200"
-                            onClick={() => {
+                           onClick={() => {
                               setAssessmentTypeForm({
                                 id: type.id,
                                 name: type.name,
                                 code: type.code,
                                 description: type.description,
+                                education_level: type.education_level,
+                                max_score: type.max_score,
                                 weight_percentage: type.weight_percentage,
                                 is_active: type.is_active
                               });

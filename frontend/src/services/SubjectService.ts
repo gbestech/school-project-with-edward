@@ -70,7 +70,7 @@ export interface CreateSubjectData {
   elective_group?: string;
   min_electives_required?: number;
   max_electives_allowed?: number;
-  compatible_stream_ids?: number[];
+  compatible_stream_ids?: string[]; // Changed from number[] to string[]
   has_continuous_assessment?: boolean;
   has_final_exam?: boolean;
   pass_mark?: number;
@@ -121,167 +121,352 @@ export interface SubjectStatistics {
   subjects_requiring_specialist: number;
 }
 
+// Updated API response interface to match actual API structure
+export interface PaginatedApiResponse<T> {
+  count: number;
+  next?: string;
+  previous?: string;
+  results: T[];
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message?: string;
+}
+
 class SubjectService {
-  // Get all subjects with optional filters
-  async getSubjects(params?: SubjectFilters) {
-    // Ensure we only get active, non-discontinued subjects by default
-    // Add cache-busting parameter to avoid cached responses
-    const queryParams = { 
-      available_only: 'true', 
-      _t: Date.now(), // Cache busting
-      ...params 
-    };
-    const response = await api.get('/api/subjects/', { params: queryParams });
-    return response;
+ 
+async getSubjects(params?: SubjectFilters): Promise<Subject[]> {
+  try {
+    const response = await api.get('/api/subjects/', { params });
+    
+    
+    // api.get() returns parsed JSON directly, not wrapped in .data
+    if (response && typeof response === 'object' && 'results' in response) {
+      return response.results;
+    } else if (Array.isArray(response)) {
+      return response;
+    } else {
+      console.warn('Unexpected response format:', response);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error fetching subjects:', error);
+    throw error;
   }
+}
 
   // Get a single subject by ID
-  async getSubject(id: number) {
-    const response = await api.get(`/api/subjects/${id}/`);
-    return response;
+  async getSubject(id: number): Promise<Subject> {
+    try {
+      const response = await api.get(`/api/subjects/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching subject ${id}:`, error);
+      throw error;
+    }
   }
 
   // Create a new subject
-  async createSubject(data: CreateSubjectData) {
-    const response = await api.post('/api/subjects/', data);
-    return response.data;
+  async createSubject(data: CreateSubjectData): Promise<Subject> {
+    try {
+      const response = await api.post('/api/subjects/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating subject:', error);
+      throw error;
+    }
   }
 
   // Update a subject
-  async updateSubject(id: number, data: UpdateSubjectData) {
-    const response = await api.patch(`/api/subjects/${id}/`, data);
-    return response.data;
+  async updateSubject(id: number, data: UpdateSubjectData): Promise<Subject> {
+    try {
+      const response = await api.patch(`/api/subjects/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating subject ${id}:`, error);
+      throw error;
+    }
   }
 
   // Delete a subject
-  async deleteSubject(id: number) {
-    const response = await api.delete(`/api/subjects/${id}/`);
-    return response.data;
-  }
+  // async deleteSubject(id: number): Promise<{ success: boolean; message?: string }> {
+  //   try {
+  //     const response = await api.delete(`/api/subjects/${id}/`);
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error(`Error deleting subject ${id}:`, error);
+  //     throw error;
+  //   }
+  // }
 
-  // Get subject statistics
-  async getSubjectStatistics() {
-    const response = await api.get('/api/subjects/statistics/', {
-      params: { _t: Date.now() } // Cache busting
-    });
-    return response;
+async deleteSubject(id: number): Promise<{ success: boolean; message?: string; action?: string }> {
+  try {
+    // Use the api service for consistency with other methods
+    const response = await api.delete(`/api/subjects/${id}/`);
+    
+    // Handle different response scenarios
+    if (response) {
+      // If there's a response body (from your custom destroy method)
+      return {
+        success: true,
+        message: response.message || 'Subject deleted successfully',
+        action: response.action
+      };
+    } else {
+      // Handle empty response (204 No Content)
+      return {
+        success: true,
+        message: 'Subject deleted successfully'
+      };
+    }
+  } catch (error: any) {
+    console.error(`Error deleting subject ${id}:`, error);
+    
+    // Handle different error types
+    if (error.response) {
+      // Server responded with error status
+      const errorMessage = error.response.data?.error || 
+                          error.response.data?.message || 
+                          `HTTP error! status: ${error.response.status}`;
+      throw new Error(errorMessage);
+    } else if (error.message === 'Unexpected end of JSON input') {
+      // Handle the specific JSON parsing error
+      return {
+        success: true,
+        message: 'Subject deleted successfully'
+      };
+    } else {
+      // Network or other errors
+      throw error;
+    }
+  }
+}
+  // Get subject statistics - returns the data directly
+  async getSubjectStatistics(): Promise<SubjectStatistics> {
+    try {
+      const response = await api.get('/api/subjects/statistics/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching subject statistics:', error);
+      throw error;
+    }
   }
 
   // Get subjects by education level
-  async getSubjectsByEducationLevel(educationLevel: string) {
-    const response = await api.get(`/api/subjects/?education_level=${educationLevel}`);
-    return response;
+  async getSubjectsByEducationLevel(educationLevel: string): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { education_level: educationLevel, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error(`Error fetching subjects by education level ${educationLevel}:`, error);
+      throw error;
+    }
   }
 
   // Get subjects by category
-  async getSubjectsByCategory(category: string) {
-    const response = await api.get(`/api/subjects/?category=${category}`);
-    return response;
+  async getSubjectsByCategory(category: string): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { category, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error(`Error fetching subjects by category ${category}:`, error);
+      throw error;
+    }
   }
 
   // Get active subjects
-  async getActiveSubjects() {
-    const response = await api.get('/api/subjects/?is_active=true');
-    return response;
+  async getActiveSubjects(): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { is_active: true, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error('Error fetching active subjects:', error);
+      throw error;
+    }
   }
 
   // Get cross-cutting subjects (Senior Secondary)
-  async getCrossCuttingSubjects() {
-    const response = await api.get('/api/subjects/?is_cross_cutting=true');
-    return response;
+  async getCrossCuttingSubjects(): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { is_cross_cutting: true, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error('Error fetching cross-cutting subjects:', error);
+      throw error;
+    }
   }
 
   // Get activity-based subjects (Nursery)
-  async getActivityBasedSubjects() {
-    const response = await api.get('/api/subjects/?is_activity_based=true');
-    return response;
+  async getActivityBasedSubjects(): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { is_activity_based: true, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error('Error fetching activity-based subjects:', error);
+      throw error;
+    }
   }
 
   // Get subjects with practical components
-  async getSubjectsWithPractical() {
-    const response = await api.get('/api/subjects/?has_practical=true');
-    return response;
+  async getSubjectsWithPractical(): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { has_practical: true, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error('Error fetching subjects with practical:', error);
+      throw error;
+    }
   }
 
   // Get subjects requiring specialist teachers
-  async getSubjectsRequiringSpecialist() {
-    const response = await api.get('/api/subjects/?requires_specialist_teacher=true');
-    return response;
+  async getSubjectsRequiringSpecialist(): Promise<Subject[]> {
+    try {
+      const response = await api.get('/api/subjects/', {
+        params: { requires_specialist_teacher: true, available_only: 'true' }
+      });
+      return response.data.results || response.data;
+    } catch (error) {
+      console.error('Error fetching subjects requiring specialist:', error);
+      throw error;
+    }
   }
 
   // Bulk operations (Admin only)
-  async bulkCreateSubjects(subjects: CreateSubjectData[]) {
-    const response = await api.post('/api/management/subjects/bulk_create/', { subjects });
-    return response.data;
+  async bulkCreateSubjects(subjects: CreateSubjectData[]): Promise<{ created: Subject[]; errors?: any[] }> {
+    try {
+      const response = await api.post('/api/management/subjects/bulk_create/', { subjects });
+      return response.data;
+    } catch (error) {
+      console.error('Error bulk creating subjects:', error);
+      throw error;
+    }
   }
 
-  async bulkUpdateSubjects(subjects: { id: number; data: UpdateSubjectData }[]) {
-    const response = await api.patch('/api/management/subjects/bulk_update/', { subjects });
-    return response.data;
+  async bulkUpdateSubjects(subjects: { id: number; data: UpdateSubjectData }[]): Promise<{ updated: Subject[]; errors?: any[] }> {
+    try {
+      const response = await api.patch('/api/management/subjects/bulk_update/', { subjects });
+      return response.data;
+    } catch (error) {
+      console.error('Error bulk updating subjects:', error);
+      throw error;
+    }
   }
 
-  async bulkDeleteSubjects(subjectIds: number[]) {
-    const response = await api.delete('/api/management/subjects/bulk_delete/', { 
-      data: { subject_ids: subjectIds } 
-    });
-    return response.data;
+  async bulkDeleteSubjects(subjectIds: number[]): Promise<{ deleted: number[]; errors?: any[] }> {
+    try {
+      const response = await api.post('/api/management/subjects/bulk_delete/', { subject_ids: subjectIds });
+      return response.data;
+    } catch (error) {
+      console.error('Error bulk deleting subjects:', error);
+      throw error;
+    }
   }
 
-  async bulkActivateSubjects(subjectIds: number[], activate: boolean) {
-    const response = await api.post('/api/management/subjects/bulk_activate/', {
-      subject_ids: subjectIds,
-      activate
-    });
-    return response.data;
+  async bulkActivateSubjects(subjectIds: number[], activate: boolean): Promise<{ updated: number[]; errors?: any[] }> {
+    try {
+      const response = await api.post('/api/management/subjects/bulk_activate/', {
+        subject_ids: subjectIds,
+        activate
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error bulk activating subjects:', error);
+      throw error;
+    }
   }
 
   // Export and import (Admin only)
-  async exportSubjects(format: 'csv' | 'xlsx' = 'csv') {
-    const response = await api.get(`/api/management/subjects/export/?format=${format}`, {
-      responseType: 'blob'
-    });
-    return response.data;
+  async exportSubjects(format: 'csv' | 'xlsx' = 'csv'): Promise<Blob> {
+    try {
+      const response = await api.get(`/api/management/subjects/export/?format=${format}`, {
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error exporting subjects:', error);
+      throw error;
+    }
   }
 
-  async importSubjects(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post('/api/management/subjects/import/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
+  async importSubjects(file: File): Promise<{ imported: number; errors?: any[] }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await api.post('/api/management/subjects/import/', formData);
+      return response.data;
+    } catch (error) {
+      console.error('Error importing subjects:', error);
+      throw error;
+    }
   }
 
   // Utility methods
-  async getSubjectCategories() {
-    const response = await api.get('/api/subjects/categories/');
-    return response;
+  async getSubjectCategories(): Promise<string[]> {
+    try {
+      const response = await api.get('/api/subjects/categories/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching subject categories:', error);
+      throw error;
+    }
   }
 
-  async getEducationLevels() {
-    const response = await api.get('/api/subjects/education_levels/');
-    return response;
+  async getEducationLevels(): Promise<string[]> {
+    try {
+      const response = await api.get('/api/subjects/education_levels/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching education levels:', error);
+      throw error;
+    }
   }
 
-  async getNurseryLevels() {
-    const response = await api.get('/api/subjects/nursery_levels/');
-    return response;
+  async getNurseryLevels(): Promise<string[]> {
+    try {
+      const response = await api.get('/api/subjects/nursery_levels/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching nursery levels:', error);
+      throw error;
+    }
   }
 
-  async getSSSubjectTypes() {
-    const response = await api.get('/api/subjects/ss_subject_types/');
-    return response;
+  async getSSSubjectTypes(): Promise<string[]> {
+    try {
+      const response = await api.get('/api/subjects/ss_subject_types/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching SS subject types:', error);
+      throw error;
+    }
   }
 
   // Health check
-  async healthCheck() {
-    const response = await api.get('/api/subjects/health/');
-    return response;
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    try {
+      const response = await api.get('/api/subjects/health/');
+      return response.data;
+    } catch (error) {
+      console.error('Error checking health:', error);
+      throw error;
+    }
   }
 }
 
 export const subjectService = new SubjectService();
-export default subjectService; 
+export default subjectService;

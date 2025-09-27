@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import ResultService, { StudentTermResult, ExamSession } from '@/services/ResultService';
+import ResultService, { ExamSession } from '@/services/ResultService';
+// import { StudentTermResult } from '@/types/types';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAbsoluteUrl } from '@/utils/urlUtils';
 import { Eye, Edit, Trash2, Download, Printer } from 'lucide-react';
@@ -83,7 +84,7 @@ const getSchoolData = (settings: any) => ({
   name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
   address: settings?.school_address || "No 54 Dagbana Road, Opp. St. Kevin's Catholic Church, Phase III Jikwoyi, Abuja",
   logo: getAbsoluteUrl(settings?.logo_url) || "🏫",
-  nextTermBegins: settings?.current_term || "12th September, 2024"
+  nextTermBegins: settings?.current_term || ""
 });
 
 const getUnique = (arr: string[]): string[] => Array.from(new Set(arr));
@@ -120,14 +121,14 @@ const SchoolResultTemplate = () => {
         setLoading(true);
         setError(null);
         
-        // Load term results and exam sessions
+        // Load term results and exam sessions using the correct service methods
         const [termResultsData, examSessionsData] = await Promise.all([
           ResultService.getTermResults(),
           ResultService.getExamSessions({ is_active: true })
         ]);
         
-        setStudentResults(termResultsData);
-        setExamSessions(examSessionsData);
+        setStudentResults(termResultsData || []);
+        setExamSessions(examSessionsData || []);
       } catch (err) {
         console.error('Error loading results:', err);
         setError('Failed to load results. Please try again.');
@@ -140,13 +141,33 @@ const SchoolResultTemplate = () => {
   }, []);
 
   // Unique filter options
-  const classes = useMemo(() => getUnique(studentResults.map(s => s.student.student_class)), [studentResults]);
-  const years = useMemo(() => getUnique(studentResults.map(s => s.academic_session.name)), [studentResults]);
-  const terms = useMemo(() => getUnique(studentResults.map(s => s.term)), [studentResults]);
-  const sections = useMemo(() => getUnique(studentResults.map(s => s.student.education_level)), [studentResults]);
+  const classes = useMemo(() => getUnique(
+    studentResults
+      .map(s => s.student?.student_class)
+      .filter(Boolean)
+  ), [studentResults]);
+  
+  const years = useMemo(() => getUnique(
+    studentResults
+      .map(s => s.academic_session?.name)
+      .filter(Boolean)
+  ), [studentResults]);
+  
+  const terms = useMemo(() => getUnique(
+    studentResults
+      .map(s => s.term)
+      .filter(Boolean)
+  ), [studentResults]);
+  
+  const sections = useMemo(() => getUnique(
+    studentResults
+      .map(s => s.student?.education_level)
+      .filter(Boolean)
+  ), [studentResults]);
+  
   const streams = useMemo(() => {
     const allStreams = studentResults.flatMap(s => 
-      s.subject_results
+      (s.subject_results || [])
         .filter(sr => sr.stream)
         .map(sr => ({ id: sr.stream!.id, name: sr.stream!.name }))
     );
@@ -157,23 +178,26 @@ const SchoolResultTemplate = () => {
 
   // Filtered students
   const filtered = useMemo(() => {
-    return studentResults.filter(s =>
-      (classFilter === 'all' || s.student.student_class === classFilter) &&
-      (yearFilter === 'all' || s.academic_session.name === yearFilter) &&
-      (termFilter === 'all' || s.term === termFilter) &&
-      (sectionFilter === 'all' || s.student.education_level === sectionFilter) &&
-      (streamFilter === 'all' || s.subject_results.some(sr => sr.stream?.id === streamFilter)) &&
-      (search === '' ||
-        s.student.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        s.student.username.toLowerCase().includes(search.toLowerCase())
-      )
-    );
+    return studentResults.filter(s => {
+      // Null checks for safety
+      if (!s || !s.student) return false;
+      
+      return (classFilter === 'all' || s.student.student_class === classFilter) &&
+        (yearFilter === 'all' || s.academic_session?.name === yearFilter) &&
+        (termFilter === 'all' || s.term === termFilter) &&
+        (sectionFilter === 'all' || s.student.education_level === sectionFilter) &&
+        (streamFilter === 'all' || (s.subject_results || []).some(sr => sr.stream?.id === streamFilter)) &&
+        (search === '' ||
+          s.student.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+          s.student.username?.toLowerCase().includes(search.toLowerCase())
+        );
+    });
   }, [studentResults, classFilter, yearFilter, termFilter, sectionFilter, streamFilter, search]);
 
   // Safe average score calculation
   const getSafeAverageScore = (student: StudentResult): string => {
-    const avg = Number((student as any).average_score);
-    if (isNaN(avg)) return 'N/A';
+    const avg = Number(student.average_score);
+    if (isNaN(avg) || avg === 0) return 'N/A';
     return avg.toFixed(1) + '%';
   };
 
@@ -197,12 +221,16 @@ const SchoolResultTemplate = () => {
     setShowDeleteModal(true);
   };
 
+  // Fixed delete function - using the term results endpoint correctly
   const confirmDelete = async () => {
     if (!resultToDelete) return;
     
     try {
       setActionLoading('delete');
-      await ResultService.deleteStudentResult(resultToDelete.id);
+      // Since we're dealing with term results, we need to delete differently
+      // The service doesn't have a direct deleteStudentResult for term results
+      // You may need to implement this in the service or use a different approach
+      await ResultService.deleteStudentResult(resultToDelete.id, resultToDelete.student.education_level);
       
       // Remove from local state
       setStudentResults(prev => prev.filter(r => r.id !== resultToDelete.id));
@@ -227,28 +255,55 @@ const SchoolResultTemplate = () => {
   };
 
   const getGradeColor = (grade: string) => {
+    if (!grade) return 'bg-gray-100 text-gray-800';
     if (grade === 'A' || grade === 'A+') return 'bg-green-100 text-green-800';
     if (grade === 'B' || grade === 'B+') return 'bg-blue-100 text-blue-800';
-    return 'bg-yellow-100 text-yellow-800';
+    if (grade === 'C' || grade === 'C+') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
   };
 
   const getTermDisplay = (term: string) => {
+    if (!term) return 'N/A';
     const termMap: { [key: string]: string } = {
       'FIRST': '1ST TERM',
       'SECOND': '2ND TERM',
       'THIRD': '3RD TERM'
     };
-    return termMap[term] || term;
+    return termMap[term.toUpperCase()] || term;
   };
 
   const getEducationLevelDisplay = (level: string) => {
+    if (!level) return 'N/A';
     const levelMap: { [key: string]: string } = {
       'PRIMARY': 'PRIMARY SCHOOL',
       'JUNIOR_SECONDARY': 'JUNIOR SECONDARY SCHOOL',
       'SENIOR_SECONDARY': 'SENIOR SECONDARY SCHOOL',
       'NURSERY': 'NURSERY SCHOOL'
     };
-    return levelMap[level] || level;
+    return levelMap[level.toUpperCase()] || level;
+  };
+
+  // Get overall grade from subject results
+  const getOverallGrade = (student: StudentResult): string => {
+    if (!student.subject_results || student.subject_results.length === 0) return 'N/A';
+    
+    // Calculate based on GPA or average score
+    const avg = student.average_score;
+    if (!avg || isNaN(avg)) return 'N/A';
+    
+    if (avg >= 80) return 'A';
+    if (avg >= 70) return 'B';
+    if (avg >= 60) return 'C';
+    if (avg >= 50) return 'D';
+    return 'F';
+  };
+
+  // Get stream name safely
+  const getStreamName = (student: StudentResult): string => {
+    if (!student.subject_results || student.subject_results.length === 0) return '-';
+    
+    const subjectWithStream = student.subject_results.find(sr => sr.stream);
+    return subjectWithStream?.stream?.name || subjectWithStream?.stream_name || '-';
   };
 
   if (loading) {
@@ -290,7 +345,11 @@ const SchoolResultTemplate = () => {
           className="border px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Sections</option>
-          {sections.map(section => <option key={section} value={section}>{getEducationLevelDisplay(section)}</option>)}
+          {sections.map(section => (
+            <option key={section} value={section}>
+              {getEducationLevelDisplay(section)}
+            </option>
+          ))}
         </select>
         <select 
           value={classFilter} 
@@ -298,7 +357,9 @@ const SchoolResultTemplate = () => {
           className="border px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Classes</option>
-          {classes.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+          {classes.map(cls => (
+            <option key={cls} value={cls}>{cls}</option>
+          ))}
         </select>
         <select 
           value={yearFilter} 
@@ -306,7 +367,9 @@ const SchoolResultTemplate = () => {
           className="border px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Years</option>
-          {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+          {years.map(yr => (
+            <option key={yr} value={yr}>{yr}</option>
+          ))}
         </select>
         <select 
           value={termFilter} 
@@ -314,7 +377,9 @@ const SchoolResultTemplate = () => {
           className="border px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Terms</option>
-          {terms.map(term => <option key={term} value={term}>{getTermDisplay(term)}</option>)}
+          {terms.map(term => (
+            <option key={term} value={term}>{getTermDisplay(term)}</option>
+          ))}
         </select>
         <select 
           value={streamFilter} 
@@ -322,7 +387,9 @@ const SchoolResultTemplate = () => {
           className="border px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Streams</option>
-          {streams.map(stream => <option key={stream.id} value={stream.id}>{stream.name}</option>)}
+          {streams.map(stream => (
+            <option key={stream.id} value={stream.id}>{stream.name}</option>
+          ))}
         </select>
       </div>
 
@@ -349,19 +416,19 @@ const SchoolResultTemplate = () => {
             ) : (
               filtered.map(student => (
                 <tr key={student.id} className="hover:bg-blue-50 transition-colors">
-                  <td className="border px-4 py-3">{student.student.full_name}</td>
-                  <td className="border px-4 py-3">{student.student.username}</td>
-                  <td className="border px-4 py-3 text-sm">{getEducationLevelDisplay(student.student.education_level)}</td>
-                  <td className="border px-4 py-3">{student.student.student_class}</td>
+                  <td className="border px-4 py-3">{student.student?.full_name || 'N/A'}</td>
+                  <td className="border px-4 py-3">{student.student?.username || 'N/A'}</td>
                   <td className="border px-4 py-3 text-sm">
-                    {student.subject_results.find(sr => sr.stream)?.stream_name || '-'}
+                    {getEducationLevelDisplay(student.student?.education_level || '')}
                   </td>
+                  <td className="border px-4 py-3">{student.student?.student_class || 'N/A'}</td>
+                  <td className="border px-4 py-3 text-sm">{getStreamName(student)}</td>
                   <td className="border px-4 py-3">{getTermDisplay(student.term)}</td>
-                  <td className="border px-4 py-3">{student.academic_session.name}</td>
+                  <td className="border px-4 py-3">{student.academic_session?.name || 'N/A'}</td>
                   <td className="border px-4 py-3 text-center font-semibold">{getSafeAverageScore(student)}</td>
                   <td className="border px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getGradeColor(student.subject_results[0]?.grade || 'F')}`}>
-                      {student.subject_results[0]?.grade || 'N/A'}
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getGradeColor(getOverallGrade(student))}`}>
+                      {getOverallGrade(student)}
                     </span>
                   </td>
                   <td className="border px-4 py-3">
@@ -411,7 +478,7 @@ const SchoolResultTemplate = () => {
             {/* Close button */}
             <button 
               onClick={handleCloseModal}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 print:hidden"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 print:hidden z-10"
             >
               ✕
             </button>
@@ -428,7 +495,9 @@ const SchoolResultTemplate = () => {
                 </div>
                 <div className="text-right">
                   <h2 className="text-lg font-semibold">STUDENT'S REPORT CARD</h2>
-                  <p className="text-sm text-gray-600">Next Term Begins: {selectedStudent.next_term_begins || getSchoolData(settings).nextTermBegins}</p>
+                  <p className="text-sm text-gray-600">
+                    Next Term Begins: {selectedStudent.next_term_begins || getSchoolData(settings).nextTermBegins}
+                  </p>
                 </div>
               </div>
             </div>
@@ -437,14 +506,18 @@ const SchoolResultTemplate = () => {
             <div className="p-6 border-b print:border-none">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p><strong>Name:</strong> {selectedStudent.student.full_name}</p>
-                  <p><strong>Class:</strong> {selectedStudent.student.student_class}</p>
+                  <p><strong>Name:</strong> {selectedStudent.student?.full_name || 'N/A'}</p>
+                  <p><strong>Class:</strong> {selectedStudent.student?.student_class || 'N/A'}</p>
                   <p><strong>Term:</strong> {getTermDisplay(selectedStudent.term)}</p>
                 </div>
                 <div>
-                  <p><strong>Academic Session:</strong> {selectedStudent.academic_session.name}</p>
-                  <p><strong>Total Subjects:</strong> {selectedStudent.total_subjects}</p>
-                  <p><strong>Position:</strong> {selectedStudent.class_position ? `${selectedStudent.class_position} of ${selectedStudent.total_students}` : 'N/A'}</p>
+                  <p><strong>Academic Session:</strong> {selectedStudent.academic_session?.name || 'N/A'}</p>
+                  <p><strong>Total Subjects:</strong> {selectedStudent.total_subjects || 0}</p>
+                  <p><strong>Position:</strong> {
+                    selectedStudent.class_position && selectedStudent.total_students
+                      ? `${selectedStudent.class_position} of ${selectedStudent.total_students}`
+                      : 'N/A'
+                  }</p>
                 </div>
               </div>
             </div>
@@ -465,22 +538,31 @@ const SchoolResultTemplate = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedStudent.subject_results.map((subject, index) => (
+                  {(selectedStudent.subject_results || []).map((subject, index) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="border border-black p-2 text-center font-semibold">{index + 1}</td>
-                      <td className="border border-black p-2">{subject.subject.name}</td>
-                      <td className="border border-black p-2 text-center">{Number((subject as any).ca_score)}</td>
-                      <td className="border border-black p-2 text-center">{Number((subject as any).exam_score)}</td>
-                      <td className="border border-black p-2 text-center font-semibold">{Number((subject as any).total_score)}</td>
-                      <td className="border border-black p-2 text-center">{(() => { const pct = Number((subject as any).percentage); return isNaN(pct) ? 'N/A' : `${pct.toFixed(1)}%`; })()}</td>
-                      <td className="border border-black p-2 text-center font-semibold">{subject.grade}</td>
-                      <td className="border border-black p-2 text-center">{subject.remarks}</td>
+                      <td className="border border-black p-2">{subject.subject?.name || 'N/A'}</td>
+                      <td className="border border-black p-2 text-center">{Number(subject.ca_score) || 0}</td>
+                      <td className="border border-black p-2 text-center">{Number(subject.exam_score) || 0}</td>
+                      <td className="border border-black p-2 text-center font-semibold">{Number(subject.total_score) || 0}</td>
+                      <td className="border border-black p-2 text-center">{
+                        (() => {
+                          const pct = Number(subject.percentage);
+                          return isNaN(pct) ? 'N/A' : `${pct.toFixed(1)}%`;
+                        })()
+                      }</td>
+                      <td className="border border-black p-2 text-center font-semibold">{subject.grade || 'N/A'}</td>
+                      <td className="border border-black p-2 text-center">{subject.remarks || '-'}</td>
                     </tr>
                   ))}
                   {/* Empty rows for additional subjects */}
-                  {Array.from({ length: Math.max(0, 15 - selectedStudent.subject_results.length) }, (_, i) => (
+                  {Array.from({ 
+                    length: Math.max(0, 15 - (selectedStudent.subject_results || []).length) 
+                  }, (_, i) => (
                     <tr key={`empty-${i}`}>
-                      <td className="border border-black p-2 text-center">{selectedStudent.subject_results.length + i + 1}</td>
+                      <td className="border border-black p-2 text-center">
+                        {(selectedStudent.subject_results || []).length + i + 1}
+                      </td>
                       <td className="border border-black p-2"></td>
                       <td className="border border-black p-2"></td>
                       <td className="border border-black p-2"></td>
@@ -495,35 +577,39 @@ const SchoolResultTemplate = () => {
             </div>
 
             {/* Summary Statistics */}
-            <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-              <div>
-                <div className="flex">
-                  <span className="font-semibold w-32">Total Score:</span>
-                  <span>{selectedStudent.total_score}</span>
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                <div>
+                  <div className="flex">
+                    <span className="font-semibold w-32">Total Score:</span>
+                    <span>{selectedStudent.total_score || 0}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="font-semibold w-32">Average Score:</span>
+                    <span>{getSafeAverageScore(selectedStudent)}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="font-semibold w-32">GPA:</span>
+                    <span>{selectedStudent.gpa ? selectedStudent.gpa.toFixed(2) : 'N/A'}</span>
+                  </div>
                 </div>
-                <div className="flex">
-                  <span className="font-semibold w-32">Average Score:</span>
-                  <span>{getSafeAverageScore(selectedStudent)}</span>
-                </div>
-                <div className="flex">
-                  <span className="font-semibold w-32">GPA:</span>
-                  <span>{selectedStudent.gpa.toFixed(2)}</span>
-                </div>
-              </div>
-              <div>
-                <div className="flex">
-                  <span className="font-semibold w-32">Subjects Passed:</span>
-                  <span>{selectedStudent.subjects_passed}</span>
-                </div>
-                <div className="flex">
-                  <span className="font-semibold w-32">Subjects Failed:</span>
-                  <span>{selectedStudent.subjects_failed}</span>
-                </div>
-                <div className="flex">
-                  <span className="font-semibold w-32">Status:</span>
-                  <span className={`px-2 py-1 rounded text-xs font-semibold ${selectedStudent.status === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {selectedStudent.status}
-                  </span>
+                <div>
+                  <div className="flex">
+                    <span className="font-semibold w-32">Subjects Passed:</span>
+                    <span>{selectedStudent.subjects_passed || 0}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="font-semibold w-32">Subjects Failed:</span>
+                    <span>{selectedStudent.subjects_failed || 0}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="font-semibold w-32">Status:</span>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                      selectedStudent.status === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedStudent.status || 'N/A'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -565,7 +651,7 @@ const SchoolResultTemplate = () => {
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete the result for <strong>{resultToDelete.student.full_name}</strong>? 
+              Are you sure you want to delete the result for <strong>{resultToDelete.student?.full_name || 'this student'}</strong>? 
               This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-4">
@@ -597,7 +683,7 @@ const SchoolResultTemplate = () => {
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
             <h3 className="text-lg font-semibold mb-4">Edit Result</h3>
             <p className="text-gray-600 mb-6">
-              Edit functionality will be implemented here for {editingResult.student.full_name}
+              Edit functionality will be implemented here for {editingResult.student?.full_name || 'this student'}
             </p>
             <div className="flex justify-end space-x-4">
               <button

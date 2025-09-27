@@ -1,6 +1,6 @@
 import React from 'react';
-import { X, Users, BookOpen, MapPin, Calendar, UserCheck, Trash2, Phone, Clock, Award, GraduationCap } from 'lucide-react';
-import { Classroom, ClassroomTeacherAssignment } from '@/services/ClassroomService';
+import { X, BookOpen, Calendar, UserCheck, Trash2, Phone, Clock, Award, GraduationCap } from 'lucide-react';
+import { Classroom } from '@/services/ClassroomService';
 
 interface ClassroomViewModalProps {
   classroom: Classroom | null;

@@ -39,7 +39,16 @@ interface AssessmentType {
   created_at: string;
 }
 
-const EnhancedResultRecording: React.FC = () => {
+
+interface EnhancedResultRecordingProps {
+  onResultAdded?: () => void;
+  onClose?: () => void;
+}
+const EnhancedResultRecording: React.FC<EnhancedResultRecordingProps> = ({
+  onResultAdded,
+  onClose
+
+}) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -283,7 +292,15 @@ const EnhancedResultRecording: React.FC = () => {
       toast.success('Result recorded successfully');
       setShowForm(false);
       resetForm();
-      
+       if (onResultAdded) {
+        onResultAdded();
+      }
+      if (onClose) {
+        onClose();
+      } else {
+        setShowForm(false);
+        resetForm();
+      }
     } catch (error: any) {
       console.error('Error saving result:', error);
       toast.error(error.response?.data?.message || 'Failed to save result');

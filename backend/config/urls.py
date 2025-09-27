@@ -1,47 +1,4 @@
-# # config/urls.py - FIXED VERSION
-# from django.contrib import admin
-# from django.urls import path, include
-# from .views import api_root, debug_login_function
-# from authentication.views import GoogleLogin
-
-# urlpatterns = [
-#     path("admin/", admin.site.urls),
-#     # API root
-#     path("api/", api_root),
-#     # Debug endpoint (keep at top for specificity)
-#     path("api/debug/login/", debug_login_function, name="debug_login"),
-#     # Django Rest Auth routes (MAIN AUTHENTICATION)
-#     path("api/dj-rest-auth/", include("dj_rest_auth.urls")),
-#     path("api/dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
-#     # Social login routes
-#     path("api/dj-rest-auth/google/", GoogleLogin.as_view(), name="google_login"),
-#     # Custom authentication routes (if you have additional custom auth)
-#     path("api/auth/", include("authentication.urls")),
-#     # App-specific API routes
-#     path("api/dashboard/", include("dashboard.urls")),
-#     path("api/", include("userprofile.urls")),
-#     path("api/teachers/", include("teacher.urls")),
-#     path("api/classrooms/", include("classroom.urls")),
-#     path("api/subjects/", include("subject.urls")),
-#     path("api/timetable/", include("timetable.urls")),
-#     path("api/attendance/", include("attendance.urls")),
-#     path("api/exams/", include("exam.urls")),
-#     path("api/parents/", include("parent.urls")),
-#     path("api/students/", include("students.urls")),
-#     path("api/messaging/", include("messaging.urls")),
-#     path("api/utils/", include("utils.urls")),
-#     path("api/invitations/", include("invitations.urls")),
-#     # Social account routes (optional, mainly for admin)
-#     path("api/socialaccounts/", include("allauth.socialaccount.urls")),
-#     # Social provider routes (if needed for direct provider integration)
-#     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
-#     path(
-#         "api/auth/facebook/", include("allauth.socialaccount.providers.facebook.urls")
-#     ),
-# ]
-
-
-# config/urls.py - SIMPLE FIX (Keep your current structure)
+# config/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -51,10 +8,11 @@ from authentication.views import GoogleLogin
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # API root
+    # ===== API ROOT =====
     path("api/", api_root, name="api_root"),
-    # Debug endpoint (keep at top for specificity)
+    # ===== DEBUG ENDPOINTS (Development only) =====
     path("api/debug/login/", debug_login_function, name="debug_login"),
+    # ===== AUTHENTICATION ROUTES =====
     # Django Rest Auth routes (MAIN AUTHENTICATION)
     path("api/dj-rest-auth/", include("dj_rest_auth.urls")),
     path("api/dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
@@ -62,25 +20,6 @@ urlpatterns = [
     path("api/dj-rest-auth/google/", GoogleLogin.as_view(), name="google_login"),
     # Custom authentication routes
     path("api/auth/", include("authentication.urls")),
-    # App-specific API routes
-    path("api/dashboard/", include("dashboard.urls")),
-    path("api/profiles/", include("userprofile.urls")),  # FIXED: Added specific path
-    path("api/teachers/", include("teacher.urls")),
-    path("api/subjects/", include("subject.urls")),
-    path("api/timetable/", include("timetable.urls")),
-    path("api/attendance/", include("attendance.urls")),
-    path("api/exams/", include("exam.urls")),
-    path("api/parents/", include("parent.urls")),
-    path("api/students/", include("students.urls")),
-    path("api/messaging/", include("messaging.urls")),
-    path("api/utils/", include("utils.urls")),
-    path("api/invitations/", include("invitations.urls")),
-    path("api/results/", include("result.urls")),
-    path("api/classrooms/", include("classroom.urls")),
-    path("api/", include("schoolSettings.urls")),
-    path("api/", include("events.urls")),
-    path("api/lessons/", include("lesson.urls")),
-    path("api/fee/", include("fee.urls")),
     # Social account routes (optional, mainly for admin)
     path("api/socialaccounts/", include("allauth.socialaccount.urls")),
     # Social provider routes (if needed for direct provider integration)
@@ -88,14 +27,41 @@ urlpatterns = [
     path(
         "api/auth/facebook/", include("allauth.socialaccount.providers.facebook.urls")
     ),
+    # ===== CORE ACADEMIC MANAGEMENT =====
+    path("api/dashboard/", include("dashboard.urls")),
+    path("api/classrooms/", include("classroom.urls")),
+    path("api/subjects/", include("subject.urls")),
+    path("api/lessons/", include("lesson.urls")),
+    path("api/timetable/", include("timetable.urls")),
+    # ===== PEOPLE MANAGEMENT =====
+    path("api/profiles/", include("userprofile.urls")),
+    path("api/teachers/", include("teacher.urls")),
+    path("api/students/", include("students.urls")),
+    path("api/parents/", include("parent.urls")),
+    # ===== ACADEMIC OPERATIONS =====
+    path("api/attendance/", include("attendance.urls")),
+    path("api/exams/", include("exam.urls")),
+    path(
+        "api/results/", include("result.urls")
+    ),  # Updated with new hierarchical structure
+    # ===== FINANCIAL MANAGEMENT =====
+    path("api/fee/", include("fee.urls")),
+    # ===== COMMUNICATION =====
+    path("api/messaging/", include("messaging.urls")),
+    path("api/invitations/", include("invitations.urls")),
+    # ===== SCHOOL ADMINISTRATION =====
+    path("api/school-settings/", include("schoolSettings.urls")),
+    path("api/events/", include("events.urls")),
+    # ===== UTILITIES =====
+    path("api/utils/", include("utils.urls")),
 ]
 
-# Serve media files during development
+# ===== STATIC/MEDIA FILES (Development) =====
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-# Add debug toolbar in development
+# ===== DEBUG TOOLBAR (Development) =====
 if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
     import debug_toolbar
 

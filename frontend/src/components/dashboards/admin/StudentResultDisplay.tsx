@@ -1,583 +1,19 @@
-
-// import React, { useState, useEffect } from 'react';
-// import { Trophy, Download, Printer, Loader2, AlertCircle } from 'lucide-react';
-// import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
-// import ResultService from '@/services/ResultService';
-// import { toast } from 'react-hot-toast';
-
-// // Import result templates based on education level
-// import NurseryResult from '../student/NurseryResult';
-// import PrimaryResult from '../student/PrimaryResult';
-// import JuniorSecondaryResult from '../student/JuniorSecondaryResult';
-// import SeniorSecondarySessionResult from '../student/SeniorSecondarySessionResult';
-// import SeniorSecondaryTermlyResult from '../student/SeniorSecondaryTermlyResult';
-
-// interface StudentData {
-//   id: string;
-//   full_name: string;
-//   username: string;
-//   student_class: string;
-//   education_level: string;
-//   profile_picture?: string;
-// }
-
-// interface SelectionData {
-//   academicSession: string;
-//   term: string;
-//   class: string;
-//   resultType?: string;
-// }
-
-// interface StudentResultDisplayProps {
-//   student: StudentData;
-//   selections: SelectionData;
-// }
-
-// const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, selections }) => {
-//   const { isDarkMode } = useGlobalTheme();
-//   const [results, setResults] = useState<any[]>([]);
-//   const [termResults, setTermResults] = useState<any[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState<string | null>(null);
-
-//   const themeClasses = {
-//     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
-//     bgSecondary: isDarkMode ? 'bg-gray-800' : 'bg-gray-50',
-//     bgCard: isDarkMode ? 'bg-gray-800' : 'bg-white',
-//     textPrimary: isDarkMode ? 'text-white' : 'text-gray-900',
-//     textSecondary: isDarkMode ? 'text-gray-300' : 'text-gray-600',
-//     textTertiary: isDarkMode ? 'text-gray-400' : 'text-gray-500',
-//     border: isDarkMode ? 'border-gray-700' : 'border-gray-200',
-//     borderHover: isDarkMode ? 'border-gray-600' : 'border-gray-300',
-//     iconPrimary: isDarkMode ? 'text-blue-400' : 'text-blue-600',
-//     iconSecondary: isDarkMode ? 'text-gray-400' : 'text-gray-500',
-//     buttonPrimary: isDarkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white',
-//     buttonSecondary: isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700',
-//     buttonSuccess: isDarkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white',
-//     buttonWarning: isDarkMode ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white',
-//     buttonDanger: isDarkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white',
-//   };
-
-//   // Helper method to determine education level from class name if not provided
-//   const getEducationLevel = (): string => {
-//     if (student.education_level) {
-//       return student.education_level.toUpperCase();
-//     }
-    
-//     const className = student.student_class?.toLowerCase() || '';
-//     if (className.includes('nursery')) return 'NURSERY';
-//     if (className.includes('primary')) return 'PRIMARY';
-//     if (className.includes('jss') || className.includes('junior')) return 'JUNIOR_SECONDARY';
-//     if (className.includes('sss') || className.includes('senior')) return 'SENIOR_SECONDARY';
-//     return 'UNKNOWN';
-//   };
-
-//   // Convert term format for API consistency
-//   const normalizeTermFormat = (term: string): string => {
-//     const termMap: { [key: string]: string } = {
-//       '1st Term': 'FIRST',
-//       '2nd Term': 'SECOND', 
-//       '3rd Term': 'THIRD',
-//       'First Term': 'FIRST',
-//       'Second Term': 'SECOND',
-//       'Third Term': 'THIRD',
-//       'FIRST': 'FIRST',
-//       'SECOND': 'SECOND',
-//       'THIRD': 'THIRD'
-//     };
-//     return termMap[term] || term.toUpperCase();
-//   };
-
-//   // Convert academic session format for API consistency
-//   const normalizeAcademicSession = (session: string): string => {
-//     // Ensure format like "2023/2024" is properly handled
-//     return session.trim();
-//   };
-
-//   // Load results data
-//   useEffect(() => {
-//     const loadResults = async () => {
-//       try {
-//         setLoading(true);
-//         setError(null);
-
-//         const educationLevel = getEducationLevel();
-//         const normalizedTerm = normalizeTermFormat(selections.term);
-//         const normalizedSession = normalizeAcademicSession(selections.academicSession);
-
-//         if (import.meta.env.DEV) {
-//           console.log('Loading results for:', {
-//             studentId: student.id,
-//             educationLevel,
-//             term: normalizedTerm,
-//             session: normalizedSession,
-//             originalTerm: selections.term,
-//             originalSession: selections.academicSession
-//           });
-//         }
-
-//         // Use the unified getStudentResults method
-//         const [resultsData, termResultsData] = await Promise.all([
-//           ResultService.getStudentResults({
-//             student: student.id,
-//             education_level: educationLevel !== 'UNKNOWN' ? educationLevel : undefined
-//           }),
-//           ResultService.getTermResultsByStudent(student.id)
-//         ]);
-
-//         if (import.meta.env.DEV) {
-//           console.log('Raw results data:', resultsData);
-//           console.log('Raw term results data:', termResultsData);
-//         }
-
-//         // Filter results by selected criteria with more flexible matching
-//         const filteredResults = (resultsData || []).filter((result: any) => {
-//           // Term matching - try multiple formats
-//           const resultTerm = result.exam_session?.term?.toUpperCase() || '';
-//           const termMatch = resultTerm === normalizedTerm || 
-//                            resultTerm === selections.term.toUpperCase() ||
-//                            resultTerm.includes(normalizedTerm) ||
-//                            normalizedTerm.includes(resultTerm);
-
-//           // Session matching - try multiple formats
-//           const resultSessionName = result.exam_session?.academic_session?.name || '';
-//           const sessionMatch = resultSessionName === normalizedSession ||
-//                                resultSessionName === selections.academicSession ||
-//                                resultSessionName.includes(normalizedSession) ||
-//                                normalizedSession.includes(resultSessionName);
-
-//           // Education level matching
-//           const educationMatch = educationLevel === 'UNKNOWN' || 
-//                                  result.education_level === educationLevel ||
-//                                  !result.education_level; // Include results without education level
-
-//           if (import.meta.env.DEV) {
-//             console.log('Result filter check:', {
-//               resultId: result.id,
-//               resultTerm,
-//               normalizedTerm,
-//               termMatch,
-//               resultSessionName,
-//               normalizedSession,
-//               sessionMatch,
-//               resultEducationLevel: result.education_level,
-//               educationLevel,
-//               educationMatch,
-//               overallMatch: termMatch && sessionMatch && educationMatch
-//             });
-//           }
-
-//           return termMatch && sessionMatch && educationMatch;
-//         });
-
-//         const filteredTermResults = (termResultsData || []).filter((termResult: any) => {
-//           const termMatch = termResult.term?.toUpperCase() === normalizedTerm ||
-//                             termResult.term === selections.term;
-//           const sessionMatch = termResult.academic_session?.name === normalizedSession ||
-//                               termResult.academic_session?.name === selections.academicSession;
-//           return termMatch && sessionMatch;
-//         });
-
-//         if (import.meta.env.DEV) {
-//           console.log('Filtered results:', filteredResults);
-//           console.log('Filtered term results:', filteredTermResults);
-//         }
-
-//         setResults(filteredResults);
-//         setTermResults(filteredTermResults);
-
-//         if (filteredResults.length === 0 && filteredTermResults.length === 0) {
-//           setError('No results found for the selected criteria. Please ensure the academic session and term have published results.');
-//         }
-//       } catch (err) {
-//         console.error('Error loading results:', err);
-//         setError('Failed to load results. Please try again.');
-//         toast.error('Failed to load results');
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     loadResults();
-//   }, [student.id, selections]);
-
-//   const getGradeColor = (grade: string) => {
-//     if (!grade) return 'text-gray-600 bg-gray-100';
-//     if (grade === 'A' || grade === 'A+') return 'text-green-600 bg-green-100';
-//     if (grade === 'B' || grade === 'B+') return 'text-blue-600 bg-blue-100';
-//     if (grade === 'C' || grade === 'C+') return 'text-yellow-600 bg-yellow-100';
-//     if (grade === 'D' || grade === 'D+') return 'text-orange-600 bg-orange-100';
-//     return 'text-red-600 bg-red-100';
-//   };
-
-//   const getStatusColor = (status: string) => {
-//     if (!status) return 'text-gray-600 bg-gray-100';
-//     switch (status.toUpperCase()) {
-//       case 'PUBLISHED': return 'text-green-600 bg-green-100';
-//       case 'APPROVED': return 'text-blue-600 bg-blue-100';
-//       case 'DRAFT': return 'text-yellow-600 bg-yellow-100';
-//       default: return 'text-gray-600 bg-gray-100';
-//     }
-//   };
-
-//   const handlePrint = () => {
-//     window.print();
-//   };
-
-//   const handleDownload = async () => {
-//     try {
-//       // You can implement PDF generation here
-//       toast.success('Download functionality will be implemented');
-//     } catch (error) {
-//       toast.error('Download failed');
-//     }
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="flex items-center justify-center py-12">
-//         <div className="text-center">
-//           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-//           <p className="text-gray-600">Loading results...</p>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <div className="text-center py-12">
-//         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-//         <h4 className="text-lg font-semibold text-gray-900 mb-2">No Results Found</h4>
-//         <p className="text-gray-600 mb-4">{error}</p>
-//         <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg max-w-md mx-auto">
-//           <p><strong>Student:</strong> {student.full_name}</p>
-//           <p><strong>Class:</strong> {student.student_class}</p>
-//           <p><strong>Education Level:</strong> {getEducationLevel()}</p>
-//           <p><strong>Academic Session:</strong> {selections.academicSession}</p>
-//           <p><strong>Term:</strong> {selections.term} (API: {normalizeTermFormat(selections.term)})</p>
-//           {selections.resultType && <p><strong>Result Type:</strong> {selections.resultType}</p>}
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // Determine which result template to use based on education level
-//   const getResultTemplate = () => {
-//     const educationLevel = getEducationLevel();
-//     const className = student.student_class?.toLowerCase() || '';
-    
-//     if (import.meta.env.DEV) {
-//       console.log('Selecting template for:', {
-//         educationLevel,
-//         className,
-//         resultType: selections.resultType
-//       });
-//     }
-    
-//     // Nursery classes
-//     if (educationLevel === 'NURSERY') {
-//       return (
-//         <NurseryResult 
-//           studentData={{ 
-//             name: student.full_name,
-//             class: student.student_class,
-//             term: selections.term,
-//             date: new Date().toLocaleDateString(),
-//             house: 'Blue House', // You might want to make this dynamic
-//             timesOpened: '120', // You might want to make this dynamic
-//             timesPresent: '115' // You might want to make this dynamic
-//           }} 
-//           subjectResults={results}
-//           termResults={termResults}
-//         />
-//       );
-//     }
-    
-//     // Primary classes
-//     if (educationLevel === 'PRIMARY') {
-//       return (
-//         <PrimaryResult 
-//           studentData={{ 
-//             name: student.full_name,
-//             class: student.student_class,
-//             term: selections.term,
-//             academicSession: selections.academicSession
-//           }} 
-//           subjectResults={results}
-//           termResults={termResults}
-//         />
-//       );
-//     }
-    
-//     // Junior Secondary classes (JSS)
-//     if (educationLevel === 'JUNIOR_SECONDARY') {
-//       return (
-//         <JuniorSecondaryResult 
-//           studentData={{ 
-//             name: student.full_name,
-//             class: student.student_class,
-//             term: selections.term,
-//             academicSession: selections.academicSession,
-//             resultType: selections.resultType
-//           }} 
-//           subjectResults={results}
-//           termResults={termResults}
-//         />
-//       );
-//     }
-    
-//     // Senior Secondary classes (SSS)
-//     if (educationLevel === 'SENIOR_SECONDARY') {
-//       // Use SessionResult for Annually, TermlyResult for Termly
-//       if (selections.resultType === 'annually') {
-//         return (
-//           <SeniorSecondarySessionResult 
-//             studentData={{ 
-//               name: student.full_name,
-//               class: student.student_class,
-//               term: selections.term,
-//               academicSession: selections.academicSession,
-//               resultType: selections.resultType
-//             }} 
-//             subjectResults={results}
-//             termResults={termResults}
-//           />
-//         );
-//       } else {
-//         return (
-//           <SeniorSecondaryTermlyResult 
-//             studentData={{ 
-//               name: student.full_name,
-//               class: student.student_class,
-//               term: selections.term,
-//               academicSession: selections.academicSession,
-//               resultType: selections.resultType
-//             }} 
-//             subjectResults={results}
-//             termResults={termResults}
-//           />
-//         );
-//       }
-//     }
-    
-//     // Default fallback - show the generic result display
-//     return (
-//       <div className="space-y-6 print:space-y-4">
-//         {/* Print Header - Only visible when printing */}
-//         <div className="hidden print:block print:mb-6">
-//           <div className="text-center border-b-2 border-gray-300 pb-4 mb-6">
-//             <h1 className="text-2xl font-bold text-gray-900">GOD'S TREASURE SCHOOLS</h1>
-//             <p className="text-gray-600">Student Result Report</p>
-//             <p className="text-sm text-gray-500 mt-2">
-//               Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
-//             </p>
-//           </div>
-//           <div className="grid grid-cols-2 gap-4 mb-6">
-//             <div>
-//               <p><strong>Student Name:</strong> {student.full_name}</p>
-//               <p><strong>Username:</strong> {student.username}</p>
-//               <p><strong>Class:</strong> {student.student_class}</p>
-//             </div>
-//             <div>
-//               <p><strong>Academic Session:</strong> {selections.academicSession}</p>
-//               <p><strong>Term:</strong> {selections.term}</p>
-//               <p><strong>Education Level:</strong> {educationLevel}</p>
-//             </div>
-//           </div>
-//         </div>
-
-//         {/* Term Results Summary */}
-//         {termResults.length > 0 && (
-//           <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800 print:bg-white print:border-gray-300">
-//             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center print:text-black">
-//               <Trophy className="w-5 h-5 text-blue-600 mr-2" />
-//               Term Summary
-//             </h3>
-//             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//               {termResults.map((termResult, index) => (
-//                 <div key={index} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 print:border-gray-300">
-//                   <div className="flex items-center justify-between mb-2">
-//                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300 print:text-black">
-//                       {termResult.term} Term
-//                     </span>
-//                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(termResult.status)} print:bg-gray-200 print:text-black`}>
-//                       {termResult.status}
-//                     </span>
-//                   </div>
-//                   <div className="space-y-2">
-//                     <div className="flex justify-between">
-//                       <span className="text-sm text-gray-600 dark:text-gray-300 print:text-black">Total Subjects:</span>
-//                       <span className="font-semibold print:text-black">{termResult.total_subjects}</span>
-//                     </div>
-//                     <div className="flex justify-between">
-//                       <span className="text-sm text-gray-600 dark:text-gray-300 print:text-black">Passed:</span>
-//                       <span className="font-semibold text-green-600 print:text-black">{termResult.subjects_passed}</span>
-//                     </div>
-//                     <div className="flex justify-between">
-//                       <span className="text-sm text-gray-600 dark:text-gray-300 print:text-black">Failed:</span>
-//                       <span className="font-semibold text-red-600 print:text-black">{termResult.subjects_failed}</span>
-//                     </div>
-//                     <div className="flex justify-between">
-//                       <span className="text-sm text-gray-600 dark:text-gray-300 print:text-black">Average:</span>
-//                       <span className="font-semibold print:text-black">{termResult.average_score?.toFixed(1)}%</span>
-//                     </div>
-//                     <div className="flex justify-between">
-//                       <span className="text-sm text-gray-600 dark:text-gray-300 print:text-black">GPA:</span>
-//                       <span className="font-semibold print:text-black">{termResult.gpa?.toFixed(2)}</span>
-//                     </div>
-//                     {termResult.class_position && (
-//                       <div className="flex justify-between">
-//                         <span className="text-sm text-gray-600 dark:text-gray-300 print:text-black">Position:</span>
-//                         <span className="font-semibold print:text-black">{termResult.class_position}/{termResult.total_students}</span>
-//                       </div>
-//                     )}
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-//         )}
-
-//         {/* Individual Subject Results */}
-//         {results.length > 0 && (
-//           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden print:border-gray-300">
-//             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 print:border-gray-300">
-//               <h3 className="text-lg font-semibold text-gray-900 dark:text-white print:text-black">
-//                 Subject Results
-//               </h3>
-//             </div>
-//             <div className="overflow-x-auto">
-//               <table className="w-full">
-//                 <thead className="bg-gray-50 dark:bg-gray-700 print:bg-gray-100">
-//                   <tr>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       Subject
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       CA Score
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       Exam Score
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       Total
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       Percentage
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       Grade
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider print:text-black print:border-b print:border-gray-300">
-//                       Status
-//                     </th>
-//                   </tr>
-//                 </thead>
-//                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 print:divide-gray-300">
-//                   {results.map((result, index) => (
-//                     <tr key={result.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700 print:hover:bg-transparent">
-//                       <td className="px-6 py-4 whitespace-nowrap print:border-b print:border-gray-200">
-//                         <div>
-//                           <div className="text-sm font-medium text-gray-900 dark:text-white print:text-black">
-//                             {result.subject?.name || 'N/A'}
-//                           </div>
-//                           <div className="text-sm text-gray-500 dark:text-gray-300 print:text-black">
-//                             {result.subject?.code || ''}
-//                           </div>
-//                         </div>
-//                       </td>
-//                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white print:text-black print:border-b print:border-gray-200">
-//                         {result.ca_score ?? 0}
-//                       </td>
-//                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white print:text-black print:border-b print:border-gray-200">
-//                         {result.exam_score ?? 0}
-//                       </td>
-//                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white print:text-black print:border-b print:border-gray-200">
-//                         {result.total_score ?? 0}
-//                       </td>
-//                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white print:text-black print:border-b print:border-gray-200">
-//                         {result.percentage?.toFixed(1) || '0.0'}%
-//                       </td>
-//                       <td className="px-6 py-4 whitespace-nowrap print:border-b print:border-gray-200">
-//                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getGradeColor(result.grade)} print:bg-gray-200 print:text-black`}>
-//                           {result.grade || 'N/A'}
-//                         </span>
-//                       </td>
-//                       <td className="px-6 py-4 whitespace-nowrap print:border-b print:border-gray-200">
-//                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(result.status)} print:bg-gray-200 print:text-black`}>
-//                           {result.status || 'N/A'}
-//                         </span>
-//                       </td>
-//                     </tr>
-//                   ))}
-//                 </tbody>
-//               </table>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* No Results Message */}
-//         {results.length === 0 && termResults.length === 0 && !loading && !error && (
-//           <div className="text-center py-12">
-//             <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-//             <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-//               No Results Available
-//             </h4>
-//             <p className="text-gray-600 dark:text-gray-300">
-//               No results have been published for this student yet.
-//             </p>
-//           </div>
-//         )}
-
-//         {/* Print Footer - Only visible when printing */}
-//         <div className="hidden print:block print:mt-8 print:pt-4 print:border-t print:border-gray-300">
-//           <div className="text-center text-sm text-gray-500">
-//             <p>This is an official result document from GOD'S TREASURE SCHOOLS</p>
-//             <p>Generated by Admin Portal on {new Date().toLocaleDateString()}</p>
-//           </div>
-//         </div>
-//       </div>
-//     );
-//   };
-
-//   return (
-//     <div className="space-y-6 print:space-y-4">
-//       {/* Action Buttons - Hidden when printing */}
-//       <div className="flex items-center justify-end space-x-3 print:hidden">
-//         <button
-//           onClick={handlePrint}
-//           className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${themeClasses.buttonSecondary}`}
-//         >
-//           <Printer size={16} />
-//           <span>Print</span>
-//         </button>
-//         <button
-//           onClick={handleDownload}
-//           className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${themeClasses.buttonPrimary}`}
-//         >
-//           <Download size={16} />
-//           <span>Download</span>
-//         </button>
-//       </div>
-
-//       {/* Display the appropriate result template */}
-//       {getResultTemplate()}
-//     </div>
-//   );
-// };
-
-// export default StudentResultDisplay;
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trophy, Download, Printer, Loader2, AlertCircle } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import ResultService, { 
-  StandardResult, 
-  StudentTermResult, 
-  FilterParams 
+  FilterParams,
 } from '@/services/ResultService';
+import { 
+  SelectionData, 
+  AcademicSession, 
+  StandardResult, 
+  StudentTermResult,
+  // StudentInfo,
+  // SubjectInfo,
+  // ExamSessionInfo
+} from '@/types/types'
+import { useResultService, type EnhancedResultSheet } from '@/hooks/useResultService';
 import { toast } from 'react-hot-toast';
 
 // Import result templates based on education level
@@ -596,22 +32,23 @@ interface StudentData {
   profile_picture?: string;
 }
 
-interface SelectionData {
-  academicSession: string;
-  term: string;
-  class: string;
-  resultType?: string;
-}
-
 interface StudentResultDisplayProps {
   student: StudentData;
   selections: SelectionData;
 }
 
+// Type guard for AcademicSession
+const isAcademicSessionObject = (value: any): value is AcademicSession => {
+  return value && typeof value === 'object' && 'id' in value && 'name' in value;
+};
+
 const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, selections }) => {
   const { isDarkMode } = useGlobalTheme();
+  const { service: resultService, schoolSettings, loading: settingsLoading, isReady } = useResultService();
+  
   const [results, setResults] = useState<StandardResult[]>([]);
   const [termResults, setTermResults] = useState<StudentTermResult[]>([]);
+  const [enhancedResult, setEnhancedResult] = useState<EnhancedResultSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
@@ -648,8 +85,16 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
     return 'UNKNOWN';
   }, [student.education_level, student.student_class]);
 
-  // Memoized term format conversion
+  // Memoized term format conversion - FIXED
   const normalizedTerm = useMemo(() => {
+    // Access the term name from the term object
+    const termName = selections.term?.name;
+    
+    // Add null/undefined check and ensure it's a string
+    if (!termName || typeof termName !== 'string') {
+      return '';
+    }
+    
     const termMap: { [key: string]: string } = {
       '1st Term': 'FIRST',
       '2nd Term': 'SECOND', 
@@ -661,12 +106,38 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
       'SECOND': 'SECOND',
       'THIRD': 'THIRD'
     };
-    return termMap[selections.term] || selections.term.toUpperCase();
+    
+    return termMap[termName] || termName.toUpperCase();
   }, [selections.term]);
+
+  // Helper function to extract academic session string
+  const getAcademicSessionString = (academicSession: AcademicSession | string | undefined): string => {
+    if (typeof academicSession === 'string') {
+      return academicSession;
+    }
+    if (isAcademicSessionObject(academicSession)) {
+      return academicSession.name || academicSession.id || '';
+    }
+    return '';
+  };
+
+  // Helper function to extract academic session ID
+  const getAcademicSessionId = (academicSession: AcademicSession | string | undefined): string => {
+    if (typeof academicSession === 'string') {
+      return academicSession;
+    }
+    if (isAcademicSessionObject(academicSession)) {
+      return academicSession.id || '';
+    }
+    return '';
+  };
 
   // Load results data with improved error handling and filtering
   useEffect(() => {
     const loadResults = async () => {
+      // Wait for result service to be ready
+      if (!isReady) return;
+
       try {
         setLoading(true);
         setError(null);
@@ -675,6 +146,24 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
           throw new Error('Unable to determine education level from student data');
         }
 
+        // Try to load enhanced results first if exam session is available
+        if (selections.examSession) {
+          try {
+            const enhancedData = await resultService.generateEnhancedResultSheet(
+              student.id, 
+              selections.examSession
+            );
+            setEnhancedResult(enhancedData);
+            
+            if (import.meta.env.DEV) {
+              console.log('Enhanced result loaded:', enhancedData);
+            }
+          } catch (enhancedError) {
+            console.warn('Enhanced result generation failed, falling back to standard results:', enhancedError);
+          }
+        }
+
+        // Load standard results
         const filterParams: FilterParams = {
           student: student.id,
           education_level: educationLevel,
@@ -682,7 +171,8 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
         };
 
         // Add academic session filter if available
-        if (selections.academicSession) {
+        const academicSessionString = getAcademicSessionString(selections.academicSession);
+        if (academicSessionString && isAcademicSessionObject(selections.academicSession)) {
           filterParams.academic_session = selections.academicSession;
         }
 
@@ -692,21 +182,27 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
         }
 
         if (import.meta.env.DEV) {
-          console.log('Loading results with params:', filterParams);
+          console.log('Loading standard results with params:', filterParams);
           setDebugInfo({
             studentId: student.id,
             educationLevel,
-            originalTerm: selections.term,
+            originalTerm: selections.term?.name, // FIXED
             normalizedTerm,
-            academicSession: selections.academicSession,
+            academicSession: academicSessionString,
             resultType: selections.resultType,
-            filterParams
+            examSession: selections.examSession,
+            filterParams,
+            schoolSettings: schoolSettings ? 'Available' : 'Not Available'
           });
         }
 
         const [resultsData, termResultsData] = await Promise.allSettled([
           ResultService.getStudentResults(filterParams),
-          ResultService.getTermResultsByStudent(student.id)
+          // Apply same filtering to term results
+          ResultService.getTermResults({
+            ...filterParams,
+            student: student.id
+          })
         ]);
 
         // Handle results data
@@ -723,24 +219,24 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
         if (termResultsData.status === 'fulfilled') {
           processedTermResults = termResultsData.value || [];
           
-          // Filter term results by selection criteria
+          // Filter term results by selection criteria - FIXED
           processedTermResults = processedTermResults.filter((termResult) => {
             const termMatch = !normalizedTerm || 
                              termResult.term?.toUpperCase() === normalizedTerm ||
-                             termResult.term === selections.term;
+                             termResult.term === selections.term?.name; // FIXED
             
-            const sessionMatch = !selections.academicSession ||
-                                termResult.academic_session?.name === selections.academicSession;
+            const sessionMatch = !academicSessionString ||
+                                (isAcademicSessionObject(termResult.academic_session) && 
+                                 termResult.academic_session.name === academicSessionString);
             
             return termMatch && sessionMatch;
           });
         } else {
           console.error('Error fetching term results:', termResultsData.reason);
-          // Term results are optional, so don't throw an error here
         }
 
         if (import.meta.env.DEV) {
-          console.log('Processed results:', {
+          console.log('Processed standard results:', {
             subjectResults: processedResults.length,
             termResults: processedTermResults.length,
             sampleResult: processedResults[0],
@@ -751,9 +247,10 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
         setResults(processedResults);
         setTermResults(processedTermResults);
 
-        // Set appropriate error message if no results found
-        if (processedResults.length === 0 && processedTermResults.length === 0) {
-          setError(`No results found for ${student.full_name} in ${selections.academicSession} ${selections.term}. Please verify that results have been published for this academic session and term.`);
+        // Set appropriate error message if no results found - FIXED
+        if (processedResults.length === 0 && processedTermResults.length === 0 && !enhancedResult) {
+          const academicSessionName = getAcademicSessionString(selections.academicSession);
+          setError(`No results found for ${student.full_name} in ${academicSessionName} ${selections.term?.name}. Please verify that results have been published for this academic session and term.`);
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load results';
@@ -766,7 +263,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
     };
 
     loadResults();
-  }, [student.id, educationLevel, normalizedTerm, selections.academicSession, selections.resultType]);
+  }, [student.id, educationLevel, normalizedTerm, selections.academicSession, selections.resultType, selections.examSession, isReady, resultService]);
 
   // Utility functions
   const getGradeColor = (grade: string) => {
@@ -803,79 +300,344 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
 
   const handleDownload = async () => {
     try {
-      // Implement PDF generation using the generateTranscript method
-      await ResultService.generateTranscript(student.id, {
-        include_assessment_details: true,
-        include_comments: true,
-        include_subject_remarks: true,
-        format: 'PDF'
-      });
-      toast.success('PDF generated successfully');
+      if (selections.examSession && isReady) {
+        await resultService.generateEnhancedResultSheet(
+          student.id, 
+          selections.examSession
+        );
+        toast.success('PDF generated successfully');
+      } else {
+        await ResultService.generateTranscript(student.id, {
+          include_assessment_details: true,
+          include_comments: true,
+          include_subject_remarks: true,
+          format: 'PDF'
+        });
+        toast.success('PDF generated successfully');
+      }
     } catch (error) {
       console.error('Download error:', error);
       toast.error('Failed to generate PDF. Please try again.');
     }
   };
 
+  // Get school name for display
+  const getSchoolName = () => {
+    if (schoolSettings?.school_name) {
+      return schoolSettings.school_name;
+    }
+    if (enhancedResult?.school_info?.school_name) {
+      return enhancedResult.school_info.school_name;
+    }
+    return "GOD'S TREASURE SCHOOLS";
+  };
+
+  // Transform data to match the expected interfaces for each component
+  const transformDataForNursery = () => {
+    return {
+      id: `nursery-${student.id}`,
+      student: {
+        id: student.id,
+        name: student.full_name,
+        admission_number: student.username,
+        username: student.username,
+        class: student.student_class,
+        education_level: educationLevel,
+        gender: undefined,
+        age: undefined,
+        house: undefined
+      },
+      term: {
+        id: 'term-1',
+        name: selections.term?.name || '', // FIXED
+        academic_session: isAcademicSessionObject(selections.academicSession) 
+          ? selections.academicSession 
+          : { id: 'session-1', name: getAcademicSessionString(selections.academicSession), start_year: 2024, end_year: 2025 },
+        start_date: new Date().toISOString(),
+        end_date: new Date().toISOString()
+      },
+      subjects: results.map(result => ({
+        subject: {
+          id: result.subject?.id || 'subject-unknown',
+          name: result.subject?.name || 'Unknown Subject',
+          code: result.subject?.code || ''
+        },
+        total_score: result.total_score || 0,
+        percentage: result.percentage || 0,
+        grade: result.grade || '',
+        position: result.position || 0,
+        class_average: result.class_average || 0,
+        highest_in_class: result.highest_in_class || 0,
+        lowest_in_class: result.lowest_in_class || 0,
+        teacher_remark: result.teacher_remark,
+        max_marks_obtainable: 100,
+        mark_obtained: result.total_score || 0,
+        physical_development_score: undefined,
+        id: result.id
+      })),
+      total_score: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
+      max_marks_obtainable: results.length * 100,
+      mark_obtained: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
+      position: termResults[0]?.class_position || 0,
+      class_position: termResults[0]?.class_position || 0,
+      total_students: termResults[0]?.total_students || 0,
+      attendance: {
+        times_opened: 0,
+        times_present: 0
+      },
+      next_term_begins: '',
+      class_teacher_remark: termResults[0]?.remarks,
+      head_teacher_remark: '',
+      is_published: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  };
+
+  const transformDataForPrimary = () => {
+    return {
+      id: `primary-${student.id}`,
+      student: {
+        id: student.id,
+        name: student.full_name,
+        admission_number: student.username,
+        username: student.username,
+        class: student.student_class,
+        education_level: educationLevel,
+        gender: student.gender,
+        age: student.age,
+        house: student.house
+      },
+      term: {
+        id: 'term-1',
+        name: selections.term?.name || '', // FIXED
+        academic_session: isAcademicSessionObject(selections.academicSession) 
+          ? selections.academicSession 
+          : { id: 'session-1', name: getAcademicSessionString(selections.academicSession), start_year: 2024, end_year: 2025 },
+        start_date: new Date().toISOString(),
+        end_date: new Date().toISOString()
+      },
+      subjects: results.map(result => ({
+        subject: {
+          id: result.subject?.id || 'subject-unknown',
+          name: result.subject?.name || 'Unknown Subject',
+          code: result.subject?.code || ''
+        },
+        total_score: result.total_score || 0,
+        percentage: result.percentage || 0,
+        grade: result.grade || '',
+        position: result.position || 0,
+        class_average: result.class_average || 0,
+        highest_in_class: result.highest_in_class || 0,
+        lowest_in_class: result.lowest_in_class || 0,
+        teacher_remark: result.teacher_remark,
+        continuous_assessment_score: result.continuous_assessment_score || 0,
+        take_home_test_score: result.take_home_test_score || 0,
+        project_score: result.project_score || 0,
+        appearance_score: result.appearance_score || 0,
+        note_copying_score: result.note_copying_score || 0,
+        practical_score: result.practical_score || 0,
+        ca_total: (result.continuous_assessment_score || 0) + 
+                  (result.take_home_test_score || 0) + 
+                  (result.project_score || 0) + 
+                  (result.appearance_score || 0) + 
+                  (result.note_copying_score || 0) + 
+                  (result.practical_score || 0),
+        exam_marks: result.exam_score || 0,
+        mark_obtained: result.total_score || 0,
+        total_obtainable: 100,
+        id: result.id
+      })),
+      total_score: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
+      average_score: termResults[0]?.average_score || 0,
+      overall_grade: termResults[0]?.gpa?.toString() || '',
+      class_position: termResults[0]?.class_position || 0,
+      total_students: termResults[0]?.total_students || 0,
+      attendance: {
+        times_opened: termResults[0]?.times_opened || 0,
+        times_present: termResults[0]?.times_present || 0
+      },
+      next_term_begins: termResults[0]?.next_term_begins || 'TBA',
+      class_teacher_remark: termResults[0]?.remarks,
+      head_teacher_remark: '',
+      is_published: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  };
+
+  const transformDataForSeniorSecondary = () => {
+    if (selections.resultType === 'annually') {
+      // Session result data
+      return {
+        id: `senior-session-${student.id}`,
+        student: {
+          id: student.id,
+          name: student.full_name,
+          admission_number: student.username,
+          username: student.username,
+          class: student.student_class,
+          education_level: educationLevel,
+          gender: undefined,
+          age: undefined,
+          house: undefined
+        },
+        academic_session: isAcademicSessionObject(selections.academicSession) 
+          ? selections.academicSession 
+          : { 
+              id: getAcademicSessionId(selections.academicSession) || 'session-1', 
+              name: getAcademicSessionString(selections.academicSession), 
+              start_year: 2024, 
+              end_year: 2025 
+            },
+        term1_total: 0,
+        term2_total: 0,
+        term3_total: 0,
+        taa_score: termResults[0]?.average_score || 0,
+        average_for_year: termResults[0]?.average_score || 0,
+        obtainable: results.length * 100,
+        obtained: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
+        overall_grade: termResults[0]?.gpa?.toString() || '',
+        class_position: termResults[0]?.class_position || 0,
+        total_students: termResults[0]?.total_students || 0,
+        subjects: results.map(result => ({
+          subject: {
+            id: result.subject?.id || 'subject-unknown',
+            name: result.subject?.name || 'Unknown Subject',
+            code: result.subject?.code || ''
+          },
+          term1_score: 0,
+          term2_score: 0,
+          term3_score: 0,
+          average_score: result.percentage || 0,
+          class_average: result.class_average || 0,
+          highest_in_class: result.highest_in_class || 0,
+          lowest_in_class: result.lowest_in_class || 0,
+          position: result.position || 0,
+          teacher_remark: result.teacher_remark,
+          head_teacher_remark: ''
+        })),
+        is_published: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    } else {
+      // Termly result data - Senior Secondary specific transformation
+      return {
+        id: `senior-termly-${student.id}`,
+        student: {
+          id: student.id,
+          name: student.full_name,
+          username: student.username,
+          admission_number: student.username,
+          class: student.student_class,
+          education_level: educationLevel,
+          age: student.age
+        },
+        term: {
+          id: selections.examSession || 'term-1',
+          name: selections.term?.name || 'Current Term',
+          start_date: new Date().toISOString(),
+          end_date: new Date().toISOString(),
+          academic_session: isAcademicSessionObject(selections.academicSession) 
+            ? selections.academicSession 
+            : { 
+                id: getAcademicSessionId(selections.academicSession) || 'session-1', 
+                name: getAcademicSessionString(selections.academicSession),
+                start_date: new Date().toISOString(),
+                end_date: new Date().toISOString(),
+                is_current: true,
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+        },
+        subjects: results.map(result => ({
+          id: result.id,
+          subject: {
+            id: result.subject?.id || 'subject-unknown',
+            name: result.subject?.name || 'Unknown Subject',
+            code: result.subject?.code || ''
+          },
+          test1_score: result.test1_score || result.first_test_score || 0,
+          test2_score: result.test2_score || result.second_test_score || 0,
+          test3_score: result.test3_score || result.third_test_score || 0,
+          exam_score: result.exam_score || 0,
+          total_score: result.total_score || 0,
+          total_obtainable: 100,
+          class_average: result.class_average || 0,
+          highest_in_class: result.highest_in_class || 0,
+          lowest_in_class: result.lowest_in_class || 0,
+          position: result.position || 0,
+          grade: result.grade || '',
+          teacher_remark: result.teacher_remark || '',
+          percentage: result.percentage || 0
+        })),
+        average_score: termResults[0]?.average_score || 0,
+        total_score: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
+        total_students: termResults[0]?.total_students || 0,
+        attendance: {
+          times_opened: termResults[0]?.times_opened || 0,
+          times_present: termResults[0]?.times_present || 0
+        },
+        next_term_begins: termResults[0]?.next_term_begins || 'TBA',
+        class_teacher_remark: termResults[0]?.class_teacher_remark || '',
+        head_teacher_remark: termResults[0]?.head_teacher_remark || '',
+        overall_grade: termResults[0]?.gpa?.toString() || 'F',
+        class_position: termResults[0]?.class_position || 0,
+        is_published: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+  };
+
   // Render appropriate result template
   const getResultTemplate = () => {
-    const commonStudentData = {
-      name: student.full_name,
-      class: student.student_class,
-      term: selections.term,
-      academicSession: selections.academicSession,
-      resultType: selections.resultType
-    };
-
     switch (educationLevel) {
       case 'NURSERY':
-        return (
-          <NurseryResult 
-            studentData={{
-              ...commonStudentData,
-              date: new Date().toLocaleDateString(),
-              house: 'Blue House', // Consider making this dynamic
-              timesOpened: '120', // Consider making this dynamic
-              timesPresent: '115' // Consider making this dynamic
-            }} 
-            subjectResults={results}
-            termResults={termResults}
-          />
-        );
+        const nurseryData = transformDataForNursery();
+        return <NurseryResult data={nurseryData as any} />;
 
       case 'PRIMARY':
+        const primaryData = transformDataForPrimary();
         return (
           <PrimaryResult 
-            studentData={commonStudentData} 
-            subjectResults={results}
-            termResults={termResults}
+            studentId={student.id}
+            examSessionId={selections.examSession || ''}
+            templateId=""
+            data={primaryData as any}
           />
         );
 
       case 'JUNIOR_SECONDARY':
+        const juniorData = transformDataForPrimary(); // Same structure as primary
         return (
           <JuniorSecondaryResult 
-            studentData={commonStudentData} 
-            subjectResults={results}
-            termResults={termResults}
+            studentId={student.id}
+            examSessionId={selections.examSession || ''}
+            templateId=""
+            data={juniorData as any}
           />
         );
 
       case 'SENIOR_SECONDARY':
+        const seniorData = transformDataForSeniorSecondary();
         if (selections.resultType === 'annually') {
           return (
             <SeniorSecondarySessionResult 
-              studentData={commonStudentData} 
-              subjectResults={results}
-              termResults={termResults}
+              studentId={student.id}
+              academicSessionId={getAcademicSessionId(selections.academicSession) || ''}
+              templateId=""
+              data={seniorData as any}
             />
           );
         } else {
           return (
             <SeniorSecondaryTermlyResult 
-              studentData={commonStudentData} 
-              subjectResults={results}
-              termResults={termResults}
+              studentId={student.id}
+              examSessionId={selections.examSession || ''}
+              data={seniorData as any}
             />
           );
         }
@@ -891,7 +653,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
       {/* Print Header */}
       <div className="hidden print:block print:mb-6">
         <div className="text-center border-b-2 border-gray-300 pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">GOD'S TREASURE SCHOOLS</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{getSchoolName()}</h1>
           <p className="text-gray-600">Student Result Report</p>
           <p className="text-sm text-gray-500 mt-2">
             Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}
@@ -904,64 +666,68 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
             <p><strong>Class:</strong> {student.student_class}</p>
           </div>
           <div>
-            <p><strong>Academic Session:</strong> {selections.academicSession}</p>
-            <p><strong>Term:</strong> {selections.term}</p>
+            <p><strong>Academic Session:</strong> {getAcademicSessionString(selections.academicSession)}</p>
+            <p><strong>Term:</strong> {selections.term?.name}</p> {/* FIXED */}
             <p><strong>Education Level:</strong> {educationLevel}</p>
           </div>
         </div>
       </div>
 
-      {/* Term Results Summary */}
-      {termResults.length > 0 && (
+      {/* Enhanced Result Summary if available */}
+      {enhancedResult && (
         <div className={`${themeClasses.bgCard} rounded-lg p-6 border ${themeClasses.border} print:bg-white print:border-gray-300`}>
           <h3 className={`text-lg font-semibold ${themeClasses.textPrimary} mb-4 flex items-center print:text-black`}>
             <Trophy className="w-5 h-5 text-blue-600 mr-2" />
-            Term Summary
+            Result Summary
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {termResults.map((termResult, index) => (
-              <div key={termResult.id || index} className={`${themeClasses.bgSecondary} rounded-lg p-4 border ${themeClasses.border} print:border-gray-300 print:bg-gray-50`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-medium ${themeClasses.textSecondary} print:text-black`}>
-                    {termResult.term} Term
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(termResult.status)} print:bg-gray-200 print:text-black`}>
-                    {termResult.status}
-                  </span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className={`${themeClasses.bgSecondary} rounded-lg p-4 border ${themeClasses.border} print:border-gray-300 print:bg-gray-50`}>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${themeClasses.textPrimary} print:text-black`}>
+                  {enhancedResult.overall_total || 0}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className={`text-sm ${themeClasses.textSecondary} print:text-black`}>Total Subjects:</span>
-                    <span className={`font-semibold ${themeClasses.textPrimary} print:text-black`}>{termResult.total_subjects}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-sm ${themeClasses.textSecondary} print:text-black`}>Passed:</span>
-                    <span className="font-semibold text-green-600 print:text-black">{termResult.subjects_passed}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-sm ${themeClasses.textSecondary} print:text-black`}>Failed:</span>
-                    <span className="font-semibold text-red-600 print:text-black">{termResult.subjects_failed}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-sm ${themeClasses.textSecondary} print:text-black`}>Average:</span>
-                    <span className={`font-semibold ${themeClasses.textPrimary} print:text-black`}>{termResult.average_score?.toFixed(1)}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-sm ${themeClasses.textSecondary} print:text-black`}>GPA:</span>
-                    <span className={`font-semibold ${themeClasses.textPrimary} print:text-black`}>{termResult.gpa?.toFixed(2)}</span>
-                  </div>
-                  {termResult.class_position && (
-                    <div className="flex justify-between">
-                      <span className={`text-sm ${themeClasses.textSecondary} print:text-black`}>Position:</span>
-                      <span className={`font-semibold ${themeClasses.textPrimary} print:text-black`}>
-                        {termResult.class_position}/{termResult.total_students}
-                      </span>
-                    </div>
-                  )}
+                <div className={`text-sm ${themeClasses.textSecondary} print:text-black`}>
+                  Total Score
                 </div>
               </div>
-            ))}
+            </div>
+            <div className={`${themeClasses.bgSecondary} rounded-lg p-4 border ${themeClasses.border} print:border-gray-300 print:bg-gray-50`}>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${themeClasses.textPrimary} print:text-black`}>
+                  {enhancedResult.average?.toFixed(1) || '0.0'}%
+                </div>
+                <div className={`text-sm ${themeClasses.textSecondary} print:text-black`}>
+                  Average
+                </div>
+              </div>
+            </div>
+            <div className={`${themeClasses.bgSecondary} rounded-lg p-4 border ${themeClasses.border} print:border-gray-300 print:bg-gray-50`}>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${themeClasses.textPrimary} print:text-black`}>
+                  {enhancedResult.position || 'N/A'}
+                </div>
+                <div className={`text-sm ${themeClasses.textSecondary} print:text-black`}>
+                  Position
+                </div>
+              </div>
+            </div>
+            <div className={`${themeClasses.bgSecondary} rounded-lg p-4 border ${themeClasses.border} print:border-gray-300 print:bg-gray-50`}>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${themeClasses.textPrimary} print:text-black`}>
+                  {enhancedResult.subjects?.length || 0}
+                </div>
+                <div className={`text-sm ${themeClasses.textSecondary} print:text-black`}>
+                  Subjects
+                </div>
+              </div>
+            </div>
           </div>
+          {enhancedResult.remarks && (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg print:bg-gray-50 print:border-gray-300">
+              <h4 className="font-semibold text-blue-900 mb-2 print:text-black">Remarks</h4>
+              <p className="text-blue-800 print:text-black">{enhancedResult.remarks}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -1040,12 +806,14 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
   );
 
   // Loading state
-  if (loading) {
+  if (settingsLoading || loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className={themeClasses.textSecondary}>Loading results...</p>
+          <p className={themeClasses.textSecondary}>
+            {settingsLoading ? 'Loading school settings...' : 'Loading results...'}
+          </p>
         </div>
       </div>
     );
@@ -1078,6 +846,25 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
 
   return (
     <div className="space-y-6 print:space-y-4">
+      {/* School Settings Status - Only shown in development */}
+      {import.meta.env.DEV && (
+        <div className={`${themeClasses.bgCard} rounded-lg p-4 border ${themeClasses.border} mb-4`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-sm ${themeClasses.textSecondary}`}>
+              School Settings Status:
+            </span>
+            <span className={`text-sm font-medium ${schoolSettings ? 'text-green-600' : 'text-yellow-600'}`}>
+              {schoolSettings ? 'Loaded' : 'Not Available'}
+            </span>
+          </div>
+          {schoolSettings && (
+            <div className={`text-xs ${themeClasses.textTertiary} mt-2`}>
+              School: {schoolSettings.school_name || schoolSettings.school_name || 'Unknown'}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Action Buttons - Hidden when printing */}
       <div className="flex items-center justify-end space-x-3 print:hidden">
         <button
@@ -1090,9 +877,10 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
         <button
           onClick={handleDownload}
           className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${themeClasses.buttonPrimary}`}
+          disabled={!isReady}
         >
           <Download size={16} />
-          <span>Download PDF</span>
+          <span>{isReady ? 'Download PDF' : 'Loading...'}</span>
         </button>
       </div>
 
@@ -1102,7 +890,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
       {/* Print Footer */}
       <div className="hidden print:block print:mt-8 print:pt-4 print:border-t print:border-gray-300">
         <div className="text-center text-sm text-gray-500">
-          <p>This is an official result document from GOD'S TREASURE SCHOOLS</p>
+          <p>This is an official result document from {getSchoolName()}</p>
           <p>Generated by Admin Portal on {new Date().toLocaleDateString()}</p>
         </div>
       </div>
@@ -1111,3 +899,4 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
 };
 
 export default StudentResultDisplay;
+

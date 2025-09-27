@@ -291,6 +291,8 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     student_class_display = serializers.CharField(
         source="get_student_class_display", read_only=True
     )
+    # Add 'name' field for frontend compatibility
+    name = serializers.SerializerMethodField()
     is_nursery_student = serializers.BooleanField(read_only=True)
     is_primary_student = serializers.BooleanField(read_only=True)
     is_secondary_student = serializers.BooleanField(read_only=True)
@@ -314,6 +316,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "full_name",
+            "name",
             "short_name",
             "email",
             "username",
@@ -346,6 +349,10 @@ class StudentDetailSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         """Returns the full name including middle name if present."""
+        return obj.user.full_name
+
+    def get_name(self, obj):
+        """Returns the full name for frontend compatibility."""
         return obj.user.full_name
 
     def get_short_name(self, obj):
@@ -543,11 +550,20 @@ class StudentDetailSerializer(serializers.ModelSerializer):
 
         return data
 
+    def to_representation(self, instance):
+        """Add frontend-compatible fields dynamically"""
+        data = super().to_representation(instance)
+        # Add 'class' field for frontend compatibility (can't use 'class' as field name due to Python keyword)
+        data['class'] = instance.student_class
+        return data
+
 
 class StudentListSerializer(serializers.ModelSerializer):
     """Simplified serializer for list views."""
 
     full_name = serializers.SerializerMethodField()
+    # Add 'name' field for frontend compatibility
+    name = serializers.SerializerMethodField()
     age = serializers.SerializerMethodField()
     education_level_display = serializers.CharField(
         source="get_education_level_display", read_only=True
@@ -575,6 +591,7 @@ class StudentListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "full_name",
+            "name",
             "age",
             "gender",
             "education_level",
@@ -595,6 +612,10 @@ class StudentListSerializer(serializers.ModelSerializer):
         ]
 
     def get_full_name(self, obj):
+        return obj.user.full_name
+
+    def get_name(self, obj):
+        """Returns the full name for frontend compatibility."""
         return obj.user.full_name
 
     def get_age(self, obj):
@@ -691,6 +712,13 @@ class StudentListSerializer(serializers.ModelSerializer):
                     except (GradeLevel.DoesNotExist, Section.DoesNotExist):
                         return None
         return None
+
+    def to_representation(self, instance):
+        """Add frontend-compatible fields dynamically"""
+        data = super().to_representation(instance)
+        # Add 'class' field for frontend compatibility (can't use 'class' as field name due to Python keyword)
+        data['class'] = instance.student_class
+        return data
 
 
 class StudentCreateSerializer(serializers.ModelSerializer):

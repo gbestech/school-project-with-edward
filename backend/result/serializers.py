@@ -11,9 +11,14 @@ from .models import (
     ResultComment,
     SeniorSecondaryResult,
     SeniorSecondarySessionResult,
+    SeniorSecondaryTermReport,
+    SeniorSecondarySessionReport,
     JuniorSecondaryResult,
+    JuniorSecondaryTermReport,
     PrimaryResult,
+    PrimaryTermReport,
     NurseryResult,
+    NurseryTermReport,
     ScoringConfiguration,
 )
 from students.serializers import StudentDetailSerializer
@@ -26,6 +31,9 @@ class ScoringConfigurationSerializer(serializers.ModelSerializer):
 
     education_level_display = serializers.CharField(
         source="get_education_level_display", read_only=True
+    )
+    result_type_display = serializers.CharField(
+        source="get_result_type_display", read_only=True
     )
     total_ca_max_score = serializers.DecimalField(
         source="ca_total_max_score", read_only=True, max_digits=5, decimal_places=2
@@ -42,6 +50,11 @@ class ScoringConfigurationSerializer(serializers.ModelSerializer):
         source="test3_max_score", read_only=True, max_digits=5, decimal_places=2
     )
 
+    # Add created_by information
+    created_by_name = serializers.CharField(
+        source="created_by.full_name", read_only=True
+    )
+
     class Meta:
         model = ScoringConfiguration
         fields = [
@@ -50,6 +63,7 @@ class ScoringConfigurationSerializer(serializers.ModelSerializer):
             "education_level",
             "education_level_display",
             "result_type",
+            "result_type_display",
             "description",
             "test1_max_score",
             "test2_max_score",
@@ -70,6 +84,8 @@ class ScoringConfigurationSerializer(serializers.ModelSerializer):
             "total_ca_max_score",
             "is_active",
             "is_default",
+            "created_by",
+            "created_by_name",
             "created_at",
             "updated_at",
         ]
@@ -201,12 +217,6 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
                 )
 
         # Validate total max score matches sum of components (only for TERMLY)
-        education_level = data.get("education_level")
-
-        # Debug logging
-        print(f"DEBUG: education_level = {education_level}")
-
-        # Only validate total_max_score for TERMLY result type
         if result_type == "TERMLY":
             if education_level in ["JUNIOR_SECONDARY", "PRIMARY"]:
                 ca_score = data.get("continuous_assessment_max_score", 0)
@@ -228,7 +238,6 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
                 )
             elif education_level == "SENIOR_SECONDARY":
                 # The frontend sends first_test_max_score, second_test_max_score, third_test_max_score
-                # But we need to check both frontend and backend field names
                 first_test = data.get(
                     "first_test_max_score", data.get("test1_max_score", 0)
                 )
@@ -250,8 +259,6 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
                 # For Nursery, the total is just the max mark obtainable
                 expected_total = data.get("total_max_score", 0)
 
-            print(f"DEBUG: expected_total = {expected_total}")
-
             total_max_score = data.get("total_max_score", 0)
             if expected_total != total_max_score:
                 raise serializers.ValidationError(
@@ -268,7 +275,7 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
         """Set created_by when creating and handle data type conversion"""
         request = self.context.get("request")
         if request and request.user:
-            validated_data["created_by"] = request.user  # Use user instance, not ID
+            validated_data["created_by"] = request.user
 
         # Map frontend field names to backend field names
         field_mapping = {
@@ -305,7 +312,6 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
 
         for field in decimal_fields:
             if field in mapped_data and mapped_data[field] is not None:
-                # Convert to Decimal if it's a number
                 from decimal import Decimal
 
                 mapped_data[field] = Decimal(str(mapped_data[field]))
@@ -349,7 +355,6 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
 
         for field in decimal_fields:
             if field in mapped_data and mapped_data[field] is not None:
-                # Convert to Decimal if it's a number
                 from decimal import Decimal
 
                 mapped_data[field] = Decimal(str(mapped_data[field]))
@@ -359,6 +364,9 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
 
 class GradingSystemSerializer(serializers.ModelSerializer):
     grades = serializers.SerializerMethodField()
+    grading_type_display = serializers.CharField(
+        source="get_grading_type_display", read_only=True
+    )
 
     class Meta:
         model = GradingSystem
@@ -369,6 +377,10 @@ class GradingSystemSerializer(serializers.ModelSerializer):
 
 
 class GradeSerializer(serializers.ModelSerializer):
+    grading_system_name = serializers.CharField(
+        source="grading_system.name", read_only=True
+    )
+
     class Meta:
         model = Grade
         fields = "__all__"
@@ -385,6 +397,14 @@ class AssessmentTypeSerializer(serializers.ModelSerializer):
 
 
 class ExamSessionSerializer(serializers.ModelSerializer):
+    exam_type_display = serializers.CharField(
+        source="get_exam_type_display", read_only=True
+    )
+    term_display = serializers.CharField(source="get_term_display", read_only=True)
+    academic_session_name = serializers.CharField(
+        source="academic_session.name", read_only=True
+    )
+
     class Meta:
         model = ExamSession
         fields = "__all__"
@@ -399,6 +419,13 @@ class AssessmentScoreSerializer(serializers.ModelSerializer):
 
 
 class ResultCommentSerializer(serializers.ModelSerializer):
+    comment_type_display = serializers.CharField(
+        source="get_comment_type_display", read_only=True
+    )
+    commented_by_name = serializers.CharField(
+        source="commented_by.full_name", read_only=True
+    )
+
     class Meta:
         model = ResultComment
         fields = "__all__"
@@ -414,6 +441,15 @@ class StudentResultSerializer(serializers.ModelSerializer):
     # Stream information
     stream_name = serializers.CharField(source="stream.name", read_only=True)
     stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
+    # Status display
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    # User information
+    entered_by_name = serializers.CharField(
+        source="entered_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
 
     class Meta:
         model = StudentResult
@@ -424,7 +460,733 @@ class StudentTermResultSerializer(serializers.ModelSerializer):
     student = StudentDetailSerializer(read_only=True)
     academic_session = AcademicSessionSerializer(read_only=True)
     subject_results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudentTermResult
+        fields = "__all__"
+
+    def get_subject_results(self, obj):
+        """Get all subject results linked to this term report"""
+        # StudentTermResult doesn't have direct subject_results relationship
+        # We need to get results based on student, session, and term
+        from .models import StudentResult
+        
+        results = StudentResult.objects.filter(
+            student=obj.student,
+            exam_session__academic_session=obj.academic_session,
+            exam_session__term=obj.term
+        ).select_related('subject', 'grading_system', 'exam_session')
+        
+        return StudentResultSerializer(results, many=True).data
+
+
+class SeniorSecondarySessionReportSerializer(serializers.ModelSerializer):
+    """Serializer for consolidated Senior Secondary session reports"""
+
+    student = StudentDetailSerializer(read_only=True)
+    academic_session = AcademicSessionSerializer(read_only=True)
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    subject_results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SeniorSecondarySessionReport
+        fields = "__all__"
+
+    def get_subject_results(self, obj):
+        """Get all subject session results linked to this session report"""
+        return SeniorSecondarySessionResultSerializer(
+            obj.subject_results.all(), many=True
+        ).data
+
+
+class SeniorSecondaryResultSerializer(serializers.ModelSerializer):
+    """Serializer for Senior Secondary specific results"""
+
+    student = StudentDetailSerializer(read_only=True)
+    subject = SubjectSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    grading_system = GradingSystemSerializer(read_only=True)
+
+    # Additional read-only fields for display
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+    student_class = serializers.CharField(
+        source="student.student_class", read_only=True
+    )
+    subject_name = serializers.CharField(source="subject.name", read_only=True)
+    exam_session_name = serializers.CharField(
+        source="exam_session.name", read_only=True
+    )
+    grading_system_name = serializers.CharField(
+        source="grading_system.name", read_only=True
+    )
+
+    # Stream information
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
+
+    # User information
+    entered_by_name = serializers.CharField(
+        source="entered_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    last_edited_by_name = serializers.CharField(
+        source="last_edited_by.full_name", read_only=True
+    )
+
+    # Status display
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    # Calculated fields for frontend compatibility
+    test1_score = serializers.DecimalField(
+        source="first_test_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    test2_score = serializers.DecimalField(
+        source="second_test_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    test3_score = serializers.DecimalField(
+        source="third_test_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    total_obtainable = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SeniorSecondaryResult
+        fields = "__all__"
+
+    def get_total_obtainable(self, obj):
+        return 100  # Always 100 for Senior Secondary
+
+    def get_position(self, obj):
+        if obj.subject_position:
+            suffix = (
+                "st"
+                if obj.subject_position == 1
+                else (
+                    "nd"
+                    if obj.subject_position == 2
+                    else "rd" if obj.subject_position == 3 else "th"
+                )
+            )
+            return f"{obj.subject_position}{suffix}"
+        return ""
+
+
+class SeniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating Senior Secondary results"""
+
+    class Meta:
+        model = SeniorSecondaryResult
+        fields = [
+            "student",
+            "subject",
+            "exam_session",
+            "grading_system",
+            "stream",
+            "first_test_score",
+            "second_test_score",
+            "third_test_score",
+            "exam_score",
+            "teacher_remark",
+            "class_teacher_remark",
+            "head_teacher_remark",
+            "status",
+        ]
+
+    def validate(self, data):
+        """Validate Senior Secondary result data"""
+        # Validate test scores are within reasonable limits
+        if data.get("first_test_score", 0) > 10:
+            raise serializers.ValidationError("First test score cannot exceed 10 marks")
+        if data.get("second_test_score", 0) > 10:
+            raise serializers.ValidationError(
+                "Second test score cannot exceed 10 marks"
+            )
+        if data.get("third_test_score", 0) > 10:
+            raise serializers.ValidationError("Third test score cannot exceed 10 marks")
+        if data.get("exam_score", 0) > 70:
+            raise serializers.ValidationError("Exam score cannot exceed 70 marks")
+
+        return data
+
+    def create(self, validated_data):
+        """Set tracking fields when creating"""
+        request = self.context.get("request")
+        if request and request.user:
+            validated_data["entered_by"] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Set tracking fields when updating"""
+        request = self.context.get("request")
+        if request and request.user:
+            from django.utils import timezone
+
+            validated_data["last_edited_by"] = request.user
+            validated_data["last_edited_at"] = timezone.now()
+        return super().update(instance, validated_data)
+
+
+class SeniorSecondarySessionResultSerializer(serializers.ModelSerializer):
+    """Serializer for Senior Secondary session results"""
+
+    student = StudentDetailSerializer(read_only=True)
+    subject = SubjectSerializer(read_only=True)
+    academic_session = AcademicSessionSerializer(read_only=True)
+
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+    student_class = serializers.CharField(
+        source="student.student_class", read_only=True
+    )
+    subject_name = serializers.CharField(source="subject.name", read_only=True)
+    academic_session_name = serializers.CharField(
+        source="academic_session.name", read_only=True
+    )
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    # Frontend compatibility fields
+    term1_score = serializers.DecimalField(
+        source="first_term_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    term2_score = serializers.DecimalField(
+        source="second_term_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    term3_score = serializers.DecimalField(
+        source="third_term_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    average_score = serializers.DecimalField(
+        source="average_for_year", read_only=True, max_digits=5, decimal_places=2
+    )
+    position = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SeniorSecondarySessionResult
+        fields = "__all__"
+
+    def get_position(self, obj):
+        if obj.subject_position:
+            suffix = (
+                "st"
+                if obj.subject_position == 1
+                else (
+                    "nd"
+                    if obj.subject_position == 2
+                    else "rd" if obj.subject_position == 3 else "th"
+                )
+            )
+            return f"{obj.subject_position}{suffix}"
+        return ""
+
+
+class SeniorSecondarySessionResultCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating Senior Secondary session results"""
+
+    class Meta:
+        model = SeniorSecondarySessionResult
+        fields = [
+            "student",
+            "subject",
+            "academic_session",
+            "stream",
+            "first_term_score",
+            "second_term_score",
+            "third_term_score",
+            "teacher_remark",
+            "class_teacher_remark",
+            "head_teacher_remark",
+            "status",
+        ]
+
+    def validate(self, data):
+        """Validate Senior Secondary session result data"""
+        # Validate term scores are within reasonable limits
+        first_term = data.get("first_term_score", 0)
+        second_term = data.get("second_term_score", 0)
+        third_term = data.get("third_term_score", 0)
+
+        if first_term > 100:
+            raise serializers.ValidationError(
+                "First term score cannot exceed 100 marks"
+            )
+        if second_term > 100:
+            raise serializers.ValidationError(
+                "Second term score cannot exceed 100 marks"
+            )
+        if third_term > 100:
+            raise serializers.ValidationError(
+                "Third term score cannot exceed 100 marks"
+            )
+
+        # Validate total obtained doesn't exceed obtainable
+        total_obtained = first_term + second_term + third_term
+        if total_obtained > 300:
+            raise serializers.ValidationError("Total obtained cannot exceed 300 marks")
+
+        return data
+
+
+# ===== JUNIOR SECONDARY SERIALIZERS =====
+class JuniorSecondaryTermReportSerializer(serializers.ModelSerializer):
+    """Serializer for consolidated Junior Secondary term reports"""
+
+    student = StudentDetailSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    subject_results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JuniorSecondaryTermReport
+        fields = "__all__"
+
+    def get_subject_results(self, obj):
+        """Get all subject results linked to this term report"""
+        return JuniorSecondaryResultSerializer(
+            obj.subject_results.all(), many=True
+        ).data
+
+
+class JuniorSecondaryResultSerializer(serializers.ModelSerializer):
+    """Serializer for Junior Secondary specific results"""
+
+    student = StudentDetailSerializer(read_only=True)
+    subject = SubjectSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    grading_system = GradingSystemSerializer(read_only=True)
+
+    # User information
+    entered_by_name = serializers.CharField(
+        source="entered_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    last_edited_by_name = serializers.CharField(
+        source="last_edited_by.full_name", read_only=True
+    )
+
+    # Status display
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    # Frontend compatibility fields
+    exam_marks = serializers.DecimalField(
+        source="exam_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    mark_obtained = serializers.DecimalField(
+        source="total_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    total_obtainable = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JuniorSecondaryResult
+        fields = "__all__"
+
+    def get_total_obtainable(self, obj):
+        return 100  # Always 100 for Junior Secondary
+
+    def get_position(self, obj):
+        if obj.subject_position:
+            suffix = (
+                "st"
+                if obj.subject_position == 1
+                else (
+                    "nd"
+                    if obj.subject_position == 2
+                    else "rd" if obj.subject_position == 3 else "th"
+                )
+            )
+            return f"{obj.subject_position}{suffix}"
+        return ""
+
+
+class JuniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating Junior Secondary results"""
+
+    class Meta:
+        model = JuniorSecondaryResult
+        fields = [
+            "student",
+            "subject",
+            "exam_session",
+            "grading_system",
+            "continuous_assessment_score",
+            "take_home_test_score",
+            "practical_score",
+            "appearance_score",
+            "project_score",
+            "note_copying_score",
+            "exam_score",
+            "teacher_remark",
+            "class_teacher_remark",
+            "head_teacher_remark",
+            "status",
+        ]
+
+    def validate(self, data):
+        """Validate Junior Secondary result data"""
+        # Validate scores are within reasonable limits
+        if data.get("continuous_assessment_score", 0) > 15:
+            raise serializers.ValidationError(
+                "Continuous Assessment score cannot exceed 15 marks"
+            )
+        if data.get("take_home_test_score", 0) > 5:
+            raise serializers.ValidationError(
+                "Take Home Test score cannot exceed 5 marks"
+            )
+        if data.get("practical_score", 0) > 5:
+            raise serializers.ValidationError("Practical score cannot exceed 5 marks")
+        if data.get("appearance_score", 0) > 5:
+            raise serializers.ValidationError("Appearance score cannot exceed 5 marks")
+        if data.get("project_score", 0) > 5:
+            raise serializers.ValidationError("Project score cannot exceed 5 marks")
+        if data.get("note_copying_score", 0) > 5:
+            raise serializers.ValidationError(
+                "Note Copying score cannot exceed 5 marks"
+            )
+        if data.get("exam_score", 0) > 60:
+            raise serializers.ValidationError("Exam score cannot exceed 60 marks")
+
+        return data
+
+    def create(self, validated_data):
+        """Set tracking fields when creating"""
+        request = self.context.get("request")
+        if request and request.user:
+            validated_data["entered_by"] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Set tracking fields when updating"""
+        request = self.context.get("request")
+        if request and request.user:
+            from django.utils import timezone
+
+            validated_data["last_edited_by"] = request.user
+            validated_data["last_edited_at"] = timezone.now()
+        return super().update(instance, validated_data)
+
+
+# ===== PRIMARY SERIALIZERS =====
+class PrimaryTermReportSerializer(serializers.ModelSerializer):
+    """Serializer for consolidated Primary term reports"""
+
+    student = StudentDetailSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    subject_results = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PrimaryTermReport
+        fields = "__all__"
+
+    def get_subject_results(self, obj):
+        """Get all subject results linked to this term report"""
+        return PrimaryResultSerializer(obj.subject_results.all(), many=True).data
+
+
+class PrimaryResultSerializer(serializers.ModelSerializer):
+    """Serializer for Primary specific results"""
+
+    student = StudentDetailSerializer(read_only=True)
+    subject = SubjectSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    grading_system = GradingSystemSerializer(read_only=True)
+
+    # User information
+    entered_by_name = serializers.CharField(
+        source="entered_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    last_edited_by_name = serializers.CharField(
+        source="last_edited_by.full_name", read_only=True
+    )
+
+    # Status display
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    # Frontend compatibility fields
+    exam_marks = serializers.DecimalField(
+        source="exam_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    mark_obtained = serializers.DecimalField(
+        source="total_score", read_only=True, max_digits=5, decimal_places=2
+    )
+    total_obtainable = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PrimaryResult
+        fields = "__all__"
+
+    def get_total_obtainable(self, obj):
+        return 100  # Always 100 for Primary
+
+    def get_position(self, obj):
+        if obj.subject_position:
+            suffix = (
+                "st"
+                if obj.subject_position == 1
+                else (
+                    "nd"
+                    if obj.subject_position == 2
+                    else "rd" if obj.subject_position == 3 else "th"
+                )
+            )
+            return f"{obj.subject_position}{suffix}"
+        return ""
+
+
+class PrimaryResultCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating Primary results"""
+
+    class Meta:
+        model = PrimaryResult
+        fields = [
+            "student",
+            "subject",
+            "exam_session",
+            "grading_system",
+            "continuous_assessment_score",
+            "take_home_test_score",
+            "practical_score",
+            "appearance_score",
+            "project_score",
+            "note_copying_score",
+            "exam_score",
+            "teacher_remark",
+            "class_teacher_remark",
+            "head_teacher_remark",
+            "status",
+        ]
+
+    def validate(self, data):
+        """Validate Primary result data"""
+        # Validate scores are within reasonable limits (same as Junior Secondary)
+        if data.get("continuous_assessment_score", 0) > 15:
+            raise serializers.ValidationError(
+                "Continuous Assessment score cannot exceed 15 marks"
+            )
+        if data.get("take_home_test_score", 0) > 5:
+            raise serializers.ValidationError(
+                "Take Home Test score cannot exceed 5 marks"
+            )
+        if data.get("practical_score", 0) > 5:
+            raise serializers.ValidationError("Practical score cannot exceed 5 marks")
+        if data.get("appearance_score", 0) > 5:
+            raise serializers.ValidationError("Appearance score cannot exceed 5 marks")
+        if data.get("project_score", 0) > 5:
+            raise serializers.ValidationError("Project score cannot exceed 5 marks")
+        if data.get("note_copying_score", 0) > 5:
+            raise serializers.ValidationError(
+                "Note Copying score cannot exceed 5 marks"
+            )
+        if data.get("exam_score", 0) > 60:
+            raise serializers.ValidationError("Exam score cannot exceed 60 marks")
+
+        return data
+
+    def create(self, validated_data):
+        """Set tracking fields when creating"""
+        request = self.context.get("request")
+        if request and request.user:
+            validated_data["entered_by"] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Set tracking fields when updating"""
+        request = self.context.get("request")
+        if request and request.user:
+            from django.utils import timezone
+
+            validated_data["last_edited_by"] = request.user
+            validated_data["last_edited_at"] = timezone.now()
+        return super().update(instance, validated_data)
+
+
+# ===== NURSERY SERIALIZERS =====
+class NurseryTermReportSerializer(serializers.ModelSerializer):
+    """Serializer for consolidated Nursery term reports"""
+
+    student = StudentDetailSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    subject_results = serializers.SerializerMethodField()
+
+    # Physical development display fields
+    physical_development_display = serializers.CharField(
+        source="get_physical_development_display", read_only=True
+    )
+    health_display = serializers.CharField(source="get_health_display", read_only=True)
+    cleanliness_display = serializers.CharField(
+        source="get_cleanliness_display", read_only=True
+    )
+    general_conduct_display = serializers.CharField(
+        source="get_general_conduct_display", read_only=True
+    )
+
+    class Meta:
+        model = NurseryTermReport
+        fields = "__all__"
+
+    def get_subject_results(self, obj):
+        """Get all subject results linked to this term report"""
+        return NurseryResultSerializer(obj.subject_results.all(), many=True).data
+
+
+class NurseryResultSerializer(serializers.ModelSerializer):
+    """Serializer for Nursery specific results"""
+
+    student = StudentDetailSerializer(read_only=True)
+    subject = SubjectSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
+    grading_system = GradingSystemSerializer(read_only=True)
+
+    # User information
+    entered_by_name = serializers.CharField(
+        source="entered_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
+    published_by_name = serializers.CharField(
+        source="published_by.full_name", read_only=True
+    )
+    last_edited_by_name = serializers.CharField(
+        source="last_edited_by.full_name", read_only=True
+    )
+
+    # Status display
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = NurseryResult
+        fields = "__all__"
+
+
+class NurseryResultCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating Nursery results"""
+
+    class Meta:
+        model = NurseryResult
+        fields = [
+            "student",
+            "subject",
+            "exam_session",
+            "grading_system",
+            "max_marks_obtainable",
+            "mark_obtained",
+            "academic_comment",
+            "status",
+        ]
+
+    def validate(self, data):
+        """Validate Nursery result data"""
+        max_marks = data.get("max_marks_obtainable", 0)
+        mark_obtained = data.get("mark_obtained", 0)
+
+        if mark_obtained > max_marks:
+            raise serializers.ValidationError(
+                "Mark obtained cannot exceed max marks obtainable"
+            )
+
+        return data
+
+    def create(self, validated_data):
+        """Set tracking fields when creating"""
+        request = self.context.get("request")
+        if request and request.user:
+            validated_data["entered_by"] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Set tracking fields when updating"""
+        request = self.context.get("request")
+        if request and request.user:
+            from django.utils import timezone
+
+            validated_data["last_edited_by"] = request.user
+            validated_data["last_edited_at"] = timezone.now()
+        return super().update(instance, validated_data)
+
+
+# ===== CONSOLIDATED REPORT SERIALIZERS =====
+class ConsolidatedTermReportSerializer(serializers.Serializer):
+    """Unified serializer for all education level term reports"""
+
+    def to_representation(self, instance):
+        """Return appropriate serializer based on education level"""
+        education_level = getattr(instance.student, "education_level", None)
+
+        if education_level == "SENIOR_SECONDARY":
+            return SeniorSecondaryTermReportSerializer(
+                instance, context=self.context
+            ).data
+        elif education_level == "JUNIOR_SECONDARY":
+            return JuniorSecondaryTermReportSerializer(
+                instance, context=self.context
+            ).data
+        elif education_level == "PRIMARY":
+            return PrimaryTermReportSerializer(instance, context=self.context).data
+        elif education_level == "NURSERY":
+            return NurseryTermReportSerializer(instance, context=self.context).data
+        else:
+            # Fallback to basic structure
+            return {
+                "id": str(instance.id),
+                "student": StudentDetailSerializer(instance.student).data,
+                "exam_session": ExamSessionSerializer(instance.exam_session).data,
+                "education_level": education_level,
+                "status": getattr(instance, "status", "DRAFT"),
+            }
+
+
+class ConsolidatedResultSerializer(serializers.Serializer):
+    """Unified serializer for all education level results"""
+
+    def to_representation(self, instance):
+        """Return appropriate serializer based on education level"""
+        education_level = getattr(instance.student, "education_level", None)
+
+        if education_level == "SENIOR_SECONDARY":
+            return SeniorSecondaryResultSerializer(instance, context=self.context).data
+        elif education_level == "JUNIOR_SECONDARY":
+            return JuniorSecondaryResultSerializer(instance, context=self.context).data
+        elif education_level == "PRIMARY":
+            return PrimaryResultSerializer(instance, context=self.context).data
+        elif education_level == "NURSERY":
+            return NurseryResultSerializer(instance, context=self.context).data
+        else:
+            # Fallback to base StudentResult
+            return StudentResultSerializer(
+                instance, context=self.context
+            ).dataSerializerMethodField()
+
     comments = ResultCommentSerializer(many=True, read_only=True)
+    term_display = serializers.CharField(source="get_term_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = StudentTermResult
@@ -433,6 +1195,7 @@ class StudentTermResultSerializer(serializers.ModelSerializer):
             "student",
             "academic_session",
             "term",
+            "term_display",
             "total_subjects",
             "subjects_passed",
             "subjects_failed",
@@ -442,6 +1205,7 @@ class StudentTermResultSerializer(serializers.ModelSerializer):
             "class_position",
             "total_students",
             "status",
+            "status_display",
             "remarks",
             "next_term_begins",
             "subject_results",
@@ -450,64 +1214,178 @@ class StudentTermResultSerializer(serializers.ModelSerializer):
         ]
 
     def get_subject_results(self, obj):
-        # Always return a combined list from base results and senior secondary results
+        # Always return a combined list from base results and education-level specific results
         combined = []
 
-        # Base results (Primary/Junior or any legacy entries)
-        base_results = StudentResult.objects.filter(
-            student=obj.student,
-            exam_session__term=obj.term,
-            exam_session__academic_session=obj.academic_session,
-        ).select_related("subject", "grading_system", "exam_session")
-        combined.extend(StudentResultSerializer(base_results, many=True).data)
+        # Get education level to determine which results to fetch
+        education_level = getattr(obj.student, "education_level", None)
 
-        # Senior Secondary specific results
-        try:
-            from .models import SeniorSecondaryResult
+        if education_level == "SENIOR_SECONDARY":
+            # Senior Secondary specific results
+            try:
+                senior_results = SeniorSecondaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session", "stream")
 
-            senior_results = SeniorSecondaryResult.objects.filter(
+                for r in senior_results:
+                    combined.append(
+                        {
+                            "id": str(r.id),
+                            "subject": SubjectSerializer(r.subject).data,
+                            "exam_session": ExamSessionSerializer(r.exam_session).data,
+                            "stream": (
+                                {
+                                    "id": r.stream.id,
+                                    "name": r.stream.name,
+                                    "stream_type": getattr(r.stream, "stream_type", ""),
+                                }
+                                if r.stream
+                                else None
+                            ),
+                            "stream_name": r.stream.name if r.stream else None,
+                            "stream_type": (
+                                getattr(r.stream, "stream_type", None)
+                                if r.stream
+                                else None
+                            ),
+                            "ca_score": r.total_ca_score,
+                            "exam_score": r.exam_score,
+                            "total_score": r.total_score,
+                            "percentage": r.percentage,
+                            "grade": r.grade,
+                            "grade_point": r.grade_point,
+                            "is_passed": r.is_passed,
+                            "position": r.subject_position,
+                            "remarks": r.teacher_remark,
+                            "status": r.status,
+                            "assessment_scores": [],
+                            "created_at": (
+                                r.created_at.isoformat()
+                                if hasattr(r, "created_at")
+                                else ""
+                            ),
+                        }
+                    )
+            except Exception:
+                pass
+
+        elif education_level == "JUNIOR_SECONDARY":
+            # Junior Secondary specific results
+            try:
+                junior_results = JuniorSecondaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session")
+
+                for r in junior_results:
+                    combined.append(
+                        {
+                            "id": str(r.id),
+                            "subject": SubjectSerializer(r.subject).data,
+                            "exam_session": ExamSessionSerializer(r.exam_session).data,
+                            "ca_score": r.ca_total,
+                            "exam_score": r.exam_score,
+                            "total_score": r.total_score,
+                            "percentage": r.total_percentage,
+                            "grade": r.grade,
+                            "grade_point": r.grade_point,
+                            "is_passed": r.is_passed,
+                            "position": r.subject_position,
+                            "remarks": r.teacher_remark,
+                            "status": r.status,
+                            "assessment_scores": [],
+                            "created_at": (
+                                r.created_at.isoformat()
+                                if hasattr(r, "created_at")
+                                else ""
+                            ),
+                        }
+                    )
+            except Exception:
+                pass
+
+        elif education_level == "PRIMARY":
+            # Primary specific results
+            try:
+                primary_results = PrimaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session")
+
+                for r in primary_results:
+                    combined.append(
+                        {
+                            "id": str(r.id),
+                            "subject": SubjectSerializer(r.subject).data,
+                            "exam_session": ExamSessionSerializer(r.exam_session).data,
+                            "ca_score": r.ca_total,
+                            "exam_score": r.exam_score,
+                            "total_score": r.total_score,
+                            "percentage": r.total_percentage,
+                            "grade": r.grade,
+                            "grade_point": r.grade_point,
+                            "is_passed": r.is_passed,
+                            "position": r.subject_position,
+                            "remarks": r.teacher_remark,
+                            "status": r.status,
+                            "assessment_scores": [],
+                            "created_at": (
+                                r.created_at.isoformat()
+                                if hasattr(r, "created_at")
+                                else ""
+                            ),
+                        }
+                    )
+            except Exception:
+                pass
+
+        elif education_level == "NURSERY":
+            # Nursery specific results
+            try:
+                nursery_results = NurseryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session")
+
+                for r in nursery_results:
+                    combined.append(
+                        {
+                            "id": str(r.id),
+                            "subject": SubjectSerializer(r.subject).data,
+                            "exam_session": ExamSessionSerializer(r.exam_session).data,
+                            "mark_obtained": r.mark_obtained,
+                            "max_marks_obtainable": r.max_marks_obtainable,
+                            "percentage": r.percentage,
+                            "grade": r.grade,
+                            "grade_point": r.grade_point,
+                            "is_passed": r.is_passed,
+                            "position": r.subject_position,
+                            "remarks": r.academic_comment,
+                            "status": r.status,
+                            "assessment_scores": [],
+                            "created_at": (
+                                r.created_at.isoformat()
+                                if hasattr(r, "created_at")
+                                else ""
+                            ),
+                        }
+                    )
+            except Exception:
+                pass
+
+        # Fallback to base StudentResult if no specific results found
+        if not combined:
+            base_results = StudentResult.objects.filter(
                 student=obj.student,
                 exam_session__term=obj.term,
                 exam_session__academic_session=obj.academic_session,
-            ).select_related("subject", "grading_system", "exam_session", "stream")
-
-            for r in senior_results:
-                combined.append(
-                    {
-                        "id": str(r.id),
-                        "subject": SubjectSerializer(r.subject).data,
-                        "exam_session": ExamSessionSerializer(r.exam_session).data,
-                        "stream": (
-                            {
-                                "id": r.stream.id,
-                                "name": r.stream.name,
-                                "stream_type": getattr(r.stream, "stream_type", ""),
-                            }
-                            if r.stream
-                            else None
-                        ),
-                        "stream_name": r.stream.name if r.stream else None,
-                        "stream_type": (
-                            getattr(r.stream, "stream_type", None) if r.stream else None
-                        ),
-                        "ca_score": r.total_ca_score,
-                        "exam_score": r.exam_score,
-                        "total_score": r.total_score,
-                        "percentage": r.percentage,
-                        "grade": r.grade,
-                        "grade_point": r.grade_point,
-                        "is_passed": r.is_passed,
-                        "position": r.subject_position,
-                        "remarks": r.teacher_remark,
-                        "status": r.status,
-                        "assessment_scores": [],
-                        "created_at": (
-                            r.created_at.isoformat() if hasattr(r, "created_at") else ""
-                        ),
-                    }
-                )
-        except Exception:
-            pass
+            ).select_related("subject", "grading_system", "exam_session")
+            combined.extend(StudentResultSerializer(base_results, many=True).data)
 
         return combined
 
@@ -519,6 +1397,8 @@ class StudentTermResultDetailSerializer(serializers.ModelSerializer):
     academic_session = AcademicSessionSerializer(read_only=True)
     subject_results = serializers.SerializerMethodField()
     comments = ResultCommentSerializer(many=True, read_only=True)
+    term_display = serializers.CharField(source="get_term_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = StudentTermResult
@@ -526,11 +1406,9 @@ class StudentTermResultDetailSerializer(serializers.ModelSerializer):
 
     def get_subject_results(self, obj):
         # Get all results for this student in this term across education levels
-        # For Primary/Junior the base StudentResult is used; for Senior Secondary, use SeniorSecondaryResult
         education_level = getattr(obj.student, "education_level", None)
-        if education_level == "SENIOR_SECONDARY":
-            from .models import SeniorSecondaryResult
 
+        if education_level == "SENIOR_SECONDARY":
             senior_results = SeniorSecondaryResult.objects.filter(
                 student=obj.student,
                 exam_session__term=obj.term,
@@ -575,8 +1453,39 @@ class StudentTermResultDetailSerializer(serializers.ModelSerializer):
                     }
                 )
             return mapped
+
+        elif education_level == "JUNIOR_SECONDARY":
+            return JuniorSecondaryResultSerializer(
+                JuniorSecondaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session"),
+                many=True,
+            ).data
+
+        elif education_level == "PRIMARY":
+            return PrimaryResultSerializer(
+                PrimaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session"),
+                many=True,
+            ).data
+
+        elif education_level == "NURSERY":
+            return NurseryResultSerializer(
+                NurseryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term,
+                    exam_session__academic_session=obj.academic_session,
+                ).select_related("subject", "grading_system", "exam_session"),
+                many=True,
+            ).data
+
         else:
-            # Primary/Junior/Nursery use StudentResult or their specific serializers already compatible
+            # Fallback to base StudentResult
             results = StudentResult.objects.filter(
                 student=obj.student,
                 exam_session__term=obj.term,
@@ -594,6 +1503,13 @@ class DetailedStudentResultSerializer(serializers.ModelSerializer):
     grading_system = GradingSystemSerializer(read_only=True)
     assessment_scores = AssessmentScoreSerializer(many=True, read_only=True)
     comments = ResultCommentSerializer(many=True, read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    entered_by_name = serializers.CharField(
+        source="entered_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
 
     class Meta:
         model = StudentResult
@@ -601,230 +1517,45 @@ class DetailedStudentResultSerializer(serializers.ModelSerializer):
 
 
 class ResultSheetSerializer(serializers.ModelSerializer):
+    exam_session = ExamSessionSerializer(read_only=True)
+    student_class_display = serializers.CharField(
+        source="get_student_class_display", read_only=True
+    )
+    education_level_display = serializers.CharField(
+        source="get_education_level_display", read_only=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    prepared_by_name = serializers.CharField(
+        source="prepared_by.full_name", read_only=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
+
     class Meta:
         model = ResultSheet
         fields = "__all__"
 
 
-# Senior Secondary Result Serializers
-class SeniorSecondaryResultSerializer(serializers.ModelSerializer):
-    """Serializer for Senior Secondary specific results"""
+# ===== SENIOR SECONDARY SERIALIZERS =====
+class SeniorSecondaryTermReportSerializer(serializers.ModelSerializer):
+    """Serializer for consolidated Senior Secondary term reports"""
 
-    student_name = serializers.CharField(source="student.full_name", read_only=True)
-    student_class = serializers.CharField(
-        source="student.student_class", read_only=True
-    )
-    subject_name = serializers.CharField(source="subject.name", read_only=True)
-    exam_session_name = serializers.CharField(
-        source="exam_session.name", read_only=True
-    )
-    grading_system_name = serializers.CharField(
-        source="grading_system.name", read_only=True
-    )
-
+    student = StudentDetailSerializer(read_only=True)
+    exam_session = ExamSessionSerializer(read_only=True)
     stream_name = serializers.CharField(source="stream.name", read_only=True)
-    entered_by_name = serializers.CharField(
-        source="entered_by.full_name", read_only=True
-    )
-    approved_by_name = serializers.CharField(
-        source="approved_by.full_name", read_only=True
-    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     published_by_name = serializers.CharField(
         source="published_by.full_name", read_only=True
     )
-    last_edited_by_name = serializers.CharField(
-        source="last_edited_by.full_name", read_only=True
-    )
+    subject_results = serializers.SerializerMethodField()
 
     class Meta:
-        model = SeniorSecondaryResult
+        model = SeniorSecondaryTermReport
         fields = "__all__"
 
-
-class SeniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating Senior Secondary results"""
-
-    class Meta:
-        model = SeniorSecondaryResult
-        fields = [
-            "student",
-            "subject",
-            "exam_session",
-            "grading_system",
-            "stream",
-            "first_test_score",
-            "second_test_score",
-            "third_test_score",
-            "exam_score",
-            "teacher_remark",
-            "status",
-        ]
-
-    def validate(self, data):
-        """Validate Senior Secondary result data"""
-        # Validate test scores are within reasonable limits
-        if data.get("first_test_score", 0) > 10:
-            raise serializers.ValidationError("First test score cannot exceed 10 marks")
-        if data.get("second_test_score", 0) > 10:
-            raise serializers.ValidationError(
-                "Second test score cannot exceed 10 marks"
-            )
-        if data.get("third_test_score", 0) > 10:
-            raise serializers.ValidationError("Third test score cannot exceed 10 marks")
-        if data.get("exam_score", 0) > 70:
-            raise serializers.ValidationError("Exam score cannot exceed 70 marks")
-
-        return data
-
-
-class SeniorSecondarySessionResultSerializer(serializers.ModelSerializer):
-    """Serializer for Senior Secondary session results"""
-
-    student_name = serializers.CharField(source="student.full_name", read_only=True)
-    student_class = serializers.CharField(
-        source="student.student_class", read_only=True
-    )
-    subject_name = serializers.CharField(source="subject.name", read_only=True)
-    academic_session_name = serializers.CharField(
-        source="academic_session.name", read_only=True
-    )
-    stream_name = serializers.CharField(source="stream.name", read_only=True)
-
-    class Meta:
-        model = SeniorSecondarySessionResult
-        fields = "__all__"
-
-
-class SeniorSecondarySessionResultCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating Senior Secondary session results"""
-
-    class Meta:
-        model = SeniorSecondarySessionResult
-        fields = [
-            "student",
-            "subject",
-            "academic_session",
-            "stream",
-            "first_term_score",
-            "second_term_score",
-            "third_term_score",
-            "teacher_remark",
-            "status",
-        ]
-
-    def validate(self, data):
-        """Validate Senior Secondary session result data"""
-        # Validate term scores are within reasonable limits
-        first_term = data.get("first_term_score", 0)
-        second_term = data.get("second_term_score", 0)
-        third_term = data.get("third_term_score", 0)
-
-        if first_term > 100:
-            raise serializers.ValidationError(
-                "First term score cannot exceed 100 marks"
-            )
-        if second_term > 100:
-            raise serializers.ValidationError(
-                "Second term score cannot exceed 100 marks"
-            )
-        if third_term > 100:
-            raise serializers.ValidationError(
-                "Third term score cannot exceed 100 marks"
-            )
-
-        # Validate total obtained doesn't exceed obtainable
-        total_obtained = first_term + second_term + third_term
-        if total_obtained > 300:
-            raise serializers.ValidationError("Total obtained cannot exceed 300 marks")
-
-        return data
-
-
-# Junior Secondary Result Serializers
-class JuniorSecondaryResultSerializer(serializers.ModelSerializer):
-    student = StudentDetailSerializer(read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    exam_session = ExamSessionSerializer(read_only=True)
-    grading_system = GradingSystemSerializer(read_only=True)
-    entered_by_name = serializers.CharField(
-        source="entered_by.full_name", read_only=True
-    )
-    approved_by_name = serializers.CharField(
-        source="approved_by.full_name", read_only=True
-    )
-    published_by_name = serializers.CharField(
-        source="published_by.full_name", read_only=True
-    )
-    last_edited_by_name = serializers.CharField(
-        source="last_edited_by.full_name", read_only=True
-    )
-
-    class Meta:
-        model = JuniorSecondaryResult
-        fields = "__all__"
-
-
-class JuniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = JuniorSecondaryResult
-        fields = "__all__"
-
-
-# Primary Result Serializers
-class PrimaryResultSerializer(serializers.ModelSerializer):
-    student = StudentDetailSerializer(read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    exam_session = ExamSessionSerializer(read_only=True)
-    grading_system = GradingSystemSerializer(read_only=True)
-    entered_by_name = serializers.CharField(
-        source="entered_by.full_name", read_only=True
-    )
-    approved_by_name = serializers.CharField(
-        source="approved_by.full_name", read_only=True
-    )
-    published_by_name = serializers.CharField(
-        source="published_by.full_name", read_only=True
-    )
-    last_edited_by_name = serializers.CharField(
-        source="last_edited_by.full_name", read_only=True
-    )
-
-    class Meta:
-        model = PrimaryResult
-        fields = "__all__"
-
-
-class PrimaryResultCreateUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PrimaryResult
-        fields = "__all__"
-
-
-# Nursery Result Serializers
-class NurseryResultSerializer(serializers.ModelSerializer):
-    student = StudentDetailSerializer(read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    exam_session = ExamSessionSerializer(read_only=True)
-    grading_system = GradingSystemSerializer(read_only=True)
-    entered_by_name = serializers.CharField(
-        source="entered_by.full_name", read_only=True
-    )
-    approved_by_name = serializers.CharField(
-        source="approved_by.full_name", read_only=True
-    )
-    published_by_name = serializers.CharField(
-        source="published_by.full_name", read_only=True
-    )
-    last_edited_by_name = serializers.CharField(
-        source="last_edited_by.full_name", read_only=True
-    )
-
-    class Meta:
-        model = NurseryResult
-        fields = "__all__"
-
-
-class NurseryResultCreateUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = NurseryResult
-        fields = "__all__"
+    def get_subject_results(self, obj):
+        """Get all subject results linked to this term report"""
+        return SeniorSecondaryResultSerializer(
+            obj.subject_results.all(), many=True
+        ).data

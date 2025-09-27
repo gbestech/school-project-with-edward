@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, 
   Edit, 
@@ -8,9 +8,7 @@ import {
   BookOpen, 
   Save, 
   X, 
-  AlertCircle,
   CheckCircle,
-  Clock,
   Users,
   GraduationCap,
   Activity,
@@ -18,10 +16,6 @@ import {
   UserCheck,
   Loader2,
   RefreshCw,
-  Download,
-  Upload,
-  Settings,
-  BarChart3
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { 
@@ -99,12 +93,6 @@ const SubjectManagement = () => {
     { value: 'core_humanities', label: 'Core Humanities', icon: UserCheck },
     { value: 'language', label: 'Language', icon: BookOpen },
     { value: 'religious', label: 'Religious Studies', icon: BookOpen },
-    // Removed categories that don't exist in backend data
-    // { value: 'vocational', label: 'Vocational/Pre-vocational', icon: Settings },
-    // { value: 'creative_arts', label: 'Cultural & Creative Arts', icon: Activity },
-    // { value: 'physical', label: 'Physical & Health Education', icon: Activity },
-    // { value: 'practical', label: 'Practical/Skills', icon: Beaker },
-    // { value: 'nursery_activities', label: 'Nursery Activities', icon: Activity }
   ];
 
   const educationLevels = [
@@ -237,16 +225,40 @@ const SubjectManagement = () => {
       console.log('🔄 Loading subject data...');
       console.log('🔍 Current filters:', filters);
 
-      // Load all subjects without filters for client-side filtering
-      const [subjectsData, statsData] = await Promise.all([
-        subjectService.getSubjects({}), // Load all subjects
-        subjectService.getSubjectStatistics()
-      ]);
+      // Load subjects and statistics separately to debug
+      let subjectsData = [];
+      let statsData = null;
 
-      console.log('📊 Subject data loaded:', subjectsData);
-      console.log('📈 Statistics loaded:', statsData);
+      try {
+        console.log('📋 Fetching subjects...');
+        subjectsData = await subjectService.getSubjects({});
+        console.log('📋 Raw subjects response:', subjectsData);
+      } catch (subjectsError) {
+        console.error('❌ Error fetching subjects:', subjectsError);
+        // Try without any parameters
+        try {
+          console.log('📋 Retrying subjects without parameters...');
+          const response = await fetch('/api/subjects/');
+          const text = await response.text();
+          console.log('📋 Raw response:', text);
+          if (response.ok) {
+            subjectsData = JSON.parse(text);
+          }
+        } catch (retryError) {
+          console.error('❌ Retry also failed:', retryError);
+        }
+      }
 
-      const subjectsList = subjectsData.results || subjectsData;
+      try {
+        console.log('📊 Fetching statistics...');
+        statsData = await subjectService.getSubjectStatistics();
+        console.log('📊 Raw statistics response:', statsData);
+      } catch (statsError) {
+        console.error('❌ Error fetching statistics:', statsError);
+      }
+
+      // Ensure subjectsData is an array
+      const subjectsList = Array.isArray(subjectsData) ? subjectsData : [];
       console.log('📋 Final subjects list:', subjectsList);
       console.log('🔢 Number of subjects:', subjectsList.length);
       
@@ -256,15 +268,6 @@ const SubjectManagement = () => {
         subjectsList.slice(0, 3).forEach((subject: Subject) => {
           console.log(`  - ${subject.name} (${subject.code}) - Category: "${subject.category}" - Levels: ${subject.education_levels}`);
         });
-        
-        // Log raw API response for debugging
-        console.log('🔍 Raw API response structure:');
-        console.log('  First subject keys:', Object.keys(subjectsList[0]));
-        console.log('  First subject data:', subjectsList[0]);
-        console.log('  Category field exists:', 'category' in subjectsList[0]);
-        console.log('  Education levels field exists:', 'education_levels' in subjectsList[0]);
-        console.log('  Category value:', subjectsList[0].category);
-        console.log('  Education levels value:', subjectsList[0].education_levels);
         
         // Test filter values
         console.log('📋 Testing filter values:');
@@ -421,7 +424,6 @@ const SubjectManagement = () => {
       education_levels: subject.education_levels || [],
       nursery_levels: subject.nursery_levels || [],
       ss_subject_type: subject.ss_subject_type,
-
       is_compulsory: subject.is_compulsory,
       is_core: subject.is_core,
       is_cross_cutting: subject.is_cross_cutting,
@@ -665,7 +667,6 @@ const SubjectManagement = () => {
               </button>
               <button
                 onClick={() => {
-                  console.log('🔍 Clearing filters');
                   setFilters({ category: '', education_level: '', is_active: true, ordering: 'name' });
                   setSearchTerm('');
                 }}
@@ -749,7 +750,6 @@ const SubjectManagement = () => {
                   className="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-all duration-200"
                   value={filters.category}
                   onChange={(e) => {
-                    console.log('🔍 Category filter changed:', e.target.value);
                     setFilters({...filters, category: e.target.value});
                   }}
                 >
@@ -764,7 +764,6 @@ const SubjectManagement = () => {
                   className="pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-all duration-200"
                   value={filters.education_level}
                   onChange={(e) => {
-                    console.log('🔍 Education level filter changed:', e.target.value);
                     setFilters({...filters, education_level: e.target.value});
                   }}
                 >
@@ -779,7 +778,6 @@ const SubjectManagement = () => {
                   className="pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white transition-all duration-200"
                   value={streamFilter}
                   onChange={(e) => {
-                    console.log('🔍 Stream filter changed:', e.target.value);
                     setStreamFilter(e.target.value);
                   }}
                 >
@@ -791,25 +789,11 @@ const SubjectManagement = () => {
                 </select>
               </div>
             </div>
-                         <div className="flex items-center gap-4">
-               <div className="text-sm text-gray-500 font-medium">
-                 {filteredSubjects.length} subject{filteredSubjects.length !== 1 ? 's' : ''} found
-               </div>
-               {/* <div className="flex items-center gap-2">
-                 <span className="text-sm text-gray-600">Show:</span>
-                 <select
-                   value={itemsPerPage}
-                   onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                   className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                 >
-                   <option value={6}>6</option>
-                   <option value={12}>12</option>
-                   <option value={24}>24</option>
-                   <option value={48}>48</option>
-                 </select>
-                 <span className="text-sm text-gray-600">per page</span>
-               </div> */}
-             </div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-500 font-medium">
+                {filteredSubjects.length} subject{filteredSubjects.length !== 1 ? 's' : ''} found
+              </div>
+            </div>
           </div>
         </div>
 
@@ -826,13 +810,11 @@ const SubjectManagement = () => {
                         {subject.category_display}
                       </span>
                       <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                        subject.is_discontinued 
-                          ? 'bg-red-100 text-red-800' 
-                          : !subject.is_active 
-                            ? 'bg-yellow-100 text-yellow-800' 
-                            : 'bg-green-100 text-green-800'
+                        !subject.is_active 
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : 'bg-green-100 text-green-800'
                       }`}>
-                        {subject.is_discontinued ? 'Discontinued' : !subject.is_active ? 'Inactive' : 'Active'}
+                        {!subject.is_active ? 'Inactive' : 'Active'}
                       </span>
                       {subject.is_cross_cutting && (
                         <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -926,8 +908,8 @@ const SubjectManagement = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                                 <tbody className="bg-white divide-y divide-gray-200">
-                   {currentSubjects.map(subject => (
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentSubjects.map(subject => (
                     <tr key={subject.id} className="hover:bg-gray-100 transition-colors duration-200">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -959,13 +941,11 @@ const SubjectManagement = () => {
                         <div className="flex flex-col gap-1">
                           {/* Overall Status */}
                           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            subject.is_discontinued 
-                              ? 'bg-red-100 text-red-800' 
-                              : !subject.is_active 
-                                ? 'bg-yellow-100 text-yellow-800' 
-                                : 'bg-green-100 text-green-800'
+                            !subject.is_active 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-green-100 text-green-800'
                           }`}>
-                            {subject.is_discontinued ? 'Discontinued' : !subject.is_active ? 'Inactive' : 'Active'}
+                            {!subject.is_active ? 'Inactive' : 'Active'}
                           </span>
                           {/* Additional Status Badges */}
                           <div className="flex flex-wrap gap-1">
@@ -1011,76 +991,76 @@ const SubjectManagement = () => {
           </div>
         )}
 
-                          {currentSubjects.length === 0 && (
-           <div className="text-center py-12">
-             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-             <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects found</h3>
-             <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-           </div>
-         )}
+        {currentSubjects.length === 0 && (
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No subjects found</h3>
+            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+          </div>
+        )}
 
-         {/* Pagination */}
-         {filteredSubjects.length > 0 && (
-           <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-               {/* Page Info */}
-               <div className="text-sm text-gray-600">
-                 Showing {startIndex + 1} to {Math.min(endIndex, filteredSubjects.length)} of {filteredSubjects.length} subjects
-               </div>
-               
-               {/* Pagination Controls */}
-               <div className="flex items-center gap-2">
-                 {/* Previous Button */}
-                 <button
-                   onClick={() => handlePageChange(currentPage - 1)}
-                   disabled={currentPage === 1}
-                   className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                 >
-                   Previous
-                 </button>
-                 
-                 {/* Page Numbers */}
-                 <div className="flex items-center gap-1">
-                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                     let pageNum;
-                     if (totalPages <= 5) {
-                       pageNum = i + 1;
-                     } else if (currentPage <= 3) {
-                       pageNum = i + 1;
-                     } else if (currentPage >= totalPages - 2) {
-                       pageNum = totalPages - 4 + i;
-                     } else {
-                       pageNum = currentPage - 2 + i;
-                     }
-                     
-                     return (
-                       <button
-                         key={pageNum}
-                         onClick={() => handlePageChange(pageNum)}
-                         className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                           currentPage === pageNum
-                             ? 'bg-blue-600 text-white'
-                             : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-                         }`}
-                       >
-                         {pageNum}
-                       </button>
-                     );
-                   })}
-                 </div>
-                 
-                 {/* Next Button */}
-                 <button
-                   onClick={() => handlePageChange(currentPage + 1)}
-                   disabled={currentPage === totalPages}
-                   className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                 >
-                   Next
-                 </button>
-               </div>
-             </div>
-           </div>
-         )}
+        {/* Pagination */}
+        {filteredSubjects.length > 0 && (
+          <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Page Info */}
+              <div className="text-sm text-gray-600">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredSubjects.length)} of {filteredSubjects.length} subjects
+              </div>
+              
+              {/* Pagination Controls */}
+              <div className="flex items-center gap-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Next Button */}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add/Edit Modal */}
         {showModal && (
@@ -1163,8 +1143,6 @@ const SubjectManagement = () => {
                     </select>
                   </div>
 
-
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Pass Mark *
@@ -1208,20 +1186,20 @@ const SubjectManagement = () => {
                             type="checkbox"
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             checked={formData.education_levels && Array.isArray(formData.education_levels) && formData.education_levels.includes(level.value)}
-                                                          onChange={(e) => {
-                                const currentLevels = formData.education_levels || [];
-                                if (e.target.checked) {
-                                  setFormData({
-                                    ...formData,
-                                    education_levels: [...currentLevels, level.value]
-                                  });
-                                } else {
-                                  setFormData({
-                                    ...formData,
-                                    education_levels: currentLevels.filter(l => l !== level.value)
-                                  });
-                                }
-                              }}
+                            onChange={(e) => {
+                              const currentLevels = formData.education_levels || [];
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  education_levels: [...currentLevels, level.value]
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  education_levels: currentLevels.filter(l => l !== level.value)
+                                });
+                              }
+                            }}
                           />
                           <span className="ml-2 text-sm text-gray-700">{level.label}</span>
                         </label>
@@ -1507,4 +1485,3 @@ const SubjectManagement = () => {
 };
 
 export default SubjectManagement;
-

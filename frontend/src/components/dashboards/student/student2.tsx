@@ -4,12 +4,8 @@ import {
   GraduationCap, Home
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-// import StudentService from '@/services/StudentService';
-// import api from '@/services/api';
-// import { useSettings } from '@/contexts/SettingsContext';
-// import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import ResultSelection from './ResultSelection';
-import ResultDisplay from './ResultDisplay';
+import StudentResultDisplay from "../admin/StudentResultDisplay";
 import PortalLogin from './PortalLogin';
 import DashboardContent from './DashboardContent';
 import ProfileTab from './ProfileTab';
@@ -84,11 +80,27 @@ const StudentPortal = () => {
             !portalAuthenticated ? (
               <PortalLogin onSuccess={() => setPortalAuthenticated(true)} />
             ) : showResult ? (
-              <ResultDisplay 
-                selections={selections}
-                studentName={user?.full_name || ''}
-                onBack={() => setShowResult(false)}
-              />
+              <div className="space-y-4">
+                {/* Back Button */}
+                <button
+                  onClick={() => setShowResult(false)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors flex items-center gap-2"
+                >
+                  ← Back to Selection
+                </button>
+                
+                <StudentResultDisplay 
+                  student={{
+                    id: String(user?.id || ''), // Convert to string
+                    full_name: user?.full_name || '',
+                    username: user?.username || '',
+                    student_class: (user as any)?.student_class || (user as any)?.class || '', // Handle missing property
+                    education_level: (user as any)?.education_level || 'UNKNOWN', // Handle missing property
+                    profile_picture: (user as any)?.profile_picture
+                  }}
+                  selections={selections}
+                />
+              </div>
             ) : (
               <ResultSelection 
                 onSelectionComplete={(data) => {
@@ -102,7 +114,7 @@ const StudentPortal = () => {
           {activeSection === 'dashboard' && <DashboardContent />}
           {activeSection === 'profile' && <ProfileTab />}
           {activeSection === 'schedule' && (<StudentLessons/>)}
-          {activeSection !== 'portal' && activeSection !== 'dashboard' && activeSection !== 'profile' && (
+          {activeSection !== 'portal' && activeSection !== 'dashboard' && activeSection !== 'profile' && activeSection !== 'schedule' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 text-center transition-colors duration-300">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Settings className="text-white" size={32} />

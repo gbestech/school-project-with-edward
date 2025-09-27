@@ -437,11 +437,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const formData = new FormData();
       formData.append('profile_image', file);
       
-      const response = await api.post('/api/profiles/upload_profile_picture/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/profiles/profiles/upload_profile_picture/', formData);;
       
       const profilePictureUrl = response.profile_picture_url;
       
@@ -468,7 +464,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ✅ Fetch verification status
   const fetchVerificationStatus = async (): Promise<UserVerificationStatus | null> => {
     try {
-      const response = await api.get('/api/profiles/verification_status/');
+      const response = await api.get('/api/profiles/profiles/verification_status/');
       const verificationStatus = response;
       
       if (user) {
@@ -487,7 +483,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ✅ Fetch contact info
   const fetchContactInfo = async (): Promise<UserContactInfo | null> => {
     try {
-      const response = await api.get('/api/profiles/contact_info/');
+      const response = await api.get('/api/profiles/profiles/contact_info/');
       const contactInfo = response;
       
       if (user) {

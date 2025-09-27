@@ -23,15 +23,11 @@ router.register(r"", SubjectViewSet, basename="subject")
 
 # Analytics router for read-only analytics endpoints
 analytics_router = DefaultRouter()
-analytics_router.register(
-    r"", SubjectAnalyticsViewSet, basename="subject-analytics"
-)
+analytics_router.register(r"", SubjectAnalyticsViewSet, basename="subject-analytics")
 
 # Management router for admin-only operations
 management_router = DefaultRouter()
-management_router.register(
-    r"", SubjectManagementViewSet, basename="subject-management"
-)
+management_router.register(r"", SubjectManagementViewSet, basename="subject-management")
 
 # Stream configuration router
 stream_config_router = DefaultRouter()
@@ -55,12 +51,41 @@ urlpatterns = [
     # Health check endpoint
     path("health/", health_check, name="health-check"),
     # Stream configuration endpoints - /api/v1/subjects/stream-configurations/ (MUST COME FIRST)
-    path("stream-configurations/", SchoolStreamConfigurationViewSet.as_view({'get': 'list', 'post': 'create'})),
-    path("stream-configurations/<int:pk>/", SchoolStreamConfigurationViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
-    path("stream-configurations/setup_defaults/", SchoolStreamConfigurationViewSet.as_view({'post': 'setup_defaults'})),
+    path(
+        "stream-configurations/",
+        SchoolStreamConfigurationViewSet.as_view({"get": "list", "post": "create"}),
+    ),
+    path(
+        "stream-configurations/<int:pk>/",
+        SchoolStreamConfigurationViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
+    ),
+    path(
+        "stream-configurations/setup_defaults/",
+        SchoolStreamConfigurationViewSet.as_view({"post": "setup_defaults"}),
+    ),
     # Stream subject assignment endpoints - /api/v1/subjects/stream-subject-assignments/
-    path("stream-subject-assignments/", SchoolStreamSubjectAssignmentViewSet.as_view({'get': 'list', 'post': 'create'})),
-    path("stream-subject-assignments/<int:pk>/", SchoolStreamSubjectAssignmentViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'})),
+    path(
+        "stream-subject-assignments/",
+        SchoolStreamSubjectAssignmentViewSet.as_view({"get": "list", "post": "create"}),
+    ),
+    path(
+        "stream-subject-assignments/<int:pk>/",
+        SchoolStreamSubjectAssignmentViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
+    ),
     # Core subject operations - /api/v1/subjects/
     path("", include(router.urls)),
     # Analytics endpoints - /api/v1/analytics/subjects/

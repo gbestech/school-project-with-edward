@@ -33,24 +33,41 @@ const SettingsDashboard = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { refreshSettings } = useSettings();
 
+  // Helper function to get auth headers
+  const getAuthHeaders = () => {
+    // Try different possible token keys - adjust based on your auth implementation
+    const token = localStorage.getItem('access_token') || 
+                  localStorage.getItem('authToken') || 
+                  localStorage.getItem('token');
+    
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+  };
+
   // Fetch settings on component mount
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch('/api/school-settings/', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        // Fixed: Use the correct endpoint path
+        const response = await fetch('/api/school-settings/school-settings/', {
+          method: 'GET',
+          headers: getAuthHeaders()
         });
 
         if (response.ok) {
           const data = await response.json();
           setSettings(data);
+        } else if (response.status === 401) {
+          setError('Authentication required. Please log in again.');
+        } else if (response.status === 404) {
+          setError('Settings endpoint not found. Please check your API configuration.');
         } else {
           setError('Failed to load settings');
         }
       } catch (err) {
+        console.error('Error fetching settings:', err);
         setError('Failed to load settings');
       } finally {
         setLoading(false);
@@ -62,16 +79,12 @@ const SettingsDashboard = () => {
 
   const handleSettingsUpdate = async (updatedSettings: any) => {
     try {
-      const token = localStorage.getItem('authToken');
-      
       console.log('Sending settings to backend:', updatedSettings);
       
-      const response = await fetch('/api/school-settings/', {
+      // Fixed: Use the correct endpoint path
+      const response = await fetch('/api/school-settings/school-settings/', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(updatedSettings)
       });
 
@@ -86,10 +99,16 @@ const SettingsDashboard = () => {
         // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(null), 3000);
         refreshSettings(); // Refresh settings in context
+      } else if (response.status === 401) {
+        setError('Authentication required. Please log in again.');
+        setSuccessMessage(null);
+      } else if (response.status === 405) {
+        setError('Method not allowed. Please check your API configuration.');
+        setSuccessMessage(null);
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         console.error('Failed to save settings to backend:', errorData);
-        setError('Failed to save settings');
+        setError(errorData.error || errorData.detail || 'Failed to save settings');
         setSuccessMessage(null);
       }
     } catch (err) {
@@ -166,7 +185,15 @@ const SettingsDashboard = () => {
             </div>
           ) : error ? (
             <div className="p-8 text-center">
-              <p className="text-red-600 dark:text-red-400 transition-colors duration-300">{error}</p>
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-red-600 dark:text-red-400 transition-colors duration-300">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-2 text-sm text-red-700 dark:text-red-300 underline hover:no-underline"
+                >
+                  Refresh Page
+                </button>
+              </div>
             </div>
           ) : (
             <ActiveComponent 

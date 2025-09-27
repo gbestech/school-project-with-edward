@@ -53,7 +53,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/school-settings/', {
+      const response = await fetch('/api/school-settings/school-settings/', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

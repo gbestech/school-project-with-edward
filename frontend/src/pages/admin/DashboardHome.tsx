@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import DashboardMainContent from '@/components/dashboards/admin/DashboardMainContent';
+// import DashboardMainContent from '@/components/dashboards/admin/DashboardMainContent';
 import AdminDashboard from '@/components/dashboards/admin/Admin';
 import { useAdminAuth } from '@/services/AuthServiceAdmin';
 import api from '@/services/api';
@@ -9,7 +9,7 @@ import {
   AdminDashboardStats,
   AdminUserManagement,
   UserRole,
-  FullUserData,
+ 
   Student,
   Teacher,
   Message,
@@ -47,15 +47,15 @@ const DashboardHome: React.FC = () => {
     getUsers,
     getDashboardStats,
     getUserProfile,
-    updateUserProfile,
-    createUser,
-    updateUser,
-    deleteUser,
-    bulkUpdateUsers,
-    exportUsers,
-    resetUserPassword,
-    suspendUser,
-    unsuspendUser,
+    // updateUserProfile,
+    // createUser,
+    // updateUser,
+    // deleteUser,
+    // bulkUpdateUsers,
+    // exportUsers,
+    // resetUserPassword,
+    // suspendUser,
+    // unsuspendUser,
   } = useAdminAuth();
 
   const [dashboardData, setDashboardData] = useState<DashboardData>({

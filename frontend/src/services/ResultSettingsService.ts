@@ -1,359 +1,5 @@
-// import api from './api';
-
-// export interface GradingSystem {
-//   id: string;
-//   name: string;
-//   grading_type: string;
-//   description: string;
-//   min_score: number;
-//   max_score: number;
-//   pass_mark: number;
-//   is_active: boolean;
-//   created_at: string;
-//   updated_at: string;
-//   grades: Grade[];
-// }
-
-// export interface Grade {
-//   id: string;
-//   grading_system: string;
-//   grade: string;
-//   min_score: number;
-//   max_score: number;
-//   grade_point?: number;
-//   description: string;
-//   is_passing: boolean;
-// }
-
-// export interface AssessmentType {
-//   id: string;
-//   name: string;
-//   code: string;
-//   description: string;
-//   education_level: 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY' | 'ALL';
-//   education_level_display: string;
-//   max_score: number;
-//   weight_percentage: number;
-//   is_active: boolean;
-//   created_at: string;
-// }
-
-// export interface ExamSession {
-//   id: string;
-//   name: string;
-//   exam_type: string;
-//   term: string;
-//   academic_session: {
-//     id: string;
-//     name: string;
-//   };
-//   start_date: string;
-//   end_date: string;
-//   result_release_date: string;
-//   is_published: boolean;
-//   is_active: boolean;
-// }
-
-// export interface ScoringConfiguration {
-//   id: string;
-//   name: string;
-//   education_level: 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY';
-//   education_level_display: string;
-//   result_type: 'TERMLY' | 'SESSION';
-//   description: string;
-//   first_test_max_score: number;
-//   second_test_max_score: number;
-//   third_test_max_score: number;
-//   exam_max_score: number;
-//   total_max_score: number;
-//   ca_weight_percentage: number;
-//   exam_weight_percentage: number;
-//   total_ca_max_score: number;
-//   continuous_assessment_max_score: number;
-//   take_home_test_max_score: number;
-//   appearance_max_score: number;
-//   practical_max_score: number;
-//   project_max_score: number;
-//   note_copying_max_score: number;
-//   is_active: boolean;
-//   is_default: boolean;
-//   created_at: string;
-//   updated_at: string;
-// }
-
-// export interface ScoringConfigurationCreateUpdate {
-//   name: string;
-//   education_level: 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY';
-//   result_type: 'TERMLY' | 'SESSION';
-//   description: string;
-//   first_test_max_score: number;
-//   second_test_max_score: number;
-//   third_test_max_score: number;
-//   exam_max_score: number;
-//   total_max_score: number;
-//   ca_weight_percentage: number;
-//   exam_weight_percentage: number;
-//   continuous_assessment_max_score: number;
-//   take_home_test_max_score: number;
-//   appearance_max_score: number;
-//   practical_max_score: number;
-//   project_max_score: number;
-//   note_copying_max_score: number;
-//   is_active: boolean;
-//   is_default: boolean;
-// }
-
-// export interface GradingSystemCreateUpdate {
-//   name: string;
-//   grading_type: string;
-//   description: string;
-//   min_score: number;
-//   max_score: number;
-//   pass_mark: number;
-//   is_active: boolean;
-// }
-
-// export interface AssessmentTypeCreateUpdate {
-//   name: string;
-//   code: string;
-//   description: string;
-//   education_level: 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY' | 'ALL';
-//   max_score: number;
-//   weight_percentage: number;
-//   is_active: boolean;
-// }
-
-// export interface GradeCreateUpdate {
-//   grading_system: string;
-//   grade: string;
-//   min_score: number;
-//   max_score: number;
-//   grade_point?: number;
-//   description: string;
-//   is_passing: boolean;
-// }
-
-// export interface ExamSessionCreateUpdate {
-//   name: string;
-//   exam_type: string;
-//   term: string;
-//   academic_session: string;
-//   start_date: string;
-//   end_date: string;
-//   result_release_date: string;
-//   is_published: boolean;
-//   is_active: boolean;
-// }
-
-// class ResultSettingsService {
-//   // Grading Systems
-//   async getGradingSystems(): Promise<GradingSystem[]> {
-//     try {
-//       const response = await api.get('results/grading-systems/');
-//       return Array.isArray(response) ? response : [];
-//     } catch (error) {
-//       console.error('Error fetching grading systems:', error);
-//       return [];
-//     }
-//   }
-
-//   async createGradingSystem(data: GradingSystemCreateUpdate): Promise<GradingSystem> {
-//     const response = await api.post('results/grading-systems/', data);
-//     return response.data;
-//   }
-
-//   async updateGradingSystem(id: string, data: GradingSystemCreateUpdate): Promise<GradingSystem> {
-//     const response = await api.put(`results/grading-systems/${id}/`, data);
-//     return response.data;
-//   }
-
-//   async deleteGradingSystem(id: string): Promise<void> {
-//     await api.delete(`results/grading-systems/${id}/`);
-//   }
-
-//   // Grades
-//   async getGrades(gradingSystemId?: string): Promise<Grade[]> {
-//     try {
-//       const url = gradingSystemId 
-//         ? `results/grades/?grading_system=${gradingSystemId}`
-//         : 'results/grades/';
-//       const response = await api.get(url);
-//       return Array.isArray(response) ? response : [];
-//     } catch (error) {
-//       console.error('Error fetching grades:', error);
-//       return [];
-//     }
-//   }
-
-//   async createGrade(data: GradeCreateUpdate): Promise<Grade> {
-//     const response = await api.post('results/grades/', data);
-//     return response;
-//   }
-
-//   async updateGrade(id: string, data: GradeCreateUpdate): Promise<Grade> {
-//     const response = await api.put(`results/grades/${id}/`, data);
-//     return response;
-//   }
-
-//   async deleteGrade(id: string): Promise<void> {
-//     await api.delete(`results/grades/${id}/`);
-//   }
-
-//   // Assessment Types
-//   async getAssessmentTypes(): Promise<AssessmentType[]> {
-//     try {
-//       const response = await api.get('results/assessment-types/');
-//       return Array.isArray(response) ? response : [];
-//     } catch (error) {
-//       console.error('Error fetching assessment types:', error);
-//       return [];
-//     }
-//   }
-
-//   async createAssessmentType(data: AssessmentTypeCreateUpdate): Promise<AssessmentType> {
-//     const response = await api.post('results/assessment-types/', data);
-//     return response;
-//   }
-
-//   async updateAssessmentType(id: string, data: AssessmentTypeCreateUpdate): Promise<AssessmentType> {
-//     const response = await api.put(`results/assessment-types/${id}/`, data);
-//     return response;
-//   }
-
-//   async deleteAssessmentType(id: string): Promise<void> {
-//     await api.delete(`results/assessment-types/${id}/`);
-//   }
-
-//   // Exam Sessions
-//   async getExamSessions(filters?: { is_active?: boolean; is_published?: boolean }): Promise<ExamSession[]> {
-//     try {
-//       let url = 'results/exam-sessions/';
-//       if (filters) {
-//         const params = new URLSearchParams();
-//         if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
-//         if (filters.is_published !== undefined) params.append('is_published', filters.is_published.toString());
-//         if (params.toString()) url += `?${params.toString()}`;
-//       }
-//       const response = await api.get(url);
-//       return Array.isArray(response) ? response : [];
-//     } catch (error) {
-//       console.error('Error fetching exam sessions:', error);
-//       return [];
-//     }
-//   }
-
-//   async createExamSession(data: ExamSessionCreateUpdate): Promise<ExamSession> {
-//     const response = await api.post('results/exam-sessions/', data);
-//     return response;
-//   }
-
-//   async updateExamSession(id: string, data: ExamSessionCreateUpdate): Promise<ExamSession> {
-//     const response = await api.put(`results/exam-sessions/${id}/`, data);
-//     return response;
-//   }
-
-//   async deleteExamSession(id: string): Promise<void> {
-//     await api.delete(`results/exam-sessions/${id}/`);
-//   }
-
-//   // Scoring Configuration methods
-//   async getScoringConfigurations(): Promise<ScoringConfiguration[]> {
-//     const response = await api.get('/results/scoring-configurations/');
-//     return response;
-//   }
-
-//   async getScoringConfiguration(id: string): Promise<ScoringConfiguration> {
-//     const response = await api.get(`/results/scoring-configurations/${id}/`);
-//     return response;
-//   }
-
-//   async createScoringConfiguration(data: ScoringConfigurationCreateUpdate): Promise<ScoringConfiguration> {
-//     const response = await api.post('/results/scoring-configurations/', data);
-//     return response;
-//   }
-
-//   async updateScoringConfiguration(id: string, data: ScoringConfigurationCreateUpdate): Promise<ScoringConfiguration> {
-//     const response = await api.put(`/results/scoring-configurations/${id}/`, data);
-//     return response;
-//   }
-
-//   async deleteScoringConfiguration(id: string): Promise<void> {
-//     await api.delete(`/results/scoring-configurations/${id}/`);
-//   }
-
-//   async getScoringConfigurationsByEducationLevel(educationLevel: string): Promise<ScoringConfiguration[]> {
-//     const response = await api.get(`/results/scoring-configurations/by_education_level/?education_level=${educationLevel}`);
-//     return response;
-//   }
-
-//   async getDefaultScoringConfigurations(): Promise<Record<string, ScoringConfiguration>> {
-//     const response = await api.get('/results/scoring-configurations/defaults/');
-//     return response;
-//   }
-
-//   // Result Creation Methods
-//   async createSeniorSecondaryResult(data: any): Promise<any> {
-//     const response = await api.post('/results/senior-secondary-results/', data);
-//     return response;
-//   }
-
-//   async createJuniorSecondaryResult(data: any): Promise<any> {
-//     const response = await api.post('/results/junior-secondary-results/', data);
-//     return response;
-//   }
-
-//   async createPrimaryResult(data: any): Promise<any> {
-//     const response = await api.post('/results/primary-results/', data);
-//     return response;
-//   }
-
-//   async createNurseryResult(data: any): Promise<any> {
-//     const response = await api.post('/results/nursery-results/', data);
-//     return response;
-//   }
-
-//   async updateSeniorSecondaryResult(id: string, data: any): Promise<any> {
-//     const response = await api.put(`/results/senior-secondary-results/${id}/`, data);
-//     return response;
-//   }
-
-//   async updateJuniorSecondaryResult(id: string, data: any): Promise<any> {
-//     const response = await api.put(`/results/junior-secondary-results/${id}/`, data);
-//     return response;
-//   }
-
-//   async updatePrimaryResult(id: string, data: any): Promise<any> {
-//     const response = await api.put(`/results/primary-results/${id}/`, data);
-//     return response;
-//   }
-
-//   async updateNurseryResult(id: string, data: any): Promise<any> {
-//     const response = await api.put(`/results/nursery-results/${id}/`, data);
-//     return response;
-//   }
-
-//   async deleteSeniorSecondaryResult(id: string): Promise<void> {
-//     await api.delete(`/results/senior-secondary-results/${id}/`);
-//   }
-
-//   async deleteJuniorSecondaryResult(id: string): Promise<void> {
-//     await api.delete(`/results/junior-secondary-results/${id}/`);
-//   }
-
-//   async deletePrimaryResult(id: string): Promise<void> {
-//     await api.delete(`/results/primary-results/${id}/`);
-//   }
-
-//   async deleteNurseryResult(id: string): Promise<void> {
-//     await api.delete(`/results/nursery-results/${id}/`);
-//   }
-// }
-
-// export default new ResultSettingsService();
-
-
-
 import api from './api';
+import { SchoolSettings } from '@/types/types';
 
 export interface GradingSystem {
   id: string;
@@ -366,13 +12,14 @@ export interface GradingSystem {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  grades: Grade[];
+  grades: GradeRange[];
 }
 
-export interface Grade {
+export interface GradeRange {
   id: string;
   grading_system: string;
   grade: string;
+  remark: string;
   min_score: number;
   max_score: number;
   grade_point?: number;
@@ -436,7 +83,6 @@ export interface ScoringConfiguration {
   updated_at: string;
 }
 
-// Additional interfaces for missing models
 export interface StudentResult {
   id: string;
   student: string;
@@ -449,6 +95,48 @@ export interface StudentResult {
   is_published: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface SubjectResult {
+  subject: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  total_score: number;
+  percentage: number;
+  grade: string;
+  position: number;
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  teacher_remark?: string;
+
+  // Senior secondary fields
+  test1_score?: number;
+  test2_score?: number;
+  test3_score?: number;
+  exam_score?: number;
+
+  // Primary/junior fields
+  ca1_score?: number;
+  ca2_score?: number;
+  ca3_score?: number;
+  ca4_score?: number;
+  ca5_score?: number;
+  ca6_score?: number;
+  exam_marks?: number;
+}
+
+export interface ResultSheet {
+  id: string;
+  student_id: string;
+  exam_session_id: string;
+  subjects: SubjectResult[];
+  overall_total: number;
+  average: number;
+  position: string;
+  remarks?: string;
 }
 
 export interface StudentTermResult {
@@ -466,7 +154,7 @@ export interface StudentTermResult {
   updated_at: string;
 }
 
-export interface ResultSheet {
+export interface ApiResultSheet {
   id: string;
   exam_session: string;
   class_level: string;
@@ -496,6 +184,18 @@ export interface ResultComment {
   head_teacher_comment?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface EnhancedResultSheet {
+  student_id: string;
+  exam_session_id: string;
+  class_level: string;
+  subjects: SubjectResult[];
+  overall_total: number;
+  average: number;
+  position: string;
+  remarks?: string;
+  school_info: SchoolSettings;
 }
 
 // Create/Update interfaces
@@ -563,478 +263,1017 @@ export interface ExamSessionCreateUpdate {
   is_active: boolean;
 }
 
+// Education level specific result interfaces
+export interface NurseryResult {
+  id: string;
+  student: string;
+  subject: string;
+  exam_session: string;
+  [key: string]: any; // Allow for flexible nursery-specific fields
+}
+
+export interface PrimaryResult {
+  id: string;
+  student: string;
+  subject: string;
+  exam_session: string;
+  ca1_score?: number;
+  ca2_score?: number;
+  ca3_score?: number;
+  exam_score: number;
+  total_score: number;
+  [key: string]: any;
+}
+
+export interface JuniorSecondaryResult {
+  id: string;
+  student: string;
+  subject: string;
+  exam_session: string;
+  ca1_score?: number;
+  ca2_score?: number;
+  ca3_score?: number;
+  exam_score: number;
+  total_score: number;
+  [key: string]: any;
+}
+
+export interface SeniorSecondaryResult {
+  id: string;
+  student: {
+    id: string;
+    name?: string;
+    full_name?: string;
+    username?: string;
+    registration_number?: string;
+    class?: string;
+    student_class?: string;
+    age?: number;
+    education_level?: string;
+  };
+  subject: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  exam_session: {
+    id: string;
+    name?: string;
+    term_display?: string;
+    start_date?: string;
+    end_date?: string;
+    academic_session?: string;
+    academic_session_name?: string;
+  };
+  test1_score?: number;
+  test2_score?: number;
+  test3_score?: number;
+  exam_score: number;
+  total_score: number;
+  class_average?: number;
+  highest_in_class?: number;
+  lowest_in_class?: number;
+  position?: number;
+  grade?: string;
+  teacher_remark?: string;
+  percentage?: number;
+  [key: string]: any;
+}
+
+
+export interface SeniorSecondarySessionResult {
+  id: string;
+  student: string;
+  subject: string;
+  academic_session: string;
+  first_term_total: number;
+  second_term_total: number;
+  third_term_total: number;
+  session_total: number;
+  session_average: number;
+  [key: string]: any;
+}
+
+// API Response interfaces
+export interface ApiResponse<T> {
+  results?: T[];
+  data?: T;
+  count?: number;
+  next?: string;
+  previous?: string;
+}
+
+// Filter interfaces
+export interface ExamSessionFilters {
+  is_active?: boolean;
+  is_published?: boolean;
+  term?: string;
+  academic_session?: string;
+}
+
+export interface ResultFilters {
+  student?: string;
+  subject?: string;
+  exam_session?: string;
+  is_published?: boolean;
+  class_level?: string;
+}
+
 class ResultSettingsService {
+  private schoolSettings: SchoolSettings | null = null;
+
+  setSchoolSettings(settings: SchoolSettings) {
+    this.schoolSettings = settings;
+  }
+
+  getSchoolSettings(): SchoolSettings | null {
+    return this.schoolSettings;
+  }
+
+  // Helper method to handle API responses consistently
+  private handleApiResponse<T>(response: any): T[] {
+    if (Array.isArray(response)) return response;
+    if (response?.results && Array.isArray(response.results)) return response.results;
+    if (response?.data && Array.isArray(response.data)) return response.data;
+    return [];
+  }
+
+  private handleSingleApiResponse<T>(response: any): T {
+    return response?.data || response;
+  }
+
   // Grading Systems
   async getGradingSystems(): Promise<GradingSystem[]> {
     try {
       const response = await api.get('results/grading-systems/');
-      return Array.isArray(response) ? response : [];
+      return this.handleApiResponse<GradingSystem>(response);
     } catch (error) {
       console.error('Error fetching grading systems:', error);
-      return [];
+      throw error;
+    }
+  }
+
+  async getGradingSystem(id: string): Promise<GradingSystem> {
+    try {
+      const response = await api.get(`results/grading-systems/${id}/`);
+      return this.handleSingleApiResponse<GradingSystem>(response);
+    } catch (error) {
+      console.error('Error fetching grading system:', error);
+      throw error;
     }
   }
 
   async createGradingSystem(data: GradingSystemCreateUpdate): Promise<GradingSystem> {
-    const response = await api.post('results/grading-systems/', data);
-    return response.data;
+    try {
+      const response = await api.post('results/grading-systems/', data);
+      return this.handleSingleApiResponse<GradingSystem>(response);
+    } catch (error) {
+      console.error('Error creating grading system:', error);
+      throw error;
+    }
   }
 
-  async updateGradingSystem(id: string, data: GradingSystemCreateUpdate): Promise<GradingSystem> {
-    const response = await api.put(`results/grading-systems/${id}/`, data);
-    return response.data;
+  async updateGradingSystem(id: string, data: Partial<GradingSystemCreateUpdate>): Promise<GradingSystem> {
+    try {
+      const response = await api.patch(`results/grading-systems/${id}/`, data);
+      return this.handleSingleApiResponse<GradingSystem>(response);
+    } catch (error) {
+      console.error('Error updating grading system:', error);
+      throw error;
+    }
   }
 
   async deleteGradingSystem(id: string): Promise<void> {
-    await api.delete(`results/grading-systems/${id}/`);
+    try {
+      await api.delete(`results/grading-systems/${id}/`);
+    } catch (error) {
+      console.error('Error deleting grading system:', error);
+      throw error;
+    }
   }
 
   // Grades
-  async getGrades(gradingSystemId?: string): Promise<Grade[]> {
+  async getGrades(gradingSystemId?: string): Promise<GradeRange[]> {
     try {
       const url = gradingSystemId 
         ? `results/grades/?grading_system=${gradingSystemId}`
         : 'results/grades/';
       const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      return this.handleApiResponse<GradeRange>(response);
     } catch (error) {
-      console.error('Error fetching grades:', error);
-      return [];
+      console.error('Error fetching grade ranges:', error);
+      throw error;
     }
   }
 
-  async createGrade(data: GradeCreateUpdate): Promise<Grade> {
-    const response = await api.post('results/grades/', data);
-    return response.data;
+  async createGrade(data: GradeCreateUpdate): Promise<GradeRange> {
+    try {
+      const response = await api.post('results/grades/', data);
+      return this.handleSingleApiResponse<GradeRange>(response);
+    } catch (error) {
+      console.error('Error creating grade:', error);
+      throw error;
+    }
   }
 
-  async updateGrade(id: string, data: GradeCreateUpdate): Promise<Grade> {
-    const response = await api.put(`results/grades/${id}/`, data);
-    return response.data;
+  async updateGrade(id: string, data: Partial<GradeCreateUpdate>): Promise<GradeRange> {
+    try {
+      const response = await api.patch(`results/grades/${id}/`, data);
+      return this.handleSingleApiResponse<GradeRange>(response);
+    } catch (error) {
+      console.error('Error updating grade:', error);
+      throw error;
+    }
   }
 
   async deleteGrade(id: string): Promise<void> {
-    await api.delete(`results/grades/${id}/`);
+    try {
+      await api.delete(`results/grades/${id}/`);
+    } catch (error) {
+      console.error('Error deleting grade:', error);
+      throw error;
+    }
   }
 
   // Assessment Types
-  async getAssessmentTypes(): Promise<AssessmentType[]> {
+  async getAssessmentTypes(educationLevel?: string): Promise<AssessmentType[]> {
     try {
-      const response = await api.get('results/assessment-types/');
-      return Array.isArray(response) ? response : [];
+      const url = educationLevel 
+        ? `results/assessment-types/?education_level=${educationLevel}`
+        : 'results/assessment-types/';
+      const response = await api.get(url);
+      return this.handleApiResponse<AssessmentType>(response);
     } catch (error) {
       console.error('Error fetching assessment types:', error);
-      return [];
+      throw error;
     }
   }
 
   async createAssessmentType(data: AssessmentTypeCreateUpdate): Promise<AssessmentType> {
-    const response = await api.post('results/assessment-types/', data);
-    return response.data;
+    try {
+      const response = await api.post('results/assessment-types/', data);
+      return this.handleSingleApiResponse<AssessmentType>(response);
+    } catch (error) {
+      console.error('Error creating assessment type:', error);
+      throw error;
+    }
   }
 
-  async updateAssessmentType(id: string, data: AssessmentTypeCreateUpdate): Promise<AssessmentType> {
-    const response = await api.put(`results/assessment-types/${id}/`, data);
-    return response.data;
+  async updateAssessmentType(id: string, data: Partial<AssessmentTypeCreateUpdate>): Promise<AssessmentType> {
+    try {
+      const response = await api.patch(`results/assessment-types/${id}/`, data);
+      return this.handleSingleApiResponse<AssessmentType>(response);
+    } catch (error) {
+      console.error('Error updating assessment type:', error);
+      throw error;
+    }
   }
 
   async deleteAssessmentType(id: string): Promise<void> {
-    await api.delete(`results/assessment-types/${id}/`);
+    try {
+      await api.delete(`results/assessment-types/${id}/`);
+    } catch (error) {
+      console.error('Error deleting assessment type:', error);
+      throw error;
+    }
   }
 
   // Exam Sessions
-  async getExamSessions(filters?: { is_active?: boolean; is_published?: boolean }): Promise<ExamSession[]> {
+  async getExamSessions(filters?: ExamSessionFilters): Promise<ExamSession[]> {
     try {
-      let url = 'results/exam-sessions/';
-      if (filters) {
-        const params = new URLSearchParams();
-        if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
-        if (filters.is_published !== undefined) params.append('is_published', filters.is_published.toString());
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      const response = await api.get('results/exam-sessions/', filters);
+      return this.handleApiResponse<ExamSession>(response);
     } catch (error) {
       console.error('Error fetching exam sessions:', error);
-      return [];
+      throw error;
+    }
+  }
+
+  async getExamSession(id: string): Promise<ExamSession> {
+    try {
+      const response = await api.get(`results/exam-sessions/${id}/`);
+      return this.handleSingleApiResponse<ExamSession>(response);
+    } catch (error) {
+      console.error('Error fetching exam session:', error);
+      throw error;
     }
   }
 
   async createExamSession(data: ExamSessionCreateUpdate): Promise<ExamSession> {
-    const response = await api.post('results/exam-sessions/', data);
-    return response.data;
+    try {
+      const response = await api.post('results/exam-sessions/', data);
+      return this.handleSingleApiResponse<ExamSession>(response);
+    } catch (error) {
+      console.error('Error creating exam session:', error);
+      throw error;
+    }
   }
 
-  async updateExamSession(id: string, data: ExamSessionCreateUpdate): Promise<ExamSession> {
-    const response = await api.put(`results/exam-sessions/${id}/`, data);
-    return response.data;
+  async updateExamSession(id: string, data: Partial<ExamSessionCreateUpdate>): Promise<ExamSession> {
+    try {
+      const response = await api.patch(`results/exam-sessions/${id}/`, data);
+      return this.handleSingleApiResponse<ExamSession>(response);
+    } catch (error) {
+      console.error('Error updating exam session:', error);
+      throw error;
+    }
   }
 
   async deleteExamSession(id: string): Promise<void> {
-    await api.delete(`results/exam-sessions/${id}/`);
+    try {
+      await api.delete(`results/exam-sessions/${id}/`);
+    } catch (error) {
+      console.error('Error deleting exam session:', error);
+      throw error;
+    }
   }
 
   // Scoring Configuration methods
-  async getScoringConfigurations(): Promise<ScoringConfiguration[]> {
+  async getScoringConfigurations(educationLevel?: string): Promise<ScoringConfiguration[]> {
     try {
-      const response = await api.get('results/scoring-configurations/');
-      return Array.isArray(response) ? response : [];
+      const url = educationLevel 
+        ? `results/scoring-configurations/?education_level=${educationLevel}`
+        : 'results/scoring-configurations/';
+      const response = await api.get(url);
+      return this.handleApiResponse<ScoringConfiguration>(response);
     } catch (error) {
       console.error('Error fetching scoring configurations:', error);
-      return [];
+      throw error;
     }
   }
 
   async getScoringConfiguration(id: string): Promise<ScoringConfiguration> {
-    const response = await api.get(`results/scoring-configurations/${id}/`);
-    return response.data;
+    try {
+      const response = await api.get(`results/scoring-configurations/${id}/`);
+      return this.handleSingleApiResponse<ScoringConfiguration>(response);
+    } catch (error) {
+      console.error('Error fetching scoring configuration:', error);
+      throw error;
+    }
   }
 
   async createScoringConfiguration(data: ScoringConfigurationCreateUpdate): Promise<ScoringConfiguration> {
-    const response = await api.post('results/scoring-configurations/', data);
-    return response.data;
+    try {
+      const response = await api.post('results/scoring-configurations/', data);
+      return this.handleSingleApiResponse<ScoringConfiguration>(response);
+    } catch (error) {
+      console.error('Error creating scoring configuration:', error);
+      throw error;
+    }
   }
 
-  async updateScoringConfiguration(id: string, data: ScoringConfigurationCreateUpdate): Promise<ScoringConfiguration> {
-    const response = await api.put(`results/scoring-configurations/${id}/`, data);
-    return response.data;
+  async updateScoringConfiguration(id: string, data: Partial<ScoringConfigurationCreateUpdate>): Promise<ScoringConfiguration> {
+    try {
+      const response = await api.patch(`results/scoring-configurations/${id}/`, data);
+      return this.handleSingleApiResponse<ScoringConfiguration>(response);
+    } catch (error) {
+      console.error('Error updating scoring configuration:', error);
+      throw error;
+    }
   }
 
   async deleteScoringConfiguration(id: string): Promise<void> {
-    await api.delete(`results/scoring-configurations/${id}/`);
-  }
-
-  async getScoringConfigurationsByEducationLevel(educationLevel: string): Promise<ScoringConfiguration[]> {
     try {
-      const response = await api.get(`results/scoring-configurations/by_education_level/?education_level=${educationLevel}`);
-      return Array.isArray(response) ? response : [];
+      await api.delete(`results/scoring-configurations/${id}/`);
     } catch (error) {
-      console.error('Error fetching scoring configurations by education level:', error);
-      return [];
+      console.error('Error deleting scoring configuration:', error);
+      throw error;
     }
   }
 
   async getDefaultScoringConfigurations(): Promise<Record<string, ScoringConfiguration>> {
     try {
       const response = await api.get('results/scoring-configurations/defaults/');
-      return response || {};
+      return response?.data || response || {};
     } catch (error) {
       console.error('Error fetching default scoring configurations:', error);
-      return {};
+      throw error;
     }
   }
 
-  // Student Results (Generic)
-  async getStudentResults(filters?: any): Promise<StudentResult[]> {
+  // Enhanced Result Sheet Generation
+  async generateEnhancedResultSheet(
+    studentId: string,
+    examSessionId: string,
+    templateId?: string
+  ): Promise<EnhancedResultSheet> {
     try {
-      let url = 'results/student-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      const params: Record<string, string> = {
+        student: studentId,
+        exam_session: examSessionId,
+      };
+      if (templateId) params.template = templateId;
+
+      const response = await api.get('results/generate-enhanced-result/', params);
+      const result = this.handleSingleApiResponse<Omit<EnhancedResultSheet, 'school_info'>>(response);
+
+      return {
+        ...result,
+        school_info: this.schoolSettings || ({} as SchoolSettings),
+      };
     } catch (error) {
-      console.error('Error fetching student results:', error);
-      return [];
+      console.error('Error generating enhanced result sheet:', error);
+      throw error;
     }
   }
 
-  async createStudentResult(data: any): Promise<StudentResult> {
-    const response = await api.post('results/student-results/', data);
-    return response.data;
-  }
-
-  async updateStudentResult(id: string, data: any): Promise<StudentResult> {
-    const response = await api.put(`results/student-results/${id}/`, data);
-    return response.data;
-  }
-
-  async deleteStudentResult(id: string): Promise<void> {
-    await api.delete(`results/student-results/${id}/`);
-  }
-
-  // Student Term Results
-  async getStudentTermResults(filters?: any): Promise<StudentTermResult[]> {
+  async generateBulkResultSheets(
+    studentIds: string[],
+    examSessionId: string
+  ): Promise<EnhancedResultSheet[]> {
     try {
-      let url = 'results/student-term-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      const response = await api.post('results/generate-bulk-results/', {
+        students: studentIds,
+        exam_session: examSessionId,
+      });
+
+      const results = this.handleApiResponse<Omit<EnhancedResultSheet, 'school_info'>>(response);
+
+      return results.map(result => ({
+        ...result,
+        school_info: this.schoolSettings || ({} as SchoolSettings),
+      }));
     } catch (error) {
-      console.error('Error fetching student term results:', error);
-      return [];
+      console.error('Error generating bulk result sheets:', error);
+      throw error;
     }
   }
 
-  async createStudentTermResult(data: any): Promise<StudentTermResult> {
-    const response = await api.post('results/student-term-results/', data);
-    return response.data;
-  }
-
-  async updateStudentTermResult(id: string, data: any): Promise<StudentTermResult> {
-    const response = await api.put(`results/student-term-results/${id}/`, data);
-    return response.data;
-  }
-
-  async deleteStudentTermResult(id: string): Promise<void> {
-    await api.delete(`results/student-term-results/${id}/`);
-  }
-
-  // Result Sheets
-  async getResultSheets(filters?: any): Promise<ResultSheet[]> {
+  // Education-Level Specific Results
+  async getNurseryResults(filters?: ResultFilters): Promise<NurseryResult[]> {
     try {
-      let url = 'results/result-sheets/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      const response = await api.get('results/nursery/results/', filters);
+      return this.handleApiResponse<NurseryResult>(response);
     } catch (error) {
-      console.error('Error fetching result sheets:', error);
-      return [];
+      console.error('Error fetching nursery results:', error);
+      throw error;
     }
   }
 
-  async createResultSheet(data: any): Promise<ResultSheet> {
-    const response = await api.post('results/result-sheets/', data);
-    return response.data;
-  }
-
-  async updateResultSheet(id: string, data: any): Promise<ResultSheet> {
-    const response = await api.put(`results/result-sheets/${id}/`, data);
-    return response.data;
-  }
-
-  async deleteResultSheet(id: string): Promise<void> {
-    await api.delete(`results/result-sheets/${id}/`);
-  }
-
-  // Assessment Scores
-  async getAssessmentScores(filters?: any): Promise<AssessmentScore[]> {
+  async createNurseryResult(data: Partial<NurseryResult>): Promise<NurseryResult> {
     try {
-      let url = 'results/assessment-scores/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      const response = await api.post('results/nursery/results/', data);
+      return this.handleSingleApiResponse<NurseryResult>(response);
     } catch (error) {
-      console.error('Error fetching assessment scores:', error);
-      return [];
+      console.error('Error creating nursery result:', error);
+      throw error;
     }
   }
 
-  async createAssessmentScore(data: any): Promise<AssessmentScore> {
-    const response = await api.post('results/assessment-scores/', data);
-    return response.data;
-  }
-
-  async updateAssessmentScore(id: string, data: any): Promise<AssessmentScore> {
-    const response = await api.put(`results/assessment-scores/${id}/`, data);
-    return response.data;
-  }
-
-  async deleteAssessmentScore(id: string): Promise<void> {
-    await api.delete(`results/assessment-scores/${id}/`);
-  }
-
-  // Result Comments
-  async getResultComments(filters?: any): Promise<ResultComment[]> {
+  async updateNurseryResult(id: string, data: Partial<NurseryResult>): Promise<NurseryResult> {
     try {
-      let url = 'results/result-comments/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      const response = await api.patch(`results/nursery/results/${id}/`, data);
+      return this.handleSingleApiResponse<NurseryResult>(response);
     } catch (error) {
-      console.error('Error fetching result comments:', error);
-      return [];
+      console.error('Error updating nursery result:', error);
+      throw error;
     }
-  }
-
-  async createResultComment(data: any): Promise<ResultComment> {
-    const response = await api.post('results/result-comments/', data);
-    return response.data;
-  }
-
-  async updateResultComment(id: string, data: any): Promise<ResultComment> {
-    const response = await api.put(`results/result-comments/${id}/`, data);
-    return response.data;
-  }
-
-  async deleteResultComment(id: string): Promise<void> {
-    await api.delete(`results/result-comments/${id}/`);
-  }
-
-  // Education-Level Specific Result Creation Methods
-  async createNurseryResult(data: any): Promise<any> {
-    const response = await api.post('results/nursery-results/', data);
-    return response.data;
-  }
-
-  async updateNurseryResult(id: string, data: any): Promise<any> {
-    const response = await api.put(`results/nursery-results/${id}/`, data);
-    return response.data;
   }
 
   async deleteNurseryResult(id: string): Promise<void> {
-    await api.delete(`results/nursery-results/${id}/`);
-  }
-
-  async getNurseryResults(filters?: any): Promise<any[]> {
     try {
-      let url = 'results/nursery-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      await api.delete(`results/nursery/results/${id}/`);
     } catch (error) {
-      console.error('Error fetching nursery results:', error);
-      return [];
+      console.error('Error deleting nursery result:', error);
+      throw error;
     }
   }
 
-  async createPrimaryResult(data: any): Promise<any> {
-    const response = await api.post('results/primary-results/', data);
-    return response.data;
+  // Primary Results
+  async getPrimaryResults(filters?: ResultFilters): Promise<PrimaryResult[]> {
+    try {
+      const response = await api.get('results/primary/results/', filters);
+      return this.handleApiResponse<PrimaryResult>(response);
+    } catch (error) {
+      console.error('Error fetching primary results:', error);
+      throw error;
+    }
   }
 
-  async updatePrimaryResult(id: string, data: any): Promise<any> {
-    const response = await api.put(`results/primary-results/${id}/`, data);
-    return response.data;
+  async createPrimaryResult(data: Partial<PrimaryResult>): Promise<PrimaryResult> {
+    try {
+      const response = await api.post('results/primary/results/', data);
+      return this.handleSingleApiResponse<PrimaryResult>(response);
+    } catch (error) {
+      console.error('Error creating primary result:', error);
+      throw error;
+    }
+  }
+
+  async updatePrimaryResult(id: string, data: Partial<PrimaryResult>): Promise<PrimaryResult> {
+    try {
+      const response = await api.patch(`results/primary/results/${id}/`, data);
+      return this.handleSingleApiResponse<PrimaryResult>(response);
+    } catch (error) {
+      console.error('Error updating primary result:', error);
+      throw error;
+    }
   }
 
   async deletePrimaryResult(id: string): Promise<void> {
-    await api.delete(`results/primary-results/${id}/`);
-  }
-
-  async getPrimaryResults(filters?: any): Promise<any[]> {
     try {
-      let url = 'results/primary-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      await api.delete(`results/primary/results/${id}/`);
     } catch (error) {
-      console.error('Error fetching primary results:', error);
-      return [];
+      console.error('Error deleting primary result:', error);
+      throw error;
     }
   }
 
-  async createJuniorSecondaryResult(data: any): Promise<any> {
-    const response = await api.post('results/junior-secondary-results/', data);
-    return response.data;
+  // Junior Secondary Results
+  async getJuniorSecondaryResults(filters?: ResultFilters): Promise<JuniorSecondaryResult[]> {
+    try {
+      const response = await api.get('results/junior-secondary/results/', filters);
+      return this.handleApiResponse<JuniorSecondaryResult>(response);
+    } catch (error) {
+      console.error('Error fetching junior secondary results:', error);
+      throw error;
+    }
   }
 
-  async updateJuniorSecondaryResult(id: string, data: any): Promise<any> {
-    const response = await api.put(`results/junior-secondary-results/${id}/`, data);
-    return response.data;
+  async createJuniorSecondaryResult(data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> {
+    try {
+      const response = await api.post('results/junior-secondary/results/', data);
+      return this.handleSingleApiResponse<JuniorSecondaryResult>(response);
+    } catch (error) {
+      console.error('Error creating junior secondary result:', error);
+      throw error;
+    }
+  }
+
+  async updateJuniorSecondaryResult(id: string, data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> {
+    try {
+      const response = await api.patch(`results/junior-secondary/results/${id}/`, data);
+      return this.handleSingleApiResponse<JuniorSecondaryResult>(response);
+    } catch (error) {
+      console.error('Error updating junior secondary result:', error);
+      throw error;
+    }
   }
 
   async deleteJuniorSecondaryResult(id: string): Promise<void> {
-    await api.delete(`results/junior-secondary-results/${id}/`);
-  }
-
-  async getJuniorSecondaryResults(filters?: any): Promise<any[]> {
     try {
-      let url = 'results/junior-secondary-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      await api.delete(`results/junior-secondary/results/${id}/`);
     } catch (error) {
-      console.error('Error fetching junior secondary results:', error);
-      return [];
+      console.error('Error deleting junior secondary result:', error);
+      throw error;
     }
   }
 
-  async createSeniorSecondaryResult(data: any): Promise<any> {
-    const response = await api.post('results/senior-secondary-results/', data);
-    return response.data;
+  // Senior Secondary Results
+  async getSeniorSecondaryTermlyResults(filters?: ResultFilters): Promise<SeniorSecondaryResult[]> {
+    try {
+      const response = await api.get('results/senior-secondary/results/', filters);
+      return this.handleApiResponse<SeniorSecondaryResult>(response);
+    } catch (error) {
+      console.error('Error fetching senior secondary results:', error);
+      throw error;
+    }
   }
 
-  async updateSeniorSecondaryResult(id: string, data: any): Promise<any> {
-    const response = await api.put(`results/senior-secondary-results/${id}/`, data);
-    return response.data;
+  async getSeniorSecondaryTermReports(filters?: ResultFilters): Promise<any[]> {
+    try {
+      const response = await api.get('results/senior-secondary/term-reports/', filters);
+      return this.handleApiResponse<any>(response);
+    } catch (error) {
+      console.error('Error fetching senior secondary term reports:', error);
+      throw error;
+    }
+  }
+
+  async createSeniorSecondaryResult(data: Partial<SeniorSecondaryResult>): Promise<SeniorSecondaryResult> {
+    try {
+      const response = await api.post('results/senior-secondary/results/', data);
+      return this.handleSingleApiResponse<SeniorSecondaryResult>(response);
+    } catch (error) {
+      console.error('Error creating senior secondary result:', error);
+      throw error;
+    }
+  }
+
+  async updateSeniorSecondaryResult(id: string, data: Partial<SeniorSecondaryResult>): Promise<SeniorSecondaryResult> {
+    try {
+      const response = await api.patch(`results/senior-secondary/results/${id}/`, data);
+      return this.handleSingleApiResponse<SeniorSecondaryResult>(response);
+    } catch (error) {
+      console.error('Error updating senior secondary result:', error);
+      throw error;
+    }
   }
 
   async deleteSeniorSecondaryResult(id: string): Promise<void> {
-    await api.delete(`results/senior-secondary-results/${id}/`);
-  }
-
-  async getSeniorSecondaryResults(filters?: any): Promise<any[]> {
     try {
-      let url = 'results/senior-secondary-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      await api.delete(`results/senior-secondary/results/${id}/`);
     } catch (error) {
-      console.error('Error fetching senior secondary results:', error);
-      return [];
+      console.error('Error deleting senior secondary result:', error);
+      throw error;
     }
   }
 
   // Senior Secondary Session Results
-  async createSeniorSecondarySessionResult(data: any): Promise<any> {
-    const response = await api.post('results/senior-secondary-session-results/', data);
-    return response.data;
+  async getSeniorSecondarySessionResults(filters?: ResultFilters): Promise<SeniorSecondarySessionResult[]> {
+    try {
+      const response = await api.get('results/senior-secondary/session-results/', filters);
+      return this.handleApiResponse<SeniorSecondarySessionResult>(response);
+    } catch (error) {
+      console.error('Error fetching senior secondary session results:', error);
+      throw error;
+    }
   }
 
-  async updateSeniorSecondarySessionResult(id: string, data: any): Promise<any> {
-    const response = await api.put(`results/senior-secondary-session-results/${id}/`, data);
-    return response.data;
+  async createSeniorSecondarySessionResult(data: Partial<SeniorSecondarySessionResult>): Promise<SeniorSecondarySessionResult> {
+    try {
+      const response = await api.post('results/senior-secondary/session-results/', data);
+      return this.handleSingleApiResponse<SeniorSecondarySessionResult>(response);
+    } catch (error) {
+      console.error('Error creating senior secondary session result:', error);
+      throw error;
+    }
+  }
+
+  async updateSeniorSecondarySessionResult(id: string, data: Partial<SeniorSecondarySessionResult>): Promise<SeniorSecondarySessionResult> {
+    try {
+      const response = await api.patch(`results/senior-secondary/session-results/${id}/`, data);
+      return this.handleSingleApiResponse<SeniorSecondarySessionResult>(response);
+    } catch (error) {
+      console.error('Error updating senior secondary session result:', error);
+      throw error;
+    }
   }
 
   async deleteSeniorSecondarySessionResult(id: string): Promise<void> {
-    await api.delete(`results/senior-secondary-session-results/${id}/`);
-  }
-
-  async getSeniorSecondarySessionResults(filters?: any): Promise<any[]> {
     try {
-      let url = 'results/senior-secondary-session-results/';
-      if (filters) {
-        const params = new URLSearchParams(filters);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
-      return Array.isArray(response) ? response : [];
+      await api.delete(`results/senior-secondary/session-results/${id}/`);
     } catch (error) {
-      console.error('Error fetching senior secondary session results:', error);
-      return [];
+      console.error('Error deleting senior secondary session result:', error);
+      throw error;
     }
   }
 
-  // Result Checker
-  async checkResult(data: any): Promise<any> {
-    const response = await api.post('results/result-checker/', data);
-    return response.data;
+  // Generic CRUD operations for legacy endpoints
+  async getStudentResults(filters?: ResultFilters): Promise<StudentResult[]> {
+    try {
+      const response = await api.get('results/student-results/', filters);
+      return this.handleApiResponse<StudentResult>(response);
+    } catch (error) {
+      console.error('Error fetching student results:', error);
+      throw error;
+    }
   }
 
-  async getResultCheckerOptions(): Promise<any> {
+  async getStudentTermResults(filters?: ResultFilters): Promise<StudentTermResult[]> {
     try {
-      const response = await api.get('results/result-checker/');
-      return response;
+      const response = await api.get('results/student-term-results/', filters);
+      return this.handleApiResponse<StudentTermResult>(response);
+    } catch (error) {
+      console.error('Error fetching student term results:', error);
+      throw error;
+    }
+  }
+
+  async getResultSheets(filters?: ResultFilters): Promise<ApiResultSheet[]> {
+    try {
+      const response = await api.get('results/result-sheets/', filters);
+      return this.handleApiResponse<ApiResultSheet>(response);
+    } catch (error) {
+      console.error('Error fetching result sheets:', error);
+      throw error;
+    }
+  }
+
+  async getAssessmentScores(filters?: ResultFilters): Promise<AssessmentScore[]> {
+    try {
+      const response = await api.get('results/assessment-scores/', filters);
+      return this.handleApiResponse<AssessmentScore>(response);
+    } catch (error) {
+      console.error('Error fetching assessment scores:', error);
+      throw error;
+    }
+  }
+
+  async getResultComments(filters?: ResultFilters): Promise<ResultComment[]> {
+    try {
+      const response = await api.get('results/result-comments/', filters);
+      return this.handleApiResponse<ResultComment>(response);
+    } catch (error) {
+      console.error('Error fetching result comments:', error);
+      throw error;
+    }
+  }
+
+  // Result Checker functionality
+  async checkResult(data: {
+    student_id?: string;
+    registration_number?: string;
+    exam_session_id?: string;
+    access_code?: string;
+  }): Promise<any> {
+    try {
+      const response = await api.post('results/result-checker/', data);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error checking result:', error);
+      throw error;
+    }
+  }
+
+  async getResultCheckerOptions(): Promise<{
+    exam_sessions: ExamSession[];
+    access_required: boolean;
+    available_formats: string[];
+  }> {
+    try {
+      const response = await api.get('results/result-checker/options/');
+      return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error fetching result checker options:', error);
-      return {};
+      throw error;
     }
+  }
+
+  // Bulk Operations (using actual endpoints)
+  async bulkCreateResults(
+    educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary',
+    results: any[]
+  ): Promise<any[]> {
+    try {
+      const response = await api.post(`results/${educationLevel}/results/bulk_create/`, results);
+      return this.handleApiResponse(response);
+    } catch (error) {
+      console.error(`Error bulk creating ${educationLevel} results:`, error);
+      throw error;
+    }
+  }
+
+  // Statistics and Analytics (using actual endpoints)
+  async getResultStatistics(
+    educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary',
+    filters?: {
+      exam_session?: string;
+      class_level?: string;
+      subject?: string;
+    }
+  ): Promise<any> {
+    try {
+      const response = await api.get(`results/${educationLevel}/results/class_statistics/`, filters);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error(`Error fetching ${educationLevel} result statistics:`, error);
+      throw error;
+    }
+  }
+
+  // Exam Session Statistics (using actual endpoint)
+  async getExamSessionStatistics(examSessionId: string): Promise<any> {
+    try {
+      const response = await api.get(`results/exam-sessions/${examSessionId}/statistics/`);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error fetching exam session statistics:', error);
+      throw error;
+    }
+  }
+
+  // Grade Distribution (Senior Secondary specific)
+  async getGradeDistribution(filters?: ResultFilters): Promise<any> {
+    try {
+      const response = await api.get('results/senior-secondary/results/grade_distribution/', filters);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error fetching grade distribution:', error);
+      throw error;
+    }
+  }
+
+  // Report Generation (using actual endpoints)
+  async generateResultSheet(data: any): Promise<any> {
+    try {
+      const response = await api.post('results/result-sheets/generate_sheet/', data);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error generating result sheet:', error);
+      throw error;
+    }
+  }
+
+  async generateTermReport(data: any): Promise<any> {
+    try {
+      const response = await api.post('results/student-term-results/generate_report/', data);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error generating term report:', error);
+      throw error;
+    }
+  }
+
+  async generateSessionReport(data: any): Promise<any> {
+    try {
+      const response = await api.post('results/senior-secondary/session-reports/generate_session_report/', data);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error generating session report:', error);
+      throw error;
+    }
+  }
+
+  // Result Publishing (using actual endpoints)
+  async approveResult(
+    educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary' | 'student',
+    resultId: string
+  ): Promise<any> {
+    try {
+      const endpoint = educationLevel === 'student' 
+        ? `results/student-results/${resultId}/approve/`
+        : `results/${educationLevel}/results/${resultId}/approve/`;
+      const response = await api.post(endpoint, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error(`Error approving ${educationLevel} result:`, error);
+      throw error;
+    }
+  }
+
+  async publishResult(
+    educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary' | 'student',
+    resultId: string
+  ): Promise<any> {
+    try {
+      const endpoint = educationLevel === 'student' 
+        ? `results/student-results/${resultId}/publish/`
+        : `results/${educationLevel}/results/${resultId}/publish/`;
+      const response = await api.post(endpoint, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error(`Error publishing ${educationLevel} result:`, error);
+      throw error;
+    }
+  }
+
+  async publishExamSession(examSessionId: string): Promise<any> {
+    try {
+      const response = await api.post(`results/exam-sessions/${examSessionId}/publish/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error publishing exam session:', error);
+      throw error;
+    }
+  }
+
+  // Term Report specific operations
+  async publishTermReport(
+    educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary',
+    reportId: string
+  ): Promise<any> {
+    try {
+      const response = await api.post(`results/${educationLevel}/term-reports/${reportId}/publish/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error(`Error publishing ${educationLevel} term report:`, error);
+      throw error;
+    }
+  }
+
+  async calculateTermReportMetrics(
+    educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary',
+    reportId: string
+  ): Promise<any> {
+    try {
+      const response = await api.post(`results/${educationLevel}/term-reports/${reportId}/calculate_metrics/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error(`Error calculating ${educationLevel} term report metrics:`, error);
+      throw error;
+    }
+  }
+
+  // Senior Secondary specific operations
+  async bulkPublishSeniorSecondaryTermReports(data: any): Promise<any> {
+    try {
+      const response = await api.post('results/senior-secondary/term-reports/bulk_publish/', data);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error bulk publishing senior secondary term reports:', error);
+      throw error;
+    }
+  }
+
+  async calculateSessionReportMetrics(reportId: string): Promise<any> {
+    try {
+      const response = await api.post(`results/senior-secondary/session-reports/${reportId}/calculate_metrics/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error calculating session report metrics:', error);
+      throw error;
+    }
+  }
+
+  // Scoring Configuration specific operations
+  async setDefaultScoringConfiguration(configId: string): Promise<any> {
+    try {
+      const response = await api.post(`results/scoring-configurations/${configId}/set_as_default/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error setting default scoring configuration:', error);
+      throw error;
+    }
+  }
+
+  async getScoringConfigurationsByEducationLevel(educationLevel: string): Promise<ScoringConfiguration[]> {
+    try {
+      const response = await api.get('results/scoring-configurations/by_education_level/', {
+        education_level: educationLevel
+      });
+      return this.handleApiResponse<ScoringConfiguration>(response);
+    } catch (error) {
+      console.error('Error fetching scoring configurations by education level:', error);
+      throw error;
+    }
+  }
+
+  async getScoringConfigurationsByResultType(resultType: string): Promise<ScoringConfiguration[]> {
+    try {
+      const response = await api.get('results/scoring-configurations/by_result_type/', {
+        result_type: resultType
+      });
+      return this.handleApiResponse<ScoringConfiguration>(response);
+    } catch (error) {
+      console.error('Error fetching scoring configurations by result type:', error);
+      throw error;
+    }
+  }
+
+  // Grading System specific operations
+  async activateGradingSystem(systemId: string): Promise<any> {
+    try {
+      const response = await api.post(`results/grading-systems/${systemId}/activate/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error activating grading system:', error);
+      throw error;
+    }
+  }
+
+  async deactivateGradingSystem(systemId: string): Promise<any> {
+    try {
+      const response = await api.post(`results/grading-systems/${systemId}/deactivate/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error deactivating grading system:', error);
+      throw error;
+    }
+  }
+
+  // Student Result specific operations
+  async getStudentResultsByStudent(studentId: string): Promise<StudentResult[]> {
+    try {
+      const response = await api.get('results/student-results/by_student/', {
+        student: studentId
+      });
+      return this.handleApiResponse<StudentResult>(response);
+    } catch (error) {
+      console.error('Error fetching student results by student:', error);
+      throw error;
+    }
+  }
+
+  async getStudentTermResultDetailed(resultId: string): Promise<any> {
+    try {
+      const response = await api.get(`results/student-term-results/${resultId}/detailed/`);
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error fetching detailed student term result:', error);
+      throw error;
+    }
+  }
+
+  // Result Sheet specific operations
+  async approveResultSheet(sheetId: string): Promise<any> {
+    try {
+      const response = await api.post(`results/result-sheets/${sheetId}/approve/`, {});
+      return this.handleSingleApiResponse(response);
+    } catch (error) {
+      console.error('Error approving result sheet:', error);
+      throw error;
+    }
+  }
+
+  // Utility methods for education level specific operations
+  getEducationLevelEndpoint(educationLevel: string): string {
+    const mapping: Record<string, string> = {
+      'NURSERY': 'nursery',
+      'PRIMARY': 'primary', 
+      'JUNIOR_SECONDARY': 'junior-secondary',
+      'SENIOR_SECONDARY': 'senior-secondary'
+    };
+    return mapping[educationLevel] || educationLevel.toLowerCase().replace('_', '-');
+  }
+
+  // Cache management for better performance
+  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+  
+
+  clearCache(): void {
+    this.cache.clear();
   }
 }
 

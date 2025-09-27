@@ -23,6 +23,8 @@ from .serializers import (
     SubjectCreateUpdateSerializer,
     SubjectEducationLevelSerializer,
 )
+from .utils import clear_subject_caches
+
 # from classroom.models import GradeLevel  # Commented out to avoid circular import
 
 logger = logging.getLogger(__name__)
@@ -31,16 +33,16 @@ logger = logging.getLogger(__name__)
 def filter_by_json_field(queryset, field_name, value):
     """
     Database-agnostic JSON field filtering that works with both SQLite and PostgreSQL.
-    
+
     Args:
         queryset: The base queryset to filter
         field_name: The JSON field name (e.g., 'education_levels', 'nursery_levels')
         value: The value to search for in the JSON array
-    
+
     Returns:
         Filtered queryset
     """
-    if connection.vendor == 'postgresql':
+    if connection.vendor == "postgresql":
         # Use PostgreSQL-specific JSON operators for better performance
         return queryset.filter(**{f"{field_name}__contains": [value]})
     else:
@@ -99,7 +101,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
         "short_name",
         "code",
         "category",
-
         "subject_order",
         "created_at",
     ]
@@ -119,12 +120,29 @@ class SubjectViewSet(viewsets.ModelViewSet):
         }
         return serializer_map.get(self.action, SubjectSerializer)
 
+    # def get_permissions(self):
+    #     """Set permissions based on action"""
+    #     # Temporarily allow unauthenticated access for testing
+    #     if self.action in [
+    #         "list",
+    #         "statistics",
+    #         "destroy",
+    #         "create",
+    #         "update",
+    #         "partial_update",
+    #     ]:
+    #         return []  # Allow unauthenticated access for CRUD operations during testing
+    #     return [IsAuthenticated()]
+
     def get_permissions(self):
         """Set permissions based on action"""
-        # Temporarily allow unauthenticated access for testing
-        if self.action in ["list", "statistics", "destroy", "create", "update", "partial_update"]:
-            return []  # Allow unauthenticated access for CRUD operations during testing
-        return [IsAuthenticated()]
+        if self.action in ["list", "retrieve", "statistics"]:
+            return []  # Allow unauthenticated read access
+        elif self.action in ["create", "update", "partial_update", "destroy"]:
+            # For production, change this to [IsAuthenticated()]
+            return []  # Temporarily allow unauthenticated for testing
+        else:
+            return [IsAuthenticated()]
 
     def get_queryset(self):
         """Enhanced queryset with smart prefetching and filtering"""
@@ -139,12 +157,14 @@ class SubjectViewSet(viewsets.ModelViewSet):
         # Education level filtering
         education_level = self.request.query_params.get("education_level")
         if education_level:
-            queryset = filter_by_json_field(queryset, 'education_levels', education_level)
+            queryset = filter_by_json_field(
+                queryset, "education_levels", education_level
+            )
 
         # Nursery level filtering
         nursery_level = self.request.query_params.get("nursery_level")
         if nursery_level:
-            queryset = filter_by_json_field(queryset, 'nursery_levels', nursery_level)
+            queryset = filter_by_json_field(queryset, "nursery_levels", nursery_level)
 
         # Grade level filtering (integration with GradeLevel model)
         grade_level = self.request.query_params.get("grade_level")
@@ -180,9 +200,10 @@ class SubjectViewSet(viewsets.ModelViewSet):
         if teacher_id:
             try:
                 from teacher.models import TeacherAssignment
+
                 teacher_assignments = TeacherAssignment.objects.filter(
                     teacher_id=teacher_id
-                ).values_list('subject_id', flat=True)
+                ).values_list("subject_id", flat=True)
                 queryset = queryset.filter(id__in=teacher_assignments)
             except (ValueError, ImportError):
                 pass
@@ -192,15 +213,16 @@ class SubjectViewSet(viewsets.ModelViewSet):
         if teacher_specialization:
             try:
                 from teacher.models import Teacher
+
                 teachers_with_specialization = Teacher.objects.filter(
-                    specialization__icontains=teacher_specialization,
-                    is_active=True
-                ).values_list('id', flat=True)
-                
+                    specialization__icontains=teacher_specialization, is_active=True
+                ).values_list("id", flat=True)
+
                 from teacher.models import TeacherAssignment
+
                 teacher_assignments = TeacherAssignment.objects.filter(
                     teacher_id__in=teachers_with_specialization
-                ).values_list('subject_id', flat=True)
+                ).values_list("subject_id", flat=True)
                 queryset = queryset.filter(id__in=teacher_assignments)
             except (ValueError, ImportError):
                 pass
@@ -229,7 +251,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
                         "activity_based_subjects": queryset.filter(
                             is_activity_based=True
                         ).count(),
-
                     },
                 }
         return response
@@ -238,7 +259,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
         """Create with enhanced logging and cache invalidation"""
         with transaction.atomic():
             subject = serializer.save()
-            self._clear_subject_caches()
+            clear_subject_caches()
             logger.info(
                 f"Subject '{subject.name}' ({subject.code}) created by {self.request.user} "
                 f"for levels: {subject.education_levels_display}"
@@ -250,48 +271,109 @@ class SubjectViewSet(viewsets.ModelViewSet):
             old_name = serializer.instance.name
             old_levels = serializer.instance.education_levels_display
             subject = serializer.save()
-            self._clear_subject_caches()
+            clear_subject_caches()
             logger.info(
                 f"Subject '{old_name}' updated to '{subject.name}' by {self.request.user} "
                 f"(Levels: {old_levels} -> {subject.education_levels_display})"
             )
 
-    def perform_destroy(self, instance):
-        """Smart delete with enhanced soft-delete logic"""
-        with transaction.atomic():
-            # Check for dependencies across different relationships
-            has_student_subjects = (
-                hasattr(instance, "student_subjects")
-                and instance.student_subjects.exists()
+    # def perform_destroy(self, instance):
+    #     """Smart delete with enhanced soft-delete logic"""
+    #     with transaction.atomic():
+    #         # Check for dependencies across different relationships
+    #         has_student_subjects = (
+    #             hasattr(instance, "student_subjects")
+    #             and instance.student_subjects.exists()
+    #         )
+    #         has_dependent_subjects = instance.unlocks_subjects.exists()
+    #         has_grade_assignments = instance.grade_levels.exists()
+
+    #         # Get user info safely
+    #         user_info = getattr(self.request, 'user', None)
+    #         user_name = getattr(user_info, 'username', 'unknown') if user_info else 'unknown'
+
+    #         logger.info(f"🗑️ Deleting subject '{instance.name}' ({instance.code}) by {user_name}")
+    #         logger.info(f"📊 Dependencies check: student_subjects={has_student_subjects}, dependent_subjects={has_dependent_subjects}, grade_assignments={has_grade_assignments}")
+
+    #         if has_student_subjects or has_dependent_subjects or has_grade_assignments:
+    #             # Soft delete for subjects with dependencies
+    #             instance.is_active = False
+    #             instance.save()
+    #             logger.info(
+    #                 f"✅ Subject '{instance.name}' ({instance.code}) soft deleted by {user_name} "
+    #                 f"due to existing dependencies"
+    #             )
+    #         else:
+    #             # Hard delete if no dependencies
+    #             super().perform_destroy(instance)
+    #             logger.info(
+    #                 f"✅ Subject '{instance.name}' ({instance.code}) permanently deleted by {user_name}"
+    #             )
+
+    #         logger.info("🧹 Clearing subject caches...")
+    #         self._clear_subject_caches()
+    #         logger.info("✅ Subject caches cleared successfully")
+
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy method to ensure proper JSON response"""
+        instance = self.get_object()
+
+        try:
+            # Store instance info before potential deletion
+            subject_info = {
+                "id": instance.id,
+                "name": instance.name,
+                "code": instance.code,
+            }
+
+            # Check for dependencies
+            has_dependencies = (
+                (
+                    hasattr(instance, "student_subjects")
+                    and instance.student_subjects.exists()
+                )
+                or instance.unlocks_subjects.exists()
+                or instance.grade_levels.exists()
             )
-            has_dependent_subjects = instance.unlocks_subjects.exists()
-            has_grade_assignments = instance.grade_levels.exists()
 
-            # Get user info safely
-            user_info = getattr(self.request, 'user', None)
-            user_name = getattr(user_info, 'username', 'unknown') if user_info else 'unknown'
-
-            logger.info(f"🗑️ Deleting subject '{instance.name}' ({instance.code}) by {user_name}")
-            logger.info(f"📊 Dependencies check: student_subjects={has_student_subjects}, dependent_subjects={has_dependent_subjects}, grade_assignments={has_grade_assignments}")
-
-            if has_student_subjects or has_dependent_subjects or has_grade_assignments:
-                # Soft delete for subjects with dependencies
+            if has_dependencies:
+                # Soft delete
                 instance.is_active = False
                 instance.save()
-                logger.info(
-                    f"✅ Subject '{instance.name}' ({instance.code}) soft deleted by {user_name} "
-                    f"due to existing dependencies"
-                )
+                action_taken = "soft_deleted"
+                message = f"Subject '{instance.name}' has been deactivated due to existing dependencies"
             else:
-                # Hard delete if no dependencies
-                super().perform_destroy(instance)
-                logger.info(
-                    f"✅ Subject '{instance.name}' ({instance.code}) permanently deleted by {user_name}"
+                # Hard delete
+                instance.delete()
+                action_taken = "deleted"
+                message = (
+                    f"Subject '{subject_info['name']}' has been permanently deleted"
                 )
-            
-            logger.info("🧹 Clearing subject caches...")
-            self._clear_subject_caches()
-            logger.info("✅ Subject caches cleared successfully")
+
+            # Clear caches
+            clear_subject_caches()
+
+            # Return explicit JSON response
+            return Response(
+                {
+                    "success": True,
+                    "message": message,
+                    "action": action_taken,
+                    "subject": subject_info,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Error deleting subject {instance.id}: {str(e)}")
+            return Response(
+                {
+                    "success": False,
+                    "error": "Failed to delete subject",
+                    "details": str(e),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def _clear_subject_caches(self):
         """Clear all subject-related caches"""
@@ -553,9 +635,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
             try:
                 grade_level = GradeLevel.objects.get(id=grade_level_id)
                 is_available = subject.grade_levels.filter(id=grade_level_id).exists()
-                final_availability = (
-                    is_available and subject.is_active
-                )
+                final_availability = is_available and subject.is_active
 
                 return Response(
                     {
@@ -708,7 +788,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 "overview": {
                     "total_subjects": queryset.count(),
                     "active_subjects": queryset.filter(is_active=True).count(),
-                    
                 },
                 "by_education_level": {},
                 "by_category": {},
@@ -719,7 +798,9 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
             # Statistics by education level
             for level_code, level_name in EDUCATION_LEVELS:
-                level_subjects = filter_by_json_field(queryset, 'education_levels', level_code)
+                level_subjects = filter_by_json_field(
+                    queryset, "education_levels", level_code
+                )
                 result["by_education_level"][level_code] = {
                     "name": level_name,
                     "count": level_subjects.count(),
@@ -742,24 +823,26 @@ class SubjectViewSet(viewsets.ModelViewSet):
         """Get subjects assigned to a specific teacher"""
         teacher_id = request.query_params.get("teacher_id")
         teacher_specialization = request.query_params.get("teacher_specialization")
-        
+
         if not teacher_id and not teacher_specialization:
             return Response(
-                {"error": "Either teacher_id or teacher_specialization parameter is required"},
-                status=400
+                {
+                    "error": "Either teacher_id or teacher_specialization parameter is required"
+                },
+                status=400,
             )
-        
+
         try:
             from teacher.models import Teacher, TeacherAssignment
-            
+
             if teacher_id:
                 # Get subjects assigned to specific teacher
                 teacher_assignments = TeacherAssignment.objects.filter(
                     teacher_id=teacher_id
-                ).select_related('subject', 'teacher', 'grade_level', 'section')
-                
+                ).select_related("subject", "teacher", "grade_level", "section")
+
                 subjects = [assignment.subject for assignment in teacher_assignments]
-                
+
                 # Get teacher info
                 teacher = Teacher.objects.get(id=teacher_id)
                 teacher_info = {
@@ -767,26 +850,25 @@ class SubjectViewSet(viewsets.ModelViewSet):
                     "name": teacher.user.full_name,
                     "employee_id": teacher.employee_id,
                     "specialization": teacher.specialization,
-                    "level": teacher.level
+                    "level": teacher.level,
                 }
-                
+
             else:
                 # Get subjects by teacher specialization
                 teachers_with_specialization = Teacher.objects.filter(
-                    specialization__icontains=teacher_specialization,
-                    is_active=True
+                    specialization__icontains=teacher_specialization, is_active=True
                 )
-                
+
                 teacher_assignments = TeacherAssignment.objects.filter(
                     teacher__in=teachers_with_specialization
-                ).select_related('subject', 'teacher', 'grade_level', 'section')
-                
+                ).select_related("subject", "teacher", "grade_level", "section")
+
                 subjects = [assignment.subject for assignment in teacher_assignments]
                 teacher_info = {
                     "specialization": teacher_specialization,
-                    "teacher_count": teachers_with_specialization.count()
+                    "teacher_count": teachers_with_specialization.count(),
                 }
-            
+
             # Remove duplicates while preserving order
             seen_subjects = set()
             unique_subjects = []
@@ -794,34 +876,44 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 if subject.id not in seen_subjects:
                     seen_subjects.add(subject.id)
                     unique_subjects.append(subject)
-            
+
             serializer = SubjectListSerializer(unique_subjects, many=True)
-            
+
             response_data = {
                 "teacher_info": teacher_info,
                 "subjects": serializer.data,
                 "total_subjects": len(unique_subjects),
-                "assignments": []
+                "assignments": [],
             }
-            
+
             # Add assignment details if requested
-            include_assignments = request.query_params.get("include_assignments", "false").lower() == "true"
+            include_assignments = (
+                request.query_params.get("include_assignments", "false").lower()
+                == "true"
+            )
             if include_assignments:
                 for assignment in teacher_assignments:
-                    response_data["assignments"].append({
-                        "id": assignment.id,
-                        "subject": assignment.subject.name,
-                        "grade_level": assignment.grade_level.name if assignment.grade_level else None,
-                        "section": assignment.section.name if assignment.section else None,
-                        "teacher": assignment.teacher.user.full_name
-                    })
-            
+                    response_data["assignments"].append(
+                        {
+                            "id": assignment.id,
+                            "subject": assignment.subject.name,
+                            "grade_level": (
+                                assignment.grade_level.name
+                                if assignment.grade_level
+                                else None
+                            ),
+                            "section": (
+                                assignment.section.name if assignment.section else None
+                            ),
+                            "teacher": assignment.teacher.user.full_name,
+                        }
+                    )
+
             return Response(response_data)
-            
+
         except (ValueError, Teacher.DoesNotExist, ImportError) as e:
             return Response(
-                {"error": f"Invalid teacher information: {str(e)}"},
-                status=400
+                {"error": f"Invalid teacher information: {str(e)}"}, status=400
             )
 
     def _get_category_icon(self, category):
