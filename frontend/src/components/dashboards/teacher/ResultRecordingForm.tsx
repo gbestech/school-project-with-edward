@@ -862,8 +862,26 @@ useEffect(() => {
         await ResultService.updateStudentResult(finalId, resultData);
         toast.success('Result updated successfully!');
       } else {
-        await ResultService.createStudentResult(resultData);
-        toast.success('Result recorded successfully!');
+        try {
+          await ResultService.createStudentResult(resultData);
+          toast.success('Result recorded successfully!');
+        } catch (error: any) {
+          console.error('Error creating result:', error);
+          
+          // Handle unique constraint violation
+          if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+            const errorMessage = error.response.data.non_field_errors[0];
+            if (errorMessage.includes('unique')) {
+              toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+              return;
+            }
+          }
+          
+          // Handle other errors
+          const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
+          toast.error(errorMessage);
+          throw error;
+        }
       }
 
       onResultCreated();

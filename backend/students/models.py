@@ -287,6 +287,41 @@ class Student(models.Model):
         blank=True, null=True, help_text="Any special educational or care requirements"
     )
 
+    # Additional student information fields
+    blood_group = models.CharField(
+        max_length=5,
+        blank=True,
+        null=True,
+        help_text="Student's blood group (e.g., A+, B-, O+)"
+    )
+    
+    place_of_birth = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Student's place of birth"
+    )
+    
+    address = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Student's home address"
+    )
+    
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Student's phone number"
+    )
+    
+    payment_method = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Preferred payment method (e.g., Bank Transfer, Cash, etc.)"
+    )
+
     # New: Track if student is active (registered/activated)
     is_active = models.BooleanField(
         default=True, help_text="Is the student currently active/registered?"

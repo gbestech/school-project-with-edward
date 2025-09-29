@@ -158,6 +158,9 @@ export default function JuniorSecondaryResult({
   onPDFGenerated,
   enableEnhancedFeatures = true
 }: JuniorSecondaryResultProps) {
+  // State to store the corrected next_term_begins date
+  const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
+  
   const ref = useRef(null);
   const { service, schoolSettings, loading: serviceLoading } = useResultService();
   
@@ -167,6 +170,76 @@ export default function JuniorSecondaryResult({
   const [examSession, setExamSession] = useState<ExamSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if we need to fix the next_term_begins date
+  useEffect(() => {
+    const fixNextTermBegins = async () => {
+      // If we receive invalid date, fetch the correct date from Term settings
+      if (!data?.next_term_begins || data?.next_term_begins === 'Invalid Date' || data?.next_term_begins === 'TBA') {
+        console.log('🔧 [JuniorSecondaryResult] Fixing next_term_begins - received:', data?.next_term_begins);
+        
+        try {
+          // Import AcademicCalendarService to get Term settings
+          const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
+          
+          // Get current academic session and terms
+          const academicSessions = await AcademicCalendarService.getAcademicSessions();
+          const currentSession = academicSessions.find(session => session.is_current);
+          
+          if (currentSession) {
+            console.log('🔧 [JuniorSecondaryResult] Current academic session:', currentSession);
+            
+            // Get all terms and filter by current session
+            const allTerms = await AcademicCalendarService.getTerms();
+            const terms = allTerms.filter(term => term.academic_session === currentSession.id);
+            console.log('🔧 [JuniorSecondaryResult] Available terms:', terms);
+            
+            // Find the current term and next term
+            const currentTerm = terms.find(term => term.is_current);
+            if (currentTerm) {
+              console.log('🔧 [JuniorSecondaryResult] Current term:', currentTerm);
+              
+              // If current term has next_term_begins, use it
+              if (currentTerm.next_term_begins) {
+                console.log('🔧 [JuniorSecondaryResult] Found next_term_begins from current term:', currentTerm.next_term_begins);
+                setCorrectedNextTermBegins(currentTerm.next_term_begins);
+                return;
+              }
+              
+              // Otherwise, find the next term in sequence
+              const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+              const currentIndex = termOrder.indexOf(currentTerm.name);
+              
+              if (currentIndex < termOrder.length - 1) {
+                const nextTermName = termOrder[currentIndex + 1];
+                const nextTerm = terms.find(term => term.name === nextTermName);
+                
+                if (nextTerm && nextTerm.next_term_begins) {
+                  console.log('🔧 [JuniorSecondaryResult] Found next_term_begins from next term:', nextTerm.next_term_begins);
+                  setCorrectedNextTermBegins(nextTerm.next_term_begins);
+                  return;
+                }
+              }
+            }
+          }
+          
+          // Fallback: Use a default date
+          const defaultDate = '2025-01-17';
+          console.log('🔧 [JuniorSecondaryResult] Using fallback date:', defaultDate);
+          setCorrectedNextTermBegins(defaultDate);
+          
+        } catch (error) {
+          console.error('🔧 [JuniorSecondaryResult] Error fetching next term begins date:', error);
+          setCorrectedNextTermBegins('2025-01-17');
+        }
+      } else {
+        console.log('🔧 [JuniorSecondaryResult] next_term_begins is already correct:', data?.next_term_begins);
+        setCorrectedNextTermBegins(data?.next_term_begins);
+      }
+    };
+    
+    fixNextTermBegins();
+  }, [data?.next_term_begins]);
 
   useEffect(() => {
     const fetchGradingData = async () => {
@@ -463,8 +536,11 @@ export default function JuniorSecondaryResult({
                 {schoolSettings?.address || "School Address, City, State"}
               </p>
               <p className="text-sm text-gray-600">
-                Phone: {schoolSettings?.phone || "(123) 456-7890"} | Email: {schoolSettings?.email || "info@school.com"}
+                {schoolSettings?.phone || "(123) 456-7890"} |{schoolSettings?.email || "info@school.com"}
               </p>
+              {schoolSettings?.motto && (
+                <p className="text-xs italic text-blue-700 mt-1">{schoolSettings.motto}</p>
+                  )}
             </div>
           </div>
 
@@ -541,7 +617,7 @@ export default function JuniorSecondaryResult({
               <span className="ml-4 font-semibold text-slate-700">NEXT TERM BEGINS</span>
               <div className="w-40 border-b border-slate-400 text-center" style={{ height: 1 }}>
                 <span className="bg-white px-2 text-slate-800 font-medium">
-                  {data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : ""}
+                  {correctedNextTermBegins ? new Date(correctedNextTermBegins).toLocaleDateString() : (data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : "")}
                 </span>
               </div>
             </div>

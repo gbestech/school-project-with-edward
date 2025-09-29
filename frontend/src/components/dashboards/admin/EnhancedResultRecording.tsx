@@ -279,17 +279,38 @@ const EnhancedResultRecording: React.FC<EnhancedResultRecordingProps> = ({
       }
       
       // Call appropriate API
-      if (student.education_level === 'SENIOR_SECONDARY') {
-        await resultSettingsService.createSeniorSecondaryResult(resultData);
-      } else if (student.education_level === 'JUNIOR_SECONDARY') {
-        await resultSettingsService.createJuniorSecondaryResult(resultData);
-      } else if (student.education_level === 'PRIMARY') {
-        await resultSettingsService.createPrimaryResult(resultData);
-      } else if (student.education_level === 'NURSERY') {
-        await resultSettingsService.createNurseryResult(resultData);
+      try {
+        if (student.education_level === 'SENIOR_SECONDARY') {
+          await resultSettingsService.createSeniorSecondaryResult(resultData);
+        } else if (student.education_level === 'JUNIOR_SECONDARY') {
+          await resultSettingsService.createJuniorSecondaryResult(resultData);
+        } else if (student.education_level === 'PRIMARY') {
+          await resultSettingsService.createPrimaryResult(resultData);
+        } else if (student.education_level === 'NURSERY') {
+          await resultSettingsService.createNurseryResult(resultData);
+        }
+        
+        toast.success('Result recorded successfully');
+      } catch (error: any) {
+        console.error('Error creating result:', error);
+        
+        // Handle unique constraint violation
+        if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+          const errorMessage = error.response.data.non_field_errors[0];
+          if (errorMessage.includes('unique')) {
+            toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+            // Mark error as specifically handled to prevent outer catch from showing generic message
+            error.specificErrorHandled = true;
+            return;
+          }
+        }
+        
+        // Handle other errors
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
+        toast.error(errorMessage);
+        error.specificErrorHandled = true;
+        throw error;
       }
-      
-      toast.success('Result recorded successfully');
       setShowForm(false);
       resetForm();
        if (onResultAdded) {
@@ -303,7 +324,22 @@ const EnhancedResultRecording: React.FC<EnhancedResultRecordingProps> = ({
       }
     } catch (error: any) {
       console.error('Error saving result:', error);
-      toast.error(error.response?.data?.message || 'Failed to save result');
+      
+      // Only show generic error if no specific error was already shown
+      if (!error.specificErrorHandled) {
+        // Handle unique constraint violation
+        if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+          const errorMessage = error.response.data.non_field_errors[0];
+          if (errorMessage.includes('unique')) {
+            toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+            return;
+          }
+        }
+        
+        // Handle other errors
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to save result';
+        toast.error(errorMessage);
+      }
     } finally {
       setSaving(false);
     }

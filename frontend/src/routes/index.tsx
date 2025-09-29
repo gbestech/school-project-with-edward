@@ -31,7 +31,7 @@ const TeacherResults = lazy(() => import('./../pages/teacher/Results').catch(() 
 const TeacherSchedule = lazy(() => import('./../pages/teacher/Schedule').catch(() => ({ default: () => <div>Error loading Teacher Schedule</div> })));
 const TeacherSubjects = lazy(() => import('./../pages/teacher/Subjects').catch(() => ({ default: () => <div>Error loading Teacher Subjects</div> })));
 const TeacherSubjectDetail = lazy(() => import('./../pages/teacher/SubjectDetail').catch(() => ({ default: () => <div>Error loading Teacher Subject Detail</div> })));
-const StudentList = lazy(() => import('./../pages/student/Allstudents').catch(() => ({ default: () => <div>Error loading Student List</div> })));
+const StudentList = lazy(() => import('./../pages/admin/AdminStudentList').catch(() => ({ default: () => <div>Error loading Student List</div> })));
 const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard').catch(() => ({ default: () => <div>Error loading Parent Dashboard</div> })));
 const NotFound = lazy(() => import('./../pages/NotFound').catch(() => ({ default: () => <div>Page Not Found</div> })));
 // const AdminDashboardLayout = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Admin Layout</div> })));
@@ -43,6 +43,8 @@ const AdminExamsManagement = lazy(() => import('./../pages/admin/AdminExamsManag
 const AdminExamScheduleManagement = lazy(() => import('./../pages/admin/AdminExamScheduleManagement').catch(() => ({ default: () => <div>Error loading Exam Schedule Management</div> })));
 const AdminAtendanceMangement = lazy(() => import('./../pages/admin/AdminAttendanceView').catch(() => ({ default: () => <div>Error loading Attendance Dashboard</div> })));
 const AddStudentForm = lazy(() => import('./../pages/admin/AddStudentForm').catch(() => ({ default: () => <div>Error loading Add Student Form</div> })));
+const EditStudentForm = lazy(() => import('./../components/dashboards/admin/EditStudentForm').catch(() => ({ default: () => <div>Error loading Edit Student Form</div> })));
+const StudentDetailView = lazy(() => import('./../components/dashboards/admin/StudentDetailView').catch(() => ({ default: () => <div>Error loading Student Detail View</div> })));
 const AdminSubjectManagement = lazy(() => import('./../pages/admin/AdminSubjectManagement').catch(() => ({ default: () => <div>Error loading Admin Subject Management</div> })));
 const AdminResultManagement = lazy(() => import('./../pages/admin/AdminResultManagement').catch(() => ({ default: () => <div>Error loading Admin Result Management</div> })));
 const AllTeachers = lazy(() => import('./../pages/admin/AllTeachers').catch(() => ({ default: () => <div>Error loading All Teachers</div> })));
@@ -404,6 +406,11 @@ export const router = createBrowserRouter([
         errorElement: <RouteErrorElement />
       },
       {
+        path: 'students/:id',
+        element: <StudentDetailView />,
+        errorElement: <RouteErrorElement />
+      },
+      {
         path: 'results',
         element: <AdminResultManagement />,
         errorElement: <RouteErrorElement />
@@ -446,6 +453,11 @@ export const router = createBrowserRouter([
       {
         path: 'students/add',
         element: <AddStudentForm />,
+        errorElement: <RouteErrorElement />
+      },
+      {
+        path: 'students/:id/edit',
+        element: <EditStudentForm />,
         errorElement: <RouteErrorElement />
       },
       {

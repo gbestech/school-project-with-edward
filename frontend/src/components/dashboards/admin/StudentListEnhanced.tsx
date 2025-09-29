@@ -5,10 +5,7 @@ import {
   Filter,
   MoreVertical,
   Edit,
-  Trash2,
-  Download,
   User,
-  X,
   AlertCircle,
   Grid3X3,
   List,
@@ -17,18 +14,10 @@ import {
   GraduationCap,
   Calendar,
   Mail,
-  Phone,
-  MapPin,
-  BookOpen,
-  Trophy,
-  Users,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw
+  BookOpen
 } from 'lucide-react';
 import StudentService, { Student } from '@/services/StudentService';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import ResultSheetView from './ResultSheetView';
 
 // Helper for debounce
@@ -119,9 +108,9 @@ const StudentListEnhanced: React.FC = () => {
     // Search filter
     if (debouncedSearch) {
       filtered = filtered.filter(student => 
-        student.user?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        student.registration_number?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-        student.user_email?.toLowerCase().includes(debouncedSearch.toLowerCase())
+        student.full_name?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        student.username?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        student.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
       );
     }
 
@@ -148,10 +137,6 @@ const StudentListEnhanced: React.FC = () => {
     setShowResultSheet(true);
   };
 
-  // Export to PDF
-  const exportToPDF = () => {
-    toast.info('PDF export functionality will be implemented soon');
-  };
 
   // Get class label
   const getClassLabel = (classValue: string) => {
@@ -338,8 +323,8 @@ const StudentListEnhanced: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Genders</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
                 </select>
               </div>
             </div>
@@ -377,10 +362,10 @@ const StudentListEnhanced: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 truncate">
-                        {student.user}
+                        {student.full_name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {student.registration_number || 'No Reg. No.'}
+                        {student.username || 'No Reg. No.'}
                       </p>
                     </div>
                   </div>
@@ -441,14 +426,14 @@ const StudentListEnhanced: React.FC = () => {
                   <div className="flex items-center space-x-2 text-sm">
                     <Mail className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-600 truncate">
-                      {student.user_email || 'No email'}
+                      {student.email || 'No email'}
                     </span>
                   </div>
                   
                   <div className="flex items-center space-x-2 text-sm">
                     <Calendar className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-600">
-                      {student.admission_date ? new Date(student.admission_date).toLocaleDateString() : 'No date'}
+                      {student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'No date'}
                     </span>
                   </div>
                 </div>
@@ -458,11 +443,11 @@ const StudentListEnhanced: React.FC = () => {
               <div className="px-6 py-4 bg-gray-50 border-t">
                 <div className="flex items-center justify-between">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    student.gender === 'M' 
+                    student.gender === 'MALE' 
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-pink-100 text-pink-800'
                   }`}>
-                    {student.gender === 'M' ? 'Male' : 'Female'}
+                    {student.gender === 'MALE' ? 'Male' : 'Female'}
                   </span>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     student.is_active 
@@ -518,13 +503,13 @@ const StudentListEnhanced: React.FC = () => {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {student.user}
+                            {student.full_name}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {student.registration_number || 'N/A'}
+                      {student.username || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getClassLabel(student.student_class)}
@@ -533,15 +518,15 @@ const StudentListEnhanced: React.FC = () => {
                       {getEducationLevelLabel(student.education_level)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {student.user_email || 'N/A'}
+                      {student.email || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        student.gender === 'M' 
+                        student.gender === 'MALE' 
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-pink-100 text-pink-800'
                       }`}>
-                        {student.gender === 'M' ? 'Male' : 'Female'}
+                        {student.gender === 'MALE' ? 'Male' : 'Female'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

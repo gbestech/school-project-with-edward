@@ -60,17 +60,105 @@ export default function SeniorSecondaryTermlyResult({
   // templateId,
   data 
 }: SeniorSecondaryResultProps) {
+  
+  // State to store the corrected next_term_begins date
+  const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
+  
+  console.log('🔍 [SeniorSecondaryTermlyResult] Component props received:');
+  console.log('🔍 [SeniorSecondaryTermlyResult] studentId:', studentId);
+  console.log('🔍 [SeniorSecondaryTermlyResult] examSessionId:', examSessionId);
+  console.log('🔍 [SeniorSecondaryTermlyResult] data:', data);
+  console.log('🔍 [SeniorSecondaryTermlyResult] data.next_term_begins:', data?.next_term_begins);
+  console.log('🔍 [SeniorSecondaryTermlyResult] data.next_term_begins type:', typeof data?.next_term_begins);
+  
+  // Check if we need to fix the next_term_begins date
+  useEffect(() => {
+    const fixNextTermBegins = async () => {
+      // If we receive "TBA" or invalid date, fetch the correct date from Term settings
+      if (data?.next_term_begins === 'TBA' || !data?.next_term_begins || data?.next_term_begins === 'Invalid Date') {
+        console.log('🔧 [SeniorSecondaryTermlyResult] Fixing next_term_begins - received:', data?.next_term_begins);
+        
+        try {
+          // Import AcademicCalendarService to get Term settings
+          const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
+          
+          // Get current academic session and terms
+          const academicSessions = await AcademicCalendarService.getAcademicSessions();
+          const currentSession = academicSessions.find(session => session.is_current);
+          
+          if (currentSession) {
+            console.log('🔧 [SeniorSecondaryTermlyResult] Current academic session:', currentSession);
+            
+            // Get all terms and filter by current session
+            const allTerms = await AcademicCalendarService.getTerms();
+            const terms = allTerms.filter(term => term.academic_session === currentSession.id);
+            console.log('🔧 [SeniorSecondaryTermlyResult] Available terms:', terms);
+            
+            // Find the current term and next term
+            const currentTerm = terms.find(term => term.is_current);
+            if (currentTerm) {
+              console.log('🔧 [SeniorSecondaryTermlyResult] Current term:', currentTerm);
+              
+              // If current term has next_term_begins, use it
+              if (currentTerm.next_term_begins) {
+                console.log('🔧 [SeniorSecondaryTermlyResult] Found next_term_begins from current term:', currentTerm.next_term_begins);
+                setCorrectedNextTermBegins(currentTerm.next_term_begins);
+                return;
+              }
+              
+              // Otherwise, find the next term in sequence
+              const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+              const currentIndex = termOrder.indexOf(currentTerm.name);
+              
+              if (currentIndex < termOrder.length - 1) {
+                const nextTermName = termOrder[currentIndex + 1];
+                const nextTerm = terms.find(term => term.name === nextTermName);
+                
+                if (nextTerm && nextTerm.next_term_begins) {
+                  console.log('🔧 [SeniorSecondaryTermlyResult] Found next_term_begins from next term:', nextTerm.next_term_begins);
+                  setCorrectedNextTermBegins(nextTerm.next_term_begins);
+                  return;
+                }
+              }
+            }
+          }
+          
+          // Fallback: Use a default date (you can set this to your school's next term date)
+          const defaultDate = '2025-01-17'; // This should match your Term settings
+          console.log('🔧 [SeniorSecondaryTermlyResult] Using fallback date:', defaultDate);
+          setCorrectedNextTermBegins(defaultDate);
+          
+        } catch (error) {
+          console.error('🔧 [SeniorSecondaryTermlyResult] Error fetching next term begins date:', error);
+          // Use fallback date
+          setCorrectedNextTermBegins('2025-01-17');
+        }
+      } else {
+        console.log('🔧 [SeniorSecondaryTermlyResult] next_term_begins is already correct:', data?.next_term_begins);
+        setCorrectedNextTermBegins(data?.next_term_begins);
+      }
+    };
+    
+    fixNextTermBegins();
+  }, [data?.next_term_begins]);
+  
+  // Check if data is coming from props or if component will fetch its own data
+  console.log('🔍 [SeniorSecondaryTermlyResult] Data source check:');
+  console.log('🔍 [SeniorSecondaryTermlyResult] Has data prop:', !!data);
+  console.log('🔍 [SeniorSecondaryTermlyResult] Will fetch own data:', !data && studentId);
+  
+  // Enhanced debug logging
+  console.log('🎓 [SeniorSecondaryTermlyResult] Component received props:', { studentId, examSessionId, data });
+  console.log('🎓 [SeniorSecondaryTermlyResult] Data structure:', data);
+  console.log('🎓 [SeniorSecondaryTermlyResult] Student data:', data?.student);
+  console.log('🎓 [SeniorSecondaryTermlyResult] Subjects data:', data?.subjects);
+  console.log('🔧 [SeniorSecondaryTermlyResult] Corrected next_term_begins:', correctedNextTermBegins);
+  
   const ref = useRef<HTMLDivElement>(null);
   const { service, schoolSettings, loading: serviceLoading, isReady } = useResultService();
   
   // Debug school settings
   console.log('School Settings:', schoolSettings);
-  console.log('School Settings Type:', typeof schoolSettings);
-  console.log('School Settings Keys:', schoolSettings ? Object.keys(schoolSettings) : 'null');
-  
-  // Debug authentication
-  console.log('Auth Token in localStorage:', localStorage.getItem('authToken'));
-  console.log('Auth Token in sessionStorage:', sessionStorage.getItem('authToken'));
   
   const [resultData, setResultData] = useState<SeniorSecondaryTermlyResultData | null>(data || null);
   const [gradingSystem, setGradingSystem] = useState<GradingSystem | null>(null);
@@ -134,6 +222,15 @@ export default function SeniorSecondaryTermlyResult({
       console.log('Subject Results:', subjectResults);
       console.log('Grading Systems:', gradingSystems);
       console.log('Scoring Configs:', scoringConfigs);
+      
+      // Debug term reports specifically
+      if (termReports && termReports.length > 0) {
+        console.log('🔍 [SeniorSecondaryTermlyResult] First term report:', termReports[0]);
+        console.log('🔍 [SeniorSecondaryTermlyResult] First term report next_term_begins:', termReports[0]?.next_term_begins);
+        console.log('🔍 [SeniorSecondaryTermlyResult] First term report next_term_begins type:', typeof termReports[0]?.next_term_begins);
+      } else {
+        console.log('🔍 [SeniorSecondaryTermlyResult] No term reports found or empty array');
+      }
       
       // Check if we have any data
       if (!subjectResults || subjectResults.length === 0) {
@@ -214,7 +311,13 @@ export default function SeniorSecondaryTermlyResult({
             times_opened: termReport?.times_opened || 0,
             times_present: termReport?.times_present || 0
           },
-          next_term_begins: termReport?.next_term_begins || 'TBA',
+          next_term_begins: (() => {
+            console.log('🔍 [SeniorSecondaryTermlyResult] termReport:', termReport);
+            console.log('🔍 [SeniorSecondaryTermlyResult] termReport?.next_term_begins:', termReport?.next_term_begins);
+            console.log('🔍 [SeniorSecondaryTermlyResult] termReport?.next_term_begins type:', typeof termReport?.next_term_begins);
+            console.log('🔧 [SeniorSecondaryTermlyResult] Using corrected next_term_begins:', correctedNextTermBegins);
+            return correctedNextTermBegins || termReport?.next_term_begins;
+          })(),
           class_teacher_remark: termReport?.class_teacher_remark || '',
           head_teacher_remark: termReport?.head_teacher_remark || '',
           is_published: termReport?.is_published || false,
@@ -567,10 +670,10 @@ export default function SeniorSecondaryTermlyResult({
         {schoolSettings?.address || "School Address, City, State"}
       </p>
       <p className="text-sm text-gray-600">
-        Phone: {schoolSettings?.phone || "(123) 456-7890"} | Email: {schoolSettings?.email || "info@school.com"}
+      {schoolSettings?.phone || "(123) 456-7890"} | {schoolSettings?.email || "info@school.com"}
       </p>
       {schoolSettings?.motto && (
-        <p className="text-xs italic text-blue-700 mt-1">"{schoolSettings.motto}"</p>
+        <p className="text-xs italic text-blue-700 mt-1">{schoolSettings.motto}</p>
       )}
     </div>
   </div>
@@ -578,7 +681,7 @@ export default function SeniorSecondaryTermlyResult({
   {/* Student report block - below the grid */}
   <h2 className="text-xl font-bold mb-2 text-blue-800">STUDENT'S TERMLY REPORT</h2>
   <p className="text-sm">
-    {resultData.term?.name || 'Term'} Term, {resultData.term?.academic_session?.name || 'Academic Session'} Academic Session
+    {(resultData as any).exam_session?.term_display || resultData.term?.name || 'Term'} Term, {(resultData as any).exam_session?.academic_session_name || resultData.term?.academic_session?.name || 'Academic Session'} Academic Session
   </p>
 </div>
 
@@ -586,8 +689,8 @@ export default function SeniorSecondaryTermlyResult({
         <div className="mb-6 text-sm space-y-2">
           <div className="flex flex-wrap">
             <span className="font-semibold min-w-0 flex-1">Name: {resultData.student?.name?.toUpperCase() || 'STUDENT NAME'}</span>
-            <span className="font-semibold ml-4">Class: {resultData.student?.class || 'SSS 2'}</span>
-            <span className="font-semibold ml-4">Year: {resultData.term?.academic_session?.name || 'N/A'}</span>
+            <span className="font-semibold ml-4">Class: {(resultData.student as any)?.student_class || resultData.student?.class || 'SSS 2'}</span>
+            <span className="font-semibold ml-4">Year: {(resultData as any).exam_session?.academic_session_name || resultData.term?.academic_session?.name || 'N/A'}</span>
           </div>
           
           <div className="flex flex-wrap">
@@ -595,7 +698,7 @@ export default function SeniorSecondaryTermlyResult({
             <span className="ml-6 font-semibold">Average: {Math.round(averageScore * 100) / 100}</span>
             <span className="ml-6 font-semibold">Class Age: {resultData.student?.age || 'N/A'}</span>
             <span className="ml-6 font-semibold">No in class: {resultData.total_students || 'N/A'}</span>
-            <span className="ml-6 font-semibold">Next Term Begins: {resultData.next_term_begins || 'TBA'}</span>
+            <span className="ml-6 font-semibold">Next Term Begins: {correctedNextTermBegins || resultData.next_term_begins}</span>
           </div>
 
           <div className="flex flex-wrap">

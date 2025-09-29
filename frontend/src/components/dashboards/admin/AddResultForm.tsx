@@ -84,6 +84,15 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     // Common fields
     exam_score: '',
     
+    // Calculated fields (can be input manually or auto-calculated)
+    ca_total: '',
+    total_score: '',
+    grade: '',
+    position: '',
+    class_average: '',
+    highest_in_class: '',
+    lowest_in_class: '',
+    
     // Nursery specific
     max_marks_obtainable: '100',
     physical_development: '',
@@ -99,6 +108,75 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   const [gradingSystems, setGradingSystems] = useState<GradingSystem[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(preSelectedStudent || null);
+
+  // Auto-calculation effect
+  useEffect(() => {
+    if (!selectedStudent) return;
+
+    const calculateFields = () => {
+      const newFormData = { ...formData };
+
+      switch (selectedStudent.education_level) {
+        case 'SENIOR_SECONDARY':
+          // Calculate total score (Test 1 + Test 2 + Test 3 + Exam)
+          const test1 = parseFloat(formData.first_test_score) || 0;
+          const test2 = parseFloat(formData.second_test_score) || 0;
+          const test3 = parseFloat(formData.third_test_score) || 0;
+          const exam = parseFloat(formData.exam_score) || 0;
+          const totalScore = test1 + test2 + test3 + exam;
+          
+          // Only auto-calculate if total_score is empty
+          if (!formData.total_score && totalScore > 0) {
+            newFormData.total_score = totalScore.toString();
+          }
+          break;
+
+        case 'PRIMARY':
+        case 'JUNIOR_SECONDARY':
+          // Calculate CA Total
+          const ca = parseFloat(formData.continuous_assessment_score) || 0;
+          const takeHome = parseFloat(formData.take_home_test_score) || 0;
+          const appearance = parseFloat(formData.appearance_score) || 0;
+          const practical = parseFloat(formData.practical_score) || 0;
+          const project = parseFloat(formData.project_score) || 0;
+          const noteCopying = parseFloat(formData.note_copying_score) || 0;
+          const caTotal = ca + takeHome + appearance + practical + project + noteCopying;
+          
+          // Calculate Total Score
+          const examScore = parseFloat(formData.exam_score) || 0;
+          const totalScore2 = caTotal + examScore;
+          
+          // Only auto-calculate if fields are empty
+          if (!formData.ca_total && caTotal > 0) {
+            newFormData.ca_total = caTotal.toString();
+          }
+          if (!formData.total_score && totalScore2 > 0) {
+            newFormData.total_score = totalScore2.toString();
+          }
+          break;
+
+        case 'NURSERY':
+          // For nursery, total score is just the mark obtained
+          const markObtained = parseFloat(formData.exam_score) || 0;
+          if (!formData.total_score && markObtained > 0) {
+            newFormData.total_score = markObtained.toString();
+          }
+          break;
+      }
+
+      // Update form data if there are changes
+      if (JSON.stringify(newFormData) !== JSON.stringify(formData)) {
+        setFormData(newFormData);
+      }
+    };
+
+    calculateFields();
+  }, [
+    formData.first_test_score, formData.second_test_score, formData.third_test_score,
+    formData.continuous_assessment_score, formData.take_home_test_score, formData.appearance_score,
+    formData.practical_score, formData.project_score, formData.note_copying_score,
+    formData.exam_score, selectedStudent
+  ]);
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -165,7 +243,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
         is_active: true 
       });
       // FIXED: SubjectService returns response.data structure
-      setSubjects(subjectsResponse.data || []);
+      setSubjects(subjectsResponse || []);
     } catch (error) {
       console.error('Error loading subjects:', error);
       toast.error('Failed to load subjects');
@@ -490,13 +568,14 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   };
 
   // FIXED: Improved InputField component with better value handling
-  const InputField = ({ label, field, min, max, placeholder, step = "0.01" }: {
+  const InputField = ({ label, field, min, max, placeholder, step = "0.01", helpText }: {
     label: string;
     field: string;
     min: number;
     max: number;
     placeholder?: string;
     step?: string;
+    helpText?: string;
   }) => {
     const fieldValue = formData[field as keyof typeof formData] as string;
     
@@ -504,6 +583,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
       <div>
         <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
           {label} ({min}-{max})
+          {helpText && <span className="text-xs text-gray-500 ml-2">({helpText})</span>}
         </label>
         <input
           type="number"
@@ -535,43 +615,134 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     switch (selectedStudent.education_level) {
       case 'SENIOR_SECONDARY':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <InputField label="Test 1 Score" field="first_test_score" min={0} max={10} />
-            <InputField label="Test 2 Score" field="second_test_score" min={0} max={10} />
-            <InputField label="Test 3 Score" field="third_test_score" min={0} max={10} />
-            <InputField label="Exam Score" field="exam_score" min={0} max={70} />
+          <div className="space-y-6">
+            {/* Basic Scores */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Assessment Scores</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <InputField label="Test 1 Score" field="first_test_score" min={0} max={10} />
+                <InputField label="Test 2 Score" field="second_test_score" min={0} max={10} />
+                <InputField label="Test 3 Score" field="third_test_score" min={0} max={10} />
+                <InputField label="Exam Score" field="exam_score" min={0} max={70} />
+              </div>
+            </div>
+            
+            {/* Calculated Fields */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields (Auto-calculated or Manual Input)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" />
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="A, B, C, D, F" />
+                <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
+                <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
+                <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
+                <InputField label="Lowest in Class" field="lowest_in_class" min={0} max={100} helpText="Lowest score in class" />
+              </div>
+            </div>
+            
+            {/* Teacher Remark */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+              <textarea
+                value={formData.teacher_remark}
+                onChange={(e) => setFormData({ ...formData, teacher_remark: e.target.value })}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                rows={3}
+                placeholder="Enter teacher's remark..."
+              />
+            </div>
           </div>
         );
        
       case 'PRIMARY':
       case 'JUNIOR_SECONDARY':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <InputField label="Continuous Assessment" field="continuous_assessment_score" min={0} max={15} />
-            <InputField label="Take Home Test" field="take_home_test_score" min={0} max={5} />
-            <InputField label="Appearance Score" field="appearance_score" min={0} max={5} />
-            <InputField label="Practical Score" field="practical_score" min={0} max={5} />
-            <InputField label="Project Score" field="project_score" min={0} max={5} />
-            <InputField label="Note Copying" field="note_copying_score" min={0} max={5} />
-            <InputField label="Exam Score" field="exam_score" min={0} max={60} />
+          <div className="space-y-6">
+            {/* CA Components */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Continuous Assessment Components</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <InputField label="Continuous Assessment" field="continuous_assessment_score" min={0} max={15} />
+                <InputField label="Take Home Test" field="take_home_test_score" min={0} max={5} />
+                <InputField label="Appearance Score" field="appearance_score" min={0} max={5} />
+                <InputField label="Practical Score" field="practical_score" min={0} max={5} />
+                <InputField label="Project Score" field="project_score" min={0} max={5} />
+                <InputField label="Note Copying" field="note_copying_score" min={0} max={5} />
+                <InputField label="Exam Score" field="exam_score" min={0} max={60} />
+              </div>
+            </div>
+            
+            {/* Calculated Fields */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields (Auto-calculated or Manual Input)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <InputField label="CA Total" field="ca_total" min={0} max={35} helpText="Sum of CA components" />
+                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" />
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="A, B, C, D, F" />
+                <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
+                <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
+                <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
+                <InputField label="Lowest in Class" field="lowest_in_class" min={0} max={100} helpText="Lowest score in class" />
+              </div>
+            </div>
+            
+            {/* Teacher Remark */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+              <textarea
+                value={formData.teacher_remark}
+                onChange={(e) => setFormData({ ...formData, teacher_remark: e.target.value })}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                rows={3}
+                placeholder="Enter teacher's remark..."
+              />
+            </div>
           </div>
         );
 
       case 'NURSERY':
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputField 
-                label="Max Marks Obtainable" 
-                field="max_marks_obtainable" 
-                min={1} 
-                max={100} 
-              />
-              <InputField 
-                label="Mark Obtained" 
-                field="exam_score" 
-                min={0} 
-                max={parseFloat(formData.max_marks_obtainable) || 100} 
+          <div className="space-y-6">
+            {/* Basic Scores */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Assessment Scores</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InputField 
+                  label="Max Marks Obtainable" 
+                  field="max_marks_obtainable" 
+                  min={1} 
+                  max={100} 
+                />
+                <InputField 
+                  label="Mark Obtained" 
+                  field="exam_score" 
+                  min={0} 
+                  max={parseFloat(formData.max_marks_obtainable) || 100} 
+                />
+              </div>
+            </div>
+            
+            {/* Calculated Fields */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields (Auto-calculated or Manual Input)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="A, B, C, D, F" />
+                <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
+                <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
+                <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
+                <InputField label="Lowest in Class" field="lowest_in_class" min={0} max={100} helpText="Lowest score in class" />
+              </div>
+            </div>
+            
+            {/* Teacher Remark */}
+            <div>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+              <textarea
+                value={formData.teacher_remark}
+                onChange={(e) => setFormData({ ...formData, teacher_remark: e.target.value })}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                rows={3}
+                placeholder="Enter teacher's remark..."
               />
             </div>
             

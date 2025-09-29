@@ -103,6 +103,15 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "timezone",
             "date_format",
             "language",
+            # Portal Access Control
+            "student_portal_enabled",
+            "parent_portal_enabled",
+            "teacher_portal_enabled",
+            # General Preferences
+            "auto_save",
+            "notifications_enabled",
+            "dark_mode",
+            "maintenance_mode",
             "created_at",
             "updated_at"
         ]
@@ -133,7 +142,16 @@ class SchoolSettingsUpdateSerializer(serializers.ModelSerializer):
             "school_motto",
             "timezone",
             "date_format",
-            "language"
+            "language",
+            # Portal Access Control
+            "student_portal_enabled",
+            "parent_portal_enabled",
+            "teacher_portal_enabled",
+            # General Preferences
+            "auto_save",
+            "notifications_enabled",
+            "dark_mode",
+            "maintenance_mode"
         ]
 
 

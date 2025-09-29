@@ -590,7 +590,7 @@ const SchoolResultTemplate = () => {
                   </div>
                   <div className="flex">
                     <span className="font-semibold w-32">GPA:</span>
-                    <span>{selectedStudent.gpa ? selectedStudent.gpa.toFixed(2) : 'N/A'}</span>
+                    <span>{selectedStudent.gpa && typeof selectedStudent.gpa === 'number' ? selectedStudent.gpa.toFixed(2) : 'N/A'}</span>
                   </div>
                 </div>
                 <div>

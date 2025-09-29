@@ -23,6 +23,8 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             'timezone', 'date_format', 'time_format', 'language',
             'logo', 'favicon', 'auto_save', 'notifications_enabled', 'dark_mode',
             'maintenance_mode', 'session_timeout', 'max_login_attempts',
+            # Portal Access Control
+            'student_portal_enabled', 'parent_portal_enabled', 'teacher_portal_enabled',
             # Design Settings
             'primary_color', 'theme', 'animations_enabled', 'compact_mode',
             'typography', 'border_radius', 'shadow_style',

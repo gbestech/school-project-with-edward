@@ -97,6 +97,28 @@ class ParentProfileSerializer(serializers.ModelSerializer):
         students = validated_data.pop("students", None)
         if students is not None:
             instance.students.set(students)
+        
+        # Handle user name updates
+        user_first_name = validated_data.pop("user_first_name", None)
+        user_last_name = validated_data.pop("user_last_name", None)
+        phone = validated_data.pop("phone", None)
+        address = validated_data.pop("address", None)
+        
+        # Update user fields if provided
+        if user_first_name is not None or user_last_name is not None:
+            if instance.user:
+                if user_first_name is not None:
+                    instance.user.first_name = user_first_name
+                if user_last_name is not None:
+                    instance.user.last_name = user_last_name
+                instance.user.save()
+        
+        # Update parent profile fields
+        if phone is not None:
+            validated_data["phone"] = phone
+        if address is not None:
+            validated_data["address"] = address
+            
         return super().update(instance, validated_data)
 
     def create(self, validated_data):

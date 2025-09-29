@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { 
   User, Calendar, BookOpen, Trophy, Clock, CreditCard, MessageSquare, Settings,
-  GraduationCap, Home
+  GraduationCap, Home, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSettings } from '@/hooks/useSettings';
 import ResultSelection from './ResultSelection';
 import StudentResultDisplay from "../admin/StudentResultDisplay";
 import PortalLogin from './PortalLogin';
@@ -13,7 +14,11 @@ import StudentLessons from '@/pages/student/StudentLessons';
 
 const StudentPortal = () => {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [portalAuthenticated, setPortalAuthenticated] = useState(false);
+  
+  // Check if student portal is enabled
+  const isStudentPortalEnabled = settings?.student_portal_enabled !== false;
   
   // Get the active section from localStorage or default to 'dashboard'
   const getInitialActiveSection = () => {
@@ -76,7 +81,20 @@ const StudentPortal = () => {
 
         {/* Main Content */}
         <main className="flex-1">
-          {activeSection === 'portal' && (
+          {!isStudentPortalEnabled ? (
+            <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 text-center transition-colors duration-300">
+              <div className="w-24 h-24 bg-gradient-to-br from-red-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <AlertTriangle className="text-white" size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100 mb-2">Portal Access Disabled</h2>
+              <p className="text-gray-600 dark:text-slate-400 mb-4">
+                The student portal is currently disabled by the administrator.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-slate-500">
+                Please contact your school administrator if you need access to your portal.
+              </p>
+            </div>
+          ) : activeSection === 'portal' && (
             !portalAuthenticated ? (
               <PortalLogin onSuccess={() => setPortalAuthenticated(true)} />
             ) : showResult ? (
@@ -111,7 +129,7 @@ const StudentPortal = () => {
               />
             )
           )}
-          {activeSection === 'dashboard' && <DashboardContent />}
+          {isStudentPortalEnabled && activeSection === 'dashboard' && <DashboardContent />}
           {activeSection === 'profile' && <ProfileTab />}
           {activeSection === 'schedule' && (<StudentLessons/>)}
           {activeSection !== 'portal' && activeSection !== 'dashboard' && activeSection !== 'profile' && activeSection !== 'schedule' && (

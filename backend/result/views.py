@@ -68,10 +68,76 @@ from .serializers import (
     ConsolidatedResultSerializer,
 )
 from students.models import Student
-from academics.models import AcademicSession
+from academics.models import AcademicSession, Term
 from classroom.models import Stream
 
 logger = logging.getLogger(__name__)
+
+
+def get_next_term_begins_date(exam_session):
+    """Get the next term begins date for the given exam session"""
+    try:
+        # Ensure we have the academic_session relationship loaded
+        if not hasattr(exam_session, 'academic_session') or not exam_session.academic_session:
+            logger.error(f"Exam session {exam_session.id} does not have academic_session relationship loaded")
+            return None
+            
+        # Get the current term from the exam session
+        current_term_name = exam_session.term
+        current_academic_session = exam_session.academic_session
+        
+        logger.info(f"Getting next term begins date for term: {current_term_name}, academic_session: {current_academic_session.name}")
+        
+        # Define term order
+        term_order = ["FIRST", "SECOND", "THIRD"]
+        
+        # Find current term index
+        if current_term_name not in term_order:
+            logger.error(f"Invalid term name: {current_term_name}")
+            return None
+            
+        current_index = term_order.index(current_term_name)
+        
+        # If it's not the last term, get the next term
+        if current_index < len(term_order) - 1:
+            next_term_name = term_order[current_index + 1]
+            next_term = Term.objects.filter(
+                academic_session=current_academic_session,
+                name=next_term_name,
+                is_active=True
+            ).first()
+            
+            if next_term and next_term.next_term_begins:
+                logger.info(f"Found next term {next_term_name} with next_term_begins: {next_term.next_term_begins}")
+                return next_term.next_term_begins
+            else:
+                logger.warning(f"Next term {next_term_name} not found or has no next_term_begins date")
+        else:
+            # If it's the last term, get the first term of the next academic session
+            next_academic_session = AcademicSession.objects.filter(
+                start_date__gt=current_academic_session.end_date,
+                is_active=True
+            ).order_by('start_date').first()
+            
+            if next_academic_session:
+                next_term = Term.objects.filter(
+                    academic_session=next_academic_session,
+                    name="FIRST",
+                    is_active=True
+                ).first()
+                
+                if next_term and next_term.next_term_begins:
+                    logger.info(f"Found first term of next academic session with next_term_begins: {next_term.next_term_begins}")
+                    return next_term.next_term_begins
+                else:
+                    logger.warning(f"First term of next academic session not found or has no next_term_begins date")
+            else:
+                logger.warning(f"No next academic session found after {current_academic_session.name}")
+        
+        return None
+    except Exception as e:
+        logger.error(f"Error getting next term begins date: {e}")
+        return None
 
 
 # ===== BASE CONFIGURATION VIEWSETS =====
@@ -471,53 +537,95 @@ class StudentTermResultViewSet(viewsets.ModelViewSet):
 
         try:
             student = Student.objects.get(id=student_id)
-            exam_session = ExamSession.objects.get(id=exam_session_id)
+            exam_session = ExamSession.objects.select_related('academic_session').get(id=exam_session_id)
 
             # Create or get term result based on education level
             education_level = student.education_level
 
             if education_level == "SENIOR_SECONDARY":
+                # Get next term begins date
+                next_term_begins = get_next_term_begins_date(exam_session)
+                
                 term_result, created = SeniorSecondaryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
                     defaults={
                         "status": "DRAFT",
                         "stream": getattr(student, "stream", None),
+                        "next_term_begins": next_term_begins,
                     },
                 )
+                # Update next_term_begins if it's not set or if we have a better value
+                if not term_result.next_term_begins and next_term_begins:
+                    term_result.next_term_begins = next_term_begins
+                    term_result.save()
+                
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
                 serializer = SeniorSecondaryTermReportSerializer(term_result)
 
             elif education_level == "JUNIOR_SECONDARY":
+                # Get next term begins date
+                next_term_begins = get_next_term_begins_date(exam_session)
+                
                 term_result, created = JuniorSecondaryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
-                    defaults={"status": "DRAFT"},
+                    defaults={
+                        "status": "DRAFT",
+                        "next_term_begins": next_term_begins,
+                    },
                 )
+                # Update next_term_begins if it's not set or if we have a better value
+                if not term_result.next_term_begins and next_term_begins:
+                    term_result.next_term_begins = next_term_begins
+                    term_result.save()
+                
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
                 serializer = JuniorSecondaryTermReportSerializer(term_result)
 
             elif education_level == "PRIMARY":
+                # Get next term begins date
+                next_term_begins = get_next_term_begins_date(exam_session)
+                
                 term_result, created = PrimaryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
-                    defaults={"status": "DRAFT"},
+                    defaults={
+                        "status": "DRAFT",
+                        "next_term_begins": next_term_begins,
+                    },
                 )
+                # Update next_term_begins if it's not set or if we have a better value
+                if not term_result.next_term_begins and next_term_begins:
+                    term_result.next_term_begins = next_term_begins
+                    term_result.save()
+                
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
                 serializer = PrimaryTermReportSerializer(term_result)
 
             elif education_level == "NURSERY":
+                # Get next term begins date
+                next_term_begins = get_next_term_begins_date(exam_session)
+                
                 term_result, created = NurseryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
-                    defaults={"status": "DRAFT"},
+                    defaults={
+                        "status": "DRAFT",
+                        "next_term_begins": next_term_begins,
+                    },
                 )
+                # Update next_term_begins if it's not set or if we have a better value
+                if not term_result.next_term_begins and next_term_begins:
+                    term_result.next_term_begins = next_term_begins
+                    term_result.save()
+                
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
@@ -525,12 +633,23 @@ class StudentTermResultViewSet(viewsets.ModelViewSet):
 
             else:
                 # Fallback to base StudentTermResult
+                # Get next term begins date
+                next_term_begins = get_next_term_begins_date(exam_session)
+                
                 term_result, created = StudentTermResult.objects.get_or_create(
                     student=student,
                     academic_session=exam_session.academic_session,
                     term=exam_session.term,
-                    defaults={"status": "DRAFT"},
+                    defaults={
+                        "status": "DRAFT",
+                        "next_term_begins": next_term_begins,
+                    },
                 )
+                # Update next_term_begins if it's not set or if we have a better value
+                if not term_result.next_term_begins and next_term_begins:
+                    term_result.next_term_begins = next_term_begins
+                    term_result.save()
+                    
                 serializer = StudentTermResultSerializer(term_result)
 
             return Response(
@@ -547,6 +666,42 @@ class StudentTermResultViewSet(viewsets.ModelViewSet):
             logger.error(f"Failed to generate report: {str(e)}")
             return Response(
                 {"error": f"Failed to generate report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """Approve a term result"""
+        try:
+            with transaction.atomic():
+                term_result = self.get_object()
+                term_result.status = "APPROVED"
+                term_result.save()
+                
+                serializer = StudentTermResultSerializer(term_result)
+                return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Failed to approve term result: {str(e)}")
+            return Response(
+                {"error": f"Failed to approve term result: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        """Publish a term result"""
+        try:
+            with transaction.atomic():
+                term_result = self.get_object()
+                term_result.status = "PUBLISHED"
+                term_result.save()
+                
+                serializer = StudentTermResultSerializer(term_result)
+                return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Failed to publish term result: {str(e)}")
+            return Response(
+                {"error": f"Failed to publish term result: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -4,6 +4,8 @@ import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import ResultService, { 
   FilterParams,
 } from '@/services/ResultService';
+import ResultCheckerService from '@/services/ResultCheckerService';
+import StudentService from '@/services/StudentService';
 import { 
   SelectionData, 
   AcademicSession, 
@@ -43,6 +45,11 @@ const isAcademicSessionObject = (value: any): value is AcademicSession => {
 };
 
 const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, selections }) => {
+  console.log('🏫 [StudentResultDisplay] Component received student prop:', student);
+  console.log('🏫 [StudentResultDisplay] Student age:', student.age);
+  console.log('🏫 [StudentResultDisplay] Student gender:', student.gender);
+  console.log('🏫 [StudentResultDisplay] Student date_of_birth:', student.date_of_birth);
+  
   const { isDarkMode } = useGlobalTheme();
   const { service: resultService, schoolSettings, loading: settingsLoading, isReady } = useResultService();
   
@@ -51,7 +58,25 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
   const [enhancedResult, setEnhancedResult] = useState<EnhancedResultSheet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [completeStudent, setCompleteStudent] = useState<StudentData | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+
+  // Function to fetch complete student information
+  const fetchCompleteStudentInfo = async () => {
+    try {
+      console.log('🔄 [StudentResultDisplay] Fetching complete student info for ID:', student.id);
+      
+      // Use the student service to fetch complete student information
+      const studentInfo = await StudentService.getStudent(parseInt(student.id));
+      console.log('✅ [StudentResultDisplay] Complete student info fetched:', studentInfo);
+      
+      setCompleteStudent(studentInfo);
+    } catch (error) {
+      console.error('❌ [StudentResultDisplay] Error fetching complete student info:', error);
+      // Fallback to the original student prop
+      setCompleteStudent(student);
+    }
+  };
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -141,6 +166,9 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
       try {
         setLoading(true);
         setError(null);
+        
+        // First fetch complete student information
+        await fetchCompleteStudentInfo();
 
         if (educationLevel === 'UNKNOWN') {
           throw new Error('Unable to determine education level from student data');
@@ -198,10 +226,11 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
 
         const [resultsData, termResultsData] = await Promise.allSettled([
           ResultService.getStudentResults(filterParams),
-          // Apply same filtering to term results
-          ResultService.getTermResults({
-            ...filterParams,
-            student: student.id
+          // Use the correct service method to get term reports with next_term_begins
+          ResultCheckerService.getTermReports(educationLevel, {
+            student_id: student.id,
+            education_level: educationLevel,
+            result_type: selections.resultType === 'annually' ? 'session' : 'termly'
           })
         ]);
 
@@ -395,18 +424,27 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
   };
 
   const transformDataForPrimary = () => {
+    const studentData = completeStudent || student;
+    console.log('🔄 [StudentResultDisplay] transformDataForPrimary using student:', studentData);
+    
     return {
-      id: `primary-${student.id}`,
+      id: `primary-${studentData.id}`,
       student: {
-        id: student.id,
-        name: student.full_name,
-        admission_number: student.username,
-        username: student.username,
-        class: student.student_class,
+        id: studentData.id,
+        name: studentData.full_name,
+        admission_number: studentData.username,
+        username: studentData.username,
+        class: studentData.student_class,
         education_level: educationLevel,
-        gender: student.gender,
-        age: student.age,
-        house: student.house
+        gender: studentData.gender,
+        age: studentData.age,
+        date_of_birth: studentData.date_of_birth,
+        classroom: studentData.classroom,
+        stream: studentData.stream,
+        parent_contact: studentData.parent_contact,
+        emergency_contact: studentData.emergency_contact,
+        admission_date: studentData.admission_date,
+        house: studentData.house
       },
       term: {
         id: 'term-1',
@@ -444,20 +482,54 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
                   (result.note_copying_score || 0) + 
                   (result.practical_score || 0),
         exam_marks: result.exam_score || 0,
-        mark_obtained: result.total_score || 0,
+        mark_obtained: (result.continuous_assessment_score || 0) + 
+                       (result.take_home_test_score || 0) + 
+                       (result.project_score || 0) + 
+                       (result.appearance_score || 0) + 
+                       (result.note_copying_score || 0) + 
+                       (result.practical_score || 0) + 
+                       (result.exam_score || 0),
         total_obtainable: 100,
         id: result.id
       })),
-      total_score: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
-      average_score: termResults[0]?.average_score || 0,
-      overall_grade: termResults[0]?.gpa?.toString() || '',
-      class_position: termResults[0]?.class_position || 0,
-      total_students: termResults[0]?.total_students || 0,
+      total_score: results.reduce((sum, r) => sum + ((r.continuous_assessment_score || 0) + 
+                                                      (r.take_home_test_score || 0) + 
+                                                      (r.project_score || 0) + 
+                                                      (r.appearance_score || 0) + 
+                                                      (r.note_copying_score || 0) + 
+                                                      (r.practical_score || 0) + 
+                                                      (r.exam_score || 0)), 0),
+      // Calculate average score from subject results
+      average_score: results.length > 0 ? results.reduce((sum, r) => sum + ((r.continuous_assessment_score || 0) + 
+                                                                             (r.take_home_test_score || 0) + 
+                                                                             (r.project_score || 0) + 
+                                                                             (r.appearance_score || 0) + 
+                                                                             (r.note_copying_score || 0) + 
+                                                                             (r.practical_score || 0) + 
+                                                                             (r.exam_score || 0)), 0) / results.length : 0,
+      // Calculate overall grade based on average score
+      overall_grade: results.length > 0 ? (() => {
+        const avgScore = results.reduce((sum, r) => sum + ((r.continuous_assessment_score || 0) + 
+                                                           (r.take_home_test_score || 0) + 
+                                                           (r.project_score || 0) + 
+                                                           (r.appearance_score || 0) + 
+                                                           (r.note_copying_score || 0) + 
+                                                           (r.practical_score || 0) + 
+                                                           (r.exam_score || 0)), 0) / results.length;
+        return avgScore >= 75 ? 'A' : avgScore >= 70 ? 'B' : avgScore >= 65 ? 'C' : avgScore >= 60 ? 'D' : 'F';
+      })() : 'F',
+      class_position: termResults[0]?.class_position || 1,
+      total_students: termResults[0]?.total_students || 1,
       attendance: {
         times_opened: termResults[0]?.times_opened || 0,
         times_present: termResults[0]?.times_present || 0
       },
-      next_term_begins: termResults[0]?.next_term_begins || 'TBA',
+      next_term_begins: (() => {
+        console.log('🔍 [StudentResultDisplay] Primary termResults[0]:', termResults[0]);
+        console.log('🔍 [StudentResultDisplay] Primary termResults[0]?.next_term_begins:', termResults[0]?.next_term_begins);
+        console.log('🔍 [StudentResultDisplay] Primary termResults[0]?.next_term_begins type:', typeof termResults[0]?.next_term_begins);
+        return termResults[0]?.next_term_begins || 'TBA';
+      })(),
       class_teacher_remark: termResults[0]?.remarks,
       head_teacher_remark: '',
       is_published: true,
@@ -472,14 +544,22 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
       return {
         id: `senior-session-${student.id}`,
         student: {
-          id: student.id,
-          name: student.full_name,
-          admission_number: student.username,
-          username: student.username,
-          class: student.student_class,
+          id: (completeStudent || student).id,
+          name: (completeStudent || student).full_name,
+          full_name: (completeStudent || student).full_name,
+          admission_number: (completeStudent || student).username,
+          username: (completeStudent || student).username,
+          class: (completeStudent || student).student_class,
+          student_class: (completeStudent || student).student_class,
           education_level: educationLevel,
-          gender: undefined,
-          age: undefined,
+          gender: (completeStudent || student).gender,
+          age: (completeStudent || student).age || 0,
+          date_of_birth: (completeStudent || student).date_of_birth,
+          classroom: (completeStudent || student).classroom,
+          stream: (completeStudent || student).stream,
+          parent_contact: (completeStudent || student).parent_contact,
+          emergency_contact: (completeStudent || student).emergency_contact,
+          admission_date: (completeStudent || student).admission_date,
           house: undefined
         },
         academic_session: isAcademicSessionObject(selections.academicSession) 
@@ -526,13 +606,22 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
       return {
         id: `senior-termly-${student.id}`,
         student: {
-          id: student.id,
-          name: student.full_name,
-          username: student.username,
-          admission_number: student.username,
-          class: student.student_class,
+          id: (completeStudent || student).id,
+          name: (completeStudent || student).full_name,
+          full_name: (completeStudent || student).full_name,
+          username: (completeStudent || student).username,
+          admission_number: (completeStudent || student).username,
+          class: (completeStudent || student).student_class,
+          student_class: (completeStudent || student).student_class,
           education_level: educationLevel,
-          age: student.age
+          age: (completeStudent || student).age || 0,
+          gender: (completeStudent || student).gender,
+          date_of_birth: (completeStudent || student).date_of_birth,
+          classroom: (completeStudent || student).classroom,
+          stream: (completeStudent || student).stream,
+          parent_contact: (completeStudent || student).parent_contact,
+          emergency_contact: (completeStudent || student).emergency_contact,
+          admission_date: (completeStudent || student).admission_date
         },
         term: {
           id: selections.examSession || 'term-1',
@@ -573,18 +662,28 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
           teacher_remark: result.teacher_remark || '',
           percentage: result.percentage || 0
         })),
-        average_score: termResults[0]?.average_score || 0,
-        total_score: results.reduce((sum, r) => sum + (r.total_score || 0), 0),
-        total_students: termResults[0]?.total_students || 0,
+        // Calculate average score from subject results
+        average_score: results.length > 0 ? results.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0) / results.length : 0,
+        total_score: results.reduce((sum, r) => sum + (parseFloat(r.total_score) || 0), 0),
+        total_students: 1, // Since this is individual student data
         attendance: {
           times_opened: termResults[0]?.times_opened || 0,
           times_present: termResults[0]?.times_present || 0
         },
-        next_term_begins: termResults[0]?.next_term_begins || 'TBA',
+        next_term_begins: (() => {
+          console.log('🔍 [StudentResultDisplay] termResults[0]:', termResults[0]);
+          console.log('🔍 [StudentResultDisplay] termResults[0]?.next_term_begins:', termResults[0]?.next_term_begins);
+          console.log('🔍 [StudentResultDisplay] termResults[0]?.next_term_begins type:', typeof termResults[0]?.next_term_begins);
+          return termResults[0]?.next_term_begins || 'TBA';
+        })(),
         class_teacher_remark: termResults[0]?.class_teacher_remark || '',
         head_teacher_remark: termResults[0]?.head_teacher_remark || '',
-        overall_grade: termResults[0]?.gpa?.toString() || 'F',
-        class_position: termResults[0]?.class_position || 0,
+        // Calculate overall grade based on average score
+        overall_grade: results.length > 0 ? (results.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0) / results.length >= 75 ? 'A' : 
+                                              results.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0) / results.length >= 70 ? 'B' :
+                                              results.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0) / results.length >= 65 ? 'C' :
+                                              results.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0) / results.length >= 60 ? 'D' : 'F') : 'F',
+        class_position: 1, // Since this is individual student data
         is_published: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -694,7 +793,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
             <div className={`${themeClasses.bgSecondary} rounded-lg p-4 border ${themeClasses.border} print:border-gray-300 print:bg-gray-50`}>
               <div className="text-center">
                 <div className={`text-2xl font-bold ${themeClasses.textPrimary} print:text-black`}>
-                  {enhancedResult.average?.toFixed(1) || '0.0'}%
+                  {enhancedResult.average && typeof enhancedResult.average === 'number' ? enhancedResult.average.toFixed(1) + '%' : 'N/A'}
                 </div>
                 <div className={`text-sm ${themeClasses.textSecondary} print:text-black`}>
                   Average
@@ -780,7 +879,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
                       {result.total_score ?? 0}
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm ${themeClasses.textPrimary} print:text-black print:border-b print:border-gray-200`}>
-                      {result.percentage?.toFixed(1) || '0.0'}%
+                      {result.percentage && typeof result.percentage === 'number' ? result.percentage.toFixed(1) + '%' : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap print:border-b print:border-gray-200">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getGradeColor(result.grade)} print:bg-gray-200 print:text-black`}>

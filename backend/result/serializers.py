@@ -469,15 +469,94 @@ class StudentTermResultSerializer(serializers.ModelSerializer):
         """Get all subject results linked to this term report"""
         # StudentTermResult doesn't have direct subject_results relationship
         # We need to get results based on student, session, and term
-        from .models import StudentResult
+        from .models import StudentResult, SeniorSecondaryResult, PrimaryResult, JuniorSecondaryResult, NurseryResult
         
-        results = StudentResult.objects.filter(
-            student=obj.student,
-            exam_session__academic_session=obj.academic_session,
-            exam_session__term=obj.term
-        ).select_related('subject', 'grading_system', 'exam_session')
+        # Determine which result model to use based on student's education level
+        education_level = obj.student.education_level
         
-        return StudentResultSerializer(results, many=True).data
+        # First try to find results for the exact academic session and term
+        if education_level == 'SENIOR_SECONDARY':
+            results = SeniorSecondaryResult.objects.filter(
+                student=obj.student,
+                exam_session__academic_session=obj.academic_session,
+                exam_session__term=obj.term
+            ).select_related('subject', 'grading_system', 'exam_session')
+            
+            # If no results found, try to find results for the same term in any academic session
+            if not results.exists():
+                results = SeniorSecondaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term
+                ).select_related('subject', 'grading_system', 'exam_session').order_by('-exam_session__academic_session__start_date')
+                
+        elif education_level == 'PRIMARY':
+            results = PrimaryResult.objects.filter(
+                student=obj.student,
+                exam_session__academic_session=obj.academic_session,
+                exam_session__term=obj.term
+            ).select_related('subject', 'grading_system', 'exam_session')
+            
+            if not results.exists():
+                results = PrimaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term
+                ).select_related('subject', 'grading_system', 'exam_session').order_by('-exam_session__academic_session__start_date')
+                
+        elif education_level == 'JUNIOR_SECONDARY':
+            results = JuniorSecondaryResult.objects.filter(
+                student=obj.student,
+                exam_session__academic_session=obj.academic_session,
+                exam_session__term=obj.term
+            ).select_related('subject', 'grading_system', 'exam_session')
+            
+            if not results.exists():
+                results = JuniorSecondaryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term
+                ).select_related('subject', 'grading_system', 'exam_session').order_by('-exam_session__academic_session__start_date')
+                
+        elif education_level == 'NURSERY':
+            results = NurseryResult.objects.filter(
+                student=obj.student,
+                exam_session__academic_session=obj.academic_session,
+                exam_session__term=obj.term
+            ).select_related('subject', 'grading_system', 'exam_session')
+            
+            if not results.exists():
+                results = NurseryResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term
+                ).select_related('subject', 'grading_system', 'exam_session').order_by('-exam_session__academic_session__start_date')
+                
+        else:
+            # Fallback to base StudentResult
+            results = StudentResult.objects.filter(
+                student=obj.student,
+                exam_session__academic_session=obj.academic_session,
+                exam_session__term=obj.term
+            ).select_related('subject', 'grading_system', 'exam_session')
+            
+            if not results.exists():
+                results = StudentResult.objects.filter(
+                    student=obj.student,
+                    exam_session__term=obj.term
+                ).select_related('subject', 'grading_system', 'exam_session').order_by('-exam_session__academic_session__start_date')
+        
+        # Use the appropriate serializer based on education level
+        if education_level == 'SENIOR_SECONDARY':
+            from .serializers import SeniorSecondaryResultSerializer
+            return SeniorSecondaryResultSerializer(results, many=True).data
+        elif education_level == 'PRIMARY':
+            from .serializers import PrimaryResultSerializer
+            return PrimaryResultSerializer(results, many=True).data
+        elif education_level == 'JUNIOR_SECONDARY':
+            from .serializers import JuniorSecondaryResultSerializer
+            return JuniorSecondaryResultSerializer(results, many=True).data
+        elif education_level == 'NURSERY':
+            from .serializers import NurseryResultSerializer
+            return NurseryResultSerializer(results, many=True).data
+        else:
+            return StudentResultSerializer(results, many=True).data
 
 
 class SeniorSecondarySessionReportSerializer(serializers.ModelSerializer):

@@ -40,6 +40,11 @@ class SchoolSettings(models.Model):
     dark_mode = models.BooleanField(default=False)
     maintenance_mode = models.BooleanField(default=False)
     
+    # Portal Access Control
+    student_portal_enabled = models.BooleanField(default=True, help_text="Enable/disable student portal access")
+    parent_portal_enabled = models.BooleanField(default=True, help_text="Enable/disable parent portal access")
+    teacher_portal_enabled = models.BooleanField(default=True, help_text="Enable/disable teacher portal access")
+    
     # Design Settings
     primary_color = models.CharField(max_length=7, default="#3B82F6", help_text="Primary color in hex format")
     theme = models.CharField(max_length=20, default="default", choices=[

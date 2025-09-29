@@ -18,6 +18,7 @@ def auto_enroll_student(sender, instance, created, **kwargs):
             
             # Map student class to grade level name
             class_to_grade_mapping = {
+                'PRE_NURSERY': 'Pre-Nursery',
                 'NURSERY_1': 'Nursery 1',
                 'NURSERY_2': 'Nursery 2',
                 'PRE_K': 'Pre-K',
@@ -78,10 +79,21 @@ def auto_enroll_student(sender, instance, created, **kwargs):
                 current_term = Term.objects.filter(is_current=True).first()
                 
                 if current_academic_year and current_term:
-                    # Find the appropriate section (usually 'A' for new students)
+                    # Try to extract section from classroom field if provided
+                    section_name = 'A'  # Default to section A
+                    if instance.classroom:
+                        # Extract section from classroom name (e.g., "Primary 2 B" -> "B")
+                        classroom_parts = instance.classroom.split()
+                        if len(classroom_parts) > 1:
+                            last_part = classroom_parts[-1]
+                            if last_part in ['A', 'B', 'C', 'D']:  # Valid section names
+                                section_name = last_part
+                                print(f"🔍 Extracted section '{section_name}' from classroom '{instance.classroom}'")
+                    
+                    # Find the appropriate section
                     section = Section.objects.filter(
                         grade_level=grade_level,
-                        name='A'  # Default to section A
+                        name=section_name
                     ).first()
                     
                     if section:

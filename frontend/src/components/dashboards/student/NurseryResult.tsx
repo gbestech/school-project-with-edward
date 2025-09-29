@@ -57,6 +57,9 @@ export interface NurseryResultData {
   next_term_begins: string;
   class_teacher_remark?: string;
   head_teacher_remark?: string;
+  class_teacher_signature?: string;
+  head_teacher_signature?: string;
+  nurse_comment?: string;
   is_published: boolean;
   created_at: string;
   updated_at: string;
@@ -168,11 +171,84 @@ const WatermarkLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name
 };
 
 export default function NurseryResult({ data }: NurseryResultProps) {
+  // State to store the corrected next_term_begins date
+  const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
+  
   const { service, schoolSettings, loading: serviceLoading, error: serviceError } = useResultService();
   const [gradingSystem, setGradingSystem] = useState<GradingSystem | null>(null);
   const [grades, setGrades] = useState<GradeRange[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Check if we need to fix the next_term_begins date
+  useEffect(() => {
+    const fixNextTermBegins = async () => {
+      // If we receive invalid date, fetch the correct date from Term settings
+      if (!data?.next_term_begins || data?.next_term_begins === 'Invalid Date' || data?.next_term_begins === 'TBA') {
+        console.log('🔧 [NurseryResult] Fixing next_term_begins - received:', data?.next_term_begins);
+        
+        try {
+          // Import AcademicCalendarService to get Term settings
+          const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
+          
+          // Get current academic session and terms
+          const academicSessions = await AcademicCalendarService.getAcademicSessions();
+          const currentSession = academicSessions.find(session => session.is_current);
+          
+          if (currentSession) {
+            console.log('🔧 [NurseryResult] Current academic session:', currentSession);
+            
+            // Get all terms and filter by current session
+            const allTerms = await AcademicCalendarService.getTerms();
+            const terms = allTerms.filter(term => term.academic_session === currentSession.id);
+            console.log('🔧 [NurseryResult] Available terms:', terms);
+            
+            // Find the current term and next term
+            const currentTerm = terms.find(term => term.is_current);
+            if (currentTerm) {
+              console.log('🔧 [NurseryResult] Current term:', currentTerm);
+              
+              // If current term has next_term_begins, use it
+              if (currentTerm.next_term_begins) {
+                console.log('🔧 [NurseryResult] Found next_term_begins from current term:', currentTerm.next_term_begins);
+                setCorrectedNextTermBegins(currentTerm.next_term_begins);
+                return;
+              }
+              
+              // Otherwise, find the next term in sequence
+              const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+              const currentIndex = termOrder.indexOf(currentTerm.name);
+              
+              if (currentIndex < termOrder.length - 1) {
+                const nextTermName = termOrder[currentIndex + 1];
+                const nextTerm = terms.find(term => term.name === nextTermName);
+                
+                if (nextTerm && nextTerm.next_term_begins) {
+                  console.log('🔧 [NurseryResult] Found next_term_begins from next term:', nextTerm.next_term_begins);
+                  setCorrectedNextTermBegins(nextTerm.next_term_begins);
+                  return;
+                }
+              }
+            }
+          }
+          
+          // Fallback: Use a default date
+          const defaultDate = '2025-01-17';
+          console.log('🔧 [NurseryResult] Using fallback date:', defaultDate);
+          setCorrectedNextTermBegins(defaultDate);
+          
+        } catch (error) {
+          console.error('🔧 [NurseryResult] Error fetching next term begins date:', error);
+          setCorrectedNextTermBegins('2025-01-17');
+        }
+      } else {
+        console.log('🔧 [NurseryResult] next_term_begins is already correct:', data?.next_term_begins);
+        setCorrectedNextTermBegins(data?.next_term_begins);
+      }
+    };
+    
+    fixNextTermBegins();
+  }, [data?.next_term_begins]);
 
   // Load grading system and grades
   useEffect(() => {
@@ -644,6 +720,15 @@ export default function NurseryResult({ data }: NurseryResultProps) {
             </div>
           </div>
 
+          {/* NURSE COMMENT */}
+          <div className="mt-6 p-4 rounded-xl border border-slate-200"
+               style={{ background: 'linear-gradient(135deg, #fef7ff, #f3e8ff)' }}>
+            <div className="font-bold text-slate-800 mb-3 text-center">NURSE'S COMMENT</div>
+            <div className="border-b-2 border-purple-400 h-16 bg-white rounded-md p-2 text-sm">
+              {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
+            </div>
+          </div>
+
           {/* COMMENTS AND SIGNATURES */}
           <div className="grid grid-cols-2 gap-6">
             <div className="p-4 rounded-xl border border-slate-200"
@@ -654,7 +739,18 @@ export default function NurseryResult({ data }: NurseryResultProps) {
               </div>
               <div className="mt-3 text-center">
                 <span className="font-medium text-slate-700">SIGNATURE/DATE</span>
-                <div className="border-b-2 border-green-400 h-6 bg-white rounded-md mt-1"></div>
+                {data.class_teacher_signature ? (
+                  <div className="border-2 border-green-400 bg-white rounded-md mt-1 p-2">
+                    <img 
+                      src={data.class_teacher_signature} 
+                      alt="Class Teacher Signature" 
+                      className="h-8 w-auto mx-auto object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="border-b-2 border-green-400 h-6 bg-white rounded-md mt-1"></div>
+                )}
+                <div className="text-xs text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
               </div>
             </div>
 
@@ -666,7 +762,18 @@ export default function NurseryResult({ data }: NurseryResultProps) {
               </div>
               <div className="mt-3 text-center">
                 <span className="font-medium text-slate-700">SIGNATURE/DATE</span>
-                <div className="border-b-2 border-amber-400 h-6 bg-white rounded-md mt-1"></div>
+                {data.head_teacher_signature ? (
+                  <div className="border-2 border-amber-400 bg-white rounded-md mt-1 p-2">
+                    <img 
+                      src={data.head_teacher_signature} 
+                      alt="Head Teacher Signature" 
+                      className="h-8 w-auto mx-auto object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="border-b-2 border-amber-400 h-6 bg-white rounded-md mt-1"></div>
+                )}
+                <div className="text-xs text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
               </div>
             </div>
           </div>
@@ -678,7 +785,7 @@ export default function NurseryResult({ data }: NurseryResultProps) {
               <div className="text-center">
                 <span className="font-bold text-slate-700 block mb-2">NEXT TERM BEGINS</span>
                 <div className="border-b-2 border-blue-400 h-8 bg-white rounded-md flex items-center justify-center">
-                  {data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : ''}
+                  {correctedNextTermBegins ? new Date(correctedNextTermBegins).toLocaleDateString() : (data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : '')}
                 </div>
               </div>
             </div>

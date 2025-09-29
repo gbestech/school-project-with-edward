@@ -523,7 +523,7 @@ const ResultSheetView: React.FC<ResultSheetViewProps> = ({
                       <div className="flex items-center space-x-6">
                         <div className="text-right">
                           <div className="text-2xl font-bold text-blue-600">
-                            {studentResult.average_score.toFixed(1)}%
+                            {studentResult.average_score && typeof studentResult.average_score === 'number' ? studentResult.average_score.toFixed(1) + '%' : 'N/A'}
                           </div>
                           <div className="text-sm text-gray-600">
                             Average
@@ -531,7 +531,7 @@ const ResultSheetView: React.FC<ResultSheetViewProps> = ({
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-semibold text-gray-900">
-                            {studentResult.total_score.toFixed(1)}
+                            {studentResult.total_score && typeof studentResult.total_score === 'number' ? studentResult.total_score.toFixed(1) : 'N/A'}
                           </div>
                           <div className="text-sm text-gray-600">
                             Total Score
@@ -646,10 +646,10 @@ const ResultSheetView: React.FC<ResultSheetViewProps> = ({
                                   )}
                                   
                                   <td className="px-4 py-3 text-sm text-center font-medium text-gray-900">
-                                    {subject.total_score.toFixed(1)}
+                                    {subject.total_score && typeof subject.total_score === 'number' ? subject.total_score.toFixed(1) : 'N/A'}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-center text-gray-900">
-                                    {subject.percentage.toFixed(1)}%
+                                    {subject.percentage && typeof subject.percentage === 'number' ? subject.percentage.toFixed(1) + '%' : 'N/A'}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-center">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGradeColor(subject.grade)}`}>
@@ -673,11 +673,11 @@ const ResultSheetView: React.FC<ResultSheetViewProps> = ({
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Total Score:</span>
-                              <span className="font-medium">{studentResult.total_score.toFixed(1)}</span>
+                              <span className="font-medium">{studentResult.total_score && typeof studentResult.total_score === 'number' ? studentResult.total_score.toFixed(1) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Average:</span>
-                              <span className="font-medium">{studentResult.average_score.toFixed(1)}%</span>
+                              <span className="font-medium">{studentResult.average_score && typeof studentResult.average_score === 'number' ? studentResult.average_score.toFixed(1) + '%' : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Position:</span>

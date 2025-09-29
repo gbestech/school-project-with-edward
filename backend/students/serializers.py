@@ -299,7 +299,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(required=False)
     parents = serializers.SerializerMethodField()
     emergency_contacts = serializers.SerializerMethodField()
-    profile_picture = serializers.SerializerMethodField()
+    profile_picture = serializers.URLField(required=False, allow_blank=True, allow_null=True)
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     section_id = serializers.SerializerMethodField()
     stream = serializers.PrimaryKeyRelatedField(
@@ -337,6 +337,11 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             "emergency_contacts",
             "medical_conditions",
             "special_requirements",
+            "blood_group",
+            "place_of_birth",
+            "address",
+            "phone_number",
+            "payment_method",
             "parents",
             "profile_picture",
             "classroom",
@@ -403,19 +408,6 @@ class StudentDetailSerializer(serializers.ModelSerializer):
             )
 
         return contacts
-
-    def get_profile_picture(self, obj):
-        """Returns the profile picture URL with proper handling for Cloudinary URLs"""
-        # Check if student has a profile picture
-        if obj.profile_picture:
-            return obj.profile_picture
-
-        # Fallback to user profile picture if available
-        if hasattr(obj.user, "profile_picture") and obj.user.profile_picture:
-            return obj.user.profile_picture
-
-        # Return null if no profile picture
-        return None
 
     def get_section_id(self, obj):
         # Try to get the section PK based on student's class and classroom section
@@ -573,7 +565,7 @@ class StudentListSerializer(serializers.ModelSerializer):
     )
     is_active = serializers.BooleanField()
     parent_count = serializers.SerializerMethodField()
-    profile_picture = serializers.SerializerMethodField()
+    profile_picture = serializers.URLField(required=False, allow_blank=True, allow_null=True)
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     section_id = serializers.SerializerMethodField()
     user = serializers.SerializerMethodField()
@@ -637,19 +629,6 @@ class StudentListSerializer(serializers.ModelSerializer):
         from parent.models import ParentStudentRelationship
 
         return ParentStudentRelationship.objects.filter(student=obj).count()
-
-    def get_profile_picture(self, obj):
-        """Returns the profile picture URL with proper handling for Cloudinary URLs"""
-        # Check if student has a profile picture
-        if obj.profile_picture:
-            return obj.profile_picture
-
-        # Fallback to user profile picture if available
-        if hasattr(obj.user, "profile_picture") and obj.user.profile_picture:
-            return obj.user.profile_picture
-
-        # Return null if no profile picture
-        return None
 
     def get_section_id(self, obj):
         # Try to get the section PK based on student's class and classroom section
@@ -991,22 +970,23 @@ class StudentCreateSerializer(serializers.ModelSerializer):
         """Validate student class matches education level."""
         education_level = self.initial_data.get("education_level")  # type: ignore
 
-        nursery_classes = ["NURSERY_1", "NURSERY_2", "PRE_K", "KINDERGARTEN"]
+        # Use consistent class mappings that match the frontend and update serializer
+        nursery_classes = ["PRE_NURSERY", "NURSERY_1", "NURSERY_2"]
         primary_classes = [
-            "GRADE_1",
-            "GRADE_2",
-            "GRADE_3",
-            "GRADE_4",
-            "GRADE_5",
-            "GRADE_6",
+            "PRIMARY_1",
+            "PRIMARY_2",
+            "PRIMARY_3",
+            "PRIMARY_4",
+            "PRIMARY_5",
+            "PRIMARY_6",
         ]
         secondary_classes = [
-            "GRADE_7",
-            "GRADE_8",
-            "GRADE_9",
-            "GRADE_10",
-            "GRADE_11",
-            "GRADE_12",
+            "JSS_1",
+            "JSS_2",
+            "JSS_3",
+            "SS_1",
+            "SS_2",
+            "SS_3",
         ]
 
         if education_level == "NURSERY" and value not in nursery_classes:
@@ -1017,7 +997,7 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Selected class is not valid for primary level."
             )
-        elif education_level == "SECONDARY" and value not in secondary_classes:
+        elif education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"] and value not in secondary_classes:
             raise serializers.ValidationError(
                 "Selected class is not valid for secondary level."
             )

@@ -46,6 +46,12 @@ export interface Student {
   stream?: number | null;
   stream_name?: string | null;
   stream_type?: string | null;
+  // Additional fields that exist in the Student model
+  blood_group?: string | null;
+  place_of_birth?: string | null;
+  address?: string | null;
+  phone_number?: string | null;
+  payment_method?: string | null;
 }
 
 export interface Subject {
@@ -181,6 +187,18 @@ export interface UpdateStudentData {
   parent_contact?: string;
   is_active?: boolean;
   stream?: number | null;
+  // Fields that exist in the Student model
+  profile_picture?: string;
+  date_of_birth?: string;
+  registration_number?: string;
+  medical_conditions?: string;
+  special_requirements?: string;
+  classroom?: string;
+  blood_group?: string;
+  place_of_birth?: string;
+  address?: string;
+  phone_number?: string;
+  payment_method?: string;
 }
 
 
@@ -352,6 +370,25 @@ export class StudentService {
   // Get comprehensive student schedule with metadata
   async getStudentSchedule(studentId?: number, filters?: ScheduleFilters): Promise<StudentSchedule> {
     try {
+      // If no studentId is provided and user is not a student, skip the call
+      // This prevents unauthorized calls to student-specific endpoints
+      const userData = localStorage.getItem('userData');
+      if (userData && !studentId) {
+        const user = JSON.parse(userData);
+        if (user.role !== 'STUDENT') {
+          console.log('🚫 Skipping student-specific API call for non-student user without studentId:', user.role);
+          return {
+            schedule: [],
+            metadata: {
+              total_periods: 0,
+              total_subjects: 0,
+              week_days: [],
+              time_slots: []
+            }
+          };
+        }
+      }
+      
       const endpoint = studentId 
         ? `/api/students/students/${studentId}/schedule/`
         : '/api/students/students/my-schedule/';
@@ -378,6 +415,21 @@ export class StudentService {
   // Get weekly schedule with enhanced structure
   async getWeeklySchedule(studentId?: number, weekStart?: string): Promise<WeeklySchedule> {
     try {
+      // If no studentId is provided and user is not a student, skip the call
+      // This prevents unauthorized calls to student-specific endpoints
+      const userData = localStorage.getItem('userData');
+      if (userData && !studentId) {
+        const user = JSON.parse(userData);
+        if (user.role !== 'STUDENT') {
+          console.log('🚫 Skipping student-specific API call for non-student user without studentId:', user.role);
+          return {
+            week_start: weekStart || new Date().toISOString(),
+            week_end: new Date().toISOString(),
+            schedule: []
+          };
+        }
+      }
+      
       const endpoint = studentId 
         ? `/api/students/students/${studentId}/weekly_schedule/`
         : '/api/students/students/my-weekly-schedule/';
@@ -399,6 +451,22 @@ export class StudentService {
   // Get today's schedule with current/next period information
   async getTodaySchedule(studentId?: number): Promise<DaySchedule & { current_period?: ScheduleItem; next_period?: ScheduleItem }> {
     try {
+      // If no studentId is provided and user is not a student, skip the call
+      // This prevents unauthorized calls to student-specific endpoints
+      const userData = localStorage.getItem('userData');
+      if (userData && !studentId) {
+        const user = JSON.parse(userData);
+        if (user.role !== 'STUDENT') {
+          console.log('🚫 Skipping student-specific API call for non-student user without studentId:', user.role);
+          return {
+            date: new Date().toISOString(),
+            schedule: [],
+            current_period: null,
+            next_period: null
+          };
+        }
+      }
+      
       const endpoint = studentId 
         ? `/api/students/students/${studentId}/today_schedule/`
         : '/api/students/students/my-today-schedule/';
@@ -418,6 +486,17 @@ export class StudentService {
   // Get current and next period information
   async getCurrentPeriod(studentId?: number): Promise<{ current?: ScheduleItem; next?: ScheduleItem }> {
     try {
+      // If no studentId is provided and user is not a student, skip the call
+      // This prevents unauthorized calls to student-specific endpoints
+      const userData = localStorage.getItem('userData');
+      if (userData && !studentId) {
+        const user = JSON.parse(userData);
+        if (user.role !== 'STUDENT') {
+          console.log('🚫 Skipping student-specific API call for non-student user without studentId:', user.role);
+          return { current: null, next: null };
+        }
+      }
+      
       const endpoint = studentId 
         ? `/api/students/students/${studentId}/current_period/`
         : '/api/students/students/my-current-period/';

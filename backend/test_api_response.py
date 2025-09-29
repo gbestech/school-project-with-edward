@@ -1,56 +1,51 @@
+#!/usr/bin/env python3
+"""
+Test the API response for Sochikanyima's term report
+"""
 import os
 import sys
 import django
+import requests
 import json
 
-# Add the backend directory to the path
-sys.path.append('backend')
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
 # Setup Django
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from result.views import SeniorSecondaryResultViewSet
-from result.serializers import SeniorSecondaryResultSerializer
-from students.models import Student
-from result.models import SeniorSecondaryResult
-from django.test import RequestFactory
+from result.models import SeniorSecondaryTermReport
 
-print('=== TESTING SS RESULT API RESPONSE ===')
+def test_api_response():
+    print("=== TESTING API RESPONSE ===")
+    
+    # Get Sochikanyima's term report
+    term_report = SeniorSecondaryTermReport.objects.get(id="8d2d7cc7-2343-4fc9-9e04-0f4d12160d47")
+    
+    print(f"Term Report ID: {term_report.id}")
+    print(f"Student: {term_report.student.user.full_name}")
+    print(f"Next Term Begins: {term_report.next_term_begins}")
+    print(f"Exam Session: {term_report.exam_session.name}")
+    
+    # Test the API endpoint
+    try:
+        # This would be the URL for the term report API
+        url = f"http://localhost:8000/api/results/senior-secondary/term-reports/{term_report.id}/"
+        print(f"\nTesting API endpoint: {url}")
+        
+        response = requests.get(url)
+        print(f"Response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"API Response next_term_begins: {data.get('next_term_begins')}")
+            print(f"Full API Response:")
+            print(json.dumps(data, indent=2, default=str))
+        else:
+            print(f"API Error: {response.text}")
+            
+    except Exception as e:
+        print(f"Error testing API: {e}")
+        print("API server might not be running")
 
-# Get Sochikanyima's results
-sochi = Student.objects.get(user__first_name__icontains='sochi')
-print(f'Student: {sochi.full_name} (ID: {sochi.id})')
-
-# Get the actual results from the database
-ss_results = SeniorSecondaryResult.objects.filter(student=sochi)
-print(f'Found {ss_results.count()} SeniorSecondaryResult records\n')
-
-print('=== RAW DATABASE VALUES ===')
-for result in ss_results:
-    print(f'Subject: {result.subject.name}')
-    print(f'  first_test_score: {result.first_test_score}')
-    print(f'  second_test_score: {result.second_test_score}')
-    print(f'  third_test_score: {result.third_test_score}')
-    print(f'  exam_score: {result.exam_score}')
-    print()
-
-print('=== SERIALIZED OUTPUT ===')
-serializer = SeniorSecondaryResultSerializer(ss_results, many=True)
-serialized_data = serializer.data
-
-for i, data in enumerate(serialized_data):
-    print(f'Result {i+1}: {data.get("subject_name", "Unknown Subject")}')
-    print(f'  test1_score: {data.get("test1_score", "MISSING")}')
-    print(f'  test2_score: {data.get("test2_score", "MISSING")}')
-    print(f'  test3_score: {data.get("test3_score", "MISSING")}')
-    print(f'  first_test_score: {data.get("first_test_score", "MISSING")}')
-    print(f'  second_test_score: {data.get("second_test_score", "MISSING")}')
-    print(f'  third_test_score: {data.get("third_test_score", "MISSING")}')
-    print(f'  exam_score: {data.get("exam_score", "MISSING")}')
-    print(f'  Available fields: {list(data.keys())[:10]}...')  # Show first 10 fields
-    print()
-
-print('=== SAMPLE JSON OUTPUT ===')
-if serialized_data:
-    print(json.dumps(serialized_data[0], indent=2, default=str)[:1000] + '...')
+if __name__ == "__main__":
+    test_api_response()

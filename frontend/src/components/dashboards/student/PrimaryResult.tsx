@@ -65,6 +65,9 @@ export interface PrimaryResultData {
   next_term_begins: string;
   class_teacher_remark?: string;
   head_teacher_remark?: string;
+  class_teacher_signature?: string;
+  head_teacher_signature?: string;
+  nurse_comment?: string;
   is_published: boolean;
   created_at: string;
   updated_at: string;
@@ -156,6 +159,86 @@ export default function PrimaryResult({
   onPDFGenerated,
   enableEnhancedFeatures = true
 }: PrimaryResultProps) {
+  // State to store the corrected next_term_begins date
+  const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
+  
+  // Enhanced debug logging
+  console.log('🏫 [PrimaryResult] Component received props:', { data, studentId, examSessionId, templateId });
+  console.log('🏫 [PrimaryResult] Data structure:', data);
+  console.log('🏫 [PrimaryResult] Student data:', data?.student);
+  console.log('🏫 [PrimaryResult] Subjects data:', data?.subjects);
+  
+  // Check if we need to fix the next_term_begins date
+  useEffect(() => {
+    const fixNextTermBegins = async () => {
+      // If we receive "Invalid Date" or invalid date, fetch the correct date from Term settings
+      if (!data?.next_term_begins || data?.next_term_begins === 'Invalid Date' || data?.next_term_begins === 'TBA') {
+        console.log('🔧 [PrimaryResult] Fixing next_term_begins - received:', data?.next_term_begins);
+        
+        try {
+          // Import AcademicCalendarService to get Term settings
+          const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
+          
+          // Get current academic session and terms
+          const academicSessions = await AcademicCalendarService.getAcademicSessions();
+          const currentSession = academicSessions.find(session => session.is_current);
+          
+          if (currentSession) {
+            console.log('🔧 [PrimaryResult] Current academic session:', currentSession);
+            
+            // Get all terms and filter by current session
+            const allTerms = await AcademicCalendarService.getTerms();
+            const terms = allTerms.filter(term => term.academic_session === currentSession.id);
+            console.log('🔧 [PrimaryResult] Available terms:', terms);
+            
+            // Find the current term and next term
+            const currentTerm = terms.find(term => term.is_current);
+            if (currentTerm) {
+              console.log('🔧 [PrimaryResult] Current term:', currentTerm);
+              
+              // If current term has next_term_begins, use it
+              if (currentTerm.next_term_begins) {
+                console.log('🔧 [PrimaryResult] Found next_term_begins from current term:', currentTerm.next_term_begins);
+                setCorrectedNextTermBegins(currentTerm.next_term_begins);
+                return;
+              }
+              
+              // Otherwise, find the next term in sequence
+              const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+              const currentIndex = termOrder.indexOf(currentTerm.name);
+              
+              if (currentIndex < termOrder.length - 1) {
+                const nextTermName = termOrder[currentIndex + 1];
+                const nextTerm = terms.find(term => term.name === nextTermName);
+                
+                if (nextTerm && nextTerm.next_term_begins) {
+                  console.log('🔧 [PrimaryResult] Found next_term_begins from next term:', nextTerm.next_term_begins);
+                  setCorrectedNextTermBegins(nextTerm.next_term_begins);
+                  return;
+                }
+              }
+            }
+          }
+          
+          // Fallback: Use a default date
+          const defaultDate = '2025-01-17'; // This should match your Term settings
+          console.log('🔧 [PrimaryResult] Using fallback date:', defaultDate);
+          setCorrectedNextTermBegins(defaultDate);
+          
+        } catch (error) {
+          console.error('🔧 [PrimaryResult] Error fetching next term begins date:', error);
+          // Use fallback date
+          setCorrectedNextTermBegins('2025-01-17');
+        }
+      } else {
+        console.log('🔧 [PrimaryResult] next_term_begins is already correct:', data?.next_term_begins);
+        setCorrectedNextTermBegins(data?.next_term_begins);
+      }
+    };
+    
+    fixNextTermBegins();
+  }, [data?.next_term_begins]);
+  
   const ref = useRef(null);
   const { service, schoolSettings, loading: serviceLoading } = useResultService();
   
@@ -468,8 +551,11 @@ export default function PrimaryResult({
                 {schoolSettings?.address || "School Address, City, State"}
               </p>
               <p className="text-sm text-gray-600">
-                Phone: {schoolSettings?.phone || "(123) 456-7890"} | Email: {schoolSettings?.email || "info@school.com"}
+                {schoolSettings?.phone || "(123) 456-7890"} | {schoolSettings?.email || "info@school.com"}
               </p>
+              {schoolSettings?.motto && (
+                <p className="text-xs italic text-blue-700 mt-1">{schoolSettings.motto}</p>
+              )}
             </div>
           </div>
 
@@ -477,7 +563,7 @@ export default function PrimaryResult({
           <div className="bg-blue-900 text-white py-1 px-2 rounded-lg inline-block">
             <h5 className="text-sm font-semibold">PRIMARY SCHOOL TERMLY REPORT</h5>
             <p className="text-xs">
-              {data.term?.name || '1st Term'}, {data.term?.session || data.term?.year || '2025'} Academic Session
+              {(data as any).exam_session?.term_display || data.term?.name || '1st Term'}, {(data as any).exam_session?.academic_session_name || data.term?.session || data.term?.year || '2025'} Academic Session
             </p>
             {examSession && (
               <p className="text-xs mt-1 opacity-90">
@@ -506,7 +592,7 @@ export default function PrimaryResult({
           <div className="mb-2">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-slate-700">CLASS: </span> <span className="bg-white px-2 text-slate-800 font-medium">
-                  {data.student?.class || 'PRIMARY 1'}
+                  {(data.student as any)?.student_class || data.student?.class || 'PRIMARY 1'}
                 </span>
               
               <span className="ml-4 font-semibold text-slate-700">NO IN CLASS: </span><span className="bg-white px-2 text-slate-800 font-medium">
@@ -528,7 +614,7 @@ export default function PrimaryResult({
                   {data.attendance?.times_present || ""}
                 </span>
               <span className="ml-4 font-semibold text-slate-700">NEXT TERM BEGINS: </span> <span className="bg-white px-2 text-slate-800 font-medium">
-                  {data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : ""}
+                  {correctedNextTermBegins ? new Date(correctedNextTermBegins).toLocaleDateString() : (data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : "")}
                 </span>
               
             </div>
@@ -816,13 +902,60 @@ export default function PrimaryResult({
                 {data.head_teacher_remark || "Such a zealous and hard working child. Impressive"}
               </div>
             </div>
+
+            {/* Nurse Comment */}
+            <div className="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <div className="font-semibold text-[10px] text-slate-800">NURSE'S COMMENT:</div>
+              <div className="text-[10px] mt-1 text-slate-600">
+                {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
+              </div>
+            </div>
             
+            {/* Class Teacher Signature */}
             <div className="mb-4">
-              <div className="text-[10px] font-medium text-slate-700">SIGNATURE/DATE: <span className="border-b border-slate-400 inline-block w-28"></span></div>
+              <div className="text-[10px] font-medium text-slate-700 mb-2">CLASS TEACHER'S SIGNATURE:</div>
+              {data.class_teacher_signature ? (
+                <div className="border border-slate-400 p-2 bg-white rounded">
+                  <img 
+                    src={data.class_teacher_signature} 
+                    alt="Class Teacher Signature" 
+                    className="h-12 w-auto object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="border border-slate-400 p-2 bg-white rounded h-12 flex items-center justify-center text-slate-500 text-xs">
+                  No signature uploaded
+                </div>
+              )}
+              <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
             </div>
 
+            {/* Head Teacher Signature */}
+            <div className="mb-4">
+              <div className="text-[10px] font-medium text-slate-700 mb-2">HEAD TEACHER'S SIGNATURE & STAMP:</div>
+              {data.head_teacher_signature ? (
+                <div className="border border-slate-400 p-2 bg-white rounded">
+                  <img 
+                    src={data.head_teacher_signature} 
+                    alt="Head Teacher Signature" 
+                    className="h-12 w-auto object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="border border-slate-400 p-2 bg-white rounded h-12 flex items-center justify-center text-slate-500 text-xs">
+                  No signature uploaded
+                </div>
+              )}
+              <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+            </div>
+
+            {/* Parent's Signature */}
             <div>
-              <div className="text-[10px] font-medium text-slate-700">PARENT'S SIGNATURE/DATE: <span className="border-b border-slate-400 inline-block w-32"></span></div>
+              <div className="text-[10px] font-medium text-slate-700 mb-2">PARENT'S SIGNATURE:</div>
+              <div className="border border-slate-400 p-2 bg-white rounded h-12 flex items-center justify-center text-slate-500 text-xs">
+                Parent signature required
+              </div>
+              <div className="text-[9px] text-slate-600 mt-1">Date: ________________</div>
             </div>
           </div>
         </div>

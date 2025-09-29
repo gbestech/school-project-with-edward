@@ -581,35 +581,13 @@ class ResultService {
 
   // NEW: Result approval and publishing
   async approveResult(resultId: string, educationLevel: string) {
-    const endpoints = {
-      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/approve/`,
-      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/approve/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/approve/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/approve/`,
-    };
-    
-    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level: ${educationLevel}`);
-    }
-    
-    return api.post(endpoint, {});
+    // Use the student-term-results endpoint since that's where the data comes from
+    return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
   }
 
   async publishResult(resultId: string, educationLevel: string) {
-    const endpoints = {
-      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/publish/`,
-      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/publish/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/publish/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/publish/`,
-    };
-    
-    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level: ${educationLevel}`);
-    }
-    
-    return api.post(endpoint, {});
+    // Use the student-term-results endpoint since that's where the data comes from
+    return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
   }
 
   // NEW: Class statistics

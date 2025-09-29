@@ -84,13 +84,34 @@ const ResultChecker: React.FC = () => {
     setLoading(true);
     try {
       if (resultType === 'termly') {
-        // Use the main result checker endpoint for comprehensive results
-        const response = await ResultCheckerService.getResults(filters);
-        setTermlyResults(response.termly_results || []);
+        console.log('🔄 [ResultChecker] loadResults - Fetching term reports for termly results');
+        console.log('🔄 [ResultChecker] loadResults - Filters:', filters);
+        
+        // Fetch term reports instead of individual results for consolidated data
+        const allTermReports: any[] = [];
+        
+        // Fetch term reports for all education levels
+        const educationLevels = ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+        
+        for (const level of educationLevels) {
+          try {
+            console.log(`🔄 [ResultChecker] loadResults - Fetching term reports for ${level}`);
+            const termReports = await ResultCheckerService.getTermReports(level, filters);
+            console.log(`✅ [ResultChecker] loadResults - Got ${termReports.length} term reports for ${level}:`, termReports);
+            allTermReports.push(...termReports);
+          } catch (error) {
+            console.warn(`Failed to fetch term reports for ${level}:`, error);
+          }
+        }
+        
+        console.log('✅ [ResultChecker] loadResults - All term reports:', allTermReports);
+        console.log('🔍 [ResultChecker] First term report next_term_begins:', allTermReports[0]?.next_term_begins);
+        console.log('🔍 [ResultChecker] First term report next_term_begins type:', typeof allTermReports[0]?.next_term_begins);
+        setTermlyResults(allTermReports);
         setSessionResults([]); // Clear session results when viewing termly
         
-        if (response.termly_results.length > 0) {
-          toast.success(`Found ${response.termly_results.length} termly result(s)`);
+        if (allTermReports.length > 0) {
+          toast.success(`Found ${allTermReports.length} termly result(s)`);
         } else {
           toast.error('No termly results found for the selected criteria');
         }
@@ -190,17 +211,39 @@ const ResultChecker: React.FC = () => {
 
   const handleViewResult = async (result: TermlyResult | SessionResult) => {
     try {
+      console.log('🔍 [ResultChecker] handleViewResult called with result:', result);
+      console.log('🔍 [ResultChecker] result.next_term_begins:', (result as any).next_term_begins);
+      console.log('🔍 [ResultChecker] result.next_term_begins type:', typeof (result as any).next_term_begins);
+      
       // Fetch full result details using the appropriate endpoint
       const educationLevel = result.student.education_level;
-      const fullResult = await ResultCheckerService.getResultById(
+      console.log('📊 [ResultChecker] Education level:', educationLevel);
+      
+      let fullResult;
+      
+      // For termly results, fetch term reports which contain consolidated data
+      if (resultType === 'termly') {
+        console.log('📋 [ResultChecker] Fetching term report for ID:', result.id);
+        fullResult = await ResultCheckerService.getTermReportById(
         result.id, 
-        educationLevel, 
-        resultType
-      );
+          educationLevel
+        );
+        console.log('✅ [ResultChecker] Raw term report fetched:', fullResult);
+        console.log('✅ [ResultChecker] Raw student data:', fullResult?.student);
+        console.log('✅ [ResultChecker] Raw subject_results:', fullResult?.subject_results);
+        console.log('🔍 [ResultChecker] API fullResult.next_term_begins:', fullResult?.next_term_begins);
+        console.log('🔍 [ResultChecker] API fullResult.next_term_begins type:', typeof fullResult?.next_term_begins);
+      } else {
+        // For session results, use the session report endpoint
+        console.log('📋 [ResultChecker] Fetching session report for ID:', result.id);
+        fullResult = await ResultCheckerService.getSessionReportById(result.id);
+        console.log('✅ [ResultChecker] Session report fetched:', fullResult);
+      }
+      
       setSelectedResult(fullResult);
       setShowResultView(true);
     } catch (error) {
-      console.error('Error loading result details:', error);
+      console.error('❌ [ResultChecker] Error loading result details:', error);
       toast.error('Failed to load result details');
     }
   };
@@ -210,38 +253,319 @@ const ResultChecker: React.FC = () => {
     setSelectedResult(null);
   };
 
+  const transformDataForPrimary = (result: TermlyResult) => {
+    console.log('🔄 [ResultChecker] transformDataForPrimary called with:', result);
+    console.log('🔍 [ResultChecker] result.next_term_begins:', result.next_term_begins);
+    console.log('🔍 [ResultChecker] result.next_term_begins type:', typeof result.next_term_begins);
+    
+    // Transform the term report data to match what PrimaryResult expects
+    const transformedData = {
+      id: result.id,
+      student: {
+        id: result.student.id,
+        name: result.student.name,
+        full_name: result.student.name,
+        username: result.student.username,
+        admission_number: result.student.admission_number || result.student.username,
+        class: result.student.class,
+        student_class: result.student.class,
+        education_level: result.student.education_level,
+        gender: result.student.gender,
+        age: (result.student as any).age,
+        date_of_birth: (result.student as any).date_of_birth,
+        classroom: (result.student as any).classroom,
+        stream: (result.student as any).stream,
+        parent_contact: (result.student as any).parent_contact,
+        emergency_contact: (result.student as any).emergency_contact,
+        admission_date: (result.student as any).admission_date
+      },
+      term: result.term || {
+        id: 'term-1',
+        name: 'First Term',
+        academic_session: { id: 'session-1', name: '2024/2025' }
+      },
+      exam_session: (result as any).exam_session,
+      subjects: (result as any).subject_results?.map((subjectResult: any) => {
+        // Calculate CA total from individual components
+        const caTotal = (subjectResult.continuous_assessment_score || 0) + 
+                       (subjectResult.take_home_test_score || 0) + 
+                       (subjectResult.project_score || 0) + 
+                       (subjectResult.appearance_score || 0) + 
+                       (subjectResult.note_copying_score || 0) + 
+                       (subjectResult.practical_score || 0);
+        
+        // Calculate exam marks
+        const examMarks = subjectResult.exam_score || subjectResult.exam_marks || 0;
+        
+        // Calculate total mark obtained (CA + Exam)
+        const markObtained = caTotal + examMarks;
+        
+        return {
+          subject: {
+            id: subjectResult.subject?.id,
+            name: subjectResult.subject?.name,
+            code: subjectResult.subject?.code || ''
+          },
+          total_score: markObtained, // Use calculated total
+          percentage: subjectResult.percentage || 0,
+          grade: subjectResult.grade || '',
+          position: subjectResult.position || 0,
+          class_average: subjectResult.class_average || 0,
+          highest_in_class: subjectResult.highest_in_class || 0,
+          lowest_in_class: subjectResult.lowest_in_class || 0,
+          teacher_remark: subjectResult.teacher_remark,
+          continuous_assessment_score: subjectResult.continuous_assessment_score || 0,
+          take_home_test_score: subjectResult.take_home_test_score || 0,
+          project_score: subjectResult.project_score || 0,
+          appearance_score: subjectResult.appearance_score || 0,
+          note_copying_score: subjectResult.note_copying_score || 0,
+          practical_score: subjectResult.practical_score || 0,
+          ca_total: caTotal,
+          exam_marks: examMarks,
+          mark_obtained: markObtained,
+          total_obtainable: 100,
+          id: subjectResult.id
+        };
+      }) || [],
+      total_score: (result as any).total_score || 0,
+      average_score: (result as any).average_score || 0,
+      overall_grade: (result as any).overall_grade || '',
+      class_position: (result as any).class_position || 0,
+      total_students: (result as any).total_students || 0,
+      attendance: result.attendance || {
+        times_opened: 0,
+        times_present: 0
+      },
+      next_term_begins: (result as any).next_term_begins || '',
+      class_teacher_remark: (result as any).class_teacher_remark || '',
+      head_teacher_remark: (result as any).head_teacher_remark || '',
+      class_teacher_signature: (result as any).class_teacher_signature || '',
+      head_teacher_signature: (result as any).head_teacher_signature || '',
+      nurse_comment: (result as any).nurse_comment || '',
+      is_published: (result as any).is_published || true,
+      created_at: (result as any).created_at || new Date().toISOString(),
+      updated_at: (result as any).updated_at || new Date().toISOString()
+    };
+    
+    return transformedData;
+  };
+
+  const transformDataForSeniorSecondary = (result: TermlyResult) => {
+    console.log('🔄 [ResultChecker] transformDataForSeniorSecondary called with:', result);
+    console.log('🔍 [ResultChecker] result.next_term_begins:', result.next_term_begins);
+    console.log('🔍 [ResultChecker] result.next_term_begins type:', typeof result.next_term_begins);
+    
+    // Transform the term report data to match what SeniorSecondaryTermlyResult expects
+    const transformedData = {
+      id: result.id,
+      student: {
+        id: result.student.id,
+        name: result.student.name,
+        full_name: result.student.name,
+        username: result.student.username,
+        admission_number: result.student.admission_number || result.student.username,
+        class: result.student.class,
+        student_class: result.student.class,
+        education_level: result.student.education_level,
+        gender: result.student.gender,
+        age: (result.student as any).age,
+        date_of_birth: (result.student as any).date_of_birth,
+        classroom: (result.student as any).classroom,
+        stream: (result.student as any).stream,
+        parent_contact: (result.student as any).parent_contact,
+        emergency_contact: (result.student as any).emergency_contact,
+        admission_date: (result.student as any).admission_date
+      },
+      term: result.term || {
+        id: 'term-1',
+        name: 'First Term',
+        academic_session: { id: 'session-1', name: '2024/2025' }
+      },
+      exam_session: (result as any).exam_session,
+      subjects: (result as any).subject_results?.map((subjectResult: any) => ({
+        subject: {
+          id: subjectResult.subject?.id,
+          name: subjectResult.subject?.name,
+          code: subjectResult.subject?.code || ''
+        },
+        total_score: subjectResult.total_score || 0,
+        percentage: subjectResult.percentage || 0,
+        grade: subjectResult.grade || '',
+        position: subjectResult.position || 0,
+        class_average: subjectResult.class_average || 0,
+        highest_in_class: subjectResult.highest_in_class || 0,
+        lowest_in_class: subjectResult.lowest_in_class || 0,
+        teacher_remark: subjectResult.teacher_remark,
+        test1_score: subjectResult.first_test_score || subjectResult.test1_score || 0,
+        test2_score: subjectResult.second_test_score || subjectResult.test2_score || 0,
+        test3_score: subjectResult.third_test_score || subjectResult.test3_score || 0,
+        exam_score: subjectResult.exam_score || 0,
+        total_obtainable: 100,
+        id: subjectResult.id
+      })) || [],
+      // Calculate overall totals from individual subjects
+      total_score: (() => {
+        const subjects = (result as any).subject_results || [];
+        return subjects.reduce((total: number, subjectResult: any) => {
+          const caTotal = (subjectResult.continuous_assessment_score || 0) + 
+                         (subjectResult.take_home_test_score || 0) + 
+                         (subjectResult.project_score || 0) + 
+                         (subjectResult.appearance_score || 0) + 
+                         (subjectResult.note_copying_score || 0) + 
+                         (subjectResult.practical_score || 0);
+          const examMarks = subjectResult.exam_score || subjectResult.exam_marks || 0;
+          return total + (caTotal + examMarks);
+        }, 0);
+      })(),
+      average_score: (() => {
+        const subjects = (result as any).subject_results || [];
+        if (subjects.length === 0) return 0;
+        const totalScore = subjects.reduce((total: number, subjectResult: any) => {
+          const caTotal = (subjectResult.continuous_assessment_score || 0) + 
+                         (subjectResult.take_home_test_score || 0) + 
+                         (subjectResult.project_score || 0) + 
+                         (subjectResult.appearance_score || 0) + 
+                         (subjectResult.note_copying_score || 0) + 
+                         (subjectResult.practical_score || 0);
+          const examMarks = subjectResult.exam_score || subjectResult.exam_marks || 0;
+          return total + (caTotal + examMarks);
+        }, 0);
+        return totalScore / subjects.length;
+      })(),
+      overall_grade: (result as any).overall_grade || '',
+      class_position: (result as any).class_position || 1,
+      total_students: (result as any).total_students || 1,
+      attendance: result.attendance || {
+        times_opened: 0,
+        times_present: 0
+      },
+      next_term_begins: result.next_term_begins,
+      class_teacher_remark: result.class_teacher_remark || '',
+      head_teacher_remark: result.head_teacher_remark || '',
+      is_published: result.is_published || true,
+      created_at: result.created_at || new Date().toISOString(),
+      updated_at: result.updated_at || new Date().toISOString()
+    };
+    
+    console.log('✅ [ResultChecker] Senior Secondary data transformed:', transformedData);
+    return transformedData;
+  };
+
+  const transformDataForNursery = (result: TermlyResult) => {
+    console.log('🔄 [ResultChecker] transformDataForNursery called with:', result);
+    
+    // Transform the term report data to match what NurseryResult expects
+    const transformedData = {
+      id: result.id,
+      student: {
+        id: result.student.id,
+        name: result.student.name,
+        full_name: result.student.name,
+        class: result.student.class,
+        education_level: result.student.education_level,
+        age: (result.student as any).age,
+        date_of_birth: (result.student as any).date_of_birth,
+        classroom: (result.student as any).classroom,
+        stream: (result.student as any).stream,
+        parent_contact: (result.student as any).parent_contact,
+        emergency_contact: (result.student as any).emergency_contact,
+        admission_date: (result.student as any).admission_date
+      },
+      term: result.term || {
+        id: 'term-1',
+        name: 'First Term',
+        academic_session: { id: 'session-1', name: '2024/2025' }
+      },
+      subjects: (result as any).subject_results?.map((subjectResult: any) => ({
+        subject: {
+          id: subjectResult.subject?.id,
+          name: subjectResult.subject?.name,
+          code: subjectResult.subject?.code || ''
+        },
+        max_marks_obtainable: subjectResult.max_marks_obtainable || 100,
+        mark_obtained: subjectResult.exam_score || subjectResult.mark_obtained || 0,
+        grade: subjectResult.grade || '',
+        position: subjectResult.position || 0,
+        physical_development: subjectResult.physical_development || 'GOOD',
+        health: subjectResult.health || 'GOOD',
+        cleanliness: subjectResult.cleanliness || 'GOOD',
+        general_conduct: subjectResult.general_conduct || 'GOOD',
+        academic_comment: subjectResult.academic_comment || '',
+        id: subjectResult.id
+      })) || [],
+      total_score: (result as any).total_score || 0,
+      max_marks_obtainable: 100,
+      mark_obtained: (result as any).mark_obtained || 0,
+      position: (result as any).position || 1,
+      class_position: (result as any).class_position || 1,
+      total_students: (result as any).total_students || 1,
+      attendance: result.attendance || {
+        times_opened: 0,
+        times_present: 0
+      },
+      next_term_begins: (result as any).next_term_begins || '',
+      class_teacher_remark: (result as any).class_teacher_remark || '',
+      head_teacher_remark: (result as any).head_teacher_remark || '',
+      class_teacher_signature: (result as any).class_teacher_signature || '',
+      head_teacher_signature: (result as any).head_teacher_signature || '',
+      nurse_comment: (result as any).nurse_comment || '',
+      is_published: (result as any).is_published || true,
+      created_at: (result as any).created_at || new Date().toISOString(),
+      updated_at: (result as any).updated_at || new Date().toISOString()
+    };
+    
+    return transformedData;
+  };
+
   const getResultComponent = (result: TermlyResult | SessionResult) => {
+    console.log('🎯 [ResultChecker] getResultComponent called with result:', result);
+    console.log('🔍 [ResultChecker] result.next_term_begins in getResultComponent:', (result as any).next_term_begins);
+    console.log('🔍 [ResultChecker] result.next_term_begins type in getResultComponent:', typeof (result as any).next_term_begins);
     const educationLevel = result.student.education_level.toUpperCase();
+    console.log('📚 [ResultChecker] Education level:', educationLevel);
     
     switch (educationLevel) {
       case 'NURSERY':
-        // Type assertion to ensure we're passing the correct type
-        return <NurseryResult data={result as any} />;
+        console.log('🧸 [ResultChecker] Processing NURSERY result');
+        const nurseryData = transformDataForNursery(result as TermlyResult);
+        console.log('📋 [ResultChecker] Passing data to NurseryResult:', nurseryData);
+        return <NurseryResult data={nurseryData as any} />;
       case 'PRIMARY':
+        console.log('🏫 [ResultChecker] Processing PRIMARY result');
+        const primaryData = transformDataForPrimary(result as TermlyResult);
+        console.log('📋 [ResultChecker] Passing data to PrimaryResult:', primaryData);
         return <PrimaryResult 
-          data={result as any}
+          data={primaryData as any}
           studentId={result.student.id}
         />;
       case 'JUNIOR_SECONDARY':
+        const juniorData = transformDataForPrimary(result as TermlyResult);
         return <JuniorSecondaryResult 
-          data={result as any}
+          data={juniorData as any}
           studentId={result.student.id}
         />;
       case 'SENIOR_SECONDARY':
-        return resultType === 'termly' 
-          ? <SeniorSecondaryTermlyResult 
+        console.log('🎓 [ResultChecker] Processing SENIOR_SECONDARY result');
+        if (resultType === 'termly') {
+          console.log('📊 [ResultChecker] Termly result type');
+          const seniorData = transformDataForSeniorSecondary(result as TermlyResult);
+          console.log('📋 [ResultChecker] Passing data to SeniorSecondaryTermlyResult:', seniorData);
+          return <SeniorSecondaryTermlyResult 
               studentId={result.student.id}
               examSessionId={filters.exam_session_id || ''}
-              data={result as any}
-            />
-          : <SeniorSecondarySessionResult 
+            data={seniorData as any}
+          />;
+        } else {
+          return <SeniorSecondarySessionResult 
               studentId={result.student.id}
               academicSessionId={(result as SessionResult).academic_session.id}
               data={result as any}
             />;
+        }
       default:
+        const defaultData = transformDataForPrimary(result as TermlyResult);
         return <PrimaryResult 
-          data={result as any}
+          data={defaultData as any}
           studentId={result.student.id}
         />;
     }
@@ -634,7 +958,7 @@ const ResultChecker: React.FC = () => {
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900">
-                        Score: {getResultScore(result).toFixed(1)}%
+                        Score: {getResultScore(result) && typeof getResultScore(result) === 'number' ? getResultScore(result).toFixed(1) + '%' : 'N/A'}
                       </p>
                       <p className="text-sm text-gray-600">
                         Grade: {getResultGrade(result)}

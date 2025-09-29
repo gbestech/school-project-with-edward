@@ -70,6 +70,12 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
     enableAuditLog: true
   });
 
+  const [portalSettings, setPortalSettings] = useState({
+    studentPortalEnabled: true,
+    parentPortalEnabled: true,
+    teacherPortalEnabled: true
+  });
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Update local state when settings are loaded
@@ -95,15 +101,22 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
       // Update system settings from settings
       setSystemSettings({
-        maintenanceMode: false, // Add to settings if needed
+        maintenanceMode: currentSettings.maintenance_mode || false,
         allowRegistration: currentSettings.allow_self_registration || true,
         requireEmailVerification: currentSettings.email_verification_required || true,
         allowPasswordReset: true, // Add to settings if needed
-        sessionTimeout: 30, // Add to settings if needed
+        sessionTimeout: currentSettings.session_timeout || 30,
         maxFileUploadSize: currentSettings.profile_image_max_size || 10,
         allowedFileTypes: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
-        enableNotifications: true, // Add to settings if needed
+        enableNotifications: currentSettings.notifications_enabled !== false,
         enableAuditLog: true // Add to settings if needed
+      });
+
+      // Update portal settings from settings
+      setPortalSettings({
+        studentPortalEnabled: currentSettings.student_portal_enabled !== false,
+        parentPortalEnabled: currentSettings.parent_portal_enabled !== false,
+        teacherPortalEnabled: currentSettings.teacher_portal_enabled !== false
       });
     }
   }, [currentSettings]);
@@ -125,6 +138,11 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
   const updateSystemSetting = (field: string, value: any) => {
     setSystemSettings(prev => ({ ...prev, [field]: value }));
+    // Don't call backend immediately - only update local state
+  };
+
+  const updatePortalSetting = (field: string, value: boolean) => {
+    setPortalSettings(prev => ({ ...prev, [field]: value }));
     // Don't call backend immediately - only update local state
   };
 
@@ -265,7 +283,14 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
         school_website: contactInfo.website,
         school_motto: schoolInfo.motto,
         academic_year: schoolInfo.academicYearStart,
-        timezone: contactInfo.timezone
+        timezone: contactInfo.timezone,
+        // System settings
+        maintenance_mode: systemSettings.maintenanceMode,
+        notifications_enabled: systemSettings.enableNotifications,
+        // Portal access control
+        student_portal_enabled: portalSettings.studentPortalEnabled,
+        parent_portal_enabled: portalSettings.parentPortalEnabled,
+        teacher_portal_enabled: portalSettings.teacherPortalEnabled
       };
 
       console.log('Saving settings with data:', allData);
@@ -582,6 +607,42 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
             onChange={(checked) => updateSystemSetting('enableAuditLog', checked)}
             label="Enable Audit Log"
             description="Log all system activities for security monitoring"
+          />
+        </div>
+      </div>
+
+      {/* Portal Access Control */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+            <Users className="w-4 h-4 text-white" />
+          </div>
+          Portal Access Control
+        </h3>
+
+        <div className="space-y-6">
+          <ToggleSwitch
+            id="student-portal-enabled"
+            checked={portalSettings.studentPortalEnabled}
+            onChange={(checked) => updatePortalSetting('studentPortalEnabled', checked)}
+            label="Student Portal Access"
+            description="Allow students to access their portal and view results"
+          />
+
+          <ToggleSwitch
+            id="parent-portal-enabled"
+            checked={portalSettings.parentPortalEnabled}
+            onChange={(checked) => updatePortalSetting('parentPortalEnabled', checked)}
+            label="Parent Portal Access"
+            description="Allow parents to access their portal and view their children's information"
+          />
+
+          <ToggleSwitch
+            id="teacher-portal-enabled"
+            checked={portalSettings.teacherPortalEnabled}
+            onChange={(checked) => updatePortalSetting('teacherPortalEnabled', checked)}
+            label="Teacher Portal Access"
+            description="Allow teachers to access their portal and manage classes"
           />
         </div>
       </div>

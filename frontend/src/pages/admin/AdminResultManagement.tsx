@@ -1,10 +1,10 @@
 
-import EnhancedResultManagement from '@/components/dashboards/admin/EnhancedResultManagement'
+import EnhancedResultsManagement from '@/components/dashboards/admin/EnhancedResultsManagement'
 
 const AdminResultManagement = () => {
   return (
     <div>
-      <EnhancedResultManagement />
+      <EnhancedResultsManagement />
     </div>
   )
 }
