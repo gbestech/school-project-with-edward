@@ -9,6 +9,7 @@ from django.views.decorators.cache import cache_page
 from django.core.cache import cache
 from django.db import transaction, connection
 from django.core.exceptions import ValidationError
+from utils.section_filtering import SectionFilterMixin
 from .models import (
     Subject,
     SUBJECT_CATEGORY_CHOICES,
@@ -42,19 +43,34 @@ def filter_by_json_field(queryset, field_name, value):
     Returns:
         Filtered queryset
     """
-    if connection.vendor == "postgresql":
-        # Use PostgreSQL-specific JSON operators for better performance
-        return queryset.filter(**{f"{field_name}__contains": [value]})
-    else:
-        # Use Python-level filtering for SQLite and other databases
-        subject_ids = []
-        for subject in Subject.objects.all():
-            if value in getattr(subject, field_name, []):
-                subject_ids.append(subject.id)
-        return queryset.filter(id__in=subject_ids)
+    # Since the database doesn't support contains lookup for JSON fields,
+    # use Python-based filtering for all cases
+    subject_ids = []
+    for subject in queryset:
+        if value in getattr(subject, field_name, []):
+            subject_ids.append(subject.id)
+    return queryset.filter(id__in=subject_ids)
 
 
-class SubjectViewSet(viewsets.ModelViewSet):
+def filter_subjects_by_education_level(queryset, education_level):
+    """Filter subjects by education level using Python-based filtering."""
+    subject_ids = []
+    for subject in queryset:
+        if education_level in getattr(subject, 'education_levels', []):
+            subject_ids.append(subject.id)
+    return queryset.filter(id__in=subject_ids)
+
+
+def filter_subjects_by_nursery_level(queryset, nursery_level):
+    """Filter subjects by nursery level using Python-based filtering."""
+    subject_ids = []
+    for subject in queryset:
+        if nursery_level in getattr(subject, 'nursery_levels', []):
+            subject_ids.append(subject.id)
+    return queryset.filter(id__in=subject_ids)
+
+
+class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """
     Enhanced ViewSet for Subject CRUD operations aligned with Nigerian educational structure.
 
@@ -153,6 +169,10 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 queryset=Subject.objects.only("id", "name", "short_name", "code"),
             ),
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            queryset = self.filter_subjects_by_section_access(queryset)
 
         # Education level filtering
         education_level = self.request.query_params.get("education_level")
@@ -426,11 +446,8 @@ class SubjectViewSet(viewsets.ModelViewSet):
             result = {}
             for level_code, level_name in EDUCATION_LEVELS:
                 subjects_queryset = (
-                    self.get_queryset()
-                    .filter(
-                        education_levels__contains=[level_code],
-                        is_active=True,
-                    )
+                    filter_subjects_by_education_level(self.get_queryset(), level_code)
+                    .filter(is_active=True)
                     .order_by("category", "subject_order", "name")
                 )
 
@@ -438,8 +455,8 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 nursery_breakdown = {}
                 if level_code == "NURSERY":
                     for nursery_code, nursery_name in NURSERY_LEVELS:
-                        nursery_subjects = subjects_queryset.filter(
-                            nursery_levels__contains=[nursery_code]
+                        nursery_subjects = filter_subjects_by_nursery_level(
+                            subjects_queryset, nursery_code
                         )
                         if nursery_subjects.exists():
                             nursery_breakdown[nursery_code] = {
@@ -500,7 +517,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
             base_query = Subject.get_nursery_subjects()
 
             if nursery_level:
-                base_query = base_query.filter(nursery_levels__contains=[nursery_level])
+                base_query = filter_subjects_by_nursery_level(base_query, nursery_level)
 
             result = {
                 "total_count": base_query.count(),
@@ -513,9 +530,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
 
             # Breakdown by nursery levels
             for level_code, level_name in NURSERY_LEVELS:
-                level_subjects = base_query.filter(
-                    nursery_levels__contains=[level_code]
-                )
+                level_subjects = filter_subjects_by_nursery_level(base_query, level_code)
                 result["by_nursery_level"][level_code] = {
                     "name": level_name,
                     "count": level_subjects.count(),

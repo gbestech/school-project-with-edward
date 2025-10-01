@@ -16,6 +16,8 @@ from django.utils import timezone
 from django.conf import settings
 import logging
 
+from utils.section_filtering import SectionFilterMixin
+
 from .models import (
     Subject,
     GradeLevel,
@@ -417,7 +419,7 @@ class SubjectManagementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Subject.objects.all()
 
-class ClassroomViewSet(viewsets.ModelViewSet):
+class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Classroom model"""
     permission_classes = []  # Allow public access for classroom assignment
     serializer_class = ClassroomSerializer
@@ -427,7 +429,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at', 'current_enrollment']
     
     def get_queryset(self):
-        return Classroom.objects.select_related(
+        queryset = Classroom.objects.select_related(
             'section__grade_level', 
             'academic_year', 
             'term', 
@@ -437,6 +439,12 @@ class ClassroomViewSet(viewsets.ModelViewSet):
             'subject_teachers',
             'schedules'
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            queryset = self.filter_classrooms_by_section_access(queryset)
+        
+        return queryset
     
     def get_serializer_class(self):
         if self.action in ['retrieve', 'list']:

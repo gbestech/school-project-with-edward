@@ -450,14 +450,30 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
 
   const getClassOptions = () => {
     if (availableClasses && availableClasses.length > 0) {
-      return availableClasses.map(c => c.name);
+      // Sort classes by education level and name for better organization
+      const sortedClasses = availableClasses.sort((a, b) => {
+        const levelOrder = ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+        const aLevelIndex = levelOrder.indexOf(a.education_level || '');
+        const bLevelIndex = levelOrder.indexOf(b.education_level || '');
+        
+        if (aLevelIndex !== bLevelIndex) {
+          return aLevelIndex - bLevelIndex;
+        }
+        
+        // Within same level, sort by name
+        return a.name.localeCompare(b.name);
+      });
+      
+      console.log('🔍 [StudentResultChecker] Available classes:', sortedClasses);
+      return sortedClasses.map(c => c.name);
     }
-    console.warn('Using fallback class data');
+    
+    console.warn('🔍 [StudentResultChecker] Using fallback class data');
     return [
       'Pre-Nursery', 'Nursery 1', 'Nursery 2', 
       'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 
       'JSS 1', 'JSS 2', 'JSS 3', 
-      'SSS 1', 'SSS 2', 'SSS 3'
+      'SS 1', 'SS 2', 'SS 3'
     ];
   };
 

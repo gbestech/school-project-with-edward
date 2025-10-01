@@ -22,34 +22,102 @@ const PasswordRecovery: React.FC = () => {
     setResult(null);
 
     try {
-      // First, search for the user by username
-      const searchResponse = await api.get(`/api/parents/search/?q=${encodeURIComponent(username)}`);
-      const users = Array.isArray(searchResponse) ? searchResponse : [];
-      
-      const foundUser = users.find((user: any) => user.username === username);
-      
-      if (!foundUser) {
-        setResult({
-          success: false,
-          message: 'User not found. Please check the username.'
-        });
+      // Resolve username across students/teachers/parents and derive user_id
+      const resolveUserByUsername = async (uname: string): Promise<{ user_id: number; details: any } | null> => {
+        // Helper to normalize list responses
+        const toArray = (res: any) => Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : (Array.isArray(res?.data) ? res.data : []));
+
+        // 1) Students
+        try {
+          const stRes = await api.get('/api/students/students/', { params: { search: uname } });
+          const stList: any[] = toArray(stRes);
+          const stMatch = stList.find((s: any) => (s.user?.username || s.username) === uname);
+          if (stMatch) {
+            const uid = Number(stMatch.user?.id || stMatch.id);
+            if (uid) return { user_id: uid, details: { username: uname, full_name: stMatch.user?.full_name || stMatch.full_name, email: stMatch.user?.email || stMatch.email, phone: stMatch.user?.phone || stMatch.phone } };
+          }
+        } catch {}
+
+        // 2) Teachers
+        try {
+          const tRes = await api.get('/api/teachers/teachers/', { params: { search: uname } });
+          const tList: any[] = toArray(tRes);
+          const tMatch = tList.find((t: any) => (t.user?.username || t.username) === uname);
+          if (tMatch) {
+            const uid = Number(tMatch.user?.id || tMatch.id);
+            if (uid) return { user_id: uid, details: { username: uname, full_name: tMatch.user?.full_name || tMatch.full_name, email: tMatch.user?.email || tMatch.email, phone: tMatch.user?.phone || tMatch.phone } };
+          }
+        } catch {}
+
+        // 3) Parents (use dedicated search endpoint if available)
+        try {
+          let pRes: any = await api.get(`/api/parents/search/`, { params: { q: uname } });
+          let pList: any[] = toArray(pRes);
+          if (!Array.isArray(pList) || pList.length === 0) {
+            // Fallback to list with search param
+            pRes = await api.get('/api/parents/', { params: { search: uname } });
+            pList = toArray(pRes);
+          }
+          const pMatch = pList.find((p: any) => (p.user?.username || p.username) === uname);
+          if (pMatch) {
+            const uid = Number(pMatch.user?.id || pMatch.id);
+            if (uid) return { user_id: uid, details: { username: uname, full_name: pMatch.user?.full_name || pMatch.full_name, email: pMatch.user?.email || pMatch.email, phone: pMatch.user?.phone || pMatch.phone } };
+          }
+        } catch {}
+
+        return null;
+      };
+
+      const input = username.trim();
+      const prefix = (input.split('/')[0] || '').toUpperCase();
+      const resolved = await (async () => {
+        // Route by prefix to avoid wrong endpoints
+        if (prefix === 'TCH') {
+          // Teachers only
+          const toArray = (res: any) => Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : (Array.isArray(res?.data) ? res.data : []));
+          try {
+            const tRes = await api.get('/api/teachers/teachers/', { params: { search: input } });
+            const tList: any[] = toArray(tRes);
+            const tMatch = tList.find((t: any) => (t.user?.username || t.username) === input);
+            if (tMatch) {
+              const uid = Number(tMatch.user?.id || tMatch.id);
+              if (uid) return { user_id: uid, details: { username: input, full_name: tMatch.user?.full_name || tMatch.full_name, email: tMatch.user?.email || tMatch.email, phone: tMatch.user?.phone || tMatch.phone } };
+            }
+          } catch {}
+          return null;
+        }
+        if (prefix === 'STU') {
+          return await resolveUserByUsername(input);
+        }
+        if (prefix === 'PAR') {
+          return await resolveUserByUsername(input);
+        }
+        if (prefix === 'ADM') {
+          // Admins are general users; attempt teachers then students then parents
+          return await resolveUserByUsername(input);
+        }
+        // Unknown prefix, try broad resolve
+        return await resolveUserByUsername(input);
+      })();
+      if (!resolved) {
+        setResult({ success: false, message: 'User not found. Please check the username.' });
         return;
       }
 
       // Generate a new password
       const newPassword = generatePassword();
-      
-      // Update the user's password
-      const resetResponse = await api.post(`/api/auth/admin-reset-password/`, {
-        user_id: foundUser.user_id,
+
+      // Reset password via admin endpoint using resolved user_id
+      await api.post(`/api/auth/admin-reset-password/`, {
+        user_id: resolved.user_id,
         new_password: newPassword
       });
 
       setResult({
         success: true,
         message: 'Password reset successful!',
-        newPassword: newPassword,
-        userDetails: foundUser
+        newPassword,
+        userDetails: resolved.details
       });
 
       toast.success('Password reset successful!');

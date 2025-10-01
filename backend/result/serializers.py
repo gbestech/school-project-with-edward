@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from students.models import Student
+from subject.models import Subject
 from .models import (
     GradingSystem,
     Grade,
@@ -658,6 +660,12 @@ class SeniorSecondaryResultSerializer(serializers.ModelSerializer):
 
 class SeniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating Senior Secondary results"""
+    
+    # Make foreign key fields optional for updates
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=False)
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
+    exam_session = serializers.PrimaryKeyRelatedField(queryset=ExamSession.objects.all(), required=False)
+    grading_system = serializers.PrimaryKeyRelatedField(queryset=GradingSystem.objects.all(), required=False)
 
     class Meta:
         model = SeniorSecondaryResult
@@ -892,6 +900,12 @@ class JuniorSecondaryResultSerializer(serializers.ModelSerializer):
 
 class JuniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating Junior Secondary results"""
+    
+    # Make foreign key fields optional for updates
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=False)
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
+    exam_session = serializers.PrimaryKeyRelatedField(queryset=ExamSession.objects.all(), required=False)
+    grading_system = serializers.PrimaryKeyRelatedField(queryset=GradingSystem.objects.all(), required=False)
 
     class Meta:
         model = JuniorSecondaryResult
@@ -1037,6 +1051,12 @@ class PrimaryResultSerializer(serializers.ModelSerializer):
 
 class PrimaryResultCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating Primary results"""
+    
+    # Make foreign key fields optional for updates
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=False)
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
+    exam_session = serializers.PrimaryKeyRelatedField(queryset=ExamSession.objects.all(), required=False)
+    grading_system = serializers.PrimaryKeyRelatedField(queryset=GradingSystem.objects.all(), required=False)
 
     class Meta:
         model = PrimaryResult
@@ -1167,6 +1187,12 @@ class NurseryResultSerializer(serializers.ModelSerializer):
 
 class NurseryResultCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating Nursery results"""
+    
+    # Make foreign key fields optional for updates
+    student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), required=False)
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
+    exam_session = serializers.PrimaryKeyRelatedField(queryset=ExamSession.objects.all(), required=False)
+    grading_system = serializers.PrimaryKeyRelatedField(queryset=GradingSystem.objects.all(), required=False)
 
     class Meta:
         model = NurseryResult
@@ -1305,7 +1331,7 @@ class ConsolidatedResultSerializer(serializers.Serializer):
                 senior_results = SeniorSecondaryResult.objects.filter(
                     student=obj.student,
                     exam_session__term=obj.term,
-                    exam_session__academic_session=obj.academic_session,
+                    exam_session__academic_session=obj.academic_session
                 ).select_related("subject", "grading_system", "exam_session", "stream")
 
                 for r in senior_results:
@@ -1356,7 +1382,7 @@ class ConsolidatedResultSerializer(serializers.Serializer):
                 junior_results = JuniorSecondaryResult.objects.filter(
                     student=obj.student,
                     exam_session__term=obj.term,
-                    exam_session__academic_session=obj.academic_session,
+                    exam_session__academic_session=obj.academic_session
                 ).select_related("subject", "grading_system", "exam_session")
 
                 for r in junior_results:
@@ -1392,7 +1418,7 @@ class ConsolidatedResultSerializer(serializers.Serializer):
                 primary_results = PrimaryResult.objects.filter(
                     student=obj.student,
                     exam_session__term=obj.term,
-                    exam_session__academic_session=obj.academic_session,
+                    exam_session__academic_session=obj.academic_session
                 ).select_related("subject", "grading_system", "exam_session")
 
                 for r in primary_results:
@@ -1428,7 +1454,7 @@ class ConsolidatedResultSerializer(serializers.Serializer):
                 nursery_results = NurseryResult.objects.filter(
                     student=obj.student,
                     exam_session__term=obj.term,
-                    exam_session__academic_session=obj.academic_session,
+                    exam_session__academic_session=obj.academic_session
                 ).select_related("subject", "grading_system", "exam_session")
 
                 for r in nursery_results:
@@ -1462,7 +1488,7 @@ class ConsolidatedResultSerializer(serializers.Serializer):
             base_results = StudentResult.objects.filter(
                 student=obj.student,
                 exam_session__term=obj.term,
-                exam_session__academic_session=obj.academic_session,
+                exam_session__academic_session=obj.academic_session
             ).select_related("subject", "grading_system", "exam_session")
             combined.extend(StudentResultSerializer(base_results, many=True).data)
 

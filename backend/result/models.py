@@ -1707,9 +1707,13 @@ def update_senior_secondary_term_report_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=SeniorSecondaryResult)
 def update_senior_secondary_term_report_on_delete(sender, instance, **kwargs):
     """Update term report when individual result is deleted"""
-    if instance.term_report:
-        instance.term_report.calculate_metrics()
-        instance.term_report.calculate_class_position()
+    try:
+        if instance.term_report:
+            instance.term_report.calculate_metrics()
+            instance.term_report.calculate_class_position()
+    except SeniorSecondaryTermReport.DoesNotExist:
+        # Term report was already deleted or doesn't exist, skip update
+        pass
 
 
 @receiver(post_save, sender=SeniorSecondarySessionResult)
@@ -1723,9 +1727,13 @@ def update_senior_secondary_session_report_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=SeniorSecondarySessionResult)
 def update_senior_secondary_session_report_on_delete(sender, instance, **kwargs):
     """Update session report when individual session result is deleted"""
-    if instance.session_report:
-        instance.session_report.calculate_session_metrics()
-        instance.session_report.calculate_class_position()
+    try:
+        if instance.session_report:
+            instance.session_report.calculate_session_metrics()
+            instance.session_report.calculate_class_position()
+    except SeniorSecondarySessionReport.DoesNotExist:
+        # Session report was already deleted or doesn't exist, skip update
+        pass
 
 
 # Add these new models to your results/models.py
@@ -2269,9 +2277,13 @@ def update_junior_secondary_term_report_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=JuniorSecondaryResult)
 def update_junior_secondary_term_report_on_delete(sender, instance, **kwargs):
     """Update term report when individual result is deleted"""
-    if instance.term_report:
-        instance.term_report.calculate_metrics()
-        instance.term_report.calculate_class_position()
+    try:
+        if instance.term_report:
+            instance.term_report.calculate_metrics()
+            instance.term_report.calculate_class_position()
+    except JuniorSecondaryTermReport.DoesNotExist:
+        # Term report was already deleted or doesn't exist, skip update
+        pass
 
 
 # Add these new models to your results/models.py
@@ -2811,9 +2823,13 @@ def update_primary_term_report_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=PrimaryResult)
 def update_primary_term_report_on_delete(sender, instance, **kwargs):
     """Update term report when individual result is deleted"""
-    if instance.term_report:
-        instance.term_report.calculate_metrics()
-        instance.term_report.calculate_class_position()
+    try:
+        if instance.term_report:
+            instance.term_report.calculate_metrics()
+            instance.term_report.calculate_class_position()
+    except PrimaryTermReport.DoesNotExist:
+        # Term report was already deleted or doesn't exist, skip update
+        pass
 
 
 class NurseryTermReport(models.Model):
@@ -3221,6 +3237,10 @@ def update_nursery_term_report_on_save(sender, instance, **kwargs):
 @receiver(post_delete, sender=NurseryResult)
 def update_nursery_term_report_on_delete(sender, instance, **kwargs):
     """Update term report when individual result is deleted"""
-    if instance.term_report:
-        instance.term_report.calculate_metrics()
-        instance.term_report.calculate_class_position()
+    try:
+        if instance.term_report:
+            instance.term_report.calculate_metrics()
+            instance.term_report.calculate_class_position()
+    except NurseryTermReport.DoesNotExist:
+        # Term report was already deleted or doesn't exist, skip update
+        pass

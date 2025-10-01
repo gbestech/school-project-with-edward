@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useResultService } from "@/hooks/useResultService";
@@ -52,13 +52,15 @@ interface SeniorSecondaryResultProps {
   examSessionId: string;
   templateId?: string;
   data?: SeniorSecondaryTermlyResultData;
+  showOnlyPublished?: boolean; // NEW: Control whether to show only published results
 }
 
 export default function SeniorSecondaryTermlyResult({ 
   studentId, 
   examSessionId, 
   // templateId,
-  data 
+  data,
+  showOnlyPublished = false // NEW: Default to false (show all results)
 }: SeniorSecondaryResultProps) {
   
   // State to store the corrected next_term_begins date
@@ -166,6 +168,28 @@ export default function SeniorSecondaryTermlyResult({
   const [loading, setLoading] = useState(!data);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  
+  // Filter subjects based on showOnlyPublished prop - using useMemo to avoid initialization issues
+  const subjectsToUse = useMemo(() => {
+    if (!resultData?.subjects) return [];
+    
+    if (showOnlyPublished) {
+      // Filter for published subjects only (for ResultChecker/student view)
+      const publishedSubjects = resultData.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+      
+      console.log('🔍 [SeniorSecondaryTermlyResult] FILTERING MODE: Published only');
+      console.log('🔍 [SeniorSecondaryTermlyResult] Total subjects:', resultData.subjects.length);
+      console.log('🔍 [SeniorSecondaryTermlyResult] Published subjects:', publishedSubjects.length);
+      console.log('🔍 [SeniorSecondaryTermlyResult] Published subject names:', publishedSubjects.map(s => s.subject?.name));
+      
+      return publishedSubjects;
+    } else {
+      // Show all subjects (for Admin Results tab)
+      console.log('🔍 [SeniorSecondaryTermlyResult] FILTERING MODE: Show all results');
+      console.log('🔍 [SeniorSecondaryTermlyResult] Total subjects:', resultData.subjects.length);
+      return resultData.subjects;
+    }
+  }, [resultData?.subjects, showOnlyPublished]);
 
 
   useEffect(() => {
@@ -325,6 +349,25 @@ export default function SeniorSecondaryTermlyResult({
           updated_at: new Date().toISOString()
         };
 
+        // Filter subjects to only include published ones
+        const publishedSubjectResults = transformedData.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+        
+        // Recalculate totals based on published subjects only
+        const publishedTotalScore = publishedSubjectResults.reduce((sum: number, subject: any) => sum + (subject.total_score || 0), 0);
+        const publishedAverageScore = publishedSubjectResults.length > 0 
+          ? publishedTotalScore / publishedSubjectResults.length 
+          : 0;
+        
+        console.log('🔍 [SeniorSecondaryTermlyResult] All subjects:', transformedData.subjects.length);
+        console.log('🔍 [SeniorSecondaryTermlyResult] Published subjects:', publishedSubjectResults.length);
+        console.log('🔍 [SeniorSecondaryTermlyResult] Recalculated total from published:', publishedTotalScore);
+        console.log('🔍 [SeniorSecondaryTermlyResult] Recalculated average from published:', publishedAverageScore);
+        
+        // Update the transformed data with published-only calculations
+        transformedData.subjects = transformedData.subjects; // Keep all subjects but will filter in display
+        transformedData.total_score = publishedTotalScore;
+        transformedData.average_score = publishedAverageScore;
+        
         setResultData(transformedData);
         
         // Set active grading system and scoring config
@@ -460,13 +503,13 @@ export default function SeniorSecondaryTermlyResult({
     return grade?.grade || '';
   }, [gradingSystem]);
 
-  // Get subject result data with improved matching
+  // Get subject result data with improved matching - from subjects to use
   const getSubjectData = useCallback((subjectName: string) => {
-    if (!resultData?.subjects) return null;
+    if (!subjectsToUse || subjectsToUse.length === 0) return null;
     
     const normalizedSubjectName = subjectName.toLowerCase().trim();
     
-    return resultData.subjects.find(subject => {
+    return subjectsToUse.find((subject: any) => {
       const normalizedDbSubject = subject.subject.name.toLowerCase().trim();
       
       // Exact match
@@ -496,7 +539,7 @@ export default function SeniorSecondaryTermlyResult({
       
       return false;
     });
-  }, [resultData?.subjects]);
+  }, [subjectsToUse]);
 
   // Transform subject data with improved error handling
   const transformSubjectScores = useCallback((): SubjectScore[] => {
@@ -535,12 +578,34 @@ export default function SeniorSecondaryTermlyResult({
         classAverage: subjectData.class_average || "",
         highest: subjectData.highest_in_class || "",
         lowest: subjectData.lowest_in_class || "",
-        position: subjectData.position || "",
+        position: (() => {
+          // Check if position is already formatted (contains 'st', 'nd', 'rd', 'th')
+          if (subjectData?.position && typeof subjectData.position === 'string' && 
+              ((subjectData.position as string).includes('st') || (subjectData.position as string).includes('nd') || 
+               (subjectData.position as string).includes('rd') || (subjectData.position as string).includes('th'))) {
+            return subjectData.position;
+          } else if (subjectData?.subject_position && typeof subjectData.subject_position === 'number') {
+            return `${subjectData.subject_position}${getOrdinalSuffix(subjectData.subject_position)}`;
+          } else if (subjectData?.position && typeof subjectData.position === 'number') {
+            return `${subjectData.position}${getOrdinalSuffix(subjectData.position)}`;
+          }
+          return "";
+        })(),
         grade: total > 0 ? getGrade(total) : "",
         teacherRemark: subjectData.teacher_remark || ""
       };
     });
   }, [getSubjectData, getGrade]);
+
+  // Helper function to get position with ordinal suffix
+  const getOrdinalSuffix = (num: number): string => {
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return "st";
+    if (j === 2 && k !== 12) return "nd";
+    if (j === 3 && k !== 13) return "rd";
+    return "th";
+  };
 
   // Loading state
   if (serviceLoading || loading) {

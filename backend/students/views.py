@@ -7,6 +7,7 @@ from schoolSettings.permissions import (
     HasStudentsPermission,
     HasStudentsPermissionOrReadOnly,
 )
+from utils.section_filtering import SectionFilterMixin
 from django.db.models import Avg, Count, Q
 from classroom.models import ClassSchedule, Classroom, Section, GradeLevel
 from django.shortcuts import get_object_or_404
@@ -320,7 +321,7 @@ def student_schedule_view(request):
         return Response({"error": f"Failed to fetch schedule: {str(e)}"}, status=500)
 
 
-class StudentViewSet(viewsets.ModelViewSet):
+class StudentViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     permission_classes = [HasStudentsPermissionOrReadOnly]
     filter_backends = [
         DjangoFilterBackend,
@@ -341,7 +342,13 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Optimize queryset with select_related for better performance."""
-        return Student.objects.select_related("user").prefetch_related("parents")
+        queryset = Student.objects.select_related("user").prefetch_related("parents")
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            queryset = self.filter_students_by_section_access(queryset)
+        
+        return queryset
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action."""

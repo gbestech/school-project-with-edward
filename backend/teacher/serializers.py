@@ -460,35 +460,6 @@ class TeacherSerializer(serializers.ModelSerializer):
                             try:
                                 subject = Subject.objects.get(id=subject_id)
                                 
-                                # Check if this subject is already assigned to another teacher in this classroom
-                                existing_assignment = ClassroomTeacherAssignment.objects.filter(
-                                    classroom=classroom,
-                                    subject=subject,
-                                    is_active=True
-                                ).exclude(teacher=teacher).first()
-                                
-                                if existing_assignment:
-                                    print(f"⚠️ Subject {subject.name} is already assigned to {existing_assignment.teacher.user.full_name} in {classroom}")
-                                    print(f"⚠️ Skipping assignment for {teacher.user.full_name}")
-                                    continue
-                                
-                                # Check if this teacher is already assigned to this subject in this classroom
-                                teacher_existing = ClassroomTeacherAssignment.objects.filter(
-                                    teacher=teacher,
-                                    classroom=classroom,
-                                    subject=subject,
-                                    is_active=True
-                                ).first()
-                                
-                                if teacher_existing:
-                                    print(f"⚠️ Teacher {teacher.user.full_name} is already assigned to {subject.name} in {classroom}")
-                                    print(f"⚠️ Updating existing assignment")
-                                    teacher_existing.is_primary_teacher = is_primary
-                                    teacher_existing.periods_per_week = periods_per_week
-                                    teacher_existing.save()
-                                    successful_assignments += 1
-                                    continue
-                                
                                 ClassroomTeacherAssignment.objects.create(
                                     teacher=teacher,
                                     classroom=classroom,
@@ -510,34 +481,6 @@ class TeacherSerializer(serializers.ModelSerializer):
                     elif subject_id:
                         try:
                             subject = Subject.objects.get(id=subject_id)
-                            
-                            # Check if this subject is already assigned to another teacher in this classroom
-                            existing_assignment = ClassroomTeacherAssignment.objects.filter(
-                                classroom=classroom,
-                                subject=subject,
-                                is_active=True
-                            ).exclude(teacher=teacher).first()
-                            
-                            if existing_assignment:
-                                print(f"⚠️ Subject {subject.name} is already assigned to {existing_assignment.teacher.user.full_name} in {classroom}")
-                                print(f"⚠️ Skipping assignment for {teacher.user.full_name}")
-                                continue
-                            
-                            # Check if this teacher is already assigned to this subject in this classroom
-                            teacher_existing = ClassroomTeacherAssignment.objects.filter(
-                                teacher=teacher,
-                                classroom=classroom,
-                                subject=subject,
-                                is_active=True
-                            ).first()
-                            
-                            if teacher_existing:
-                                print(f"⚠️ Teacher {teacher.user.full_name} is already assigned to {subject.name} in {classroom}")
-                                print(f"⚠️ Updating existing assignment")
-                                teacher_existing.is_primary_teacher = is_primary
-                                teacher_existing.periods_per_week = periods_per_week
-                                teacher_existing.save()
-                                continue
                             
                             ClassroomTeacherAssignment.objects.create(
                                 teacher=teacher,

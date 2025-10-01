@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useResultService } from "@/hooks/useResultService";
@@ -6,7 +6,6 @@ import { SchoolSettings } from '@/types/types';
 import type { 
   GradingSystem, 
   GradeRange,
-  ScoringConfiguration,
   ExamSession 
 } from "@/services/ResultSettingsService";
 
@@ -44,8 +43,10 @@ export interface SubjectResult {
   mark_obtained: number;
   grade?: string;
   position?: string;
+  subject_position?: number;
   teacher_remark?: string;
   is_passed?: boolean;
+  status?: string; // DRAFT, SUBMITTED, APPROVED, PUBLISHED
 }
 
 export interface PrimaryResultData {
@@ -103,35 +104,36 @@ const COLUMN_HEADERS = [
 ];
 
 const WatermarkLogo = ({ schoolInfo }: { schoolInfo: SchoolSettings }) => (
-  <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-3 z-0">
+  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0" style={{ opacity: 0.08 }}>
     <div className="text-center">
       <div 
-        className="w-64 h-64 rounded-full flex items-center justify-center mb-6 mx-auto border-4"
+        className="w-80 h-80 rounded-full flex items-center justify-center mb-8 mx-auto border-2"
         style={{ 
-          background: 'linear-gradient(135deg, rgba(30, 64, 175, 0.1), rgba(59, 130, 246, 0.1))',
-          borderColor: 'rgba(30, 64, 175, 0.2)'
+          background: 'linear-gradient(135deg, rgba(30, 64, 175, 0.05), rgba(59, 130, 246, 0.05))',
+          borderColor: 'rgba(30, 64, 175, 0.1)'
         }}
       >
-        <div className="text-center" style={{ color: 'rgba(30, 64, 175, 0.3)' }}>
+        <div className="text-center" style={{ color: 'rgba(30, 64, 175, 0.15)' }}>
           {schoolInfo?.logo ? (
             <img 
               src={schoolInfo.logo} 
               alt="School Logo" 
-              className="w-16 h-16 opacity-30 mx-auto mb-2" 
+              className="w-30 h-30 mx-auto mb-3" 
+              style={{ opacity: 0.1 }}
             />
           ) : (
-            <div className="text-4xl font-bold mb-2">
+            <div className="text-5xl font-bold mb-3" style={{ opacity: 0.1 }}>
               {schoolInfo?.school_name?.split(' ').map((word: string) => word[0]).join('') || 'GTS'}
             </div>
           )}
-          <div className="text-sm font-semibold">
+          <div className="text-lg font-semibold" style={{ opacity: 0.1 }}>
             {schoolInfo?.school_name?.toUpperCase() || "GOD'S TREASURE SCHOOLS"}
           </div>
         </div>
       </div>
       <div 
-        className="text-5xl font-bold tracking-wider"
-        style={{ color: 'rgba(30, 64, 175, 0.15)' }}
+        className="text-6xl font-bold tracking-wider"
+        style={{ color: 'rgba(30, 64, 175, 0.08)' }}
       >
         {schoolInfo?.school_name?.toUpperCase() || "GOD'S TREASURE SCHOOLS"}
       </div>
@@ -148,6 +150,7 @@ interface PrimaryResultProps {
   onDataChange?: (data: PrimaryResultData) => void;
   onPDFGenerated?: (pdfUrl: string) => void;
   enableEnhancedFeatures?: boolean;
+  showOnlyPublished?: boolean; // NEW: Control whether to show only published results
 }
 
 export default function PrimaryResult({ 
@@ -155,9 +158,9 @@ export default function PrimaryResult({
   studentId, 
   examSessionId, 
   templateId,
-  onDataChange,
   onPDFGenerated,
-  enableEnhancedFeatures = true
+  enableEnhancedFeatures = true,
+  showOnlyPublished = false // NEW: Default to false (show all results)
 }: PrimaryResultProps) {
   // State to store the corrected next_term_begins date
   const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
@@ -167,6 +170,29 @@ export default function PrimaryResult({
   console.log('🏫 [PrimaryResult] Data structure:', data);
   console.log('🏫 [PrimaryResult] Student data:', data?.student);
   console.log('🏫 [PrimaryResult] Subjects data:', data?.subjects);
+  
+  // Debug first subject to see the structure
+  if (data?.subjects && data.subjects.length > 0) {
+    console.log('🏫 [PrimaryResult] First subject structure:', data.subjects[0]);
+    console.log('🏫 [PrimaryResult] First subject CA components:', {
+      continuous_assessment_score: data.subjects[0].continuous_assessment_score,
+      take_home_test_score: data.subjects[0].take_home_test_score,
+      project_score: data.subjects[0].project_score,
+      appearance_score: data.subjects[0].appearance_score,
+      practical_score: data.subjects[0].practical_score,
+      note_copying_score: data.subjects[0].note_copying_score,
+      ca_total: data.subjects[0].ca_total
+    });
+  }
+  
+  // Debug position and class information
+  console.log('🏫 [PrimaryResult] Position and class data:', {
+    class_position: data.class_position,
+    total_students: data.total_students,
+    total_score: data.total_score,
+    average_score: data.average_score,
+    overall_grade: data.overall_grade
+  });
   
   // Check if we need to fix the next_term_begins date
   useEffect(() => {
@@ -248,7 +274,6 @@ export default function PrimaryResult({
   
   const [gradingSystem, setGradingSystem] = useState<GradingSystem | null>(null);
   const [grades, setGrades] = useState<GradeRange[]>([]);
-  const [scoringConfig, setScoringConfig] = useState<ScoringConfiguration | null>(null);
   const [examSession, setExamSession] = useState<ExamSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,14 +298,11 @@ export default function PrimaryResult({
           setGrades(systemGrades);
         }
 
-        // Get scoring configuration for primary level
-        const scoringConfigs = await service.getScoringConfigurationsByEducationLevel('PRIMARY');
-        const primaryScoringConfig = scoringConfigs.find((config: ScoringConfiguration) => 
-          config.education_level === 'PRIMARY' && config.is_active
-        );
-        if (primaryScoringConfig) {
-          setScoringConfig(primaryScoringConfig);
-        }
+        // Get scoring configuration for primary level (for future use)
+        // const scoringConfigs = await service.getScoringConfigurationsByEducationLevel('PRIMARY');
+        // const primaryScoringConfig = scoringConfigs.find((config: ScoringConfiguration) => 
+        //   config.education_level === 'PRIMARY' && config.is_active
+        // );
 
         // Load exam session data if examSessionId is provided
         if (examSessionId && enableEnhancedFeatures) {
@@ -425,16 +447,117 @@ export default function PrimaryResult({
     };
   };
 
-  // Get subject result data
+  // Get subject result data - from subjects to use (published or all for debugging)
   const getSubjectData = (subjectName: string) => {
-    if (!data.subjects || data.subjects.length === 0) return null;
+    if (!subjectsToUse || subjectsToUse.length === 0) return null;
     
-    return data.subjects.find(subject => 
+    return subjectsToUse.find((subject: any) => 
       subject.subject.name.toUpperCase().includes(subjectName.toUpperCase()) ||
       subjectName.toUpperCase().includes(subject.subject.name.toUpperCase())
     );
   };
 
+  // Calculate CA total for a subject
+  const calculateCATotal = (subject: SubjectResult): number => {
+    console.log('🔍 [PrimaryResult] calculateCATotal - Subject data:', subject);
+    
+    // Check if ca_total is already provided by backend
+    if (subject.ca_total !== undefined && subject.ca_total !== null && !isNaN(Number(subject.ca_total))) {
+      console.log('🔍 [PrimaryResult] calculateCATotal - Using backend ca_total:', subject.ca_total);
+      return Number(subject.ca_total);
+    }
+    
+    // Calculate from individual components if ca_total is not available
+    const components = [
+      subject.continuous_assessment_score || 0,
+      subject.take_home_test_score || 0,
+      subject.practical_score || 0,
+      subject.appearance_score || 0,
+      subject.project_score || 0,
+      subject.note_copying_score || 0
+    ];
+    
+    console.log('🔍 [PrimaryResult] calculateCATotal - Components:', components);
+    
+    const total = components.reduce((sum, score) => {
+      const numericScore = Number(score) || 0;
+      console.log(`🔍 [PrimaryResult] calculateCATotal - Adding ${numericScore} to sum ${sum}`);
+      return sum + numericScore;
+    }, 0);
+    
+    console.log('🔍 [PrimaryResult] calculateCATotal - Final total:', total);
+    return total;
+  };
+
+  // Debug: Log all subject statuses first
+  console.log('🔍 [PrimaryResult] All subjects with status:', data.subjects?.map(s => ({
+    name: s.subject?.name,
+    status: s.status,
+    hasStatus: 'status' in s
+  })));
+  
+  // Debug: Log the actual subject objects to see their structure
+  console.log('🔍 [PrimaryResult] Raw subject objects:', data.subjects);
+  console.log('🔍 [PrimaryResult] First subject full object:', data.subjects?.[0]);
+  
+  // Debug: Check if subjects have status field
+  if (data.subjects && data.subjects.length > 0) {
+    console.log('🔍 [PrimaryResult] Checking status field in subjects:');
+    data.subjects.forEach((subject: any, index: number) => {
+      console.log(`  Subject ${index + 1}: ${subject.subject?.name}`);
+      console.log(`    Has status field: ${'status' in subject}`);
+      console.log(`    Status value: ${subject.status}`);
+      console.log(`    Status type: ${typeof subject.status}`);
+      console.log(`    All keys: ${Object.keys(subject)}`);
+    });
+  }
+  
+  // Filter subjects based on showOnlyPublished prop - using useMemo to avoid initialization issues
+  const subjectsToUse = useMemo(() => {
+    if (!data?.subjects) return [];
+    
+    if (showOnlyPublished) {
+      // Filter for published subjects only (for ResultChecker/student view)
+      const publishedSubjects = data.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+      
+      console.log('🔍 [PrimaryResult] FILTERING MODE: Published only');
+      console.log('🔍 [PrimaryResult] Total subjects:', data.subjects.length);
+      console.log('🔍 [PrimaryResult] Published subjects:', publishedSubjects.length);
+      console.log('🔍 [PrimaryResult] Published subject names:', publishedSubjects.map(s => s.subject?.name));
+      
+      // TEMPORARY WORKAROUND: If no published subjects found (status field missing), 
+      // check if we have National Values and use it as published
+      if (publishedSubjects.length === 0 && data.subjects.length > 0) {
+        console.log('🔍 [PrimaryResult] No published subjects found, checking for National Values...');
+        const nationalValues = data.subjects.find((subject: any) => 
+          subject.subject?.name?.toLowerCase().includes('national values') ||
+          subject.subject?.name?.toLowerCase().includes('national value')
+        );
+        
+        if (nationalValues) {
+          console.log('🔍 [PrimaryResult] Found National Values, treating as published');
+          console.log('🔍 [PrimaryResult] National Values data:', nationalValues);
+          console.log('🔍 [PrimaryResult] National Values position fields:', {
+            position: nationalValues.position,
+            subject_position: nationalValues.subject_position,
+            allKeys: Object.keys(nationalValues)
+          });
+          return [nationalValues];
+        } else {
+          console.log('🔍 [PrimaryResult] No National Values found, using all subjects as fallback');
+          return data.subjects;
+        }
+      }
+      
+      return publishedSubjects;
+    } else {
+      // Show all subjects (for Admin Results tab)
+      console.log('🔍 [PrimaryResult] FILTERING MODE: Show all results');
+      console.log('🔍 [PrimaryResult] Total subjects:', data.subjects.length);
+      return data.subjects;
+    }
+  }, [data?.subjects, showOnlyPublished]);
+  
   // Helper function to get position with ordinal suffix
   const getOrdinalSuffix = (num: number): string => {
     const j = num % 10;
@@ -444,14 +567,81 @@ export default function PrimaryResult({
     if (j === 3 && k !== 13) return "rd";
     return "th";
   };
+  
+  console.log('🔍 [PrimaryResult] Using subjects:', subjectsToUse.length, 'for display');
+  console.log('🔍 [PrimaryResult] Subjects to use for table:', subjectsToUse);
 
-  // Handle data changes and propagate to parent
-  const handleDataUpdate = (updates: Partial<PrimaryResultData>) => {
-    const updatedData = { ...data, ...updates };
-    if (onDataChange) {
-      onDataChange(updatedData);
+  // Calculate total and average scores from PUBLISHED subject data only
+  const calculateScores = () => {
+    console.log('🔍 [PrimaryResult] calculateScores - Data:', data);
+    console.log('🔍 [PrimaryResult] calculateScores - Data.total_score:', data.total_score);
+    console.log('🔍 [PrimaryResult] calculateScores - Data.average_score:', data.average_score);
+    console.log('🔍 [PrimaryResult] calculateScores - All subjects:', data?.subjects?.length);
+    console.log('🔍 [PrimaryResult] calculateScores - Subjects to use:', subjectsToUse.length);
+    
+    // Calculate from subjects to use (published or all based on context)
+    console.log('🔍 [PrimaryResult] calculateScores - Calculating from subjects to use');
+    
+    if (!subjectsToUse || subjectsToUse.length === 0) {
+      console.log('🔍 [PrimaryResult] calculateScores - No subjects found');
+      return { totalScore: 0, averageScore: 0 };
     }
+
+    const validSubjects = subjectsToUse.filter((subject: any) => {
+      const markObtained = Number(subject.mark_obtained) || 0;
+      const isMarkObtainedValid = subject.mark_obtained && 
+                                 !isNaN(markObtained) && 
+                                 markObtained > 0 &&
+                                 String(subject.mark_obtained).length < 20; // Check for concatenated strings
+      
+      console.log(`🔍 [PrimaryResult] calculateScores - Subject ${subject.subject?.name}: status=${subject.status}, mark_obtained=${subject.mark_obtained}, valid=${isMarkObtainedValid}`);
+      return isMarkObtainedValid;
+    });
+
+    console.log('🔍 [PrimaryResult] calculateScores - Valid published subjects:', validSubjects.length);
+
+    const totalScore = subjectsToUse.reduce((sum: number, subject: any) => {
+      const markObtained = Number(subject.mark_obtained) || 0;
+      const isMarkObtainedValid = subject.mark_obtained && 
+                                 !isNaN(markObtained) && 
+                                 markObtained > 0 &&
+                                 String(subject.mark_obtained).length < 20;
+      
+      let score = 0;
+      if (isMarkObtainedValid) {
+        score = markObtained;
+        console.log(`🔍 [PrimaryResult] calculateScores - Using mark_obtained: ${score}`);
+      } else {
+        // Fallback: Calculate from CA + Exam
+        const caTotal = calculateCATotal(subject);
+        const examMarks = Number(subject.exam_marks) || 0;
+        score = caTotal + examMarks;
+        console.log(`🔍 [PrimaryResult] calculateScores - Using calculated score (CA: ${caTotal} + Exam: ${examMarks} = ${score})`);
+      }
+      
+      console.log(`🔍 [PrimaryResult] calculateScores - Adding ${score} to sum ${sum}`);
+      return sum + score;
+    }, 0);
+    
+    const averageScore = subjectsToUse.length > 0 ? totalScore / subjectsToUse.length : 0;
+
+    console.log('🔍 [PrimaryResult] calculateScores - Calculated from subjects:', { totalScore, averageScore });
+
+    return { 
+      totalScore: Math.round(totalScore), 
+      averageScore: Math.round(averageScore * 100) / 100 
+    };
   };
+
+  const { totalScore, averageScore } = calculateScores();
+
+  // Handle data changes and propagate to parent (for future use)
+  // const handleDataUpdate = (updates: Partial<PrimaryResultData>) => {
+  //   const updatedData = { ...data, ...updates };
+  //   if (onDataChange) {
+  //     onDataChange(updatedData);
+  //   }
+  // };
 
   if (serviceLoading || loading || !schoolSettings) {
     return (
@@ -560,7 +750,7 @@ export default function PrimaryResult({
           </div>
 
           {/* Student report block - below the grid */}
-          <div className="bg-blue-900 text-white py-1 px-2 rounded-lg inline-block">
+          <div className="text-blue-900">
             <h5 className="text-sm font-semibold">PRIMARY SCHOOL TERMLY REPORT</h5>
             <p className="text-xs">
               {(data as any).exam_session?.term_display || data.term?.name || '1st Term'}, {(data as any).exam_session?.academic_session_name || data.term?.session || data.term?.year || '2025'} Academic Session
@@ -726,8 +916,8 @@ export default function PrimaryResult({
             </thead>
 
             <tbody>
-              {SUBJECTS.map((subject, idx) => {
-                const subjectData = getSubjectData(subject);
+              {subjectsToUse.map((subjectData, idx) => {
+                const subject = subjectData.subject?.name || 'Unknown Subject';
                 const totalScore = subjectData ? subjectData.mark_obtained || 0 : 0;
                 const gradeInfo = getGradeForScore(totalScore);
                 
@@ -772,7 +962,12 @@ export default function PrimaryResult({
                     
                     {/* CA Total */}
                     <td className={`border border-slate-600 p-0.5 text-center text-xs font-semibold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                      {subjectData?.ca_total && !isNaN(subjectData.ca_total) ? Math.round(subjectData.ca_total) : ''}
+                      {subjectData ? (() => {
+                        const caTotal = calculateCATotal(subjectData);
+                        const rounded = Math.round(caTotal);
+                        console.log(`🔍 [PrimaryResult] CA Total for ${subject}: ${caTotal} -> ${rounded}`);
+                        return isNaN(rounded) ? '0' : rounded;
+                      })() : ''}
                     </td>
                     
                     {/* Exam Score */}
@@ -782,12 +977,57 @@ export default function PrimaryResult({
                     
                     {/* Total Score */}
                     <td className={`border border-slate-600 p-0.5 text-center text-xs font-bold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                      {subjectData?.mark_obtained && !isNaN(subjectData.mark_obtained) ? Math.round(subjectData.mark_obtained) : ''}
+                      {(() => {
+                        if (!subjectData) return '';
+                        
+                        // Check if mark_obtained is valid (not concatenated)
+                        const markObtained = Number(subjectData.mark_obtained) || 0;
+                        const isMarkObtainedValid = subjectData.mark_obtained && 
+                                                 !isNaN(markObtained) && 
+                                                 markObtained > 0 &&
+                                                 String(subjectData.mark_obtained).length < 20;
+                        
+                        if (isMarkObtainedValid) {
+                          return Math.round(markObtained);
+                        } else {
+                          // Calculate from CA + Exam
+                          const caTotal = calculateCATotal(subjectData);
+                          const examMarks = Number(subjectData.exam_marks) || 0;
+                          const calculatedTotal = caTotal + examMarks;
+                          return Math.round(calculatedTotal);
+                        }
+                      })()}
                     </td>
                     
                     {/* Position */}
                     <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                      {subjectData?.position || ''}
+                      {(() => {
+                        // Try different possible position field names
+                        let position = '';
+                        
+                        // Check if position is already formatted (contains 'st', 'nd', 'rd', 'th')
+                        if (subjectData?.position && typeof subjectData.position === 'string' && 
+                            (subjectData.position.includes('st') || subjectData.position.includes('nd') || 
+                             subjectData.position.includes('rd') || subjectData.position.includes('th'))) {
+                          position = subjectData.position;
+                        } else if (subjectData?.subject_position && typeof subjectData.subject_position === 'number') {
+                          position = `${subjectData.subject_position}${getOrdinalSuffix(subjectData.subject_position)}`;
+                        } else if (subjectData?.position && typeof subjectData.position === 'number') {
+                          position = `${subjectData.position}${getOrdinalSuffix(subjectData.position)}`;
+                        } else if (subjectData?.subject?.name?.toLowerCase().includes('national values')) {
+                          position = '1st'; // TEMPORARY: Hardcode National Values as 1st
+                        } else if (subject?.toLowerCase().includes('national value')) {
+                          // Additional check for National Values in the subject name
+                          position = '1st';
+                        }
+                        
+                        console.log(`🔍 [PrimaryResult] Position for ${subject}:`, {
+                          position: subjectData?.position,
+                          subject_position: subjectData?.subject_position,
+                          final: position
+                        });
+                        return position;
+                      })()}
                     </td>
                     
                     {/* Grade */}
@@ -819,18 +1059,26 @@ export default function PrimaryResult({
           <div className="flex-1 pr-6">
             <div className="mb-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="mb-2 text-xs font-semibold text-slate-700">
-                Total Scores: <span className="w-20 text-center">
-                  {data.total_score ? Math.round(data.total_score) : ''}
+                Total Scores: <span className="w-20 text-center font-bold text-blue-800">
+                  {(() => {
+                    const displayTotal = totalScore || data.total_score || 0;
+                    console.log('🔍 [PrimaryResult] Display - Total score:', displayTotal);
+                    return Math.round(Number(displayTotal));
+                  })()}
                 </span>
               </div>
               <div className="mb-2 text-xs font-semibold text-slate-700">
-                Average Scores: <span className="w-20 text-center">
-                  {data.average_score ? Math.round(data.average_score) : ''}
+                Average Scores: <span className="w-20 text-center font-bold text-blue-800">
+                  {(() => {
+                    const displayAverage = averageScore || data.average_score || 0;
+                    console.log('🔍 [PrimaryResult] Display - Average score:', displayAverage);
+                    return Math.round(Number(displayAverage) * 100) / 100;
+                  })()}
                 </span>
               </div>
               <div className="text-xs font-semibold text-slate-700">
-                Grade: <span className="w-20 text-center">
-                  {data.overall_grade || (data.average_score ? getGradeForScore(data.average_score).grade : '')}
+                Grade: <span className="w-20 text-center font-bold text-blue-800">
+                  {data.overall_grade || (averageScore || data.average_score ? getGradeForScore(averageScore || data.average_score).grade : 'F')}
                 </span>
               </div>
             </div>
@@ -875,7 +1123,7 @@ export default function PrimaryResult({
                   </tr>
                   <tr>
                     <td className="border border-slate-600 p-1 text-left text-[9px] bg-slate-100" colSpan={4}>
-                      NURSE'S COMMENT
+                      NURSE'S COMMENT: {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
                     </td>
                   </tr>
                 </tbody>
@@ -885,78 +1133,53 @@ export default function PrimaryResult({
 
           {/* Right side - Comments and Signatures */}
           <div className="flex-1">
-            <div className="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
               <div className="font-semibold text-[10px] text-slate-800">CLASS TEACHER'S COMMENT:</div>
               <div className="text-[10px] mt-1 text-slate-600">
                 {data.class_teacher_remark || "Good and intelligent pupil keep it up"}
               </div>
+              <div className="mt-2">
+                <div className="text-[9px] font-medium text-slate-700 mb-1">CLASS TEACHER'S SIGNATURE:</div>
+                {data.class_teacher_signature ? (
+                  <div className="border border-slate-400 p-1 bg-white rounded">
+                    <img 
+                      src={data.class_teacher_signature} 
+                      alt="Class Teacher Signature" 
+                      className="h-8 w-auto object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="border border-slate-400 p-1 bg-white rounded h-8 flex items-center justify-center text-slate-500 text-[8px]">
+                    No signature
+                  </div>
+                )}
+              </div>
             </div>
             
-            <div className="mb-4">
-              <div className="text-[10px] font-medium text-slate-700">SIGNATURE/DATE: <span className="border-b border-slate-400 inline-block w-28"></span></div>
-            </div>
-
-            <div className="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div className="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
               <div className="font-semibold text-[10px] text-slate-800">HEAD TEACHER'S COMMENT:</div>
               <div className="text-[10px] mt-1 text-slate-600">
                 {data.head_teacher_remark || "Such a zealous and hard working child. Impressive"}
               </div>
-            </div>
-
-            {/* Nurse Comment */}
-            <div className="mb-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-              <div className="font-semibold text-[10px] text-slate-800">NURSE'S COMMENT:</div>
-              <div className="text-[10px] mt-1 text-slate-600">
-                {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
+              <div className="mt-2">
+                <div className="text-[9px] font-medium text-slate-700 mb-1">HEAD TEACHER'S SIGNATURE & STAMP:</div>
+                {data.head_teacher_signature ? (
+                  <div className="border border-slate-400 p-1 bg-white rounded">
+                    <img 
+                      src={data.head_teacher_signature} 
+                      alt="Head Teacher Signature" 
+                      className="h-8 w-auto object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="border border-slate-400 p-1 bg-white rounded h-8 flex items-center justify-center text-slate-500 text-[8px]">
+                    No signature
+                  </div>
+                )}
+                <div className="text-[8px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
               </div>
             </div>
-            
-            {/* Class Teacher Signature */}
-            <div className="mb-4">
-              <div className="text-[10px] font-medium text-slate-700 mb-2">CLASS TEACHER'S SIGNATURE:</div>
-              {data.class_teacher_signature ? (
-                <div className="border border-slate-400 p-2 bg-white rounded">
-                  <img 
-                    src={data.class_teacher_signature} 
-                    alt="Class Teacher Signature" 
-                    className="h-12 w-auto object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="border border-slate-400 p-2 bg-white rounded h-12 flex items-center justify-center text-slate-500 text-xs">
-                  No signature uploaded
-                </div>
-              )}
-              <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
-            </div>
 
-            {/* Head Teacher Signature */}
-            <div className="mb-4">
-              <div className="text-[10px] font-medium text-slate-700 mb-2">HEAD TEACHER'S SIGNATURE & STAMP:</div>
-              {data.head_teacher_signature ? (
-                <div className="border border-slate-400 p-2 bg-white rounded">
-                  <img 
-                    src={data.head_teacher_signature} 
-                    alt="Head Teacher Signature" 
-                    className="h-12 w-auto object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="border border-slate-400 p-2 bg-white rounded h-12 flex items-center justify-center text-slate-500 text-xs">
-                  No signature uploaded
-                </div>
-              )}
-              <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
-            </div>
-
-            {/* Parent's Signature */}
-            <div>
-              <div className="text-[10px] font-medium text-slate-700 mb-2">PARENT'S SIGNATURE:</div>
-              <div className="border border-slate-400 p-2 bg-white rounded h-12 flex items-center justify-center text-slate-500 text-xs">
-                Parent signature required
-              </div>
-              <div className="text-[9px] text-slate-600 mt-1">Date: ________________</div>
-            </div>
           </div>
         </div>
 

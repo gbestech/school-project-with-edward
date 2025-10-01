@@ -11,9 +11,10 @@ from .serializers import (
 )
 from classroom.models import GradeLevel, Section
 from subject.models import Subject
+from utils.section_filtering import SectionFilterMixin
 
 
-class TeacherViewSet(viewsets.ModelViewSet):
+class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -50,6 +51,10 @@ class TeacherViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Teacher.objects.all()
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            queryset = self.filter_teachers_by_section_access(queryset)
         
         # Filter by search term
         search = self.request.query_params.get('search', None)

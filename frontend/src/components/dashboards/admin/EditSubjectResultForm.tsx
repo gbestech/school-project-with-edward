@@ -52,6 +52,19 @@ interface SubjectResult {
   grade_point: number;
   is_passed: boolean;
   status: string;
+  // Nursery-specific fields
+  max_marks_obtainable?: number;
+  mark_obtained?: number;
+  academic_comment?: string;
+  // Breakdown object for nursery results
+  breakdown?: {
+    max_marks_obtainable?: number;
+    mark_obtained?: number;
+    physical_development?: string;
+    health?: string;
+    cleanliness?: string;
+    general_conduct?: string;
+  };
 }
 
 interface EditSubjectResultFormProps {
@@ -78,6 +91,9 @@ interface SubjectFormData {
   exam_score: number;
   grade: string;
   status: string;
+  
+  // Nursery specific fields
+  max_marks_obtainable: number;
 }
 
 const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
@@ -109,6 +125,9 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
     exam_score: 0,
     grade: '',
     status: 'DRAFT',
+    
+    // Nursery specific fields
+    max_marks_obtainable: 100,
   });
 
   const themeClasses = {
@@ -159,8 +178,13 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
 
   const calculatePercentage = (): number => {
     const total = calculateTotalScore();
-    // All levels use 100 as max score
-    return total > 0 ? (total / 100) * 100 : 0;
+    if (result.student.education_level === 'NURSERY') {
+      // Nursery uses max_marks_obtainable as the denominator
+      return total > 0 ? (total / formData.max_marks_obtainable) * 100 : 0;
+    } else {
+      // All other levels use 100 as max score
+      return total > 0 ? (total / 100) * 100 : 0;
+    }
   };
 
   // Calculate CA total for display
@@ -235,7 +259,11 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
         // Nursery or other levels: Use basic structure
         setFormData({
           ...baseFormData,
-          // Set all fields to 0
+          // For nursery, use mark_obtained from breakdown if available, otherwise exam_score
+          exam_score: (subject as any).breakdown?.mark_obtained || subject.exam_score || 0,
+          // Set max_marks_obtainable from the breakdown data
+          max_marks_obtainable: (subject as any).breakdown?.max_marks_obtainable || 100,
+          // Set all other fields to 0
           first_test_score: 0,
           second_test_score: 0,
           third_test_score: 0,
@@ -297,8 +325,11 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
       }
     } else {
       // Nursery or other levels: Basic validation
-      if (formData.exam_score < 0 || formData.exam_score > 100) {
-        newErrors.exam_score = 'Score must be between 0 and 100';
+      if (formData.exam_score < 0 || formData.exam_score > formData.max_marks_obtainable) {
+        newErrors.exam_score = `Score must be between 0 and ${formData.max_marks_obtainable}`;
+      }
+      if (formData.max_marks_obtainable <= 0) {
+        newErrors.max_marks_obtainable = 'Max marks obtainable must be greater than 0';
       }
     }
 
@@ -375,12 +406,14 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
       } else {
         // Nursery: Use mark_obtained instead of exam_score
         updateData.mark_obtained = formData.exam_score;
+        // Include max_marks_obtainable from form data
+        updateData.max_marks_obtainable = formData.max_marks_obtainable;
         // Note: grade is calculated automatically by backend, don't send it
       }
 
       console.log('Updating subject result:', selectedSubject.id, updateData);
 
-      // Use the appropriate endpoint based on education level
+      // Check if the individual result ID exists by trying to get it first
       let endpoint = '';
       if (result.student.education_level === 'SENIOR_SECONDARY') {
         endpoint = `/api/results/senior-secondary/results/${selectedSubject.id}/`;
@@ -392,6 +425,16 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
         endpoint = `/api/results/nursery/results/${selectedSubject.id}/`;
       } else {
         endpoint = `/api/results/student-results/${selectedSubject.id}/`;
+      }
+
+      // First, try to get the individual result to verify it exists
+      try {
+        await api.get(endpoint);
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          throw new Error(`Individual result with ID ${selectedSubject.id} not found. This might be a term report ID. Please refresh the page and try again.`);
+        }
+        throw error;
       }
 
       await api.put(endpoint, updateData);
@@ -683,21 +726,38 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
             )}
 
             {result.student.education_level === 'NURSERY' && (
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                  Score (0-100) *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={formData.exam_score}
-                  onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.inputBg} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
-                  placeholder="0-100"
-                />
-                {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+                    Max Marks Obtainable *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.1"
+                    value={formData.max_marks_obtainable}
+                    onChange={(e) => handleInputChange('max_marks_obtainable', parseFloat(e.target.value) || 100)}
+                    className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.inputBg} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.max_marks_obtainable ? 'border-red-500' : ''}`}
+                    placeholder="100"
+                  />
+                  {errors.max_marks_obtainable && <p className="text-red-500 text-xs mt-1">{errors.max_marks_obtainable}</p>}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+                    Mark Obtained (0-{formData.max_marks_obtainable}) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={formData.max_marks_obtainable}
+                    step="0.1"
+                    value={formData.exam_score}
+                    onChange={(e) => handleInputChange('exam_score', parseFloat(e.target.value) || 0)}
+                    className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.inputBg} ${themeClasses.inputText} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.exam_score ? 'border-red-500' : ''}`}
+                    placeholder={`0-${formData.max_marks_obtainable}`}
+                  />
+                  {errors.exam_score && <p className="text-red-500 text-xs mt-1">{errors.exam_score}</p>}
+                </div>
               </div>
             )}
 

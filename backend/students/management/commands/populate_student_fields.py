@@ -63,3 +63,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(f'Successfully updated {updated_count} students.')
             )
+
+
+
+
+

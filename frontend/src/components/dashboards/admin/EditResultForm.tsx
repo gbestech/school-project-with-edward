@@ -25,6 +25,8 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [formData, setFormData] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [originalScores, setOriginalScores] = useState<any>({});
+  const [showRemarkWarning, setShowRemarkWarning] = useState(false);
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -87,6 +89,15 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
       
       console.log('Initial form data:', initialData);
       setFormData(initialData);
+      
+      // Store original scores for comparison
+      setOriginalScores({
+        total_score: result.total_score || result.breakdown?.total_score || 0,
+        exam_score: result.exam_score || result.breakdown?.exam_score || 0,
+        ca_total: result.ca_total || result.breakdown?.ca_total || 0,
+        grade: result.grade || result.breakdown?.grade || '',
+        teacher_remark: result.teacher_remark || result.remarks || ''
+      });
     }
   }, [result]);
 
@@ -110,11 +121,141 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
     }
   };
 
+  // Generate automatic teacher remark based on score and grade
+  const generateTeacherRemark = (totalScore: number, grade: string, previousRemark: string = ''): string => {
+    const score = Number(totalScore) || 0;
+    
+    // Define remark templates based on grade ranges
+    const remarkTemplates = {
+      'A+': [
+        'Excellent performance! Outstanding work and dedication.',
+        'Exceptional achievement. Keep up the excellent work!',
+        'Outstanding performance. You are a model student.',
+        'Brilliant work! Your dedication is commendable.'
+      ],
+      'A': [
+        'Very good performance. Well done!',
+        'Excellent work. Keep maintaining this standard.',
+        'Great achievement. Continue to excel.',
+        'Very good performance. You should be proud.'
+      ],
+      'B+': [
+        'Good performance. Keep up the good work.',
+        'Well done! Continue to improve.',
+        'Good effort. You are making progress.',
+        'Satisfactory performance. Keep working hard.'
+      ],
+      'B': [
+        'Fair performance. Room for improvement.',
+        'Average work. Try to do better next time.',
+        'Satisfactory performance. Keep working hard.',
+        'Fair effort. Focus on areas that need improvement.'
+      ],
+      'C+': [
+        'Below average performance. More effort needed.',
+        'Needs improvement. Focus on your studies.',
+        'Below expectations. Work harder next time.',
+        'Poor performance. Seek help and improve.'
+      ],
+      'C': [
+        'Poor performance. Significant improvement needed.',
+        'Below average. You need to work much harder.',
+        'Unsatisfactory. Seek extra help immediately.',
+        'Very poor performance. Parent consultation needed.'
+      ],
+      'D': [
+        'Very poor performance. Immediate intervention required.',
+        'Failing grade. Urgent attention needed.',
+        'Unsatisfactory performance. Parent meeting required.',
+        'Critical performance. Seek academic support.'
+      ],
+      'F': [
+        'Failed. Immediate remedial action required.',
+        'Complete failure. Urgent academic intervention needed.',
+        'Failed grade. Parent consultation and support required.',
+        'Critical failure. Seek immediate academic help.'
+      ]
+    };
+
+    // Get appropriate remarks based on grade
+    let gradeRemarks = remarkTemplates[grade as keyof typeof remarkTemplates] || remarkTemplates['F'];
+    
+    // If no grade provided, determine based on score
+    if (!grade && score > 0) {
+      if (score >= 90) gradeRemarks = remarkTemplates['A+'];
+      else if (score >= 80) gradeRemarks = remarkTemplates['A'];
+      else if (score >= 70) gradeRemarks = remarkTemplates['B+'];
+      else if (score >= 60) gradeRemarks = remarkTemplates['B'];
+      else if (score >= 50) gradeRemarks = remarkTemplates['C+'];
+      else if (score >= 40) gradeRemarks = remarkTemplates['C'];
+      else if (score >= 30) gradeRemarks = remarkTemplates['D'];
+      else gradeRemarks = remarkTemplates['F'];
+    }
+
+    // Return a random remark from the appropriate category
+    return gradeRemarks[Math.floor(Math.random() * gradeRemarks.length)];
+  };
+
+  // Check if scores have changed significantly (pass/fail status change)
+  const hasSignificantScoreChange = (): boolean => {
+    if (!originalScores.total_score) return false;
+    
+    const originalScore = Number(originalScores.total_score) || 0;
+    const currentScore = Number(formData.total_score) || 0;
+    const passThreshold = 50; // Default pass mark
+    
+    // Check if pass/fail status has changed
+    const wasPassing = originalScore >= passThreshold;
+    const isNowPassing = currentScore >= passThreshold;
+    
+    return wasPassing !== isNowPassing;
+  };
+
+  // Auto-update remark when significant score changes occur
+  const handleScoreChange = (field: string, value: any) => {
+    const newFormData = { ...formData, [field]: value };
+    
+    // Recalculate total if individual scores changed
+    if (['first_test_score', 'second_test_score', 'third_test_score', 'exam_score', 
+         'continuous_assessment_score', 'take_home_test_score', 'appearance_score', 
+         'practical_score', 'project_score', 'note_copying_score'].includes(field)) {
+      
+      // Calculate new total based on education level
+      let newTotal = 0;
+      if (student.education_level === 'SENIOR_SECONDARY') {
+        newTotal = (Number(newFormData.first_test_score) || 0) + 
+                   (Number(newFormData.second_test_score) || 0) + 
+                   (Number(newFormData.third_test_score) || 0) + 
+                   (Number(newFormData.exam_score) || 0);
+      } else {
+        // Primary/Junior Secondary calculation
+        newTotal = (Number(newFormData.continuous_assessment_score) || 0) + 
+                   (Number(newFormData.exam_score) || 0);
+      }
+      
+      newFormData.total_score = newTotal;
+    }
+    
+    setFormData(newFormData);
+    
+    // Check if significant change occurred and suggest remark update
+    if (hasSignificantScoreChange()) {
+      setShowRemarkWarning(true);
+    }
+  };
+
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      [field]: value
-    }));
+    // Use handleScoreChange for score-related fields
+    if (['first_test_score', 'second_test_score', 'third_test_score', 'exam_score', 
+         'continuous_assessment_score', 'take_home_test_score', 'appearance_score', 
+         'practical_score', 'project_score', 'note_copying_score', 'total_score'].includes(field)) {
+      handleScoreChange(field, value);
+    } else {
+      setFormData((prev: any) => ({
+        ...prev,
+        [field]: value
+      }));
+    }
     
     // Clear error for this field
     if (errors[field]) {
@@ -660,15 +801,84 @@ const EditResultForm: React.FC<EditResultFormProps> = ({ result, student, onClos
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
               <h3 className="text-lg font-semibold mb-4 flex items-center">
                 <Star className="w-5 h-5 mr-2" />
-                Comments
+                Teacher's Remark
               </h3>
+              
+              {/* Warning for significant score changes */}
+              {showRemarkWarning && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-yellow-800">
+                        Score Change Detected
+                      </h3>
+                      <div className="mt-2 text-sm text-yellow-700">
+                        <p>The student's pass/fail status has changed. Consider updating the teacher's remark to reflect this change.</p>
+                      </div>
+                      <div className="mt-3 flex space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRemark = generateTeacherRemark(
+                              Number(formData.total_score) || 0, 
+                              formData.grade || '', 
+                              formData.teacher_remark || ''
+                            );
+                            setFormData(prev => ({ ...prev, teacher_remark: newRemark }));
+                            setShowRemarkWarning(false);
+                          }}
+                          className="bg-yellow-100 px-3 py-1 rounded text-sm font-medium text-yellow-800 hover:bg-yellow-200"
+                        >
+                          Auto-Update Remark
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowRemarkWarning(false)}
+                          className="bg-gray-100 px-3 py-1 rounded text-sm font-medium text-gray-800 hover:bg-gray-200"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Teacher's Remark
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newRemark = generateTeacherRemark(
+                      Number(formData.total_score) || 0, 
+                      formData.grade || '', 
+                      formData.teacher_remark || ''
+                    );
+                    setFormData(prev => ({ ...prev, teacher_remark: newRemark }));
+                  }}
+                  className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
+                >
+                  Generate Remark
+                </button>
+              </div>
+              
               <textarea
                 value={formData.teacher_remark || ''}
                 onChange={(e) => handleInputChange('teacher_remark', e.target.value)}
                 rows={3}
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                placeholder="Enter any additional comments..."
+                placeholder="Enter teacher's remark or click 'Generate Remark' for automatic suggestion..."
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Tip: Use the "Generate Remark" button to get automatic suggestions based on the student's performance.
+              </p>
             </div>
 
             {/* Action Buttons */}

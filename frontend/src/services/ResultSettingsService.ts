@@ -722,6 +722,16 @@ class ResultSettingsService {
 
   async updateNurseryResult(id: string, data: Partial<NurseryResult>): Promise<NurseryResult> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/nursery/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Nursery result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       const response = await api.patch(`results/nursery/results/${id}/`, data);
       return this.handleSingleApiResponse<NurseryResult>(response);
     } catch (error) {
@@ -732,6 +742,16 @@ class ResultSettingsService {
 
   async deleteNurseryResult(id: string): Promise<void> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/nursery/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Nursery result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       await api.delete(`results/nursery/results/${id}/`);
     } catch (error) {
       console.error('Error deleting nursery result:', error);
@@ -762,6 +782,16 @@ class ResultSettingsService {
 
   async updatePrimaryResult(id: string, data: Partial<PrimaryResult>): Promise<PrimaryResult> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/primary/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Primary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       const response = await api.patch(`results/primary/results/${id}/`, data);
       return this.handleSingleApiResponse<PrimaryResult>(response);
     } catch (error) {
@@ -772,6 +802,16 @@ class ResultSettingsService {
 
   async deletePrimaryResult(id: string): Promise<void> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/primary/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Primary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       await api.delete(`results/primary/results/${id}/`);
     } catch (error) {
       console.error('Error deleting primary result:', error);
@@ -802,6 +842,16 @@ class ResultSettingsService {
 
   async updateJuniorSecondaryResult(id: string, data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/junior-secondary/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Junior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       const response = await api.patch(`results/junior-secondary/results/${id}/`, data);
       return this.handleSingleApiResponse<JuniorSecondaryResult>(response);
     } catch (error) {
@@ -812,6 +862,16 @@ class ResultSettingsService {
 
   async deleteJuniorSecondaryResult(id: string): Promise<void> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/junior-secondary/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Junior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       await api.delete(`results/junior-secondary/results/${id}/`);
     } catch (error) {
       console.error('Error deleting junior secondary result:', error);
@@ -852,6 +912,16 @@ class ResultSettingsService {
 
   async updateSeniorSecondaryResult(id: string, data: Partial<SeniorSecondaryResult>): Promise<SeniorSecondaryResult> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/senior-secondary/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Senior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       const response = await api.patch(`results/senior-secondary/results/${id}/`, data);
       return this.handleSingleApiResponse<SeniorSecondaryResult>(response);
     } catch (error) {
@@ -862,6 +932,16 @@ class ResultSettingsService {
 
   async deleteSeniorSecondaryResult(id: string): Promise<void> {
     try {
+      // First check if the individual result exists
+      try {
+        await api.get(`results/senior-secondary/results/${id}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Senior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
+        }
+        throw checkError;
+      }
+      
       await api.delete(`results/senior-secondary/results/${id}/`);
     } catch (error) {
       console.error('Error deleting senior secondary result:', error);

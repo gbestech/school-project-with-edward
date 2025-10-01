@@ -32,7 +32,7 @@ export interface UpdateAnnouncementData extends Partial<CreateAnnouncementData> 
 }
 
 class AnnouncementService {
-  private baseUrl = '/announcements/';
+  private baseUrl = '/school-settings/announcements/';
 
   async getAllAnnouncements(): Promise<Announcement[]> {
     try {

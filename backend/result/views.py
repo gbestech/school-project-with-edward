@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 import logging
+from utils.section_filtering import SectionFilterMixin
 
 from .models import (
     StudentResult,
@@ -338,7 +339,7 @@ class ScoringConfigurationViewSet(viewsets.ModelViewSet):
 
 
 # ===== LEGACY STUDENT RESULT VIEWSET =====
-class StudentResultViewSet(viewsets.ModelViewSet):
+class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """Base StudentResult ViewSet - mainly for legacy support"""
 
     queryset = StudentResult.objects.all()
@@ -357,9 +358,22 @@ class StudentResultViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return queryset.select_related(
+        queryset = queryset.select_related(
             "student", "subject", "exam_session", "grading_system", "stream"
         ).prefetch_related("assessment_scores", "comments")
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new student result with automatic calculations"""
@@ -488,7 +502,7 @@ class StudentResultViewSet(viewsets.ModelViewSet):
             )
 
 
-class StudentTermResultViewSet(viewsets.ModelViewSet):
+class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     queryset = StudentTermResult.objects.all()
     serializer_class = StudentTermResultSerializer
     permission_classes = [IsAuthenticated]
@@ -498,9 +512,22 @@ class StudentTermResultViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        return queryset.select_related("student", "academic_session").prefetch_related(
+        queryset = queryset.select_related("student", "academic_session").prefetch_related(
             "comments"
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     @action(detail=False, methods=["get"])
     def by_student(self, request):
@@ -707,7 +734,7 @@ class StudentTermResultViewSet(viewsets.ModelViewSet):
 
 
 # ===== SENIOR SECONDARY VIEWSETS =====
-class SeniorSecondaryTermReportViewSet(viewsets.ModelViewSet):
+class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for consolidated Senior Secondary term reports"""
 
     queryset = SeniorSecondaryTermReport.objects.all().order_by("-created_at")
@@ -720,12 +747,25 @@ class SeniorSecondaryTermReportViewSet(viewsets.ModelViewSet):
         return SeniorSecondaryTermReportSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related("student", "exam_session", "stream", "published_by")
             .prefetch_related("subject_results")
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -798,7 +838,7 @@ class SeniorSecondaryTermReportViewSet(viewsets.ModelViewSet):
             )
 
 
-class SeniorSecondarySessionReportViewSet(viewsets.ModelViewSet):
+class SeniorSecondarySessionReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for consolidated Senior Secondary session reports"""
 
     queryset = SeniorSecondarySessionReport.objects.all().order_by("-created_at")
@@ -817,12 +857,25 @@ class SeniorSecondarySessionReportViewSet(viewsets.ModelViewSet):
         return SeniorSecondarySessionReportSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related("student", "academic_session", "stream")
             .prefetch_related("subject_results")
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     @action(detail=True, methods=["post"])
     def calculate_metrics(self, request, pk=None):
@@ -891,7 +944,7 @@ class SeniorSecondarySessionReportViewSet(viewsets.ModelViewSet):
             )
 
 
-class SeniorSecondaryResultViewSet(viewsets.ModelViewSet):
+class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Senior Secondary results"""
 
     queryset = SeniorSecondaryResult.objects.all().order_by("-created_at")
@@ -913,7 +966,7 @@ class SeniorSecondaryResultViewSet(viewsets.ModelViewSet):
         return SeniorSecondaryResultSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related(
@@ -928,6 +981,19 @@ class SeniorSecondaryResultViewSet(viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new Senior Secondary result"""
@@ -1094,7 +1160,7 @@ class SeniorSecondaryResultViewSet(viewsets.ModelViewSet):
         return Response(list(grade_stats))
 
 
-class SeniorSecondarySessionResultViewSet(viewsets.ModelViewSet):
+class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Senior Secondary session results"""
 
     queryset = SeniorSecondarySessionResult.objects.all().order_by("-created_at")
@@ -1109,11 +1175,24 @@ class SeniorSecondarySessionResultViewSet(viewsets.ModelViewSet):
         return SeniorSecondarySessionResultSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related("student", "subject", "academic_session", "stream")
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new Senior Secondary session result"""
@@ -1136,7 +1215,7 @@ class SeniorSecondarySessionResultViewSet(viewsets.ModelViewSet):
 
 
 # ===== JUNIOR SECONDARY VIEWSETS =====
-class JuniorSecondaryTermReportViewSet(viewsets.ModelViewSet):
+class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for consolidated Junior Secondary term reports"""
 
     queryset = JuniorSecondaryTermReport.objects.all().order_by("-created_at")
@@ -1149,12 +1228,25 @@ class JuniorSecondaryTermReportViewSet(viewsets.ModelViewSet):
         return JuniorSecondaryTermReportSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related("student", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -1195,7 +1287,7 @@ class JuniorSecondaryTermReportViewSet(viewsets.ModelViewSet):
             )
 
 
-class JuniorSecondaryResultViewSet(viewsets.ModelViewSet):
+class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Junior Secondary results"""
 
     queryset = JuniorSecondaryResult.objects.all().order_by("-created_at")
@@ -1210,7 +1302,7 @@ class JuniorSecondaryResultViewSet(viewsets.ModelViewSet):
         return JuniorSecondaryResultSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related(
@@ -1224,6 +1316,19 @@ class JuniorSecondaryResultViewSet(viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new Junior Secondary result"""
@@ -1313,7 +1418,7 @@ class JuniorSecondaryResultViewSet(viewsets.ModelViewSet):
 
 
 # ===== PRIMARY VIEWSETS =====
-class PrimaryTermReportViewSet(viewsets.ModelViewSet):
+class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for consolidated Primary term reports"""
 
     queryset = PrimaryTermReport.objects.all().order_by("-created_at")
@@ -1326,12 +1431,25 @@ class PrimaryTermReportViewSet(viewsets.ModelViewSet):
         return PrimaryTermReportSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related("student", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -1372,7 +1490,7 @@ class PrimaryTermReportViewSet(viewsets.ModelViewSet):
             )
 
 
-class PrimaryResultViewSet(viewsets.ModelViewSet):
+class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Primary results"""
 
     queryset = PrimaryResult.objects.all().order_by("-created_at")
@@ -1387,7 +1505,7 @@ class PrimaryResultViewSet(viewsets.ModelViewSet):
         return PrimaryResultSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related(
@@ -1401,6 +1519,19 @@ class PrimaryResultViewSet(viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new Primary result"""
@@ -1488,7 +1619,7 @@ class PrimaryResultViewSet(viewsets.ModelViewSet):
 
 
 # ===== NURSERY VIEWSETS =====
-class NurseryTermReportViewSet(viewsets.ModelViewSet):
+class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for consolidated Nursery term reports"""
 
     queryset = NurseryTermReport.objects.all().order_by("-created_at")
@@ -1501,12 +1632,25 @@ class NurseryTermReportViewSet(viewsets.ModelViewSet):
         return NurseryTermReportSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related("student", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -1547,7 +1691,7 @@ class NurseryTermReportViewSet(viewsets.ModelViewSet):
             )
 
 
-class NurseryResultViewSet(viewsets.ModelViewSet):
+class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Nursery results"""
 
     queryset = NurseryResult.objects.all().order_by("-created_at")
@@ -1562,7 +1706,7 @@ class NurseryResultViewSet(viewsets.ModelViewSet):
         return NurseryResultSerializer
 
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related(
@@ -1576,6 +1720,19 @@ class NurseryResultViewSet(viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
+        
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """Create a new Nursery result"""

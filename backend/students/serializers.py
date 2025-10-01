@@ -556,6 +556,7 @@ class StudentListSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     # Add 'name' field for frontend compatibility
     name = serializers.SerializerMethodField()
+    username = serializers.CharField(source="user.username", read_only=True)
     age = serializers.SerializerMethodField()
     education_level_display = serializers.CharField(
         source="get_education_level_display", read_only=True
@@ -584,6 +585,7 @@ class StudentListSerializer(serializers.ModelSerializer):
             "id",
             "full_name",
             "name",
+            "username",
             "age",
             "gender",
             "education_level",
@@ -617,6 +619,7 @@ class StudentListSerializer(serializers.ModelSerializer):
         """Returns user data including date_joined for sorting."""
         return {
             "id": obj.user.id,
+            "username": obj.user.username,
             "first_name": obj.user.first_name,
             "last_name": obj.user.last_name,
             "email": obj.user.email,

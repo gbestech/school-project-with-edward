@@ -1,4 +1,1540 @@
-import { useState, useEffect } from "react";
+// import { useState, useEffect, useMemo } from "react";
+// import { jsPDF } from "jspdf";
+// import html2canvas from "html2canvas";
+// import { useResultService } from '@/hooks/useResultService';
+// import type { GradingSystem, GradeRange } from '@/services/ResultSettingsService';
+
+// // Updated interfaces to match your data structure
+// export interface StudentBasicInfo {
+//   id: string;
+//   name: string;
+//   full_name?: string;
+//   class: string;
+//   house?: string;
+// }
+
+// export interface TermInfo {
+//   name: string;
+//   session: string;
+//   year: string;
+// }
+
+// export interface SubjectResult {
+//   id: string;
+//   subject: {
+//     id: string;
+//     name: string;
+//   };
+//   max_marks_obtainable: number;
+//   mark_obtained: number;
+//   grade?: string;
+//   position?: string;
+//   is_passed?: boolean;
+//   physical_development_score?: number;
+//   // Physical development attributes
+//   physical_development?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   health?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   cleanliness?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   general_conduct?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   academic_comment?: string;
+//   status?: string; // DRAFT, SUBMITTED, APPROVED, PUBLISHED
+// }
+
+// export interface NurseryResultData {
+//   id: string;
+//   student: StudentBasicInfo;
+//   term: TermInfo;
+//   subjects: SubjectResult[];
+//   total_score: number;
+//   max_marks_obtainable: number;
+//   mark_obtained: number;
+//   position?: string;
+//   total_pupils?: string;
+//   class_position: number;
+//   total_students: number;
+//   attendance: {
+//     times_opened: number;
+//     times_present: number;
+//   };
+//   next_term_begins: string;
+//   class_teacher_remark?: string;
+//   head_teacher_remark?: string;
+//   class_teacher_signature?: string;
+//   head_teacher_signature?: string;
+//   nurse_comment?: string;
+//   is_published: boolean;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// type NurseryResultProps = {
+//   data: NurseryResultData;
+//   onDataChange?: (data: NurseryResultData) => void;
+//   showOnlyPublished?: boolean; // NEW: Control whether to show only published results
+// };
+
+// const SchoolLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: string }) => {
+//   if (logoUrl) {
+//     return (
+//       <div className="w-20 h-20 rounded-xl overflow-hidden shadow-lg border-2 border-blue-600">
+//         <img 
+//           src={logoUrl} 
+//           alt={`${school_name || 'School'} Logo`}
+//           className="w-full h-full object-cover"
+//           onError={(e) => {
+//             const target = e.target as HTMLImageElement;
+//             target.style.display = 'none';
+//             target.nextElementSibling?.classList.remove('hidden');
+//           }}
+//         />
+//         <div className="w-full h-full rounded-xl flex items-center justify-center text-white shadow-lg hidden" 
+//              style={{
+//                background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+//                border: '2px solid #1e40af'
+//              }}>
+//           <div className="text-center text-xs">
+//             <div className="font-bold text-lg mb-1">
+//               {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
+//             </div>
+//             <div className="text-[8px] font-medium">SCHOOL</div>
+//             <div className="text-[8px] font-medium">LOGO</div>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="w-20 h-20 rounded-xl flex items-center justify-center text-white shadow-lg" 
+//          style={{
+//            background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+//            border: '2px solid #1e40af'
+//          }}>
+//       <div className="text-center text-xs">
+//         <div className="font-bold text-lg mb-1">
+//           {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
+//         </div>
+//         <div className="text-[8px] font-medium">
+//           {school_name?.split(' ')[0]?.slice(0, 8) || 'SCHOOL'}
+//         </div>
+//         <div className="text-[8px] font-medium">
+//           {school_name?.split(' ')[1]?.slice(0, 8) || 'LOGO'}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// const WatermarkLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: string }) => {
+//   if (logoUrl) {
+//     return (
+//       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0">
+//         <div className="text-center">
+//           <div className="w-80 h-80 rounded-full overflow-hidden mb-8 border-4 border-blue-600">
+//             <img 
+//               src={logoUrl} 
+//               alt="Watermark"
+//               className="w-full h-full object-cover opacity-50"
+//             />
+//           </div>
+//           <div className="text-8xl font-bold" style={{ color: '#1e40af' }}>
+//             {school_name?.toUpperCase() || 'SCHOOL NAME'}
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0">
+//       <div className="text-center">
+//         <div className="w-80 h-80 rounded-full flex items-center justify-center mb-8 border-4"
+//              style={{
+//                background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
+//                borderColor: '#1e40af'
+//              }}>
+//           <div className="text-center text-white">
+//             <div className="text-6xl font-bold mb-4">
+//               {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
+//             </div>
+//             <div className="text-2xl font-semibold">
+//               {school_name?.split(' ')[0] || 'SCHOOL'}
+//             </div>
+//             <div className="text-xl font-semibold">
+//               {school_name?.split(' ').slice(1).join(' ') || 'NAME'}
+//             </div>
+//           </div>
+//         </div>
+//         <div className="text-8xl font-bold" style={{ color: '#1e40af' }}>
+//           {school_name?.toUpperCase() || 'SCHOOL NAME'}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default function NurseryResult({ data, showOnlyPublished = false }: NurseryResultProps) {
+//   // State to store the corrected next_term_begins date
+//   const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
+  
+//   const { service, schoolSettings, loading: serviceLoading, error: serviceError } = useResultService();
+//   const [gradingSystem, setGradingSystem] = useState<GradingSystem | null>(null);
+//   const [grades, setGrades] = useState<GradeRange[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState<string | null>(null);
+
+//   // Check if we need to fix the next_term_begins date
+//   useEffect(() => {
+//     const fixNextTermBegins = async () => {
+//       // If we receive invalid date, fetch the correct date from Term settings
+//       if (!data?.next_term_begins || data?.next_term_begins === 'Invalid Date' || data?.next_term_begins === 'TBA') {
+//         console.log('🔧 [NurseryResult] Fixing next_term_begins - received:', data?.next_term_begins);
+        
+//         try {
+//           // Import AcademicCalendarService to get Term settings
+//           const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
+          
+//           // Get current academic session and terms
+//           const academicSessions = await AcademicCalendarService.getAcademicSessions();
+//           const currentSession = academicSessions.find(session => session.is_current);
+          
+//           if (currentSession) {
+//             console.log('🔧 [NurseryResult] Current academic session:', currentSession);
+            
+//             // Get all terms and filter by current session
+//             const allTerms = await AcademicCalendarService.getTerms();
+//             const terms = allTerms.filter(term => term.academic_session === currentSession.id);
+//             console.log('🔧 [NurseryResult] Available terms:', terms);
+            
+//             // Find the current term and next term
+//             const currentTerm = terms.find(term => term.is_current);
+//             if (currentTerm) {
+//               console.log('🔧 [NurseryResult] Current term:', currentTerm);
+              
+//               // If current term has next_term_begins, use it
+//               if (currentTerm.next_term_begins) {
+//                 console.log('🔧 [NurseryResult] Found next_term_begins from current term:', currentTerm.next_term_begins);
+//                 setCorrectedNextTermBegins(currentTerm.next_term_begins);
+//                 return;
+//               }
+              
+//               // Otherwise, find the next term in sequence
+//               const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+//               const currentIndex = termOrder.indexOf(currentTerm.name);
+              
+//               if (currentIndex < termOrder.length - 1) {
+//                 const nextTermName = termOrder[currentIndex + 1];
+//                 const nextTerm = terms.find(term => term.name === nextTermName);
+                
+//                 if (nextTerm && nextTerm.next_term_begins) {
+//                   console.log('🔧 [NurseryResult] Found next_term_begins from next term:', nextTerm.next_term_begins);
+//                   setCorrectedNextTermBegins(nextTerm.next_term_begins);
+//                   return;
+//                 }
+//               }
+//             }
+//           }
+          
+//           // Fallback: Use a default date
+//           const defaultDate = '2025-01-17';
+//           console.log('🔧 [NurseryResult] Using fallback date:', defaultDate);
+//           setCorrectedNextTermBegins(defaultDate);
+          
+//         } catch (error) {
+//           console.error('🔧 [NurseryResult] Error fetching next term begins date:', error);
+//           setCorrectedNextTermBegins('2025-01-17');
+//         }
+//       } else {
+//         console.log('🔧 [NurseryResult] next_term_begins is already correct:', data?.next_term_begins);
+//         setCorrectedNextTermBegins(data?.next_term_begins);
+//       }
+//     };
+    
+//     fixNextTermBegins();
+//   }, [data?.next_term_begins]);
+
+//   // Load grading system and grades
+//   useEffect(() => {
+//     const fetchGradingData = async () => {
+//       if (!service || serviceLoading) return;
+
+//       try {
+//         setLoading(true);
+//         setError(null);
+
+//         const gradingSystems = await service.getGradingSystems();
+//         const activeSystem = gradingSystems.find((system: GradingSystem) => system.is_active);
+        
+//         if (activeSystem) {
+//           setGradingSystem(activeSystem);
+//           const systemGrades = await service.getGrades(activeSystem.id);
+//           setGrades(systemGrades);
+//         } else {
+//           setError('No active grading system found');
+//         }
+//       } catch (err) {
+//         console.error('Error fetching grading system:', err);
+//         setError('Failed to load grading system');
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchGradingData();
+//   }, [service, serviceLoading]);
+
+//   // Helper function to get grade for a score
+//   const getGradeForScore = (score: number): { grade: string; remark: string; isPass: boolean } => {
+//     if (!gradingSystem || grades.length === 0) {
+//       return { grade: 'N/A', remark: 'Loading...', isPass: false };
+//     }
+
+//     const gradeRange = grades.find(g => score >= g.min_score && score <= g.max_score);
+    
+//     if (gradeRange) {
+//       return {
+//         grade: gradeRange.grade,
+//         remark: gradeRange.remark,
+//         isPass: gradeRange.is_passing
+//       };
+//     }
+
+//     const isPass = score >= gradingSystem.pass_mark;
+//     return {
+//       grade: isPass ? 'P' : 'F',
+//       remark: isPass ? 'Pass' : 'Fail',
+//       isPass
+//     };
+//   };
+
+//   // Calculate percentage
+//   const calculatePercentage = (obtained: number, total: number): number => {
+//     return total > 0 ? (obtained / total) * 100 : 0;
+//   };
+
+//   // Filter subjects based on showOnlyPublished prop - using useMemo to avoid initialization issues
+//   const subjectsToUse = useMemo(() => {
+//     if (!data?.subjects) return [];
+    
+//     if (showOnlyPublished) {
+//       // Filter for published subjects only (for ResultChecker/student view)
+//       const publishedSubjects = data.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+      
+//       console.log('🔍 [NurseryResult] FILTERING MODE: Published only');
+//       console.log('🔍 [NurseryResult] Total subjects:', data.subjects.length);
+//       console.log('🔍 [NurseryResult] Published subjects:', publishedSubjects.length);
+//       console.log('🔍 [NurseryResult] Published subject names:', publishedSubjects.map(s => s.subject?.name));
+      
+//       return publishedSubjects;
+//     } else {
+//       // Show all subjects (for Admin Results tab)
+//       console.log('🔍 [NurseryResult] FILTERING MODE: Show all results');
+//       console.log('🔍 [NurseryResult] Total subjects:', data.subjects.length);
+//       return data.subjects;
+//     }
+//   }, [data?.subjects, showOnlyPublished]);
+
+//   // Enhanced results with calculated grades - from subjects to use
+//   const enhancedResults = subjectsToUse.map((subject: any) => {
+//     const markObtained = Number(subject.mark_obtained) || 0;
+//     const maxMarks = Number(subject.max_marks_obtainable) || 0;
+//     const percentage = calculatePercentage(markObtained, maxMarks);
+//     const gradeInfo = getGradeForScore(percentage);
+    
+//     return {
+//       ...subject,
+//       mark_obtained: markObtained,
+//       max_marks_obtainable: maxMarks,
+//       percentage,
+//       calculated_grade: gradeInfo.grade,
+//       calculated_remark: gradeInfo.remark,
+//       is_calculated_pass: gradeInfo.isPass,
+//       grade: subject.grade || gradeInfo.grade,
+//       is_passed: subject.is_passed !== undefined ? subject.is_passed : gradeInfo.isPass
+//     };
+//   }) || [];
+
+//   // Calculate overall statistics using subjects to use - fix string concatenation
+//   const totalObtained = subjectsToUse.reduce((sum: number, subject: any) => {
+//     const markObtained = Number(subject.mark_obtained) || 0;
+//     return sum + markObtained;
+//   }, 0);
+//   const totalObtainable = subjectsToUse.reduce((sum: number, subject: any) => {
+//     const maxMarks = Number(subject.max_marks_obtainable) || 0;
+//     return sum + maxMarks;
+//   }, 0);
+  
+//   const overallPercentage = totalObtainable > 0 
+//     ? (totalObtained / totalObtainable) * 100 
+//     : 0;
+//   const overallGrade = getGradeForScore(overallPercentage);
+  
+//   console.log('🔍 [NurseryResult] Total obtained from published:', totalObtained);
+//   console.log('🔍 [NurseryResult] Total obtainable from published:', totalObtainable);
+//   console.log('🔍 [NurseryResult] Overall percentage from published:', overallPercentage);
+
+//   const downloadPDF = async () => {
+//     const input = document.getElementById("nursery-result-sheet");
+//     if (!input) return;
+    
+//     try {
+//       const canvas = await html2canvas(input, { 
+//         scale: 1.5,
+//         useCORS: true,
+//         allowTaint: true,
+//         backgroundColor: '#ffffff'
+//       });
+      
+//       const imgData = canvas.toDataURL("image/png");
+//       const pdf = new jsPDF("p", "mm", "a4");
+      
+//       const pageWidth = 210;
+//       const pageHeight = 297;
+      
+//       pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
+//       pdf.save(`${data.student?.name || "nursery-result"}.pdf`);
+//     } catch (error) {
+//       console.error('Error generating PDF:', error);
+//       alert('Failed to generate PDF. Please try again.');
+//     }
+//   };
+
+//   // Get physical development data - check if any PUBLISHED subject has this data
+//   const getPhysicalDevelopmentData = (category: string) => {
+//     const subjectWithData = subjectsToUse.find((subject: any) => {
+//       switch(category) {
+//         case "PHYSICAL DEVELOPMENT": return subject.physical_development;
+//         case "HEALTH": return subject.health;
+//         case "CLEANLINESS": return subject.cleanliness;
+//         case "GENERAL CONDUCT": return subject.general_conduct;
+//         default: return false;
+//       }
+//     });
+
+//     if (!subjectWithData) return '';
+
+//     switch(category) {
+//       case "PHYSICAL DEVELOPMENT": return subjectWithData.physical_development;
+//       case "HEALTH": return subjectWithData.health;
+//       case "CLEANLINESS": return subjectWithData.cleanliness;
+//       case "GENERAL CONDUCT": return subjectWithData.general_conduct;
+//       default: return '';
+//     }
+//   };
+
+//   if (serviceLoading || loading || !schoolSettings) {
+//     return (
+//       <div className="flex justify-center items-center h-64">
+//         <div className="text-center">
+//           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+//           <p>Loading school settings and grading system...</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   if (serviceError || error) {
+//     return (
+//       <div className="flex justify-center items-center h-64">
+//         <div className="text-center text-red-600">
+//           <p className="text-lg font-semibold mb-2">Error Loading Grading System</p>
+//           <p className="text-sm">{serviceError || error}</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="p-6" style={{
+//       background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+//       minHeight: '100vh'
+//     }}>
+//       <div className="mb-4 flex justify-between items-center">
+//         <button
+//           onClick={downloadPDF}
+//           className="px-4 py-2 bg-indigo-700 text-white rounded shadow hover:bg-indigo-800 transition-colors"
+//         >
+//           Download PDF
+//         </button>
+        
+//         {schoolSettings && (
+//           <div className="mb-4 text-sm text-gray-600">
+//             <span className="font-medium">School:</span> {schoolSettings.school_name} 
+//             {gradingSystem && (
+//               <>
+//                 <span className="ml-4 font-medium">Grading System:</span> {gradingSystem.name} 
+//                 <span className="ml-2">({gradingSystem.min_score}-{gradingSystem.max_score}, Pass: {gradingSystem.pass_mark})</span>
+//               </>
+//             )}
+//           </div>
+//         )}
+//       </div>
+
+//       <div id="nursery-result-sheet" className="relative p-4 w-[794px] mx-auto bg-white text-xs overflow-hidden shadow-2xl rounded-2xl border border-slate-200">
+        
+//         {/* Background Watermark */}
+//         <WatermarkLogo 
+//           logoUrl={schoolSettings?.logo} 
+//           school_name={schoolSettings?.school_name} 
+//         />
+        
+//         {/* Content Layer */}
+//         <div className="relative z-10">
+          
+//           {/* HEADER with Logo */}
+//           <div className="flex justify-between items-start mb-4">
+//             <div className="flex-1">
+//               <SchoolLogo 
+//                 logoUrl={schoolSettings?.logo} 
+//                 school_name={schoolSettings?.school_name} 
+//               />
+//             </div>
+//             <div className="flex-2 text-center mx-6">
+//               <h1 className="text-3xl font-black mb-2 tracking-tight" 
+//                   style={{ color: '#1e40af' }}>
+//                 {schoolSettings?.school_name?.toUpperCase() || 'SCHOOL NAME'}
+//               </h1>
+//               <p className="text-sm text-slate-600 mb-1 font-medium">
+//                 {schoolSettings?.address || 'School Address Not Set'}
+//               </p>
+//               <div className="text-sm text-slate-600 mb-3 font-medium">
+//                 {schoolSettings?.phone && (
+//                   <span>Phone: {schoolSettings.phone}</span>
+//                 )}
+//                 {schoolSettings?.phone && schoolSettings?.email && ' | '}
+//                 {schoolSettings?.email && (
+//                   <span>Email: {schoolSettings.email}</span>
+//                 )}
+//               </div>
+//               {schoolSettings?.motto && (
+//                 <p className="text-xs text-slate-500 mb-3 italic">
+//                   "{schoolSettings.motto}"
+//                 </p>
+//               )}
+//               <div className="bg-red-600 text-white py-2 px-4 rounded-lg inline-block">
+//                 <h2 className="text-lg font-bold">NURSERY SCHOOL TERMLY REPORT</h2>
+//                 <p className="text-sm">{data.term?.name || '1st Term'}, {data.term?.session || data.term?.year || '2025'} Academic Session</p>
+//               </div>
+//             </div>
+//             <div className="flex-1"></div>
+//           </div>
+
+//           {/* STUDENT INFORMATION */}
+//           <div className="mb-4 p-3 rounded-xl border border-slate-200"
+//                style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
+//             <div className="text-center font-black mb-4 text-lg tracking-wide"
+//                  style={{ color: '#1e40af' }}>
+//               PUPIL'S INFORMATION
+//             </div>
+//             <div className="grid grid-cols-3 gap-3 text-sm">
+//               <div className="flex items-center"> NAME: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.student?.name || data.student?.full_name || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">CLASS: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.student?.class || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">TERM: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.term?.name || ""} TERM
+//                 </span>
+//               </div>
+//               <div className="flex items-center">HOUSE: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.student?.house || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">POSITION: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.position || "N/A"}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">TOTAL PUPILS: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.total_pupils || "N/A"}
+//                 </span>
+//               </div>
+//               <div className="flex items-center"> NO OF TIMES SCHOOL OPENED: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.attendance?.times_opened || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">NO OF TIMES PRESENT: <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+//                   {data.attendance?.times_present || ""}
+//                 </span>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* PHYSICAL DEVELOPMENT */}
+//           <div className="mb-4 rounded-xl overflow-hidden shadow-lg border border-slate-200">
+//             <div className="text-center font-bold py-3 text-white text-sm tracking-wide"
+//                  style={{ background: 'linear-gradient(135deg, #dc2626, #ef4444)' }}>
+//               PHYSICAL DEVELOPMENT / SPECIAL REPORTS DURING THE TERM
+//             </div>
+//             <table className="w-full border-collapse bg-white">
+//               <thead>
+//                 <tr style={{ background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)' }}>
+//                   <th className="border border-slate-300 w-1/4 py-3 text-center font-bold text-slate-700"> </th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">EXCELLENT</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">VERY GOOD</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">GOOD</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">FAIR</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">COMMENTS</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {["PHYSICAL DEVELOPMENT", "HEALTH", "CLEANLINESS", "GENERAL CONDUCT"].map((item, idx) => {
+//                   const value = getPhysicalDevelopmentData(item);
+
+//                   return (
+//                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+//                       <td className="border border-slate-300 text-left px-4 py-3 font-bold text-slate-700">{item}</td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {value === 'EXCELLENT' ? '✓' : ''}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {value === 'VERY GOOD' ? '✓' : ''}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {value === 'GOOD' ? '✓' : ''}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {value === 'FAIR' ? '✓' : ''}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {value && !['EXCELLENT', 'VERY GOOD', 'GOOD', 'FAIR'].includes(value) ? value : ''}
+//                       </td>
+//                     </tr>
+//                   );
+//                 })}
+//               </tbody>
+//             </table>
+//           </div>
+
+//           {/* ACADEMIC PERFORMANCE */}
+//           <div className="mb-4 rounded-xl overflow-hidden shadow-lg border border-slate-200">
+//             <div className="text-center font-bold py-3 text-white text-sm tracking-wide"
+//                  style={{ background: 'linear-gradient(135deg, #1e40af, #3b82f6)' }}>
+//               ACADEMIC PERFORMANCE
+//             </div>
+//             <table className="w-full border-collapse bg-white">
+//               <thead>
+//                 <tr style={{ background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)' }}>
+//                   <th className="border border-slate-300 w-2/5 py-3 text-center font-bold text-slate-700">SUBJECTS</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">MAX MARKS<br/>OBTAINABLE</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">MARK<br/>OBTAINED</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">%</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">GRADE</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">POSITIONS</th>
+//                   <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">COMMENTS</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {enhancedResults.length > 0 ? (
+//                   enhancedResults.map((result, idx) => (
+//                     <tr key={result.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+//                       <td className="border border-slate-300 text-left px-4 py-3 font-medium text-slate-700">
+//                         {result.subject?.name || 'N/A'}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {result.max_marks_obtainable}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {result.mark_obtained}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {result.percentage.toFixed(1)}%
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center font-bold">
+//                         {result.calculated_grade}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {(() => {
+//                           if (result.position) {
+//                             // Check if position is already formatted (contains 'st', 'nd', 'rd', 'th')
+//                             if (typeof result.position === 'string' && 
+//                                 (result.position.includes('st') || result.position.includes('nd') || 
+//                                  result.position.includes('rd') || result.position.includes('th'))) {
+//                               return result.position;
+//                             } else if (typeof result.position === 'number') {
+//                               return `${result.position}${getOrdinalSuffix(result.position)}`;
+//                             }
+//                             return result.position;
+//                           }
+//                           return 'N/A';
+//                         })()}
+//                       </td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">
+//                         {result.calculated_remark}
+//                       </td>
+//                     </tr>
+//                   ))
+//                 ) : (
+//                   // Default subjects when no data is available
+//                   [
+//                     "English (Alphabet)", "Mathematics (Numbers)", "Social Studies", "Basic Science",
+//                     "Christian Religious Studies", "Computer Studies", "Moral & Value Studies (MVS)",
+//                     "Colouring Activities", "Rhymes", "Physical & Health Education", "Writing Skill", "Craft"
+//                   ].map((subject, idx) => (
+//                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+//                       <td className="border border-slate-300 text-left px-4 py-3 font-medium text-slate-700">{subject}</td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center">{gradingSystem?.max_score || 100}</td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center"></td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center"></td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center"></td>
+//                       <td className="border border-slate-300 py-3 h-10 text-center"></td>
+//                       <td className="border border-slate-300 py-3 h-10"></td>
+//                     </tr>
+//                   ))
+//                 )}
+//                 <tr style={{ background: 'linear-gradient(135deg, #e2e8f0, #cbd5e1)' }}>
+//                   <td className="border border-slate-300 font-black text-right px-4 py-3 text-slate-800">Total</td>
+//                   <td className="border border-slate-300 py-3 h-10 text-center font-bold">
+//                     {totalObtainable}
+//                   </td>
+//                   <td className="border border-slate-300 py-3 h-10 text-center font-bold">
+//                     {totalObtained}
+//                   </td>
+//                   <td className="border border-slate-300 py-3 h-10 text-center font-bold">
+//                     {overallPercentage.toFixed(1)}%
+//                   </td>
+//                   <td className="border border-slate-300 py-3 h-10 text-center font-bold">
+//                     {overallGrade.grade}
+//                   </td>
+//                   <td className="border border-slate-300 py-3 h-10 text-center"></td>
+//                   <td className="border border-slate-300 py-3 h-10 text-center font-bold">
+//                     {overallGrade.remark}
+//                   </td>
+//                 </tr>
+//               </tbody>
+//             </table>
+//           </div>
+
+//           {/* NURSE COMMENT */}
+//           <div className="mt-4 p-3 rounded-xl border border-slate-200"
+//                style={{ background: 'linear-gradient(135deg, #fef7ff, #f3e8ff)' }}>
+//             <div className="font-bold text-slate-800 mb-3 text-center">NURSE'S COMMENT</div>
+//             <div className="border-b-2 border-purple-400 h-16 bg-white rounded-md p-2 text-sm">
+//               {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
+//             </div>
+//           </div>
+
+//           {/* COMMENTS AND SIGNATURES */}
+//           <div className="grid grid-cols-2 gap-4">
+//             <div className="p-3 rounded-xl border border-slate-200"
+//                  style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}>
+//               <div className="font-bold text-slate-800 mb-3 text-center">CLASS TEACHER'S COMMENT</div>
+//               <div className="border-b-2 border-green-400 h-20 bg-white rounded-md p-2 text-sm">
+//                 {data.class_teacher_remark || ''}
+//               </div>
+//               <div className="mt-3 text-center">
+//                 <span className="font-medium text-slate-700">SIGNATURE/DATE</span>
+//                 {data.class_teacher_signature ? (
+//                   <div className="border-2 border-green-400 bg-white rounded-md mt-1 p-2">
+//                     <img 
+//                       src={data.class_teacher_signature} 
+//                       alt="Class Teacher Signature" 
+//                       className="h-8 w-auto mx-auto object-contain"
+//                     />
+//                   </div>
+//                 ) : (
+//                   <div className="border-b-2 border-green-400 h-6 bg-white rounded-md mt-1"></div>
+//                 )}
+//                 <div className="text-xs text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+//               </div>
+//             </div>
+
+//             <div className="p-3 rounded-xl border border-slate-200"
+//                  style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>
+//               <div className="font-bold text-slate-800 mb-3 text-center">HEAD TEACHER'S COMMENT</div>
+//               <div className="border-b-2 border-amber-400 h-20 bg-white rounded-md p-2 text-sm">
+//                 {data.head_teacher_remark || ''}
+//               </div>
+//               <div className="mt-3 text-center">
+//                 <span className="font-medium text-slate-700">SIGNATURE/DATE</span>
+//                 {data.head_teacher_signature ? (
+//                   <div className="border-2 border-amber-400 bg-white rounded-md mt-1 p-2">
+//                     <img 
+//                       src={data.head_teacher_signature} 
+//                       alt="Head Teacher Signature" 
+//                       className="h-8 w-auto mx-auto object-contain"
+//                     />
+//                   </div>
+//                 ) : (
+//                   <div className="border-b-2 border-amber-400 h-6 bg-white rounded-md mt-1"></div>
+//                 )}
+//                 <div className="text-xs text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* NEXT TERM BEGINS & PARENT'S SIGNATURE */}
+//           <div className="mt-6 grid grid-cols-2 gap-6">
+//             <div className="p-4 rounded-xl border border-slate-200"
+//                  style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
+//               <div className="text-center">
+//                 <span className="font-bold text-slate-700 block mb-2">NEXT TERM BEGINS</span>
+//                 <div className="border-b-2 border-blue-400 h-8 bg-white rounded-md flex items-center justify-center">
+//                   {correctedNextTermBegins ? new Date(correctedNextTermBegins).toLocaleDateString() : (data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : '')}
+//                 </div>
+//               </div>
+//             </div>
+            
+//             <div className="p-4 rounded-xl border border-slate-200"
+//                  style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
+//               <div className="text-center">
+//                 <span className="font-bold text-slate-700 block mb-2">PARENT'S SIGNATURE/DATE</span>
+//                 <div className="border-b-2 border-blue-400 h-8 bg-white rounded-md"></div>
+//               </div>
+//             </div>
+//           </div>
+
+
+//           {/* Publication Status Indicator */}
+//           {data.is_published && (
+//             <div className="mt-4 text-center">
+//               <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+//                 ✓ Published Report
+//               </div>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+
+//   // Helper function to add ordinal suffix to position numbers
+//   function getOrdinalSuffix(num: number): string {
+//     const j = num % 10;
+//     const k = num % 100;
+//     if (j === 1 && k !== 11) {
+//       return "st";
+//     }
+//     if (j === 2 && k !== 12) {
+//       return "nd";
+//     }
+//     if (j === 3 && k !== 13) {
+//       return "rd";
+//     }
+//     return "th";
+//   }
+// }
+
+// import { useState, useEffect, useMemo } from "react";
+// import { jsPDF } from "jspdf";
+// import html2canvas from "html2canvas";
+// import { useResultService } from '@/hooks/useResultService';
+// import type { GradingSystem, GradeRange } from '@/services/ResultSettingsService';
+
+// // Updated interfaces to match your data structure
+// export interface StudentBasicInfo {
+//   id: string;
+//   name: string;
+//   full_name?: string;
+//   class: string;
+//   house?: string;
+// }
+
+// export interface TermInfo {
+//   name: string;
+//   session: string;
+//   year: string;
+// }
+
+// export interface SubjectResult {
+//   id: string;
+//   subject: {
+//     id: string;
+//     name: string;
+//   };
+//   max_marks_obtainable: number;
+//   mark_obtained: number;
+//   grade?: string;
+//   position?: string;
+//   is_passed?: boolean;
+//   physical_development_score?: number;
+//   physical_development?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   health?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   cleanliness?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   general_conduct?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
+//   academic_comment?: string;
+//   status?: string;
+// }
+
+// export interface NurseryResultData {
+//   id: string;
+//   student: StudentBasicInfo;
+//   term: TermInfo;
+//   subjects: SubjectResult[];
+//   total_score: number;
+//   max_marks_obtainable: number;
+//   mark_obtained: number;
+//   position?: string;
+//   total_pupils?: string;
+//   class_position: number;
+//   total_students: number;
+//   attendance: {
+//     times_opened: number;
+//     times_present: number;
+//   };
+//   next_term_begins: string;
+//   class_teacher_remark?: string;
+//   head_teacher_remark?: string;
+//   class_teacher_signature?: string;
+//   head_teacher_signature?: string;
+//   nurse_comment?: string;
+//   is_published: boolean;
+//   created_at: string;
+//   updated_at: string;
+// }
+
+// type NurseryResultProps = {
+//   data: NurseryResultData;
+//   onDataChange?: (data: NurseryResultData) => void;
+//   showOnlyPublished?: boolean;
+// };
+
+// const SchoolLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: string }) => {
+//   if (logoUrl) {
+//     return (
+//       <div className="w-16 h-16 rounded-xl overflow-hidden shadow-lg border-2 border-indigo-600">
+//         <img 
+//           src={logoUrl} 
+//           alt={`${school_name || 'School'} Logo`}
+//           className="w-full h-full object-cover"
+//           onError={(e) => {
+//             const target = e.target as HTMLImageElement;
+//             target.style.display = 'none';
+//             target.nextElementSibling?.classList.remove('hidden');
+//           }}
+//         />
+//         <div className="w-full h-full rounded-xl flex items-center justify-center text-white shadow-lg hidden" 
+//              style={{
+//                background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+//                border: '2px solid #4f46e5'
+//              }}>
+//           <div className="text-center text-xs">
+//             <div className="font-bold text-base mb-1">
+//               {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white shadow-lg" 
+//          style={{
+//            background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+//            border: '2px solid #4f46e5'
+//          }}>
+//       <div className="text-center text-xs">
+//         <div className="font-bold text-base mb-1">
+//           {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// const WatermarkLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: string }) => {
+//   return (
+//     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] z-0">
+//       <div className="text-9xl font-black text-indigo-600">
+//         {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default function NurseryResult({ data, showOnlyPublished = false }: NurseryResultProps) {
+//   const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
+  
+//   const { service, schoolSettings, loading: serviceLoading, error: serviceError } = useResultService();
+//   const [gradingSystem, setGradingSystem] = useState<GradingSystem | null>(null);
+//   const [grades, setGrades] = useState<GradeRange[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState<string | null>(null);
+
+//   useEffect(() => {
+//     const fixNextTermBegins = async () => {
+//       if (!data?.next_term_begins || data?.next_term_begins === 'Invalid Date' || data?.next_term_begins === 'TBA') {
+//         try {
+//           const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
+          
+//           const academicSessions = await AcademicCalendarService.getAcademicSessions();
+//           const currentSession = academicSessions.find(session => session.is_current);
+          
+//           if (currentSession) {
+//             const allTerms = await AcademicCalendarService.getTerms();
+//             const terms = allTerms.filter(term => term.academic_session === currentSession.id);
+            
+//             const currentTerm = terms.find(term => term.is_current);
+//             if (currentTerm) {
+//               if (currentTerm.next_term_begins) {
+//                 setCorrectedNextTermBegins(currentTerm.next_term_begins);
+//                 return;
+//               }
+              
+//               const termOrder = ['FIRST', 'SECOND', 'THIRD'];
+//               const currentIndex = termOrder.indexOf(currentTerm.name);
+              
+//               if (currentIndex < termOrder.length - 1) {
+//                 const nextTermName = termOrder[currentIndex + 1];
+//                 const nextTerm = terms.find(term => term.name === nextTermName);
+                
+//                 if (nextTerm && nextTerm.next_term_begins) {
+//                   setCorrectedNextTermBegins(nextTerm.next_term_begins);
+//                   return;
+//                 }
+//               }
+//             }
+//           }
+          
+//           setCorrectedNextTermBegins('2025-01-17');
+          
+//         } catch (error) {
+//           console.error('Error fetching next term begins date:', error);
+//           setCorrectedNextTermBegins('2025-01-17');
+//         }
+//       } else {
+//         setCorrectedNextTermBegins(data?.next_term_begins);
+//       }
+//     };
+    
+//     fixNextTermBegins();
+//   }, [data?.next_term_begins]);
+
+//   useEffect(() => {
+//     const fetchGradingData = async () => {
+//       if (!service || serviceLoading) return;
+
+//       try {
+//         setLoading(true);
+//         setError(null);
+
+//         const gradingSystems = await service.getGradingSystems();
+//         const activeSystem = gradingSystems.find((system: GradingSystem) => system.is_active);
+        
+//         if (activeSystem) {
+//           setGradingSystem(activeSystem);
+//           const systemGrades = await service.getGrades(activeSystem.id);
+//           setGrades(systemGrades);
+//         } else {
+//           setError('No active grading system found');
+//         }
+//       } catch (err) {
+//         console.error('Error fetching grading system:', err);
+//         setError('Failed to load grading system');
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchGradingData();
+//   }, [service, serviceLoading]);
+
+//   const getGradeForScore = (score: number): { grade: string; remark: string; isPass: boolean } => {
+//     if (!gradingSystem || grades.length === 0) {
+//       return { grade: 'N/A', remark: 'Loading...', isPass: false };
+//     }
+
+//     const gradeRange = grades.find(g => score >= g.min_score && score <= g.max_score);
+    
+//     if (gradeRange) {
+//       return {
+//         grade: gradeRange.grade,
+//         remark: gradeRange.remark,
+//         isPass: gradeRange.is_passing
+//       };
+//     }
+
+//     const isPass = score >= gradingSystem.pass_mark;
+//     return {
+//       grade: isPass ? 'P' : 'F',
+//       remark: isPass ? 'Pass' : 'Fail',
+//       isPass
+//     };
+//   };
+
+//   const calculatePercentage = (obtained: number, total: number): number => {
+//     return total > 0 ? (obtained / total) * 100 : 0;
+//   };
+
+//   const subjectsToUse = useMemo(() => {
+//     if (!data?.subjects) return [];
+    
+//     if (showOnlyPublished) {
+//       const publishedSubjects = data.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+//       return publishedSubjects;
+//     } else {
+//       return data.subjects;
+//     }
+//   }, [data?.subjects, showOnlyPublished]);
+
+//   const enhancedResults = subjectsToUse.map((subject: any) => {
+//     const markObtained = Number(subject.mark_obtained) || 0;
+//     const maxMarks = Number(subject.max_marks_obtainable) || 0;
+//     const percentage = calculatePercentage(markObtained, maxMarks);
+//     const gradeInfo = getGradeForScore(percentage);
+    
+//     return {
+//       ...subject,
+//       mark_obtained: markObtained,
+//       max_marks_obtainable: maxMarks,
+//       percentage,
+//       calculated_grade: gradeInfo.grade,
+//       calculated_remark: gradeInfo.remark,
+//       is_calculated_pass: gradeInfo.isPass,
+//       grade: subject.grade || gradeInfo.grade,
+//       is_passed: subject.is_passed !== undefined ? subject.is_passed : gradeInfo.isPass
+//     };
+//   }) || [];
+
+//   const totalObtained = subjectsToUse.reduce((sum: number, subject: any) => {
+//     const markObtained = Number(subject.mark_obtained) || 0;
+//     return sum + markObtained;
+//   }, 0);
+//   const totalObtainable = subjectsToUse.reduce((sum: number, subject: any) => {
+//     const maxMarks = Number(subject.max_marks_obtainable) || 0;
+//     return sum + maxMarks;
+//   }, 0);
+  
+//   const overallPercentage = totalObtainable > 0 
+//     ? (totalObtained / totalObtainable) * 100 
+//     : 0;
+//   const overallGrade = getGradeForScore(overallPercentage);
+
+//   const downloadPDF = async () => {
+//     const input = document.getElementById("nursery-result-sheet");
+//     if (!input) return;
+    
+//     try {
+//       const canvas = await html2canvas(input, { 
+//         scale: 2,
+//         useCORS: true,
+//         allowTaint: true,
+//         backgroundColor: '#ffffff',
+//         logging: false,
+//         windowWidth: 794,
+//         windowHeight: input.scrollHeight
+//       });
+      
+//       const imgData = canvas.toDataURL("image/png");
+//       const pdf = new jsPDF("p", "mm", "a4");
+      
+//       const pageWidth = 210;
+//       const pageHeight = 297;
+//       const imgWidth = pageWidth;
+//       const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      
+//       let heightLeft = imgHeight;
+//       let position = 0;
+      
+//       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+//       heightLeft -= pageHeight;
+      
+//       while (heightLeft > 0) {
+//         position = heightLeft - imgHeight;
+//         pdf.addPage();
+//         pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+//         heightLeft -= pageHeight;
+//       }
+      
+//       pdf.save(`${data.student?.name || "nursery-result"}.pdf`);
+//     } catch (error) {
+//       console.error('Error generating PDF:', error);
+//       alert('Failed to generate PDF. Please try again.');
+//     }
+//   };
+
+//   const getPhysicalDevelopmentData = (category: string) => {
+//     const subjectWithData = subjectsToUse.find((subject: any) => {
+//       switch(category) {
+//         case "PHYSICAL DEVELOPMENT": return subject.physical_development;
+//         case "HEALTH": return subject.health;
+//         case "CLEANLINESS": return subject.cleanliness;
+//         case "GENERAL CONDUCT": return subject.general_conduct;
+//         default: return false;
+//       }
+//     });
+
+//     if (!subjectWithData) return '';
+
+//     switch(category) {
+//       case "PHYSICAL DEVELOPMENT": return subjectWithData.physical_development;
+//       case "HEALTH": return subjectWithData.health;
+//       case "CLEANLINESS": return subjectWithData.cleanliness;
+//       case "GENERAL CONDUCT": return subjectWithData.general_conduct;
+//       default: return '';
+//     }
+//   };
+
+//   function getOrdinalSuffix(num: number): string {
+//     const j = num % 10;
+//     const k = num % 100;
+//     if (j === 1 && k !== 11) return "st";
+//     if (j === 2 && k !== 12) return "nd";
+//     if (j === 3 && k !== 13) return "rd";
+//     return "th";
+//   }
+
+//   if (serviceLoading || loading || !schoolSettings) {
+//     return (
+//       <div className="flex justify-center items-center h-64">
+//         <div className="text-center">
+//           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+//           <p>Loading school settings and grading system...</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   if (serviceError || error) {
+//     return (
+//       <div className="flex justify-center items-center h-64">
+//         <div className="text-center text-red-600">
+//           <p className="text-lg font-semibold mb-2">Error Loading Grading System</p>
+//           <p className="text-sm">{serviceError || error}</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+//       <div className="mb-4 flex justify-between items-center max-w-[794px] mx-auto">
+//         <button
+//           onClick={downloadPDF}
+//           className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-200 font-medium"
+//         >
+//           Download PDF
+//         </button>
+        
+//         {schoolSettings && (
+//           <div className="text-sm text-gray-600">
+//             <span className="font-medium">School:</span> {schoolSettings.school_name} 
+//             {gradingSystem && (
+//               <>
+//                 <span className="ml-4 font-medium">Grading:</span> {gradingSystem.name}
+//               </>
+//             )}
+//           </div>
+//         )}
+//       </div>
+
+//       <div id="nursery-result-sheet" className="relative w-[794px] mx-auto bg-white shadow-2xl rounded-lg overflow-hidden">
+        
+//         <WatermarkLogo 
+//           logoUrl={schoolSettings?.logo} 
+//           school_name={schoolSettings?.school_name} 
+//         />
+        
+//         <div className="relative z-10 p-8">
+          
+//           {/* HEADER */}
+//           <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-indigo-100">
+//             <SchoolLogo 
+//               logoUrl={schoolSettings?.logo} 
+//               school_name={schoolSettings?.school_name} 
+//             />
+            
+//             <div className="flex-1 text-center mx-6">
+//               <h1 className="text-2xl font-black mb-1 text-indigo-900 tracking-tight">
+//                 {schoolSettings?.school_name?.toUpperCase() || 'SCHOOL NAME'}
+//               </h1>
+//               <p className="text-xs text-slate-600 font-medium mb-1">
+//                 {schoolSettings?.address || 'School Address Not Set'}
+//               </p>
+//               <div className="text-xs text-slate-600 font-medium mb-2">
+//                 {schoolSettings?.phone && <span>{schoolSettings.phone}</span>}
+//                 {schoolSettings?.phone && schoolSettings?.email && ' | '}
+//                 {schoolSettings?.email && <span>{schoolSettings.email}</span>}
+//               </div>
+//               {schoolSettings?.motto && (
+//                 <p className="text-xs text-slate-500 italic mb-2">"{schoolSettings.motto}"</p>
+//               )}
+//               <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white py-2 px-6 rounded-lg inline-block shadow-md mt-2">
+//                 <p className="text-xs font-semibold">{data.term?.name || 'First'} Term, {data.term?.session || data.term?.year || '2025'} Academic Session</p>
+//               </div>
+//             </div>
+            
+//             <div className="w-16"></div>
+//           </div>
+
+//           {/* STUDENT INFORMATION */}
+//           <div className="mb-5 p-4 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200">
+//             <div className="text-center font-bold mb-3 text-sm text-indigo-900 tracking-wide">
+//               PUPIL'S INFORMATION
+//             </div>
+//             <div className="grid grid-cols-3 gap-3 text-xs">
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2">NAME:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.student?.name || data.student?.full_name || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2">CLASS:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.student?.class || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2">TERM:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.term?.name || ""} TERM
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2">HOUSE:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.student?.house || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2">POSITION:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.position || "N/A"}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2">TOTAL PUPILS:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.total_pupils || "N/A"}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2 text-[10px]">SCHOOL OPENED:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.attendance?.times_opened || ""}
+//                 </span>
+//               </div>
+//               <div className="flex items-center">
+//                 <span className="font-semibold text-slate-700 mr-2 text-[10px]">TIMES PRESENT:</span>
+//                 <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+//                   {data.attendance?.times_present || ""}
+//                 </span>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* PHYSICAL DEVELOPMENT */}
+//           <div className="mb-5 rounded-lg overflow-hidden shadow-md border border-slate-200">
+//             <div className="text-center font-bold py-2 text-white text-xs bg-gradient-to-r from-rose-600 to-rose-700">
+//               PHYSICAL DEVELOPMENT / SPECIAL REPORTS
+//             </div>
+//             <table className="w-full border-collapse bg-white text-[10px]">
+//               <thead>
+//                 <tr className="bg-slate-50">
+//                   <th className="border border-slate-300 w-1/5 py-2 text-center font-bold text-slate-700"></th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">EXCELLENT</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">VERY GOOD</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">GOOD</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">FAIR</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">COMMENTS</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {["PHYSICAL DEVELOPMENT", "HEALTH", "CLEANLINESS", "GENERAL CONDUCT"].map((item, idx) => {
+//                   const value = getPhysicalDevelopmentData(item);
+//                   return (
+//                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+//                       <td className="border border-slate-300 text-left px-3 py-2 font-semibold text-slate-700">{item}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{value === 'EXCELLENT' ? '✓' : ''}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{value === 'VERY GOOD' ? '✓' : ''}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{value === 'GOOD' ? '✓' : ''}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{value === 'FAIR' ? '✓' : ''}</td>
+//                       <td className="border border-slate-300 py-2 px-2 text-center">
+//                         {value && !['EXCELLENT', 'VERY GOOD', 'GOOD', 'FAIR'].includes(value) ? value : ''}
+//                       </td>
+//                     </tr>
+//                   );
+//                 })}
+//               </tbody>
+//             </table>
+//           </div>
+
+//           {/* ACADEMIC PERFORMANCE */}
+//           <div className="mb-5 rounded-lg overflow-hidden shadow-md border border-slate-200">
+//             <div className="text-center font-bold py-2 text-white text-xs bg-gradient-to-r from-indigo-600 to-indigo-700">
+//               ACADEMIC PERFORMANCE
+//             </div>
+//             <table className="w-full border-collapse bg-white text-[10px]">
+//               <thead>
+//                 <tr className="bg-slate-50">
+//                   <th className="border border-slate-300 w-2/5 py-2 text-center font-bold text-slate-700">SUBJECTS</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700 text-[9px]">MAX MARKS</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700 text-[9px]">MARK OBT.</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">%</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">GRADE</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700 text-[9px]">POSITION</th>
+//                   <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">REMARK</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {enhancedResults.length > 0 ? (
+//                   enhancedResults.map((result, idx) => (
+//                     <tr key={result.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+//                       <td className="border border-slate-300 text-left px-3 py-2 font-medium text-slate-700">
+//                         {result.subject?.name || 'N/A'}
+//                       </td>
+//                       <td className="border border-slate-300 py-2 text-center">{result.max_marks_obtainable}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{result.mark_obtained}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{result.percentage.toFixed(1)}%</td>
+//                       <td className="border border-slate-300 py-2 text-center font-bold">{result.calculated_grade}</td>
+//                       <td className="border border-slate-300 py-2 text-center">
+//                         {(() => {
+//                           if (result.position) {
+//                             if (typeof result.position === 'string' && 
+//                                 (result.position.includes('st') || result.position.includes('nd') || 
+//                                  result.position.includes('rd') || result.position.includes('th'))) {
+//                               return result.position;
+//                             } else if (typeof result.position === 'number') {
+//                               return `${result.position}${getOrdinalSuffix(result.position)}`;
+//                             }
+//                             return result.position;
+//                           }
+//                           return 'N/A';
+//                         })()}
+//                       </td>
+//                       <td className="border border-slate-300 py-2 px-2 text-center">{result.calculated_remark}</td>
+//                     </tr>
+//                   ))
+//                 ) : (
+//                   ["English (Alphabet)", "Mathematics (Numbers)", "Social Studies", "Basic Science",
+//                     "Christian Religious Studies", "Computer Studies", "Moral & Value Studies",
+//                     "Colouring Activities", "Rhymes", "Physical & Health Education", "Writing Skill", "Craft"
+//                   ].map((subject, idx) => (
+//                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+//                       <td className="border border-slate-300 text-left px-3 py-2 font-medium text-slate-700">{subject}</td>
+//                       <td className="border border-slate-300 py-2 text-center">{gradingSystem?.max_score || 100}</td>
+//                       <td className="border border-slate-300 py-2 text-center"></td>
+//                       <td className="border border-slate-300 py-2 text-center"></td>
+//                       <td className="border border-slate-300 py-2 text-center"></td>
+//                       <td className="border border-slate-300 py-2 text-center"></td>
+//                       <td className="border border-slate-300 py-2 text-center"></td>
+//                     </tr>
+//                   ))
+//                 )}
+//                 <tr className="bg-slate-100 font-bold">
+//                   <td className="border border-slate-300 text-right px-3 py-2 text-slate-800">Total</td>
+//                   <td className="border border-slate-300 py-2 text-center">{totalObtainable}</td>
+//                   <td className="border border-slate-300 py-2 text-center">{totalObtained}</td>
+//                   <td className="border border-slate-300 py-2 text-center">{overallPercentage.toFixed(1)}%</td>
+//                   <td className="border border-slate-300 py-2 text-center">{overallGrade.grade}</td>
+//                   <td className="border border-slate-300 py-2 text-center"></td>
+//                   <td className="border border-slate-300 py-2 text-center">{overallGrade.remark}</td>
+//                 </tr>
+//               </tbody>
+//             </table>
+//           </div>
+
+//           {/* COMMENTS AND SIGNATURES */}
+//           <div className="grid grid-cols-2 gap-4 mb-5">
+//             <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+//               <div className="font-bold text-slate-800 mb-2 text-center text-xs">NURSE'S COMMENT</div>
+//               <div className="bg-white rounded-md p-2 text-[10px] min-h-[60px] border border-purple-300">
+//                 {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
+//               </div>
+//               <div className="mt-2 text-center">
+//                 <span className="font-semibold text-slate-700 text-[10px]">SIGNATURE/DATE</span>
+//                 {data.class_teacher_signature ? (
+//                   <div className="bg-white rounded-md mt-1 p-1 border border-purple-300">
+//                     <img 
+//                       src={data.class_teacher_signature} 
+//                       alt="Nurse Signature" 
+//                       className="h-6 w-auto mx-auto object-contain"
+//                     />
+//                   </div>
+//                 ) : (
+//                   <div className="bg-white h-6 rounded-md mt-1 border border-purple-300"></div>
+//                 )}
+//                 <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+//               </div>
+//             </div>
+
+//             <div className="p-3 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200">
+//               <div className="font-bold text-slate-800 mb-2 text-center text-xs">HEAD TEACHER'S COMMENT</div>
+//               <div className="bg-white rounded-md p-2 text-[10px] min-h-[60px] border border-amber-300">
+//                 {data.head_teacher_remark || ''}
+//               </div>
+//               <div className="mt-2 text-center">
+//                 <span className="font-semibold text-slate-700 text-[10px]">SIGNATURE/DATE</span>
+//                 {data.head_teacher_signature ? (
+//                   <div className="bg-white rounded-md mt-1 p-1 border border-amber-300">
+//                     <img 
+//                       src={data.head_teacher_signature} 
+//                       alt="Head Teacher Signature" 
+//                       className="h-6 w-auto mx-auto object-contain"
+//                     />
+//                   </div>
+//                 ) : (
+//                   <div className="bg-white h-6 rounded-md mt-1 border border-amber-300"></div>
+//                 )}
+//                 <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* CLASS TEACHER'S COMMENT */}
+//           <div className="mb-5 p-3 rounded-lg bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
+//             <div className="font-bold text-slate-800 mb-2 text-center text-xs">CLASS TEACHER'S COMMENT</div>
+//             <div className="bg-white rounded-md p-2 text-[10px] min-h-[50px] border border-green-300">
+//               {data.class_teacher_remark || ''}
+//             </div>
+//             <div className="mt-2 flex justify-between items-center">
+//               <div className="flex-1 text-center">
+//                 <span className="font-semibold text-slate-700 text-[10px]">SIGNATURE/DATE</span>
+//                 {data.class_teacher_signature ? (
+//                   <div className="bg-white rounded-md mt-1 p-1 mx-auto w-32 border border-green-300">
+//                     <img 
+//                       src={data.class_teacher_signature} 
+//                       alt="Class Teacher Signature" 
+//                       className="h-6 w-auto mx-auto object-contain"
+//                     />
+//                   </div>
+//                 ) : (
+//                   <div className="bg-white h-6 rounded-md mt-1 mx-auto w-32 border border-green-300"></div>
+//                 )}
+//                 <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* NEXT TERM BEGINS & PARENT'S SIGNATURE */}
+//           <div className="grid grid-cols-2 gap-4 mb-4">
+//             <div className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+//               <div className="text-center">
+//                 <span className="font-bold text-slate-700 block mb-2 text-xs">NEXT TERM BEGINS</span>
+//                 <div className="bg-white h-8 rounded-md flex items-center justify-center border border-blue-300 text-xs font-semibold">
+//                   {correctedNextTermBegins ? new Date(correctedNextTermBegins).toLocaleDateString() : (data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : '')}
+//                 </div>
+//               </div>
+//             </div>
+            
+//             <div className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+//               <div className="text-center">
+//                 <span className="font-bold text-slate-700 block mb-2 text-xs">PARENT'S SIGNATURE/DATE</span>
+//                 <div className="bg-white h-8 rounded-md border border-blue-300"></div>
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Publication Status */}
+//           {data.is_published && (
+//             <div className="text-center">
+//               <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+//                 ✓ Published Report
+//               </div>
+//             </div>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+import { useState, useEffect, useMemo } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { useResultService } from '@/hooks/useResultService';
@@ -31,12 +1567,12 @@ export interface SubjectResult {
   position?: string;
   is_passed?: boolean;
   physical_development_score?: number;
-  // Physical development attributes
   physical_development?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
   health?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
   cleanliness?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
   general_conduct?: 'EXCELLENT' | 'VERY GOOD' | 'GOOD' | 'FAIR';
   academic_comment?: string;
+  status?: string;
 }
 
 export interface NurseryResultData {
@@ -47,7 +1583,8 @@ export interface NurseryResultData {
   total_score: number;
   max_marks_obtainable: number;
   mark_obtained: number;
-  position: number;
+  position?: string;
+  total_pupils?: string;
   class_position: number;
   total_students: number;
   attendance: {
@@ -68,12 +1605,13 @@ export interface NurseryResultData {
 type NurseryResultProps = {
   data: NurseryResultData;
   onDataChange?: (data: NurseryResultData) => void;
+  showOnlyPublished?: boolean;
 };
 
 const SchoolLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: string }) => {
   if (logoUrl) {
     return (
-      <div className="w-20 h-20 rounded-xl overflow-hidden shadow-lg border-2 border-blue-600">
+      <div className="w-16 h-16 rounded-xl overflow-hidden shadow-lg border-2 border-indigo-600">
         <img 
           src={logoUrl} 
           alt={`${school_name || 'School'} Logo`}
@@ -86,15 +1624,13 @@ const SchoolLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: 
         />
         <div className="w-full h-full rounded-xl flex items-center justify-center text-white shadow-lg hidden" 
              style={{
-               background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-               border: '2px solid #1e40af'
+               background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+               border: '2px solid #4f46e5'
              }}>
           <div className="text-center text-xs">
-            <div className="font-bold text-lg mb-1">
+            <div className="font-bold text-base mb-1">
               {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
             </div>
-            <div className="text-[8px] font-medium">SCHOOL</div>
-            <div className="text-[8px] font-medium">LOGO</div>
           </div>
         </div>
       </div>
@@ -102,20 +1638,14 @@ const SchoolLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: 
   }
 
   return (
-    <div className="w-20 h-20 rounded-xl flex items-center justify-center text-white shadow-lg" 
+    <div className="w-16 h-16 rounded-xl flex items-center justify-center text-white shadow-lg" 
          style={{
-           background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-           border: '2px solid #1e40af'
+           background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+           border: '2px solid #4f46e5'
          }}>
       <div className="text-center text-xs">
-        <div className="font-bold text-lg mb-1">
+        <div className="font-bold text-base mb-1">
           {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
-        </div>
-        <div className="text-[8px] font-medium">
-          {school_name?.split(' ')[0]?.slice(0, 8) || 'SCHOOL'}
-        </div>
-        <div className="text-[8px] font-medium">
-          {school_name?.split(' ')[1]?.slice(0, 8) || 'LOGO'}
         </div>
       </div>
     </div>
@@ -125,44 +1655,27 @@ const SchoolLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: 
 const WatermarkLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name?: string }) => {
   if (logoUrl) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0">
-        <div className="text-center">
-          <div className="w-80 h-80 rounded-full overflow-hidden mb-8 border-4 border-blue-600">
-            <img 
-              src={logoUrl} 
-              alt="Watermark"
-              className="w-full h-full object-cover opacity-50"
-            />
-          </div>
-          <div className="text-8xl font-bold" style={{ color: '#1e40af' }}>
-            {school_name?.toUpperCase() || 'SCHOOL NAME'}
-          </div>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] z-0">
+        <div className="w-96 h-96 rounded-full overflow-hidden border-4 border-indigo-200">
+          <img 
+            src={logoUrl} 
+            alt="Watermark"
+            className="w-full h-full object-cover"
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0">
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.08] z-0">
       <div className="text-center">
-        <div className="w-80 h-80 rounded-full flex items-center justify-center mb-8 border-4"
-             style={{
-               background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
-               borderColor: '#1e40af'
-             }}>
-          <div className="text-center text-white">
-            <div className="text-6xl font-bold mb-4">
-              {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
-            </div>
-            <div className="text-2xl font-semibold">
-              {school_name?.split(' ')[0] || 'SCHOOL'}
-            </div>
-            <div className="text-xl font-semibold">
-              {school_name?.split(' ').slice(1).join(' ') || 'NAME'}
-            </div>
+        <div className="w-96 h-96 rounded-full flex items-center justify-center border-4 border-indigo-200 bg-gradient-to-br from-indigo-100 to-indigo-200 mb-4">
+          <div className="text-8xl font-black text-indigo-600">
+            {school_name?.split(' ').map(word => word[0]).join('').slice(0, 3) || 'SCH'}
           </div>
         </div>
-        <div className="text-8xl font-bold" style={{ color: '#1e40af' }}>
+        <div className="text-4xl font-bold text-indigo-400 tracking-wider">
           {school_name?.toUpperCase() || 'SCHOOL NAME'}
         </div>
       </div>
@@ -170,8 +1683,7 @@ const WatermarkLogo = ({ logoUrl, school_name }: { logoUrl?: string; school_name
   );
 };
 
-export default function NurseryResult({ data }: NurseryResultProps) {
-  // State to store the corrected next_term_begins date
+export default function NurseryResult({ data, showOnlyPublished = false }: NurseryResultProps) {
   const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
   
   const { service, schoolSettings, loading: serviceLoading, error: serviceError } = useResultService();
@@ -180,42 +1692,26 @@ export default function NurseryResult({ data }: NurseryResultProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if we need to fix the next_term_begins date
   useEffect(() => {
     const fixNextTermBegins = async () => {
-      // If we receive invalid date, fetch the correct date from Term settings
       if (!data?.next_term_begins || data?.next_term_begins === 'Invalid Date' || data?.next_term_begins === 'TBA') {
-        console.log('🔧 [NurseryResult] Fixing next_term_begins - received:', data?.next_term_begins);
-        
         try {
-          // Import AcademicCalendarService to get Term settings
           const { default: AcademicCalendarService } = await import('@/services/AcademicCalendarService');
           
-          // Get current academic session and terms
           const academicSessions = await AcademicCalendarService.getAcademicSessions();
           const currentSession = academicSessions.find(session => session.is_current);
           
           if (currentSession) {
-            console.log('🔧 [NurseryResult] Current academic session:', currentSession);
-            
-            // Get all terms and filter by current session
             const allTerms = await AcademicCalendarService.getTerms();
             const terms = allTerms.filter(term => term.academic_session === currentSession.id);
-            console.log('🔧 [NurseryResult] Available terms:', terms);
             
-            // Find the current term and next term
             const currentTerm = terms.find(term => term.is_current);
             if (currentTerm) {
-              console.log('🔧 [NurseryResult] Current term:', currentTerm);
-              
-              // If current term has next_term_begins, use it
               if (currentTerm.next_term_begins) {
-                console.log('🔧 [NurseryResult] Found next_term_begins from current term:', currentTerm.next_term_begins);
                 setCorrectedNextTermBegins(currentTerm.next_term_begins);
                 return;
               }
               
-              // Otherwise, find the next term in sequence
               const termOrder = ['FIRST', 'SECOND', 'THIRD'];
               const currentIndex = termOrder.indexOf(currentTerm.name);
               
@@ -224,7 +1720,6 @@ export default function NurseryResult({ data }: NurseryResultProps) {
                 const nextTerm = terms.find(term => term.name === nextTermName);
                 
                 if (nextTerm && nextTerm.next_term_begins) {
-                  console.log('🔧 [NurseryResult] Found next_term_begins from next term:', nextTerm.next_term_begins);
                   setCorrectedNextTermBegins(nextTerm.next_term_begins);
                   return;
                 }
@@ -232,17 +1727,13 @@ export default function NurseryResult({ data }: NurseryResultProps) {
             }
           }
           
-          // Fallback: Use a default date
-          const defaultDate = '2025-01-17';
-          console.log('🔧 [NurseryResult] Using fallback date:', defaultDate);
-          setCorrectedNextTermBegins(defaultDate);
+          setCorrectedNextTermBegins('2025-01-17');
           
         } catch (error) {
-          console.error('🔧 [NurseryResult] Error fetching next term begins date:', error);
+          console.error('Error fetching next term begins date:', error);
           setCorrectedNextTermBegins('2025-01-17');
         }
       } else {
-        console.log('🔧 [NurseryResult] next_term_begins is already correct:', data?.next_term_begins);
         setCorrectedNextTermBegins(data?.next_term_begins);
       }
     };
@@ -250,7 +1741,6 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     fixNextTermBegins();
   }, [data?.next_term_begins]);
 
-  // Load grading system and grades
   useEffect(() => {
     const fetchGradingData = async () => {
       if (!service || serviceLoading) return;
@@ -280,7 +1770,6 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     fetchGradingData();
   }, [service, serviceLoading]);
 
-  // Helper function to get grade for a score
   const getGradeForScore = (score: number): { grade: string; remark: string; isPass: boolean } => {
     if (!gradingSystem || grades.length === 0) {
       return { grade: 'N/A', remark: 'Loading...', isPass: false };
@@ -304,18 +1793,31 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     };
   };
 
-  // Calculate percentage
   const calculatePercentage = (obtained: number, total: number): number => {
     return total > 0 ? (obtained / total) * 100 : 0;
   };
 
-  // Enhanced results with calculated grades
-  const enhancedResults = data.subjects?.map(subject => {
-    const percentage = calculatePercentage(subject.mark_obtained, subject.max_marks_obtainable);
+  const subjectsToUse = useMemo(() => {
+    if (!data?.subjects) return [];
+    
+    if (showOnlyPublished) {
+      const publishedSubjects = data.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+      return publishedSubjects;
+    } else {
+      return data.subjects;
+    }
+  }, [data?.subjects, showOnlyPublished]);
+
+  const enhancedResults = subjectsToUse.map((subject: any) => {
+    const markObtained = Number(subject.mark_obtained) || 0;
+    const maxMarks = Number(subject.max_marks_obtainable) || 0;
+    const percentage = calculatePercentage(markObtained, maxMarks);
     const gradeInfo = getGradeForScore(percentage);
     
     return {
       ...subject,
+      mark_obtained: markObtained,
+      max_marks_obtainable: maxMarks,
       percentage,
       calculated_grade: gradeInfo.grade,
       calculated_remark: gradeInfo.remark,
@@ -325,9 +1827,17 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     };
   }) || [];
 
-  // Calculate overall statistics using the main data structure
-  const overallPercentage = data.max_marks_obtainable > 0 
-    ? (data.mark_obtained / data.max_marks_obtainable) * 100 
+  const totalObtained = subjectsToUse.reduce((sum: number, subject: any) => {
+    const markObtained = Number(subject.mark_obtained) || 0;
+    return sum + markObtained;
+  }, 0);
+  const totalObtainable = subjectsToUse.reduce((sum: number, subject: any) => {
+    const maxMarks = Number(subject.max_marks_obtainable) || 0;
+    return sum + maxMarks;
+  }, 0);
+  
+  const overallPercentage = totalObtainable > 0 
+    ? (totalObtained / totalObtainable) * 100 
     : 0;
   const overallGrade = getGradeForScore(overallPercentage);
 
@@ -337,10 +1847,13 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     
     try {
       const canvas = await html2canvas(input, { 
-        scale: 1.7,
+        scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 794,
+        windowHeight: input.scrollHeight
       });
       
       const imgData = canvas.toDataURL("image/png");
@@ -348,8 +1861,22 @@ export default function NurseryResult({ data }: NurseryResultProps) {
       
       const pageWidth = 210;
       const pageHeight = 297;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
       
-      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
       pdf.save(`${data.student?.name || "nursery-result"}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -357,9 +1884,8 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     }
   };
 
-  // Get physical development data - check if any subject has this data
   const getPhysicalDevelopmentData = (category: string) => {
-    const subjectWithData = data.subjects?.find(subject => {
+    const subjectWithData = subjectsToUse.find((subject: any) => {
       switch(category) {
         case "PHYSICAL DEVELOPMENT": return subject.physical_development;
         case "HEALTH": return subject.health;
@@ -380,11 +1906,20 @@ export default function NurseryResult({ data }: NurseryResultProps) {
     }
   };
 
+  function getOrdinalSuffix(num: number): string {
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return "st";
+    if (j === 2 && k !== 12) return "nd";
+    if (j === 3 && k !== 13) return "rd";
+    return "th";
+  }
+
   if (serviceLoading || loading || !schoolSettings) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
           <p>Loading school settings and grading system...</p>
         </div>
       </div>
@@ -403,150 +1938,117 @@ export default function NurseryResult({ data }: NurseryResultProps) {
   }
 
   return (
-    <div className="p-6" style={{
-      background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
-      minHeight: '100vh'
-    }}>
-      <div className="mb-4 flex justify-between items-center">
+    <div className="p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+      <div className="mb-4 flex justify-between items-center max-w-[794px] mx-auto">
         <button
           onClick={downloadPDF}
-          className="px-4 py-2 bg-indigo-700 text-white rounded shadow hover:bg-indigo-800 transition-colors"
+          className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-all duration-200 font-medium"
         >
           Download PDF
         </button>
         
         {schoolSettings && (
-          <div className="mb-4 text-sm text-gray-600">
+          <div className="text-sm text-gray-600">
             <span className="font-medium">School:</span> {schoolSettings.school_name} 
             {gradingSystem && (
               <>
-                <span className="ml-4 font-medium">Grading System:</span> {gradingSystem.name} 
-                <span className="ml-2">({gradingSystem.min_score}-{gradingSystem.max_score}, Pass: {gradingSystem.pass_mark})</span>
+                <span className="ml-4 font-medium">Grading:</span> {gradingSystem.name}
               </>
             )}
           </div>
         )}
       </div>
 
-      <div id="nursery-result-sheet" className="relative p-6 w-[794px] mx-auto bg-white text-xs overflow-hidden shadow-2xl rounded-2xl border border-slate-200">
+      <div id="nursery-result-sheet" className="relative w-[794px] mx-auto bg-white shadow-2xl rounded-lg overflow-hidden">
         
-        {/* Background Watermark */}
         <WatermarkLogo 
           logoUrl={schoolSettings?.logo} 
           school_name={schoolSettings?.school_name} 
         />
         
-        {/* Content Layer */}
-        <div className="relative z-10">
+        <div className="relative z-10 p-8">
           
-          {/* HEADER with Logo */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex-1">
-              <SchoolLogo 
-                logoUrl={schoolSettings?.logo} 
-                school_name={schoolSettings?.school_name} 
-              />
-            </div>
-            <div className="flex-2 text-center mx-6">
-              <h1 className="text-3xl font-black mb-2 tracking-tight" 
-                  style={{ color: '#1e40af' }}>
+          {/* HEADER */}
+          <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-indigo-100">
+            <SchoolLogo 
+              logoUrl={schoolSettings?.logo} 
+              school_name={schoolSettings?.school_name} 
+            />
+            
+            <div className="flex-1 text-center mx-6">
+              <h1 className="text-2xl font-black mb-1 text-indigo-900 tracking-tight">
                 {schoolSettings?.school_name?.toUpperCase() || 'SCHOOL NAME'}
               </h1>
-              <p className="text-sm text-slate-600 mb-1 font-medium">
+              <p className="text-xs text-slate-600 font-medium mb-1">
                 {schoolSettings?.address || 'School Address Not Set'}
               </p>
-              <div className="text-sm text-slate-600 mb-3 font-medium">
-                {schoolSettings?.phone && (
-                  <span>Phone: {schoolSettings.phone}</span>
-                )}
+              <div className="text-xs text-slate-600 font-medium mb-2">
+                {schoolSettings?.phone && <span>{schoolSettings.phone}</span>}
                 {schoolSettings?.phone && schoolSettings?.email && ' | '}
-                {schoolSettings?.email && (
-                  <span>Email: {schoolSettings.email}</span>
-                )}
+                {schoolSettings?.email && <span>{schoolSettings.email}</span>}
               </div>
               {schoolSettings?.motto && (
-                <p className="text-xs text-slate-500 mb-3 italic">
-                  "{schoolSettings.motto}"
-                </p>
+                <p className="text-xs text-slate-500 italic mb-2">"{schoolSettings.motto}"</p>
               )}
-              <div className="bg-red-600 text-white py-2 px-4 rounded-lg inline-block">
-                <h2 className="text-lg font-bold">NURSERY SCHOOL TERMLY REPORT</h2>
-                <p className="text-sm">{data.term?.name || '1st Term'}, {data.term?.session || data.term?.year || '2025'} Academic Session</p>
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white py-2 px-6 rounded-lg inline-block shadow-md mt-2">
+                <p className="text-xs font-semibold">{data.term?.name || 'First'} Term, {data.term?.session || data.term?.year || '2025'} Academic Session</p>
               </div>
             </div>
-            <div className="flex-1"></div>
+            
+            <div className="w-16"></div>
           </div>
 
-          {/* Grading System Information */}
-          {gradingSystem && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-sm mb-2 text-blue-900">Grading System: {gradingSystem.name}</h3>
-              <div className="grid grid-cols-2 gap-4 text-xs text-blue-800">
-                <div><span className="font-medium">Score Range:</span> {gradingSystem.min_score} - {gradingSystem.max_score}</div>
-                <div><span className="font-medium">Pass Mark:</span> {gradingSystem.pass_mark}</div>
-                <div><span className="font-medium">Grading Type:</span> {gradingSystem.grading_type}</div>
-                <div><span className="font-medium">Total Subjects:</span> {enhancedResults.length}</div>
-              </div>
-              
-              {/* Grade Legend */}
-              {grades.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="font-medium text-xs text-blue-900 mb-1">Grade Legend:</h4>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    {grades.map(grade => (
-                      <div key={grade.id} className="flex justify-between">
-                        <span className="font-bold">{grade.grade}:</span>
-                        <span>{grade.min_score}-{grade.max_score}</span>
-                        <span className="text-blue-600">({grade.remark})</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* STUDENT INFORMATION */}
-          <div className="mb-6 p-4 rounded-xl border border-slate-200"
-               style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
-            <div className="text-center font-black mb-4 text-lg tracking-wide"
-                 style={{ color: '#1e40af' }}>
+          <div className="mb-5 p-4 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200">
+            <div className="text-center font-bold mb-3 text-sm text-indigo-900 tracking-wide">
               PUPIL'S INFORMATION
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-3 gap-3 text-xs">
               <div className="flex items-center">
-                <span className="font-bold text-slate-700 min-w-[150px]">NAME:</span>
-                <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+                <span className="font-semibold text-slate-700 mr-2">NAME:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
                   {data.student?.name || data.student?.full_name || ""}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="font-bold text-slate-700 min-w-[150px]">CLASS:</span>
-                <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+                <span className="font-semibold text-slate-700 mr-2">CLASS:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
                   {data.student?.class || ""}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="font-bold text-slate-700 min-w-[150px]">TERM:</span>
-                <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
-                  {data.term?.name || ""}
+                <span className="font-semibold text-slate-700 mr-2">TERM:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+                  {data.term?.name || ""} TERM
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="font-bold text-slate-700 min-w-[150px]">HOUSE:</span>
-                <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+                <span className="font-semibold text-slate-700 mr-2">HOUSE:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
                   {data.student?.house || ""}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="font-bold text-slate-700 min-w-[150px]">NO OF TIMES SCHOOL OPENED:</span>
-                <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+                <span className="font-semibold text-slate-700 mr-2">POSITION:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+                  {data.position || "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="font-semibold text-slate-700 mr-2">TOTAL PUPILS:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
+                  {data.total_pupils || "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="font-semibold text-slate-700 mr-2 text-[10px]">SCHOOL OPENED:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
                   {data.attendance?.times_opened || ""}
                 </span>
               </div>
               <div className="flex items-center">
-                <span className="font-bold text-slate-700 min-w-[150px]">NO OF TIMES PRESENT:</span>
-                <span className="border-b-2 border-blue-300 flex-1 ml-3 pb-1 text-slate-800 font-medium">
+                <span className="font-semibold text-slate-700 mr-2 text-[10px]">TIMES PRESENT:</span>
+                <span className="border-b border-indigo-300 flex-1 text-slate-800 font-medium pb-0.5">
                   {data.attendance?.times_present || ""}
                 </span>
               </div>
@@ -554,42 +2056,32 @@ export default function NurseryResult({ data }: NurseryResultProps) {
           </div>
 
           {/* PHYSICAL DEVELOPMENT */}
-          <div className="mb-6 rounded-xl overflow-hidden shadow-lg border border-slate-200">
-            <div className="text-center font-bold py-3 text-white text-sm tracking-wide"
-                 style={{ background: 'linear-gradient(135deg, #dc2626, #ef4444)' }}>
-              PHYSICAL DEVELOPMENT / SPECIAL REPORTS DURING THE TERM
+          <div className="mb-5 rounded-lg overflow-hidden shadow-md border border-slate-200">
+            <div className="text-center font-bold py-2 text-white text-xs bg-gradient-to-r from-rose-600 to-rose-700">
+              PHYSICAL DEVELOPMENT / SPECIAL REPORTS
             </div>
-            <table className="w-full border-collapse bg-white">
+            <table className="w-full border-collapse bg-white text-[10px]">
               <thead>
-                <tr style={{ background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)' }}>
-                  <th className="border border-slate-300 w-1/4 py-3 text-center font-bold text-slate-700"> </th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">EXCELLENT</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">VERY GOOD</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">GOOD</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">FAIR</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">COMMENTS</th>
+                <tr className="bg-slate-50">
+                  <th className="border border-slate-300 w-1/5 py-2 text-center font-bold text-slate-700"></th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">EXCELLENT</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">VERY GOOD</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">GOOD</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">FAIR</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">COMMENTS</th>
                 </tr>
               </thead>
               <tbody>
                 {["PHYSICAL DEVELOPMENT", "HEALTH", "CLEANLINESS", "GENERAL CONDUCT"].map((item, idx) => {
                   const value = getPhysicalDevelopmentData(item);
-
                   return (
                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                      <td className="border border-slate-300 text-left px-4 py-3 font-bold text-slate-700">{item}</td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {value === 'EXCELLENT' ? '✓' : ''}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {value === 'VERY GOOD' ? '✓' : ''}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {value === 'GOOD' ? '✓' : ''}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {value === 'FAIR' ? '✓' : ''}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
+                      <td className="border border-slate-300 text-left px-3 py-2 font-semibold text-slate-700">{item}</td>
+                      <td className="border border-slate-300 py-2 text-center">{value === 'EXCELLENT' ? '✓' : ''}</td>
+                      <td className="border border-slate-300 py-2 text-center">{value === 'VERY GOOD' ? '✓' : ''}</td>
+                      <td className="border border-slate-300 py-2 text-center">{value === 'GOOD' ? '✓' : ''}</td>
+                      <td className="border border-slate-300 py-2 text-center">{value === 'FAIR' ? '✓' : ''}</td>
+                      <td className="border border-slate-300 py-2 px-2 text-center">
                         {value && !['EXCELLENT', 'VERY GOOD', 'GOOD', 'FAIR'].includes(value) ? value : ''}
                       </td>
                     </tr>
@@ -600,241 +2092,142 @@ export default function NurseryResult({ data }: NurseryResultProps) {
           </div>
 
           {/* ACADEMIC PERFORMANCE */}
-          <div className="mb-6 rounded-xl overflow-hidden shadow-lg border border-slate-200">
-            <div className="text-center font-bold py-3 text-white text-sm tracking-wide"
-                 style={{ background: 'linear-gradient(135deg, #1e40af, #3b82f6)' }}>
+          <div className="mb-5 rounded-lg overflow-hidden shadow-md border border-slate-200">
+            <div className="text-center font-bold py-2 text-white text-xs bg-gradient-to-r from-indigo-600 to-indigo-700">
               ACADEMIC PERFORMANCE
             </div>
-            <table className="w-full border-collapse bg-white">
+            <table className="w-full border-collapse bg-white text-[10px]">
               <thead>
-                <tr style={{ background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)' }}>
-                  <th className="border border-slate-300 w-2/5 py-3 text-center font-bold text-slate-700">SUBJECTS</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">MAX MARKS<br/>OBTAINABLE</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">MARK<br/>OBTAINED</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">%</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">GRADE</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">POSITIONS</th>
-                  <th className="border border-slate-300 py-3 text-center font-bold text-slate-700">COMMENTS</th>
+                <tr className="bg-slate-50">
+                  <th className="border border-slate-300 w-2/5 py-2 text-center font-bold text-slate-700">SUBJECTS</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700 text-[9px]">MAX MARKS</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700 text-[9px]">MARK OBT.</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">%</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">GRADE</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700 text-[9px]">POSITION</th>
+                  <th className="border border-slate-300 py-2 text-center font-bold text-slate-700">REMARK</th>
                 </tr>
               </thead>
               <tbody>
                 {enhancedResults.length > 0 ? (
                   enhancedResults.map((result, idx) => (
                     <tr key={result.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                      <td className="border border-slate-300 text-left px-4 py-3 font-medium text-slate-700">
+                      <td className="border border-slate-300 text-left px-3 py-2 font-medium text-slate-700">
                         {result.subject?.name || 'N/A'}
                       </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {result.max_marks_obtainable}
+                      <td className="border border-slate-300 py-2 text-center">{result.max_marks_obtainable}</td>
+                      <td className="border border-slate-300 py-2 text-center">{result.mark_obtained}</td>
+                      <td className="border border-slate-300 py-2 text-center">{result.percentage.toFixed(1)}%</td>
+                      <td className="border border-slate-300 py-2 text-center font-bold">{result.calculated_grade}</td>
+                      <td className="border border-slate-300 py-2 text-center">
+                        {(() => {
+                          if (result.position) {
+                            if (typeof result.position === 'string' && 
+                                (result.position.includes('st') || result.position.includes('nd') || 
+                                 result.position.includes('rd') || result.position.includes('th'))) {
+                              return result.position;
+                            } else if (typeof result.position === 'number') {
+                              return `${result.position}${getOrdinalSuffix(result.position)}`;
+                            }
+                            return result.position;
+                          }
+                          return 'N/A';
+                        })()}
                       </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {result.mark_obtained}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {result.percentage.toFixed(1)}%
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center font-bold">
-                        {result.calculated_grade}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {result.position || 'N/A'}
-                      </td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">
-                        {result.calculated_remark}
-                      </td>
+                      <td className="border border-slate-300 py-2 px-2 text-center">{result.calculated_remark}</td>
                     </tr>
                   ))
                 ) : (
-                  // Default subjects when no data is available
-                  [
-                    "English (Alphabet)", "Mathematics (Numbers)", "Social Studies", "Basic Science",
-                    "Christian Religious Studies", "Computer Studies", "Moral & Value Studies (MVS)",
+                  ["English (Alphabet)", "Mathematics (Numbers)", "Social Studies", "Basic Science",
+                    "Christian Religious Studies", "Computer Studies", "Moral & Value Studies",
                     "Colouring Activities", "Rhymes", "Physical & Health Education", "Writing Skill", "Craft"
                   ].map((subject, idx) => (
                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                      <td className="border border-slate-300 text-left px-4 py-3 font-medium text-slate-700">{subject}</td>
-                      <td className="border border-slate-300 py-3 h-10 text-center">{gradingSystem?.max_score || 100}</td>
-                      <td className="border border-slate-300 py-3 h-10 text-center"></td>
-                      <td className="border border-slate-300 py-3 h-10 text-center"></td>
-                      <td className="border border-slate-300 py-3 h-10 text-center"></td>
-                      <td className="border border-slate-300 py-3 h-10 text-center"></td>
-                      <td className="border border-slate-300 py-3 h-10"></td>
+                      <td className="border border-slate-300 text-left px-3 py-2 font-medium text-slate-700">{subject}</td>
+                      <td className="border border-slate-300 py-2 text-center">{gradingSystem?.max_score || 100}</td>
+                      <td className="border border-slate-300 py-2 text-center"></td>
+                      <td className="border border-slate-300 py-2 text-center"></td>
+                      <td className="border border-slate-300 py-2 text-center"></td>
+                      <td className="border border-slate-300 py-2 text-center"></td>
+                      <td className="border border-slate-300 py-2 text-center"></td>
                     </tr>
                   ))
                 )}
-                <tr style={{ background: 'linear-gradient(135deg, #e2e8f0, #cbd5e1)' }}>
-                  <td className="border border-slate-300 font-black text-right px-4 py-3 text-slate-800">Total</td>
-                  <td className="border border-slate-300 py-3 h-10 text-center font-bold">
-                    {data.max_marks_obtainable}
-                  </td>
-                  <td className="border border-slate-300 py-3 h-10 text-center font-bold">
-                    {data.mark_obtained}
-                  </td>
-                  <td className="border border-slate-300 py-3 h-10 text-center font-bold">
-                    {overallPercentage.toFixed(1)}%
-                  </td>
-                  <td className="border border-slate-300 py-3 h-10 text-center font-bold">
-                    {overallGrade.grade}
-                  </td>
-                  <td className="border border-slate-300 py-3 h-10 text-center"></td>
-                  <td className="border border-slate-300 py-3 h-10 text-center font-bold">
-                    {overallGrade.remark}
-                  </td>
+                <tr className="bg-slate-100 font-bold">
+                  <td className="border border-slate-300 text-right px-3 py-2 text-slate-800">Total</td>
+                  <td className="border border-slate-300 py-2 text-center">{totalObtainable}</td>
+                  <td className="border border-slate-300 py-2 text-center">{totalObtained}</td>
+                  <td className="border border-slate-300 py-2 text-center">{overallPercentage.toFixed(1)}%</td>
+                  <td className="border border-slate-300 py-2 text-center">{overallGrade.grade}</td>
+                  <td className="border border-slate-300 py-2 text-center"></td>
+                  <td className="border border-slate-300 py-2 text-center">{overallGrade.remark}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          {/* PUPIL'S POSITION */}
-          <div className="mb-6 p-5 rounded-xl border border-slate-200"
-               style={{ background: 'linear-gradient(135deg, #fef7cd, #fef3c7)' }}>
-            <div className="text-center font-black mb-4 text-lg tracking-wide"
-                 style={{ color: '#dc2626' }}>
-              PUPIL'S POSITION
-            </div>
-            <div className="grid grid-cols-4 gap-4 text-sm">
-              <div className="text-center">
-                <span className="font-bold text-slate-700 block mb-2">PERCENTAGE AVERAGE</span>
-                <div className="border-b-2 border-amber-400 h-8 bg-white rounded-md flex items-center justify-center">
-                  {overallPercentage.toFixed(1)}%
-                </div>
-              </div>
-              <div className="text-center">
-                <span className="font-bold text-slate-700 block mb-2">GRADE</span>
-                <div className="border-b-2 border-amber-400 h-8 bg-white rounded-md flex items-center justify-center">
-                  {overallGrade.grade}
-                </div>
-              </div>
-              <div className="text-center">
-                <span className="font-bold text-slate-700 block mb-2">POSITION</span>
-                <div className="border-b-2 border-amber-400 h-8 bg-white rounded-md flex items-center justify-center">
-                  {data.class_position ? `${data.class_position}${getOrdinalSuffix(data.class_position)}` : ''}
-                </div>
-              </div>
-              <div className="text-center">
-                <span className="font-bold text-slate-700 block mb-2">TOTAL PUPILS</span>
-                <div className="border-b-2 border-amber-400 h-8 bg-white rounded-md flex items-center justify-center">
-                  {data.total_students || ''}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* NURSE COMMENT */}
-          <div className="mt-6 p-4 rounded-xl border border-slate-200"
-               style={{ background: 'linear-gradient(135deg, #fef7ff, #f3e8ff)' }}>
-            <div className="font-bold text-slate-800 mb-3 text-center">NURSE'S COMMENT</div>
-            <div className="border-b-2 border-purple-400 h-16 bg-white rounded-md p-2 text-sm">
-              {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
-            </div>
-          </div>
-
           {/* COMMENTS AND SIGNATURES */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="p-4 rounded-xl border border-slate-200"
-                 style={{ background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)' }}>
-              <div className="font-bold text-slate-800 mb-3 text-center">CLASS TEACHER'S COMMENT</div>
-              <div className="border-b-2 border-green-400 h-20 bg-white rounded-md p-2 text-sm">
-                {data.class_teacher_remark || ''}
+          <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+              <div className="font-bold text-slate-800 mb-2 text-center text-xs">NURSE'S COMMENT</div>
+              <div className="bg-white rounded-md p-2 text-[10px] min-h-[60px] border border-purple-300">
+                {data.nurse_comment || "Child is healthy and physically fit for academic activities."}
               </div>
-              <div className="mt-3 text-center">
-                <span className="font-medium text-slate-700">SIGNATURE/DATE</span>
+              <div className="mt-2 text-center">
+                <span className="font-semibold text-slate-700 text-[10px]">SIGNATURE/DATE</span>
                 {data.class_teacher_signature ? (
-                  <div className="border-2 border-green-400 bg-white rounded-md mt-1 p-2">
+                  <div className="bg-white rounded-md mt-1 p-1 border border-purple-300">
                     <img 
                       src={data.class_teacher_signature} 
-                      alt="Class Teacher Signature" 
-                      className="h-8 w-auto mx-auto object-contain"
+                      alt="Nurse Signature" 
+                      className="h-6 w-auto mx-auto object-contain"
                     />
                   </div>
                 ) : (
-                  <div className="border-b-2 border-green-400 h-6 bg-white rounded-md mt-1"></div>
+                  <div className="bg-white h-6 rounded-md mt-1 border border-purple-300"></div>
                 )}
-                <div className="text-xs text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+                <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200"
-                 style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}>
-              <div className="font-bold text-slate-800 mb-3 text-center">HEAD TEACHER'S COMMENT</div>
-              <div className="border-b-2 border-amber-400 h-20 bg-white rounded-md p-2 text-sm">
+            <div className="p-3 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200">
+              <div className="font-bold text-slate-800 mb-2 text-center text-xs">HEAD TEACHER'S COMMENT</div>
+              <div className="bg-white rounded-md p-2 text-[10px] min-h-[60px] border border-amber-300">
                 {data.head_teacher_remark || ''}
               </div>
-              <div className="mt-3 text-center">
-                <span className="font-medium text-slate-700">SIGNATURE/DATE</span>
+              <div className="mt-2 text-center">
+                <span className="font-semibold text-slate-700 text-[10px]">SIGNATURE/DATE</span>
                 {data.head_teacher_signature ? (
-                  <div className="border-2 border-amber-400 bg-white rounded-md mt-1 p-2">
+                  <div className="bg-white rounded-md mt-1 p-1 border border-amber-300">
                     <img 
                       src={data.head_teacher_signature} 
                       alt="Head Teacher Signature" 
-                      className="h-8 w-auto mx-auto object-contain"
+                      className="h-6 w-auto mx-auto object-contain"
                     />
                   </div>
                 ) : (
-                  <div className="border-b-2 border-amber-400 h-6 bg-white rounded-md mt-1"></div>
+                  <div className="bg-white h-6 rounded-md mt-1 border border-amber-300"></div>
                 )}
-                <div className="text-xs text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
+                <div className="text-[9px] text-slate-600 mt-1">Date: {new Date().toLocaleDateString()}</div>
               </div>
             </div>
           </div>
 
-          {/* NEXT TERM BEGINS & PARENT'S SIGNATURE */}
-          <div className="mt-6 grid grid-cols-2 gap-6">
-            <div className="p-4 rounded-xl border border-slate-200"
-                 style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
+          {/* NEXT TERM BEGINS */}
+          <div className="mb-4">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
               <div className="text-center">
-                <span className="font-bold text-slate-700 block mb-2">NEXT TERM BEGINS</span>
-                <div className="border-b-2 border-blue-400 h-8 bg-white rounded-md flex items-center justify-center">
+                <span className="font-bold text-slate-700 block mb-2 text-sm">NEXT TERM BEGINS</span>
+                <div className="bg-white h-10 rounded-md flex items-center justify-center border border-blue-300 text-sm font-semibold text-indigo-900">
                   {correctedNextTermBegins ? new Date(correctedNextTermBegins).toLocaleDateString() : (data.next_term_begins ? new Date(data.next_term_begins).toLocaleDateString() : '')}
                 </div>
               </div>
             </div>
-            
-            <div className="p-4 rounded-xl border border-slate-200"
-                 style={{ background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)' }}>
-              <div className="text-center">
-                <span className="font-bold text-slate-700 block mb-2">PARENT'S SIGNATURE/DATE</span>
-                <div className="border-b-2 border-blue-400 h-8 bg-white rounded-md"></div>
-              </div>
-            </div>
           </div>
 
-          {/* Performance Summary */}
-          {enhancedResults.length > 0 && (
-            <div className="mt-6 p-4 rounded-xl border border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <h3 className="font-bold text-center text-slate-800 mb-3">PERFORMANCE SUMMARY</h3>
-              <div className="grid grid-cols-4 gap-4 text-xs">
-                <div className="text-center">
-                  <div className="font-bold text-slate-700">Subjects Passed</div>
-                  <div className="text-lg font-bold text-green-600">
-                    {enhancedResults.filter(r => r.is_calculated_pass).length} / {enhancedResults.length}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-slate-700">Average Score</div>
-                  <div className="text-lg font-bold text-blue-600">
-                    {overallPercentage.toFixed(1)}%
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-slate-700">Overall Grade</div>
-                  <div className="text-lg font-bold text-purple-600">
-                    {overallGrade.grade} ({overallGrade.remark})
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-slate-700">Attendance</div>
-                  <div className="text-lg font-bold text-orange-600">
-                    {data.attendance?.times_present || 0} / {data.attendance?.times_opened || 0}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Publication Status Indicator */}
+          {/* Publication Status */}
           {data.is_published && (
-            <div className="mt-4 text-center">
+            <div className="text-center">
               <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 ✓ Published Report
               </div>
@@ -844,20 +2237,4 @@ export default function NurseryResult({ data }: NurseryResultProps) {
       </div>
     </div>
   );
-
-  // Helper function to add ordinal suffix to position numbers
-  function getOrdinalSuffix(num: number): string {
-    const j = num % 10;
-    const k = num % 100;
-    if (j === 1 && k !== 11) {
-      return "st";
-    }
-    if (j === 2 && k !== 12) {
-      return "nd";
-    }
-    if (j === 3 && k !== 13) {
-      return "rd";
-    }
-    return "th";
-  }
 }

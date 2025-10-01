@@ -50,13 +50,15 @@ interface SeniorSecondarySessionResultProps {
   academicSessionId: string;
   templateId?: string;
   data?: SeniorSecondarySessionResultData | any; // Allow any for transformed data
+  showOnlyPublished?: boolean; // NEW: Control whether to show only published results
 }
 
 export default function SeniorSecondarySessionResult({ 
   studentId, 
   academicSessionId, 
   templateId,
-  data 
+  data,
+  showOnlyPublished = false // NEW: Default to false (show all results)
 }: SeniorSecondarySessionResultProps) {
   const ref = useRef<HTMLDivElement>(null);
   const { service, schoolSettings, loading: serviceLoading, isReady } = useResultService();
@@ -280,11 +282,21 @@ export default function SeniorSecondarySessionResult({
         classAverage: subjectData.class_average || subjectData.classAverage || "",
         highest: subjectData.highest_in_class || subjectData.highest || "",
         lowest: subjectData.lowest_in_class || subjectData.lowest || "",
-        position: subjectData.position || "",
+        position: subjectData.position || (subjectData.subject_position ? `${subjectData.subject_position}${getOrdinalSuffix(subjectData.subject_position)}` : "") || "",
         teacherRemark: subjectData.teacher_remark || subjectData.teacherRemark || (yearAverage >= 70 ? "Excellent" : yearAverage >= 60 ? "Good" : yearAverage >= 50 ? "Fair" : "Needs Improvement")
       };
     });
   }, [getSubjectData]);
+
+  // Helper function to get position with ordinal suffix
+  const getOrdinalSuffix = (num: number): string => {
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return "st";
+    if (j === 2 && k !== 12) return "nd";
+    if (j === 3 && k !== 13) return "rd";
+    return "th";
+  };
 
   // Loading state
   if (serviceLoading || loading) {
@@ -459,7 +471,7 @@ export default function SeniorSecondarySessionResult({
           <div className="flex w-full">
             <span className="font-semibold">Position in Class: </span>
             <span className="ml-2 px-2 py-1 bg-yellow-100 rounded font-medium">
-              {resultData.class_position || 'N/A'} of {resultData.total_students || 'N/A'}
+              {resultData.class_position ? `${resultData.class_position}${getOrdinalSuffix(resultData.class_position)}` : 'N/A'} of {resultData.total_students || 'N/A'}
             </span>
           </div>
 

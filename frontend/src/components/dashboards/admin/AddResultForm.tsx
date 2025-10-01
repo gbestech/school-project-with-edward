@@ -23,10 +23,12 @@ interface AddResultFormProps {
 }
 
 interface Student {
-  id: string;
+  id: string | number;
   full_name: string;
   student_class: string;
   education_level: string;
+  classroom?: string | null;
+  section_id?: number | null;
 }
 
 interface ExamSession {
@@ -60,7 +62,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   
   // FIXED: Initialize form data with empty strings instead of 0 for better UX
   const [formData, setFormData] = useState({
-    student: preSelectedStudent?.id || '',
+    student: preSelectedStudent?.id?.toString() || '',
     subject: '',
     exam_session: '',
     grading_system: '',
@@ -104,10 +106,18 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   // Dropdown data
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
   const [gradingSystems, setGradingSystems] = useState<GradingSystem[]>([]);
   const [streams, setStreams] = useState<Stream[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(preSelectedStudent || null);
+  
+  // Filter states for cascading dropdowns
+  const [selectedEducationLevel, setSelectedEducationLevel] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [selectedClassSection, setSelectedClassSection] = useState<string>('');
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [availableClassSections, setAvailableClassSections] = useState<string[]>([]);
 
   // Auto-calculation effect
   useEffect(() => {
@@ -197,33 +207,93 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   }, []);
 
   useEffect(() => {
+    console.log('🔍 [AddResultForm] useEffect triggered for selectedStudent:', selectedStudent);
+    console.log('🔍 [AddResultForm] selectedStudent type:', typeof selectedStudent);
+    console.log('🔍 [AddResultForm] selectedStudent education_level:', selectedStudent?.education_level);
+    
     if (selectedStudent?.education_level) {
+      console.log('🔍 [AddResultForm] Student selected, loading data for education level:', selectedStudent.education_level);
+      console.log('🔍 [AddResultForm] Full student object:', selectedStudent);
       loadSubjectsForEducationLevel(selectedStudent.education_level);
       loadGradingSystemsForEducationLevel(selectedStudent.education_level);
       if (selectedStudent.education_level === 'SENIOR_SECONDARY') {
         loadStreams();
       }
+    } else {
+      console.log('🔍 [AddResultForm] No student selected or no education level');
+      console.log('🔍 [AddResultForm] selectedStudent:', selectedStudent);
+      setSubjects([]);
     }
   }, [selectedStudent]);
+
+  // Handle education level change
+  useEffect(() => {
+    if (selectedEducationLevel) {
+      console.log('🔍 [AddResultForm] Education level changed to:', selectedEducationLevel);
+      setSelectedClass('');
+      setSelectedClassSection('');
+      setStudents([]);
+      setAvailableClasses([]);
+      setAvailableClassSections([]);
+      setSubjects([]); // Clear subjects when education level changes
+      setFormData(prev => ({ ...prev, subject: '' })); // Clear subject selection
+      loadStudentsByFilters(selectedEducationLevel);
+      // Load subjects for this education level
+      loadSubjectsForEducationLevel(selectedEducationLevel);
+    }
+  }, [selectedEducationLevel]);
+
+  // Handle class change
+  useEffect(() => {
+    if (selectedEducationLevel && selectedClass) {
+      setSelectedClassSection('');
+      setStudents([]);
+      setAvailableClassSections([]);
+      setFormData(prev => ({ ...prev, subject: '' })); // Clear subject selection
+      loadStudentsByFilters(selectedEducationLevel, selectedClass);
+      // Reload subjects when class changes (in case there are class-specific subjects)
+      loadSubjectsForEducationLevel(selectedEducationLevel);
+    }
+  }, [selectedClass]);
+
+  // Handle class section change
+  useEffect(() => {
+    if (selectedEducationLevel && selectedClass && selectedClassSection) {
+      // For now, we'll filter students on the frontend since classroom filtering might not be supported by the API
+      // setStudents([]);
+      // loadStudentsByFilters(selectedEducationLevel, selectedClass, selectedClassSection);
+    }
+  }, [selectedClassSection]);
 
   const loadDropdownData = async () => {
     try {
       setLoadingData(true);
       
-      const [studentsResponse, examSessionsResponse] = await Promise.all([
-        api.get('/api/students/'),
-        ResultService.getExamSessions()
-      ]);
-      
-      setStudents(studentsResponse.data?.results || studentsResponse.data || []);
+      // Only load exam sessions initially, students will be loaded based on filters
+      const examSessionsResponse = await ResultService.getExamSessions();
       setExamSessions(examSessionsResponse);
       
-      if (preSelectedStudent && studentsResponse.data) {
-        const fullStudent = (studentsResponse.data?.results || studentsResponse.data).find(
-          (s: Student) => s.id === preSelectedStudent.id
-        );
-        if (fullStudent) {
-          setSelectedStudent(fullStudent);
+      // Load some default subjects for all education levels as fallback
+      try {
+        console.log('🔍 [AddResultForm] Loading fallback subjects...');
+        const fallbackSubjects = await SubjectService.getSubjects({ is_active: true });
+        if (Array.isArray(fallbackSubjects) && fallbackSubjects.length > 0) {
+          console.log('🔍 [AddResultForm] Loaded fallback subjects:', fallbackSubjects.length);
+          setSubjects(fallbackSubjects);
+        }
+      } catch (error) {
+        console.warn('🔍 [AddResultForm] Could not load fallback subjects:', error);
+      }
+      
+      // If preSelectedStudent is provided, load that specific student
+      if (preSelectedStudent) {
+        try {
+          const studentResponse = await api.get(`/api/students/students/${preSelectedStudent.id}/`);
+          setSelectedStudent(studentResponse);
+          setSelectedEducationLevel(studentResponse.education_level);
+          setSelectedClass(studentResponse.student_class);
+        } catch (error) {
+          console.error('Error loading pre-selected student:', error);
         }
       }
       
@@ -237,22 +307,60 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
   const loadSubjectsForEducationLevel = async (educationLevel: string) => {
     try {
-      // FIXED: Access the correct response structure based on SubjectService
-      const subjectsResponse = await SubjectService.getSubjects({ 
-        education_level: educationLevel,
-        is_active: true 
-      });
-      // FIXED: SubjectService returns response.data structure
-      setSubjects(subjectsResponse || []);
+      setLoadingSubjects(true);
+      console.log('🔍 [AddResultForm] Loading subjects for education level:', educationLevel);
+      
+      // Try direct API call first with proper error handling
+      try {
+        const directResponse = await api.get('/api/subjects/', { 
+          params: { 
+            education_level: educationLevel,
+            is_active: true 
+          }
+        });
+        console.log('🔍 [AddResultForm] Direct API response:', directResponse);
+        
+        if (directResponse && Array.isArray(directResponse)) {
+          console.log('🔍 [AddResultForm] Direct API returned array with', directResponse.length, 'subjects');
+          setSubjects(directResponse);
+          return;
+        } else if (directResponse && directResponse.results && Array.isArray(directResponse.results)) {
+          console.log('🔍 [AddResultForm] Direct API returned results array with', directResponse.results.length, 'subjects');
+          setSubjects(directResponse.results);
+          return;
+        } else {
+          console.warn('🔍 [AddResultForm] Unexpected direct API response format:', directResponse);
+        }
+      } catch (directError) {
+        console.warn('🔍 [AddResultForm] Direct API call failed:', directError);
+      }
+      
+      // Fallback to SubjectService - use the specific method for education level
+      console.log('🔍 [AddResultForm] Trying SubjectService.getSubjectsByEducationLevel...');
+      const subjectsResponse = await SubjectService.getSubjectsByEducationLevel(educationLevel);
+      
+      console.log('🔍 [AddResultForm] SubjectService response:', subjectsResponse);
+      
+      if (Array.isArray(subjectsResponse)) {
+        console.log('🔍 [AddResultForm] SubjectService returned array with', subjectsResponse.length, 'subjects');
+        setSubjects(subjectsResponse);
+      } else {
+        console.warn('🔍 [AddResultForm] Unexpected SubjectService response format:', subjectsResponse);
+        setSubjects([]);
+      }
     } catch (error) {
-      console.error('Error loading subjects:', error);
-      toast.error('Failed to load subjects');
+      console.error('🔍 [AddResultForm] Error loading subjects for education level:', educationLevel, error);
+      toast.error(`Failed to load subjects for ${educationLevel}`);
+      // Set empty array to prevent UI crashes
+      setSubjects([]);
+    } finally {
+      setLoadingSubjects(false);
     }
   };
 
   const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     try {
-      const gradingSystemsResponse = await api.get('/api/grading-systems/', {
+      const gradingSystemsResponse = await api.get('/api/results/grading-systems/', {
         params: { education_level: educationLevel }
       });
       setGradingSystems(gradingSystemsResponse.data?.results || gradingSystemsResponse.data || []);
@@ -271,12 +379,153 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     }
   };
 
-  // FIXED: Simplified handleInputChange function
+  // Load students based on selected filters
+  const loadStudentsByFilters = async (educationLevel: string, studentClass?: string) => {
+    try {
+      setLoading(true);
+      
+      const params = new URLSearchParams();
+      params.append('education_level', educationLevel);
+      
+      if (studentClass) {
+        params.append('student_class', studentClass);
+      }
+      
+      // Note: classroom filtering might not be supported by the backend API
+      // if (classSection) {
+      //   params.append('classroom', classSection);
+      // }
+      
+      const response = await api.get(`/api/students/students/?${params.toString()}`);
+      const studentsData = response?.results || response || [];
+      
+      console.log('🔍 [AddResultForm] API Response:', response);
+      console.log('🔍 [AddResultForm] Students Data:', studentsData);
+      console.log('🔍 [AddResultForm] First student structure:', studentsData[0]);
+      console.log('🔍 [AddResultForm] First student ID type:', typeof studentsData[0]?.id);
+      console.log('🔍 [AddResultForm] First student ID value:', studentsData[0]?.id);
+      
+      setStudents(studentsData);
+      
+      // Extract unique classes and sections for dropdowns
+      const uniqueClasses = [...new Set(studentsData.map((s: Student) => s.student_class))].filter(Boolean) as string[];
+      console.log('🔍 [AddResultForm] Extracted classes:', uniqueClasses);
+      setAvailableClasses(uniqueClasses);
+      
+      // Extract unique class sections (using classroom field as section name)
+      const uniqueSections = [...new Set(studentsData.map((s: Student) => s.classroom).filter(Boolean))] as string[];
+      console.log('🔍 [AddResultForm] Extracted sections:', uniqueSections);
+      setAvailableClassSections(uniqueSections);
+      
+    } catch (error) {
+      console.error('Error loading students:', error);
+      toast.error('Failed to load students');
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate automatic teacher remark based on score and grade
+  const generateTeacherRemark = (totalScore: number, grade: string): string => {
+    const score = Number(totalScore) || 0;
+    
+    // Define remark templates based on grade ranges
+    const remarkTemplates = {
+      'A+': [
+        'Excellent performance! Outstanding work and dedication.',
+        'Exceptional achievement. Keep up the excellent work!',
+        'Outstanding performance. You are a model student.',
+        'Brilliant work! Your dedication is commendable.'
+      ],
+      'A': [
+        'Very good performance. Well done!',
+        'Excellent work. Keep maintaining this standard.',
+        'Great achievement. Continue to excel.',
+        'Very good performance. You should be proud.'
+      ],
+      'B+': [
+        'Good performance. Keep up the good work.',
+        'Well done! Continue to improve.',
+        'Good effort. You are making progress.',
+        'Satisfactory performance. Keep working hard.'
+      ],
+      'B': [
+        'Fair performance. Room for improvement.',
+        'Average work. Try to do better next time.',
+        'Satisfactory performance. Keep working hard.',
+        'Fair effort. Focus on areas that need improvement.'
+      ],
+      'C+': [
+        'Below average performance. More effort needed.',
+        'Needs improvement. Focus on your studies.',
+        'Below expectations. Work harder next time.',
+        'Room for improvement. Keep working hard.'
+      ],
+      'C': [
+        'Below average performance. More effort needed.',
+        'Needs improvement. Focus on your studies.',
+        'Below expectations. Work harder next time.',
+        'Room for improvement. Keep working hard.'
+      ],
+      'D': [
+        'Very poor performance. Immediate intervention required.',
+        'Failing grade. Urgent attention needed.',
+        'Unsatisfactory performance. Parent meeting required.',
+        'Critical performance. Seek academic support.'
+      ],
+      'F': [
+        'Failed. Immediate remedial action required.',
+        'Complete failure. Urgent academic intervention needed.',
+        'Failed grade. Parent consultation and support required.',
+        'Critical failure. Seek immediate academic help.'
+      ]
+    };
+
+    // Get appropriate remarks based on grade
+    let gradeRemarks = remarkTemplates[grade as keyof typeof remarkTemplates] || remarkTemplates['F'];
+    
+    // If no grade provided, determine based on score
+    if (!grade && score > 0) {
+      if (score >= 90) gradeRemarks = remarkTemplates['A+'];
+      else if (score >= 80) gradeRemarks = remarkTemplates['A'];
+      else if (score >= 70) gradeRemarks = remarkTemplates['B+'];
+      else if (score >= 60) gradeRemarks = remarkTemplates['B'];
+      else if (score >= 50) gradeRemarks = remarkTemplates['B+']; // Good remarks for 50+
+      else if (score >= 40) gradeRemarks = remarkTemplates['B']; // Fair remarks for 40-49
+      else if (score >= 30) gradeRemarks = remarkTemplates['C+']; // Below average for 30-39
+      else gradeRemarks = remarkTemplates['C']; // Poor remarks only below 30
+    }
+
+    // Return a random remark from the appropriate category
+    return gradeRemarks[Math.floor(Math.random() * gradeRemarks.length)];
+  };
+
+  // FIXED: Enhanced handleInputChange function with auto-calculation
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [field]: value
-    }));
+    };
+
+    // Auto-calculate CA Total, Total Score, and Grade when score fields change
+    if (selectedStudent && isScoreField(field)) {
+      const caTotal = calculateCATotal(newFormData);
+      const totalScore = calculateTotalScore(newFormData, caTotal);
+      
+      newFormData.ca_total = caTotal.toString();
+      newFormData.total_score = totalScore.toString();
+      
+      // Auto-generate grade based on total score
+      if (totalScore > 0) {
+        newFormData.grade = generateGrade(totalScore);
+      }
+      
+      // Note: Position, Class Average, Highest/Lowest will be calculated later
+      // when all students' results are recorded for the same subject/exam session
+    }
+
+    setFormData(newFormData);
     
     // Clear error for this field
     if (errors[field]) {
@@ -289,14 +538,25 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
     // Handle student selection
     if (field === 'student') {
-      const student = students.find(s => s.id === value);
+      console.log('🔍 [AddResultForm] Looking for student with ID:', value);
+      console.log('🔍 [AddResultForm] Available students:', students.map(s => ({ id: s.id, name: s.full_name })));
+      console.log('🔍 [AddResultForm] Student ID types - value:', typeof value, 'students[0].id:', typeof students[0]?.id);
+      
+      const student = students.find(s => s.id.toString() === value);
+      console.log('🔍 [AddResultForm] Student selected:', student);
+      console.log('🔍 [AddResultForm] Student education level:', student?.education_level);
+      console.log('🔍 [AddResultForm] Setting selectedStudent to:', student);
       setSelectedStudent(student || null);
       // Reset dependent fields when student changes
       setFormData(prev => ({
         ...prev,
+        student: value, // Make sure the form data is updated
         subject: '',
         grading_system: '',
-        stream: ''
+        stream: '',
+        ca_total: '0',
+        total_score: '0',
+        grade: ''
       }));
     }
   };
@@ -308,7 +568,8 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     if (!formData.student) newErrors.student = 'Student is required';
     if (!formData.subject) newErrors.subject = 'Subject is required';
     if (!formData.exam_session) newErrors.exam_session = 'Exam session is required';
-    if (!formData.grading_system) newErrors.grading_system = 'Grading system is required';
+    // Note: grading_system, grade, position, class_average, highest_in_class, lowest_in_class are optional
+    // and will be calculated later when all students' results are recorded
 
     // Education level specific validations
     if (selectedStudent) {
@@ -386,6 +647,64 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Helper function to check if a field is a score field
+  const isScoreField = (field: string): boolean => {
+    const scoreFields = [
+      'first_test_score', 'second_test_score', 'third_test_score', 'exam_score',
+      'continuous_assessment_score', 'take_home_test_score', 'appearance_score',
+      'practical_score', 'project_score', 'note_copying_score'
+    ];
+    return scoreFields.includes(field);
+  };
+
+  // Calculate CA Total based on education level
+  const calculateCATotal = (formData: any): number => {
+    if (!selectedStudent) return 0;
+    
+    const parseScore = (score: any) => parseFloat(score) || 0;
+
+    switch (selectedStudent.education_level) {
+      case 'SENIOR_SECONDARY':
+        return parseScore(formData.first_test_score) + 
+               parseScore(formData.second_test_score) + 
+               parseScore(formData.third_test_score);
+      case 'PRIMARY':
+      case 'JUNIOR_SECONDARY':
+        return parseScore(formData.continuous_assessment_score) + 
+               parseScore(formData.take_home_test_score) + 
+               parseScore(formData.appearance_score) + 
+               parseScore(formData.practical_score) + 
+               parseScore(formData.project_score) + 
+               parseScore(formData.note_copying_score);
+      case 'NURSERY':
+        return 0; // Nursery doesn't have CA components
+      default:
+        return 0;
+    }
+  };
+
+  // Calculate Total Score (CA Total + Exam Score)
+  const calculateTotalScore = (formData: any, caTotal?: number): number => {
+    if (!selectedStudent) return 0;
+    
+    const parseScore = (score: any) => parseFloat(score) || 0;
+    const caTotalValue = caTotal !== undefined ? caTotal : calculateCATotal(formData);
+    const examScore = parseScore(formData.exam_score);
+
+    return caTotalValue + examScore;
+  };
+
+  // Generate grade based on total score
+  const generateGrade = (totalScore: number): string => {
+    // Default grading system (can be enhanced to use actual grading system data)
+    if (totalScore >= 90) return 'A';
+    if (totalScore >= 80) return 'B';
+    if (totalScore >= 70) return 'C';
+    if (totalScore >= 60) return 'D';
+    if (totalScore >= 50) return 'E';
+    return 'F';
   };
 
   const calculateTotal = () => {
@@ -568,7 +887,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   };
 
   // FIXED: Improved InputField component with better value handling
-  const InputField = ({ label, field, min, max, placeholder, step = "0.01", helpText }: {
+  const InputField = ({ label, field, min, max, placeholder, step = "0.01", helpText, readOnly = false, type = "number" }: {
     label: string;
     field: string;
     min: number;
@@ -576,26 +895,32 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     placeholder?: string;
     step?: string;
     helpText?: string;
+    readOnly?: boolean;
+    type?: string;
   }) => {
     const fieldValue = formData[field as keyof typeof formData] as string;
     
     return (
       <div>
         <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-          {label} ({min}-{max})
+          {label} {type === "number" && `(${min}-${max})`}
           {helpText && <span className="text-xs text-gray-500 ml-2">({helpText})</span>}
+          {readOnly && <span className="text-xs text-blue-600 ml-2">(Auto-calculated)</span>}
         </label>
         <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
+          type={type}
+          min={type === "number" ? min : undefined}
+          max={type === "number" ? max : undefined}
+          step={type === "number" ? step : undefined}
           value={fieldValue}
-          onChange={(e) => handleInputChange(field, e.target.value)}
+          onChange={readOnly ? undefined : (e) => handleInputChange(field, e.target.value)}
+          readOnly={readOnly}
           className={`w-full px-3 py-2 rounded-lg border ${
             errors[field] ? themeClasses.borderError : themeClasses.border
-          } ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-          placeholder={placeholder || `${min}-${max}`}
+          } ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            readOnly ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''
+          }`}
+          placeholder={placeholder || (type === "number" ? `${min}-${max}` : placeholder)}
         />
         {errors[field] && <p className="text-red-500 text-xs mt-1">{errors[field]}</p>}
       </div>
@@ -603,6 +928,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   };
 
   const renderScoreFields = () => {
+    console.log('🔍 [AddResultForm] renderScoreFields called, selectedStudent:', selectedStudent);
     if (!selectedStudent) {
       return (
         <div className={`p-8 text-center ${themeClasses.textSecondary}`}>
@@ -629,10 +955,10 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
             
             {/* Calculated Fields */}
             <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields (Auto-calculated or Manual Input)</h4>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" />
-                <InputField label="Grade" field="grade" min={0} max={100} helpText="A, B, C, D, F" />
+                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" readOnly={true} />
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="Auto-generated from total score" type="text" readOnly={true} />
                 <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
                 <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
                 <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
@@ -674,11 +1000,11 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
             
             {/* Calculated Fields */}
             <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields (Auto-calculated or Manual Input)</h4>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InputField label="CA Total" field="ca_total" min={0} max={35} helpText="Sum of CA components" />
-                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" />
-                <InputField label="Grade" field="grade" min={0} max={100} helpText="A, B, C, D, F" />
+                <InputField label="CA Total" field="ca_total" min={0} max={35} helpText="Sum of CA components" readOnly={true} />
+                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" readOnly={true} />
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="Auto-generated from total score" type="text" readOnly={true} />
                 <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
                 <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
                 <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
@@ -724,9 +1050,9 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
             
             {/* Calculated Fields */}
             <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields (Auto-calculated or Manual Input)</h4>
+              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InputField label="Grade" field="grade" min={0} max={100} helpText="A, B, C, D, F" />
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="Auto-generated from total score" type="text" readOnly={true} />
                 <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
                 <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
                 <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
@@ -868,29 +1194,91 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                 Basic Information
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {!preSelectedStudent && (
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                      Student *
-                    </label>
-                    <select
-                      value={formData.student}
-                      onChange={(e) => handleInputChange('student', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg border ${
-                        errors.student ? themeClasses.borderError : themeClasses.border
-                      } ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                      disabled={loading}
-                    >
-                      <option value="">Select Student</option>
-                      {students.map(student => (
-                        <option key={student.id} value={student.id}>
-                          {student.full_name} - {student.student_class}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.student && <p className="text-red-500 text-xs mt-1">{errors.student}</p>}
-                  </div>
+                  <>
+                    {/* Education Level Filter */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+                        Education Level *
+                      </label>
+                      <select
+                        value={selectedEducationLevel}
+                        onChange={(e) => setSelectedEducationLevel(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        disabled={loading}
+                      >
+                        <option value="">Select Education Level</option>
+                        <option value="NURSERY">Nursery</option>
+                        <option value="PRIMARY">Primary</option>
+                        <option value="JUNIOR_SECONDARY">Junior Secondary</option>
+                        <option value="SENIOR_SECONDARY">Senior Secondary</option>
+                      </select>
+                    </div>
+
+                    {/* Class Filter */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+                        Class
+                      </label>
+                      <select
+                        value={selectedClass}
+                        onChange={(e) => setSelectedClass(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        disabled={!selectedEducationLevel || loading}
+                      >
+                        <option value="">Select Class</option>
+                        {availableClasses.map(class_name => (
+                          <option key={class_name} value={class_name}>
+                            {class_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Class Section Filter */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+                        Class Section
+                      </label>
+                      <select
+                        value={selectedClassSection}
+                        onChange={(e) => setSelectedClassSection(e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        disabled={!selectedClass || loading}
+                      >
+                        <option value="">Select Section</option>
+                        {availableClassSections.map(section => (
+                          <option key={section} value={section}>
+                            {section}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Student Selection */}
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+                        Student *
+                      </label>
+                      <select
+                        value={formData.student}
+                        onChange={(e) => handleInputChange('student', e.target.value)}
+                        className={`w-full px-3 py-2 rounded-lg border ${
+                          errors.student ? themeClasses.borderError : themeClasses.border
+                        } ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        disabled={!selectedEducationLevel || loading}
+                      >
+                        <option value="">Select Student</option>
+                        {students.map(student => (
+                          <option key={student.id} value={student.id.toString()}>
+                            {student.full_name} - {student.student_class}
+                          </option>
+                        ))}
+                      </select>
+                      {errors.student && <p className="text-red-500 text-xs mt-1">{errors.student}</p>}
+                    </div>
+                  </>
                 )}
 
                 {preSelectedStudent && (
@@ -906,7 +1294,20 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                    Subject *
+                    Subject * 
+                    <span className="text-xs text-gray-500 ml-2">
+                      {loadingSubjects ? 'Loading...' : `(${subjects.length} subjects loaded)`}
+                    </span>
+                    {selectedEducationLevel && (
+                      <button
+                        type="button"
+                        onClick={() => loadSubjectsForEducationLevel(selectedEducationLevel)}
+                        className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                        disabled={loadingSubjects}
+                      >
+                        {loadingSubjects ? 'Loading...' : 'Reload'}
+                      </button>
+                    )}
                   </label>
                   <select
                     value={formData.subject}
@@ -914,9 +1315,18 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                     className={`w-full px-3 py-2 rounded-lg border ${
                       errors.subject ? themeClasses.borderError : themeClasses.border
                     } ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                    disabled={!selectedStudent || loading}
+                    disabled={!selectedEducationLevel || loadingSubjects || loading}
                   >
-                    <option value="">Select Subject</option>
+                    <option value="">
+                      {!selectedEducationLevel 
+                        ? "Select education level first" 
+                        : loadingSubjects
+                          ? "Loading subjects..."
+                          : subjects.length === 0 
+                            ? "No subjects available" 
+                            : "Select Subject"
+                      }
+                    </option>
                     {subjects.map(subject => (
                       <option key={subject.id} value={subject.id}>
                         {subject.name} ({subject.code})
@@ -1002,7 +1412,6 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                     disabled={loading}
                   >
                     <option value="DRAFT">Draft</option>
-                    <option value="SUBMITTED">Submitted</option>
                     <option value="APPROVED">Approved</option>
                     <option value="PUBLISHED">Published</option>
                   </select>
@@ -1055,10 +1464,27 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
             {/* Comments Section */}
             <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <h3 className={`text-lg font-semibold mb-4 flex items-center ${themeClasses.textPrimary}`}>
-                <Star className="w-5 h-5 mr-2" />
-                {selectedStudent?.education_level === 'NURSERY' ? 'Academic Comment' : 'Teacher Remarks'}
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-lg font-semibold flex items-center ${themeClasses.textPrimary}`}>
+                  <Star className="w-5 h-5 mr-2" />
+                  {selectedStudent?.education_level === 'NURSERY' ? 'Academic Comment' : 'Teacher Remarks'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newRemark = generateTeacherRemark(
+                      Number(formData.total_score) || 0, 
+                      formData.grade || ''
+                    );
+                    setFormData(prev => ({ ...prev, teacher_remark: newRemark }));
+                  }}
+                  className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
+                  disabled={loading}
+                >
+                  Generate Remark
+                </button>
+              </div>
+              
               <textarea
                 value={formData.teacher_remark}
                 onChange={(e) => handleInputChange('teacher_remark', e.target.value)}
@@ -1066,11 +1492,14 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                 className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                 placeholder={
                   selectedStudent?.education_level === 'NURSERY' 
-                    ? "Enter academic comment for the student..." 
-                    : "Enter teacher remarks about the student's performance..."
+                    ? "Enter academic comment for the student or click 'Generate Remark' for automatic suggestion..." 
+                    : "Enter teacher remarks about the student's performance or click 'Generate Remark' for automatic suggestion..."
                 }
                 disabled={loading}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Tip: Use the "Generate Remark" button to get automatic suggestions based on the student's performance.
+              </p>
             </div>
 
             {/* Action Buttons */}
@@ -1086,7 +1515,19 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
               <button
                 type="submit"
                 className={`px-6 py-2 rounded-lg flex items-center ${themeClasses.buttonSuccess} transition-colors`}
-                disabled={loading || !selectedStudent || !formData.student || !formData.subject || !formData.exam_session || !formData.grading_system}
+                disabled={loading || !selectedStudent || !formData.student || !formData.subject || !formData.exam_session}
+                onClick={() => {
+                  console.log('🔍 [AddResultForm] Create Result button clicked');
+                  console.log('🔍 [AddResultForm] Button disabled state:', {
+                    loading,
+                    selectedStudent: !!selectedStudent,
+                    student: !!formData.student,
+                    subject: !!formData.subject,
+                    exam_session: !!formData.exam_session,
+                    totalDisabled: loading || !selectedStudent || !formData.student || !formData.subject || !formData.exam_session
+                  });
+                  console.log('🔍 [AddResultForm] Current formData:', formData);
+                }}
               >
                 {loading ? (
                   <>

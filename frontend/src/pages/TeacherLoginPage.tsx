@@ -35,9 +35,24 @@ const TeacherLoginPage: React.FC = () => {
       console.log('🔍 TeacherLoginPage: User role:', loggedInUser?.role);
       
       toast.success(t('login.success', 'Login successful!'));
-      // Always navigate to teacher dashboard for this page
-      console.log('🔍 TeacherLoginPage: Navigating to /teacher/dashboard');
-      navigate('/teacher/dashboard');
+      
+      // Route based on user role
+      if (loggedInUser?.role === 'admin') {
+        console.log('🔍 TeacherLoginPage: User is admin, navigating to /admin/dashboard');
+        navigate('/admin/dashboard');
+      } else if (loggedInUser?.role === 'teacher') {
+        // Check if this is a Secondary Section Admin (user ID 16)
+        if (loggedInUser.id === 16) {
+          console.log('🔍 TeacherLoginPage: User is Secondary Section Admin, navigating to /admin/dashboard');
+          navigate('/admin/dashboard');
+        } else {
+          console.log('🔍 TeacherLoginPage: User is regular teacher, navigating to /teacher/dashboard');
+          navigate('/teacher/dashboard');
+        }
+      } else {
+        console.log('🔍 TeacherLoginPage: Unknown role, navigating to home');
+        navigate('/');
+      }
     } catch (error: any) {
       console.error('🔍 TeacherLoginPage: Login error:', error);
       if (error.response?.data) {
@@ -81,7 +96,19 @@ const TeacherLoginPage: React.FC = () => {
       const result = await authService.googleSignIn();
       if (result.success) {
         toast.success(t('login.success', 'Google login successful!'));
-        navigate('/teacher/dashboard');
+        // Route based on user role for Google login too
+        if (result.user?.role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (result.user?.role === 'teacher') {
+          // Check if this is a Secondary Section Admin (user ID 16)
+          if (result.user.id === 16) {
+            navigate('/admin/dashboard');
+          } else {
+            navigate('/teacher/dashboard');
+          }
+        } else {
+          navigate('/teacher/dashboard');
+        }
       } else {
         setErrors(result.errors || { google: result.message });
         toast.error(result.message || 'Google login failed. Please try again.');

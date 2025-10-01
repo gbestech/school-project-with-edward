@@ -696,7 +696,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
     switch (educationLevel) {
       case 'NURSERY':
         const nurseryData = transformDataForNursery();
-        return <NurseryResult data={nurseryData as any} />;
+        return <NurseryResult data={nurseryData as any} showOnlyPublished={false} />;
 
       case 'PRIMARY':
         const primaryData = transformDataForPrimary();
@@ -706,6 +706,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
             examSessionId={selections.examSession || ''}
             templateId=""
             data={primaryData as any}
+            showOnlyPublished={false}
           />
         );
 
@@ -717,6 +718,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
             examSessionId={selections.examSession || ''}
             templateId=""
             data={juniorData as any}
+            showOnlyPublished={false}
           />
         );
 
@@ -729,6 +731,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
               academicSessionId={getAcademicSessionId(selections.academicSession) || ''}
               templateId=""
               data={seniorData as any}
+              showOnlyPublished={false}
             />
           );
         } else {
@@ -737,6 +740,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
               studentId={student.id}
               examSessionId={selections.examSession || ''}
               data={seniorData as any}
+              showOnlyPublished={false}
             />
           );
         }

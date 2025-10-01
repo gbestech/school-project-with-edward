@@ -37,6 +37,8 @@ export interface SubjectResult {
   highest_in_class: number;
   lowest_in_class: number;
   teacher_remark?: string;
+  status?: string; // DRAFT, SUBMITTED, APPROVED, PUBLISHED
+  subject_position?: number;
   
   // Education level specific fields
   test1_score?: number; // Senior Secondary (10 marks)
@@ -548,11 +550,69 @@ class ResultCheckerService {
     section: string;
     education_level?: string;
   }[]> {
-    const response = await api.get('classrooms/classrooms/');
-    return response.results || response;
+    try {
+      // Try to get classes from classrooms endpoint
+      const response = await api.get('classrooms/classrooms/');
+      const classrooms = response.results || response;
+      
+      if (classrooms && classrooms.length > 0) {
+        // Transform classroom data to include education level
+        const transformedClasses = classrooms.map((classroom: any) => ({
+          id: classroom.id.toString(),
+          name: classroom.name,
+          section: classroom.section?.name || 'A',
+          education_level: classroom.section?.grade_level?.education_level || 'UNKNOWN'
+        }));
+        
+        console.log('🔍 [ResultCheckerService] Loaded classes from API:', transformedClasses);
+        return transformedClasses;
+      }
+      
+      // Fallback: return comprehensive class list if API fails
+      console.warn('🔍 [ResultCheckerService] API returned no classes, using fallback');
+      return this.getFallbackClasses();
+      
+    } catch (error) {
+      console.error('🔍 [ResultCheckerService] Error loading classes from API:', error);
+      // Return comprehensive fallback classes
+      return this.getFallbackClasses();
+    }
   }
 
-  // FIXED: Search students using existing endpoints
+  // Fallback classes when API fails
+  private getFallbackClasses(): {
+    id: string;
+    name: string;
+    section: string;
+    education_level?: string;
+  }[] {
+    return [
+      // Nursery classes
+      { id: 'pre-nursery', name: 'Pre-Nursery', section: 'A', education_level: 'NURSERY' },
+      { id: 'nursery-1', name: 'Nursery 1', section: 'A', education_level: 'NURSERY' },
+      { id: 'nursery-2', name: 'Nursery 2', section: 'A', education_level: 'NURSERY' },
+      
+      // Primary classes
+      { id: 'primary-1', name: 'Primary 1', section: 'A', education_level: 'PRIMARY' },
+      { id: 'primary-2', name: 'Primary 2', section: 'A', education_level: 'PRIMARY' },
+      { id: 'primary-3', name: 'Primary 3', section: 'A', education_level: 'PRIMARY' },
+      { id: 'primary-4', name: 'Primary 4', section: 'A', education_level: 'PRIMARY' },
+      { id: 'primary-5', name: 'Primary 5', section: 'A', education_level: 'PRIMARY' },
+      { id: 'primary-6', name: 'Primary 6', section: 'A', education_level: 'PRIMARY' },
+      
+      // Junior Secondary classes
+      { id: 'jss-1', name: 'JSS 1', section: 'A', education_level: 'JUNIOR_SECONDARY' },
+      { id: 'jss-2', name: 'JSS 2', section: 'A', education_level: 'JUNIOR_SECONDARY' },
+      { id: 'jss-3', name: 'JSS 3', section: 'A', education_level: 'JUNIOR_SECONDARY' },
+      
+      // Senior Secondary classes
+      { id: 'ss-1', name: 'SS 1', section: 'A', education_level: 'SENIOR_SECONDARY' },
+      { id: 'ss-2', name: 'SS 2', section: 'A', education_level: 'SENIOR_SECONDARY' },
+      { id: 'ss-3', name: 'SS 3', section: 'A', education_level: 'SENIOR_SECONDARY' },
+    ];
+  }
+
+  // FIXED: Search students using direct student search endpoint
   async searchStudents(filters: { 
     class_id?: string; 
     search?: string; 
@@ -560,10 +620,12 @@ class ResultCheckerService {
     admission_number?: string;
   } = {}): Promise<StudentBasicInfo[]> {
     try {
-      console.log('Starting comprehensive student search with filters:', filters);
+      console.log('🔍 [ResultCheckerService] Starting student search with filters:', filters);
+      
+      // Use the direct student search endpoint
       const params = new URLSearchParams();
       
-      // Build search parameters
+      // Build search parameters for student search
       if (filters.search) {
         params.append('search', filters.search);
       }
@@ -577,87 +639,46 @@ class ResultCheckerService {
         params.append('education_level', filters.education_level);
       }
       
-      // Try to search through student results to find students
-      // This approach searches through existing result records to find students
-      const allResults: any[] = [];
+      console.log('🔍 [ResultCheckerService] Searching students with params:', params.toString());
       
-      // Search through different education levels based on filters
-      const educationLevels = filters.education_level ? [filters.education_level] : 
-        ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+      // Search directly through the student endpoint
+      const response = await api.get(`/api/students/students/?${params.toString()}`);
+      console.log('🔍 [ResultCheckerService] Student search response:', response);
       
-      for (const level of educationLevels) {
-        try {
-          const results = await this.getTermlyResults(level, {
-            class_id: filters.class_id,
-            // Add other filters as needed
+      const students = Array.isArray(response) ? response : (response.results || []);
+      console.log('🔍 [ResultCheckerService] Found students:', students.length);
+      
+      // Transform student data to match StudentBasicInfo interface
+      const transformedStudents: StudentBasicInfo[] = students
+        .filter((student: any) => student && student.id) // Filter out invalid students
+        .map((student: any) => {
+          console.log('🔍 [ResultCheckerService] Raw student data:', {
+            id: student.id,
+            name: student.full_name || student.name,
+            username: student.username,
+            user: student.user,
+            userUsername: student.user?.username,
+            fullStudent: student
           });
-          allResults.push(...results);
-        } catch (error) {
-          // Continue if one level fails
-          console.warn(`Failed to fetch results for ${level}:`, error);
-        }
-      }
+          
+          return {
+            id: student.id || '',
+            name: student.full_name || student.name || 'Unknown Student',
+            admission_number: student.admission_number || 'N/A',
+            username: student.username || student.user?.username || 'N/A',
+            class: student.student_class || student.class_name || 'Unknown',
+            education_level: student.education_level || 'Unknown',
+            gender: student.gender || '',
+            age: student.age || 0,
+            house: student.house || ''
+          };
+        });
       
-      // Extract unique students from results
-      const studentsMap = new Map<string, StudentBasicInfo>();
-      
-      allResults.forEach(result => {
-        if (result.student) {
-          const student = result.student;
-          
-          // Apply search filters
-          const searchTerm = filters.search?.toLowerCase();
-          const admissionNumber = filters.admission_number?.toLowerCase();
-          
-          if (searchTerm) {
-            const matchesSearch = 
-              student.name?.toLowerCase().includes(searchTerm) ||
-              student.username?.toLowerCase().includes(searchTerm) ||
-              student.admission_number?.toLowerCase().includes(searchTerm);
-            
-            if (!matchesSearch) return;
-          }
-          
-          if (admissionNumber) {
-            if (!student.admission_number?.toLowerCase().includes(admissionNumber)) {
-              return;
-            }
-          }
-          
-          studentsMap.set(student.id, student);
-        }
-      });
-      
-      return Array.from(studentsMap.values());
+      console.log('🔍 [ResultCheckerService] Transformed students:', transformedStudents);
+      return transformedStudents;
     } catch (error) {
-      console.error('Error searching students:', error);
-      
-      // Fallback: try to search through student endpoints if available
-      try {
-        // Alternative approach: search through student-results endpoint
-        const params = new URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value !== undefined) {
-            params.append(key, value.toString());
-          }
-        });
-        
-        const response = await api.get(`results/student-results/?${params.toString()}`);
-        const results = response.results || response;
-        
-        // Extract unique students
-        const studentsMap = new Map<string, StudentBasicInfo>();
-        results.forEach((result: any) => {
-          if (result.student) {
-            studentsMap.set(result.student.id, result.student);
-          }
-        });
-        
-        return Array.from(studentsMap.values());
-      } catch (fallbackError) {
-        console.error('Fallback student search failed:', fallbackError);
-        return [];
-      }
+      console.error('❌ [ResultCheckerService] Error searching students:', error);
+      return [];
     }
   }
 

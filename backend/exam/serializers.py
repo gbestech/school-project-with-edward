@@ -65,6 +65,7 @@ class ExamScheduleSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "term",
+            "academic_session",
             "session_year",
             "start_date",
             "end_date",
@@ -101,9 +102,11 @@ class ExamListSerializer(serializers.ModelSerializer):
     is_ongoing = serializers.ReadOnlyField()
     registered_students_count = serializers.ReadOnlyField()
     pass_percentage = serializers.SerializerMethodField()
-    
+
     # Approval fields
-    approved_by_name = serializers.CharField(source="approved_by.full_name", read_only=True)
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
     is_pending_approval = serializers.ReadOnlyField()
     is_approved = serializers.ReadOnlyField()
     is_rejected = serializers.ReadOnlyField()
@@ -192,9 +195,11 @@ class ExamDetailSerializer(serializers.ModelSerializer):
     difficulty_level_display = serializers.CharField(
         source="get_difficulty_level_display", read_only=True
     )
-    
+
     # Approval fields
-    approved_by_name = serializers.CharField(source="approved_by.full_name", read_only=True)
+    approved_by_name = serializers.CharField(
+        source="approved_by.full_name", read_only=True
+    )
     is_pending_approval = serializers.ReadOnlyField()
     is_approved = serializers.ReadOnlyField()
     is_rejected = serializers.ReadOnlyField()
@@ -271,7 +276,7 @@ class ExamDetailSerializer(serializers.ModelSerializer):
             return {
                 "id": obj.stream.id,
                 "name": obj.stream.name,
-                "stream_type": obj.stream.stream_type
+                "stream_type": obj.stream.stream_type,
             }
         return None
 
@@ -282,7 +287,9 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
     # Foreign key fields with validation
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
     grade_level = serializers.PrimaryKeyRelatedField(queryset=GradeLevel.objects.all())
-    section = serializers.PrimaryKeyRelatedField(queryset=Section.objects.all(), required=False, allow_null=True)
+    section = serializers.PrimaryKeyRelatedField(
+        queryset=Section.objects.all(), required=False, allow_null=True
+    )
     stream = serializers.PrimaryKeyRelatedField(
         queryset=Stream.objects.all(), required=False, allow_null=True
     )
@@ -302,17 +309,17 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
         print(f"🔍 validated_data: {validated_data}")
         print(f"🔍 subject type: {type(validated_data.get('subject'))}")
         print(f"🔍 subject value: {validated_data.get('subject')}")
-        
+
         # Check if subject is a Subject instance or ID
-        subject = validated_data.get('subject')
-        if hasattr(subject, 'id'):
+        subject = validated_data.get("subject")
+        if hasattr(subject, "id"):
             print(f"🔍 Subject is an object with id: {subject.id}")
         else:
             print(f"🔍 Subject is an ID: {subject}")
-        
+
         # Remove created_by from validated_data since Exam model doesn't have this field
-        validated_data.pop('created_by', None)
-        
+        validated_data.pop("created_by", None)
+
         return super().create(validated_data)
 
     class Meta:
@@ -367,7 +374,7 @@ class ExamCreateUpdateSerializer(serializers.ModelSerializer):
         print(f"🔍 data: {data}")
         print(f"🔍 subject type: {type(data.get('subject'))}")
         print(f"🔍 subject value: {data.get('subject')}")
-        
+
         errors = {}
 
         # Validate time

@@ -14,7 +14,8 @@ import {
   GraduationCap,
   Calendar,
   Mail,
-  BookOpen
+  BookOpen,
+  Trash2
 } from 'lucide-react';
 import StudentService, { Student } from '@/services/StudentService';
 import { useNavigate } from 'react-router-dom';
@@ -74,6 +75,9 @@ const StudentListEnhanced: React.FC = () => {
   const [classFilter, setClassFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
   const [showResultSheet, setShowResultSheet] = useState(false);
+  const [deleteStudentId, setDeleteStudentId] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const navigate = useNavigate();
   const debouncedSearch = useDebounce(searchTerm, 400);
@@ -135,6 +139,44 @@ const StudentListEnhanced: React.FC = () => {
   // Handle result sheet view
   const handleViewResultSheet = () => {
     setShowResultSheet(true);
+  };
+
+  // Handle delete student
+  const handleDeleteStudent = (studentId: number) => {
+    setDeleteStudentId(studentId);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete student
+  const confirmDeleteStudent = async () => {
+    if (!deleteStudentId) return;
+
+    try {
+      setDeleting(true);
+      await StudentService.deleteStudent(deleteStudentId);
+      
+      // Remove the student from the local state
+      setStudents(prev => prev.filter(student => student.id !== deleteStudentId));
+      setFilteredStudents(prev => prev.filter(student => student.id !== deleteStudentId));
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setDeleteStudentId(null);
+      
+      // Show success message (you could add a toast notification here)
+      console.log('Student deleted successfully');
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      setError('Failed to delete student. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeleteStudentId(null);
   };
 
 
@@ -400,6 +442,13 @@ const StudentListEnhanced: React.FC = () => {
                           <FileText className="w-4 h-4" />
                           <span>View Results</span>
                         </button>
+                        <button
+                          onClick={() => handleDeleteStudent(student.id)}
+                          className="w-full flex items-center space-x-2 px-4 py-2 text-left hover:bg-red-50 text-sm text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -443,11 +492,11 @@ const StudentListEnhanced: React.FC = () => {
               <div className="px-6 py-4 bg-gray-50 border-t">
                 <div className="flex items-center justify-between">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    student.gender === 'MALE' 
+                    (student.gender === 'M' || student.gender === 'MALE')
                       ? 'bg-blue-100 text-blue-800' 
                       : 'bg-pink-100 text-pink-800'
                   }`}>
-                    {student.gender === 'MALE' ? 'Male' : 'Female'}
+                    {(student.gender === 'M' || student.gender === 'MALE') ? 'Male' : 'Female'}
                   </span>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     student.is_active 
@@ -522,11 +571,11 @@ const StudentListEnhanced: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        student.gender === 'MALE' 
+                        (student.gender === 'M' || student.gender === 'MALE')
                           ? 'bg-blue-100 text-blue-800' 
                           : 'bg-pink-100 text-pink-800'
                       }`}>
-                        {student.gender === 'MALE' ? 'Male' : 'Female'}
+                        {(student.gender === 'M' || student.gender === 'MALE') ? 'Male' : 'Female'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -560,6 +609,13 @@ const StudentListEnhanced: React.FC = () => {
                           title="View Results"
                         >
                           <FileText className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(student.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete Student"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -599,6 +655,54 @@ const StudentListEnhanced: React.FC = () => {
         onClose={() => setShowResultSheet(false)}
         selectedClass={classFilter}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Student</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this student? This will permanently remove the student and all associated data from the system.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteStudent}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Student</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

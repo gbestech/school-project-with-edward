@@ -106,7 +106,8 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = () => {
   };
 
   const getGenderBadge = (gender: string) => {
-    const isMale = gender === 'MALE';
+    // Handle both database format ('M'/'F') and frontend format ('MALE'/'FEMALE')
+    const isMale = gender === 'M' || gender === 'MALE';
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
         isMale 
@@ -256,7 +257,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = () => {
                         <Phone className="w-4 h-4 text-gray-400 mr-3" />
                         <div>
                           <p className="text-sm text-gray-500">Phone Number</p>
-                          <p className="font-medium">{student.phone_number || 'Not provided'}</p>
+                          <p className="font-medium">{student.phone_number || student.parent_contact || 'Not provided'}</p>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -322,7 +323,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = () => {
                         <Calendar className="w-4 h-4 text-gray-400 mr-3" />
                         <div>
                           <p className="text-sm text-gray-500">Admission Date</p>
-                          <p className="font-medium">{student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'Not provided'}</p>
+                          <p className="font-medium">{student.admission_date ? new Date(student.admission_date).toLocaleDateString() : 'Not provided'}</p>
                         </div>
                       </div>
                     </div>
@@ -456,3 +457,7 @@ const StudentDetailView: React.FC<StudentDetailViewProps> = () => {
 };
 
 export default StudentDetailView;
+
+
+
+

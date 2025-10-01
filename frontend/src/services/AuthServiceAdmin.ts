@@ -297,6 +297,93 @@ export function useAdminAuth() {
     }
   };
 
+  // Resolve user_id by username across students/teachers/parents
+  const resolveUserIdByUsername = async (username: string): Promise<number | null> => {
+    try {
+      if (!isAdmin()) throw new Error('Admin access required');
+
+      // Try students endpoint with multiple strategies
+      const tryStudent = async (): Promise<number | null> => {
+        try {
+          // Attempt correct router path
+          const res = await api.get('/api/students/students/', { params: { search: username } });
+          const list: any[] = (res.results || res || []) as any[];
+          const match = list.find((s: any) => (s.user?.username || s.username) === username);
+          if (match?.user?.id) return Number(match.user.id);
+          if (match?.id) return Number(match.id);
+        } catch {}
+
+        try {
+          // Attempt username param
+          const res2 = await api.get('/api/students/', { params: { username } });
+          const list2: any[] = (res2.results || res2 || []) as any[];
+          const match2 = list2.find((s: any) => (s.user?.username || s.username) === username);
+          if (match2?.user?.id) return Number(match2.user.id);
+          if (match2?.id) return Number(match2.id);
+        } catch {}
+        return null;
+      };
+
+      // Try teachers endpoint
+      const tryTeacher = async (): Promise<number | null> => {
+        try {
+          const res = await api.get('/api/teachers/teachers/', { params: { search: username } });
+          const list: any[] = (res.results || res || []) as any[];
+          const match = list.find((t: any) => (t.user?.username || t.username) === username);
+          if (match?.user?.id) return Number(match.user.id);
+          if (match?.id) return Number(match.id);
+        } catch {}
+        return null;
+      };
+
+      // Try parents endpoint (if available)
+      const tryParent = async (): Promise<number | null> => {
+        try {
+          let res: any = await api.get('/api/parents/parents/', { params: { search: username } });
+          if (!Array.isArray(res) && !Array.isArray(res?.results)) {
+            res = await api.get('/api/parents/', { params: { search: username } });
+          }
+          const list: any[] = (res.results || res || []) as any[];
+          const match = list.find((p: any) => (p.user?.username || p.username) === username);
+          if (match?.user?.id) return Number(match.user.id);
+          if (match?.id) return Number(match.id);
+        } catch {}
+        return null;
+      };
+
+      // Route by known prefixes first for accuracy
+      const prefix = (username.split('/')[0] || '').toUpperCase();
+      if (prefix === 'TCH') {
+        return (await tryTeacher()) || null;
+      }
+      if (prefix === 'STU') {
+        return (await tryStudent()) || null;
+      }
+      if (prefix === 'PAR') {
+        return (await tryParent()) || null;
+      }
+      // ADM or unknown: try all
+      return (await tryTeacher())
+        || (await tryStudent())
+        || (await tryParent())
+        || null;
+    } catch (e) {
+      console.error('Failed to resolve user by username:', e);
+      return null;
+    }
+  };
+
+  // Reset password by username convenience helper
+  const resetPasswordByUsername = async (username: string, newPassword: string): Promise<{ user_id: number }> => {
+    if (!isAdmin()) throw new Error('Admin access required');
+    const userId = await resolveUserIdByUsername(username);
+    if (!userId) {
+      throw new Error('Username not found');
+    }
+    await api.post('/api/auth/admin-reset-password/', { user_id: userId, new_password: newPassword });
+    return { user_id: userId };
+  };
+
   // Send verification email
   const sendVerificationEmail = async (userId: number): Promise<void> => {
     try {

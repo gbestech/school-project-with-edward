@@ -90,8 +90,12 @@ const ResultChecker: React.FC = () => {
         // Fetch term reports instead of individual results for consolidated data
         const allTermReports: any[] = [];
         
-        // Fetch term reports for all education levels
-        const educationLevels = ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+        // Fetch term reports for the specified education level(s)
+        const educationLevels = filters.education_level 
+          ? [filters.education_level] 
+          : ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+        
+        console.log(`🔄 [ResultChecker] loadResults - Fetching term reports for education levels:`, educationLevels);
         
         for (const level of educationLevels) {
           try {
@@ -191,7 +195,9 @@ const ResultChecker: React.FC = () => {
       const newFilters = {
         ...filters,
         student_id: student.id,
-        education_level: student.education_level as 'SENIOR_SECONDARY' | 'JUNIOR_SECONDARY' | 'PRIMARY' | 'NURSERY'
+        education_level: student.education_level as 'SENIOR_SECONDARY' | 'JUNIOR_SECONDARY' | 'PRIMARY' | 'NURSERY',
+        // Set default academic session to current session if not already set
+        academic_session_id: filters.academic_session_id || (sessions.find(s => s.is_current)?.id || sessions[0]?.id)
       };
       
       setFilters(newFilters);
@@ -200,7 +206,7 @@ const ResultChecker: React.FC = () => {
       setSearchResults([]);
       setSearchTerm('');
       
-      toast.success(`Selected ${student.name} (${student.class}). Loading their results...`);
+      toast.success(`Selected ${student.name || 'Unknown Student'} (${student.class || 'Unknown Class'}). Loading their results...`);
       
     } catch (error) {
       console.error('Error selecting student:', error);
@@ -233,6 +239,32 @@ const ResultChecker: React.FC = () => {
         console.log('✅ [ResultChecker] Raw subject_results:', fullResult?.subject_results);
         console.log('🔍 [ResultChecker] API fullResult.next_term_begins:', fullResult?.next_term_begins);
         console.log('🔍 [ResultChecker] API fullResult.next_term_begins type:', typeof fullResult?.next_term_begins);
+        
+        // Debug the key fields we need
+        console.log('🔍 [ResultChecker] DEBUGGING KEY FIELDS:');
+        console.log('  - total_score:', fullResult?.total_score);
+        console.log('  - average_score:', fullResult?.average_score);
+        console.log('  - class_position:', fullResult?.class_position);
+        console.log('  - total_students:', fullResult?.total_students);
+        console.log('  - overall_grade:', fullResult?.overall_grade);
+        
+        // Debug individual subject results
+        if (fullResult?.subject_results && fullResult.subject_results.length > 0) {
+          console.log('🔍 [ResultChecker] DEBUGGING SUBJECT RESULTS:');
+          fullResult.subject_results.forEach((subject: any, index: number) => {
+            console.log(`  Subject ${index + 1} (${subject.subject?.name}):`);
+            console.log(`    - total_score: ${subject.total_score}`);
+            console.log(`    - mark_obtained: ${subject.mark_obtained}`);
+            console.log(`    - ca_total: ${subject.ca_total}`);
+            console.log(`    - exam_marks: ${subject.exam_marks}`);
+            console.log(`    - continuous_assessment_score: ${subject.continuous_assessment_score}`);
+            console.log(`    - take_home_test_score: ${subject.take_home_test_score}`);
+            console.log(`    - project_score: ${subject.project_score}`);
+            console.log(`    - appearance_score: ${subject.appearance_score}`);
+            console.log(`    - note_copying_score: ${subject.note_copying_score}`);
+            console.log(`    - practical_score: ${subject.practical_score}`);
+          });
+        }
       } else {
         // For session results, use the session report endpoint
         console.log('📋 [ResultChecker] Fetching session report for ID:', result.id);
@@ -257,21 +289,28 @@ const ResultChecker: React.FC = () => {
     console.log('🔄 [ResultChecker] transformDataForPrimary called with:', result);
     console.log('🔍 [ResultChecker] result.next_term_begins:', result.next_term_begins);
     console.log('🔍 [ResultChecker] result.next_term_begins type:', typeof result.next_term_begins);
+    console.log('🔍 [ResultChecker] result.subject_results:', (result as any).subject_results);
+    console.log('🔍 [ResultChecker] result.subject_results length:', (result as any).subject_results?.length);
+    console.log('🔍 [ResultChecker] Student ID:', result.student?.id);
+    console.log('🔍 [ResultChecker] Student Name:', result.student?.name);
+    console.log('🔍 [ResultChecker] Student Username:', result.student?.username);
+    console.log('🔍 [ResultChecker] Student User Username:', (result.student as any)?.user?.username);
+    console.log('🔍 [ResultChecker] Full Student Data:', result.student);
     
     // Transform the term report data to match what PrimaryResult expects
     const transformedData = {
       id: result.id,
       student: {
-        id: result.student.id,
-        name: result.student.name,
-        full_name: result.student.name,
-        username: result.student.username,
-        admission_number: result.student.admission_number || result.student.username,
-        class: result.student.class,
-        student_class: result.student.class,
-        education_level: result.student.education_level,
-        gender: result.student.gender,
-        age: (result.student as any).age,
+        id: result.student?.id || '',
+        name: result.student?.name || 'Unknown Student',
+        full_name: result.student?.name || 'Unknown Student',
+        username: result.student?.username || (result.student as any)?.user?.username || 'N/A',
+        admission_number: result.student?.admission_number || result.student?.username || '',
+        class: result.student?.class || 'Unknown',
+        student_class: result.student?.class || 'Unknown',
+        education_level: result.student?.education_level || 'Unknown',
+        gender: result.student?.gender || '',
+        age: (result.student as any)?.age || 0,
         date_of_birth: (result.student as any).date_of_birth,
         classroom: (result.student as any).classroom,
         stream: (result.student as any).stream,
@@ -285,7 +324,17 @@ const ResultChecker: React.FC = () => {
         academic_session: { id: 'session-1', name: '2024/2025' }
       },
       exam_session: (result as any).exam_session,
-      subjects: (result as any).subject_results?.map((subjectResult: any) => {
+      subjects: (result as any).subject_results?.map((subjectResult: any, index: number) => {
+        console.log(`🔍 [ResultChecker] Processing subject ${index + 1}:`, {
+          subjectName: subjectResult.subject?.name,
+          subjectId: subjectResult.subject?.id,
+          studentId: subjectResult.student?.id || 'No student ID',
+          resultId: subjectResult.id,
+          hasValidScores: !!(subjectResult.continuous_assessment_score || subjectResult.exam_score),
+          status: subjectResult.status,
+          subject_position: subjectResult.subject_position
+        });
+        
         // Calculate CA total from individual components
         const caTotal = (subjectResult.continuous_assessment_score || 0) + 
                        (subjectResult.take_home_test_score || 0) + 
@@ -297,16 +346,26 @@ const ResultChecker: React.FC = () => {
         // Calculate exam marks
         const examMarks = subjectResult.exam_score || subjectResult.exam_marks || 0;
         
-        // Calculate total mark obtained (CA + Exam)
-        const markObtained = caTotal + examMarks;
+        // Use backend's calculated total_score if available, otherwise calculate from CA + Exam
+        const backendTotalScore = subjectResult.total_score || 0;
+        const calculatedTotal = caTotal + examMarks;
+        const markObtained = backendTotalScore > 0 ? backendTotalScore : calculatedTotal;
         
-        return {
+        console.log(`🔍 [ResultChecker] Subject ${subjectResult.subject?.name}:`, {
+          backendTotalScore,
+          caTotal,
+          examMarks,
+          calculatedTotal,
+          finalMarkObtained: markObtained
+        });
+        
+        const transformedSubject = {
           subject: {
             id: subjectResult.subject?.id,
             name: subjectResult.subject?.name,
             code: subjectResult.subject?.code || ''
           },
-          total_score: markObtained, // Use calculated total
+          total_score: markObtained, // Use backend total_score if available, otherwise calculated
           percentage: subjectResult.percentage || 0,
           grade: subjectResult.grade || '',
           position: subjectResult.position || 0,
@@ -324,11 +383,108 @@ const ResultChecker: React.FC = () => {
           exam_marks: examMarks,
           mark_obtained: markObtained,
           total_obtainable: 100,
+          status: subjectResult.status, // CRITICAL: Include the status field
+          subject_position: subjectResult.subject_position, // Include subject position
           id: subjectResult.id
         };
+        
+        console.log(`🔍 [ResultChecker] Transformed subject ${subjectResult.subject?.name}:`, {
+          status: transformedSubject.status,
+          subject_position: transformedSubject.subject_position,
+          hasStatus: 'status' in transformedSubject
+        });
+        
+        return transformedSubject;
       }) || [],
-      total_score: (result as any).total_score || 0,
-      average_score: (result as any).average_score || 0,
+      // Use backend term report totals if available, otherwise calculate from individual subjects
+      total_score: (() => {
+        const backendTotal = Number((result as any).total_score) || 0;
+        const isBackendTotalValid = (result as any).total_score !== undefined && 
+                                   (result as any).total_score !== null && 
+                                   (result as any).total_score !== 0 && 
+                                   !isNaN(backendTotal) && 
+                                   backendTotal > 0 &&
+                                   backendTotal < 10000 && // Reasonable upper limit
+                                   String((result as any).total_score).length < 20; // Concatenated strings are very long
+        
+        if (isBackendTotalValid) {
+          console.log('🔍 [ResultChecker] Using backend term report total_score:', backendTotal);
+          return backendTotal;
+        } else {
+          console.log('🔍 [ResultChecker] Backend total_score is invalid:', {
+            raw_value: (result as any).total_score,
+            parsed_value: backendTotal,
+            isNaN: isNaN(backendTotal),
+            reason: 'Backend total_score appears to be concatenated or invalid'
+          });
+        }
+        
+        // Calculate from individual subject results
+        const subjects = (result as any).subject_results || [];
+        const calculatedTotal = subjects.reduce((total: number, subjectResult: any) => {
+          const backendScore = subjectResult.total_score || 0;
+          if (backendScore > 0) {
+            return total + backendScore;
+          }
+          // Fallback to CA + Exam calculation
+          const caTotal = (subjectResult.continuous_assessment_score || 0) + 
+                         (subjectResult.take_home_test_score || 0) + 
+                         (subjectResult.project_score || 0) + 
+                         (subjectResult.appearance_score || 0) + 
+                         (subjectResult.note_copying_score || 0) + 
+                         (subjectResult.practical_score || 0);
+          const examMarks = subjectResult.exam_score || subjectResult.exam_marks || 0;
+          return total + (caTotal + examMarks);
+        }, 0);
+        
+        console.log('🔍 [ResultChecker] Calculated total_score from subjects:', calculatedTotal);
+        return calculatedTotal;
+      })(),
+      average_score: (() => {
+        const backendAverage = Number((result as any).average_score) || 0;
+        const isBackendAverageValid = (result as any).average_score !== undefined && 
+                                     (result as any).average_score !== null && 
+                                     (result as any).average_score !== 0 && 
+                                     !isNaN(backendAverage) && 
+                                     backendAverage > 0 &&
+                                     backendAverage <= 100; // Average should be percentage
+        
+        if (isBackendAverageValid) {
+          console.log('🔍 [ResultChecker] Using backend term report average_score:', backendAverage);
+          return backendAverage;
+        } else {
+          console.log('🔍 [ResultChecker] Backend average_score is invalid:', {
+            raw_value: (result as any).average_score,
+            parsed_value: backendAverage,
+            isNaN: isNaN(backendAverage),
+            reason: 'Backend average_score appears to be invalid'
+          });
+        }
+        
+        // Calculate from individual subject results
+        const subjects = (result as any).subject_results || [];
+        if (subjects.length === 0) return 0;
+        
+        const totalScore = subjects.reduce((total: number, subjectResult: any) => {
+          const backendScore = subjectResult.total_score || 0;
+          if (backendScore > 0) {
+            return total + backendScore;
+          }
+          // Fallback to CA + Exam calculation
+          const caTotal = (subjectResult.continuous_assessment_score || 0) + 
+                         (subjectResult.take_home_test_score || 0) + 
+                         (subjectResult.project_score || 0) + 
+                         (subjectResult.appearance_score || 0) + 
+                         (subjectResult.note_copying_score || 0) + 
+                         (subjectResult.practical_score || 0);
+          const examMarks = subjectResult.exam_score || subjectResult.exam_marks || 0;
+          return total + (caTotal + examMarks);
+        }, 0);
+        
+        const calculatedAverage = totalScore / subjects.length;
+        console.log('🔍 [ResultChecker] Calculated average_score from subjects:', calculatedAverage);
+        return calculatedAverage;
+      })(),
       overall_grade: (result as any).overall_grade || '',
       class_position: (result as any).class_position || 0,
       total_students: (result as any).total_students || 0,
@@ -354,19 +510,22 @@ const ResultChecker: React.FC = () => {
     console.log('🔄 [ResultChecker] transformDataForSeniorSecondary called with:', result);
     console.log('🔍 [ResultChecker] result.next_term_begins:', result.next_term_begins);
     console.log('🔍 [ResultChecker] result.next_term_begins type:', typeof result.next_term_begins);
+    console.log('🔍 [ResultChecker] Student Username:', result.student?.username);
+    console.log('🔍 [ResultChecker] Student User Username:', (result.student as any)?.user?.username);
+    console.log('🔍 [ResultChecker] Full Student Data:', result.student);
     
     // Transform the term report data to match what SeniorSecondaryTermlyResult expects
     const transformedData = {
       id: result.id,
       student: {
-        id: result.student.id,
-        name: result.student.name,
-        full_name: result.student.name,
-        username: result.student.username,
-        admission_number: result.student.admission_number || result.student.username,
-        class: result.student.class,
-        student_class: result.student.class,
-        education_level: result.student.education_level,
+        id: result.student?.id || '',
+        name: result.student?.name || 'Unknown Student',
+        full_name: result.student?.name || 'Unknown Student',
+        username: result.student?.username || (result.student as any)?.user?.username || 'N/A',
+        admission_number: result.student?.admission_number || result.student?.username || '',
+        class: result.student?.class || 'Unknown',
+        student_class: result.student?.class || 'Unknown',
+        education_level: result.student?.education_level || 'Unknown',
         gender: result.student.gender,
         age: (result.student as any).age,
         date_of_birth: (result.student as any).date_of_birth,
@@ -458,11 +617,11 @@ const ResultChecker: React.FC = () => {
     const transformedData = {
       id: result.id,
       student: {
-        id: result.student.id,
-        name: result.student.name,
-        full_name: result.student.name,
-        class: result.student.class,
-        education_level: result.student.education_level,
+        id: result.student?.id || '',
+        name: result.student?.name || 'Unknown Student',
+        full_name: result.student?.name || 'Unknown Student',
+        class: result.student?.class || 'Unknown',
+        education_level: result.student?.education_level || 'Unknown',
         age: (result.student as any).age,
         date_of_birth: (result.student as any).date_of_birth,
         classroom: (result.student as any).classroom,
@@ -537,6 +696,7 @@ const ResultChecker: React.FC = () => {
         return <PrimaryResult 
           data={primaryData as any}
           studentId={result.student.id}
+          showOnlyPublished={true}
         />;
       case 'JUNIOR_SECONDARY':
         const juniorData = transformDataForPrimary(result as TermlyResult);
@@ -567,6 +727,7 @@ const ResultChecker: React.FC = () => {
         return <PrimaryResult 
           data={defaultData as any}
           studentId={result.student.id}
+          showOnlyPublished={true}
         />;
     }
   };
@@ -695,14 +856,16 @@ const ResultChecker: React.FC = () => {
               Search Results ({searchResults.length} found):
             </h3>
             <div className="space-y-3 max-h-60 overflow-y-auto">
-              {searchResults.map((student) => (
+              {searchResults.filter(student => student && student.id).map((student) => (
                 <div key={student.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{student.name}</h4>
+                      <h4 className="font-medium text-gray-900">
+                        {student.name || 'Unknown Student'}
+                      </h4>
                       <p className="text-sm text-gray-600">
-                        {student.username && `Username: ${student.username} • `}
-                        ID: {student.admission_number} • Class: {student.class} • Level: {student.education_level}
+                        Username: {student.username || 'N/A'} • 
+                        ID: {student.admission_number || 'N/A'} • Class: {student.class || 'N/A'} • Level: {student.education_level || 'N/A'}
                         {student.house && ` • House: ${student.house}`}
                         {student.gender && ` • Gender: ${student.gender}`}
                       </p>
@@ -724,13 +887,29 @@ const ResultChecker: React.FC = () => {
         {/* Selected student info */}
         {filters.student_id && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm">
-              <strong>Selected Student:</strong> {
-                searchResults.find(s => s.id === filters.student_id)?.name || 
-                'Student ID: ' + filters.student_id
-              }
-              {filters.education_level && ` • Level: ${filters.education_level}`}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-blue-800 text-sm">
+                <strong>Selected Student:</strong> {
+                  searchResults.find(s => s.id === filters.student_id)?.name || 
+                  'Student ID: ' + filters.student_id
+                }
+                {filters.education_level && ` • Level: ${filters.education_level}`}
+              </p>
+              <button
+                onClick={() => {
+                  setFilters(prev => {
+                    const newFilters = { ...prev };
+                    delete newFilters.student_id;
+                    delete newFilters.education_level;
+                    return newFilters;
+                  });
+                  toast.success('Student selection cleared');
+                }}
+                className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200 transition-colors"
+              >
+                Clear Selection
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -809,7 +988,7 @@ const ResultChecker: React.FC = () => {
               <option value="">All Terms</option>
               {terms.map(term => (
                 <option key={term.id} value={term.id}>
-                  {term.name} ({term.academic_session.name})
+                  {term.name} ({term.academic_session?.name || 'Unknown Session'})
                 </option>
               ))}
             </select>
@@ -823,7 +1002,7 @@ const ResultChecker: React.FC = () => {
               <option value="">All Academic Sessions</option>
               {sessions.map(session => (
                 <option key={session.id} value={session.id}>
-                  {session.name} ({session.start_year}/{session.end_year})
+                  {session.name || 'Unknown Session'} ({session.start_year || 'N/A'}/{session.end_year || 'N/A'})
                 </option>
               ))}
             </select>
@@ -837,7 +1016,7 @@ const ResultChecker: React.FC = () => {
               <option value="">All Exam Sessions</option>
               {examSessions.map(session => (
                 <option key={session.id} value={session.id}>
-                  {session.name || `Session ${session.id}`}
+                  {session.name || `Session ${session.id || 'Unknown'}`}
                 </option>
               ))}
             </select>
@@ -852,7 +1031,7 @@ const ResultChecker: React.FC = () => {
                 <option value="">All Classes</option>
                 {classes.map(cls => (
                   <option key={cls.id} value={cls.id}>
-                    {cls.name} {cls.section && `(${cls.section})`}
+                    {cls.name || 'Unknown Class'} {cls.section && `(${cls.section})`}
                   </option>
                 ))}
               </select>
@@ -935,7 +1114,7 @@ const ResultChecker: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
                       <h3 className="text-lg font-medium text-gray-900">
-                        {result.student.name}
+                        {result.student?.name || 'Unknown Student'}
                       </h3>
                       {!result.is_published && (
                         <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
@@ -945,12 +1124,12 @@ const ResultChecker: React.FC = () => {
                     </div>
                     <p className="text-sm text-gray-600">
                       {result.student.admission_number} • {result.student.class} • {result.student.education_level}
-                      {result.student.username && ` • Username: ${result.student.username}`}
+                      • Username: {result.student.username || 'N/A'}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
                       {resultType === 'termly' 
-                        ? `Term: ${(result as TermlyResult).term.name} (${(result as TermlyResult).term.academic_session.name})`
-                        : `Session: ${(result as SessionResult).academic_session.name}`
+                        ? `Term: ${(result as TermlyResult).term?.name || 'Unknown Term'} (${(result as TermlyResult).term?.academic_session?.name || 'Unknown Session'})`
+                        : `Session: ${(result as SessionResult).academic_session?.name || 'Unknown Session'}`
                       }
                     </p>
                   </div>
@@ -995,7 +1174,7 @@ const ResultChecker: React.FC = () => {
           <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
               <h2 className="text-lg font-semibold text-gray-900">
-                {selectedResult.student.name} - {resultType === 'termly' ? 'Termly' : 'Session'} Result
+                {selectedResult.student?.name || 'Unknown Student'} - {resultType === 'termly' ? 'Termly' : 'Session'} Result
               </h2>
               <button
                 onClick={handleCloseResultView}

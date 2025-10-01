@@ -10,6 +10,7 @@ from django.utils import timezone
 from io import TextIOWrapper
 import csv
 from datetime import datetime, timedelta
+from utils.section_filtering import SectionFilterMixin
 import logging
 
 # Import models
@@ -70,7 +71,7 @@ def create_exam_schedule(request):
     return render(request, "exams/exam_schedule_form.html", {"form": form})
 
 
-class ExamViewSet(viewsets.ModelViewSet):
+class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """
     Streamlined ViewSet for managing exams
     """
@@ -88,8 +89,7 @@ class ExamViewSet(viewsets.ModelViewSet):
     search_fields = ["title", "description", "code", "subject__name", "venue"]
     ordering_fields = ["exam_date", "start_time", "title", "created_at"]
     ordering = ["-exam_date", "start_time"]
-    permission_classes = [permissions.AllowAny]  # Allow unauthenticated access for testing
-    authentication_classes = []  # Disable authentication for testing
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -100,12 +100,24 @@ class ExamViewSet(viewsets.ModelViewSet):
         return ExamDetailSerializer
 
     def get_queryset(self):
-        """Optimize queryset for list view"""
+        """Optimize queryset for list view with section filtering"""
         queryset = super().get_queryset()
         if self.action == "list":
             queryset = queryset.annotate(
                 registered_students_count=Count("examregistration", distinct=True)
             )
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter exams by grade level's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(grade_level__education_level__in=education_levels)
+        
         return queryset
 
     def perform_create(self, serializer):
@@ -935,13 +947,33 @@ class ExamViewSet(viewsets.ModelViewSet):
         )
 
 
-class ExamScheduleViewSet(viewsets.ModelViewSet):
+class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for exam schedules"""
 
     queryset = ExamSchedule.objects.all()
     serializer_class = ExamScheduleSerializer
     ordering = ["-created_at"]
-    permission_classes = []  # Temporarily allow unauthenticated access for testing
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Apply section-based filtering for authenticated users"""
+        queryset = super().get_queryset()
+        
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter exam schedules by exams that belong to allowed education levels
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            # Filter schedules that have exams in allowed education levels
+            queryset = queryset.filter(
+                exams__grade_level__education_level__in=education_levels
+            ).distinct()
+        
+        return queryset
 
     @action(detail=True, methods=["get"])
     def exams(self, request, pk=None):
@@ -969,16 +1001,16 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
         return Response({"message": f"Schedule {status_text}"})
 
 
-class ExamRegistrationViewSet(viewsets.ModelViewSet):
+class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for exam registrations"""
 
     queryset = ExamRegistration.objects.select_related("exam", "student")
     serializer_class = ExamRegistrationSerializer
     ordering = ["-registration_date"]
-    permission_classes = []  # Temporarily allow unauthenticated access for testing
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter by student or exam if provided"""
+        """Filter by student or exam if provided, with section filtering"""
         queryset = super().get_queryset()
         student_id = self.request.query_params.get("student_id")
         exam_id = self.request.query_params.get("exam_id")
@@ -987,6 +1019,20 @@ class ExamRegistrationViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_id=student_id)
         if exam_id:
             queryset = queryset.filter(exam_id=exam_id)
+
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter exam registrations by exams that belong to allowed education levels
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            # Filter registrations for exams in allowed education levels
+            queryset = queryset.filter(
+                exam__grade_level__education_level__in=education_levels
+            )
 
         return queryset
 
@@ -1105,16 +1151,16 @@ class ExamRegistrationViewSet(viewsets.ModelViewSet):
         })
 
 
-class ResultViewSet(viewsets.ModelViewSet):
+class ResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for exam results"""
 
     queryset = StudentResult.objects.select_related("exam", "student", "subject")
     serializer_class = ResultSerializer
     ordering = ["-created_at"]
-    permission_classes = []  # Temporarily allow unauthenticated access for testing
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter by exam, student, or subject if provided"""
+        """Filter by exam, student, or subject if provided, with section filtering"""
         queryset = super().get_queryset()
         exam_id = self.request.query_params.get("exam_id")
         student_id = self.request.query_params.get("student_id")
@@ -1126,6 +1172,17 @@ class ResultViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(student_id=student_id)
         if subject_id:
             queryset = queryset.filter(subject_id=subject_id)
+
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter results by student's education level
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            queryset = queryset.filter(student__education_level__in=education_levels)
 
         return queryset
 
@@ -1144,21 +1201,35 @@ class ResultViewSet(viewsets.ModelViewSet):
 # Add this ExamStatisticsViewSet class to your views.py file
 
 
-class ExamStatisticsViewSet(viewsets.ReadOnlyModelViewSet):
+class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
     """ViewSet for exam statistics (read-only)"""
 
     queryset = ExamStatistics.objects.select_related("exam")
     serializer_class = ExamStatisticsSerializer
     ordering = ["-calculated_at"]
-    permission_classes = []  # Temporarily allow unauthenticated access for testing
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter by exam if provided"""
+        """Filter by exam if provided, with section filtering"""
         queryset = super().get_queryset()
         exam_id = self.request.query_params.get("exam_id")
 
         if exam_id:
             queryset = queryset.filter(exam_id=exam_id)
+
+        # Apply section-based filtering for authenticated users
+        if self.request.user.is_authenticated:
+            # Filter exam statistics by exams that belong to allowed education levels
+            section_access = self.get_user_section_access()
+            education_levels = self.get_education_levels_for_sections(section_access)
+            
+            if not education_levels:
+                return queryset.none()
+            
+            # Filter statistics for exams in allowed education levels
+            queryset = queryset.filter(
+                exam__grade_level__education_level__in=education_levels
+            )
 
         return queryset
 

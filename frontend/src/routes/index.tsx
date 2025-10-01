@@ -67,6 +67,7 @@ const AdminLoginPage = lazy(() => import('./../pages/AdminLoginPage').catch(() =
 const HowToApplyPage = lazy(() => import('./../pages/HowToApplyPage').catch(() => ({ default: () => <div>Error loading How to Apply</div> })));
 const PublicTeacherBio = lazy(() => import('./../pages/PublicTeacherBio').catch(() => ({ default: () => <div>Error loading Teacher Bio</div> })));
 const ResultChecker = lazy(() => import('./../components/dashboards/admin/ResultChecker').catch(() => ({ default: () => <div>Error loading Result Checker</div> })));
+const StudentResultChecker = lazy(() => import('./../components/dashboards/admin/StudentResultChecker').catch(() => ({ default: () => <div>Error loading Student Result Checker</div> })));
 const StudentResultDetail = lazy(() => import('./../components/dashboards/admin/StudentResultDetail').catch(() => ({ default: () => <div>Error loading Student Result Detail</div> })));
 
 const RouteErrorElement = () => {
@@ -512,7 +513,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'student-result-checker',
-        element: <ResultChecker />,
+        element: <StudentResultChecker onClose={() => {}} />,
         errorElement: <RouteErrorElement />
       }
     ]

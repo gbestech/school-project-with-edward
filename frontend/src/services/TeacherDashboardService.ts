@@ -412,8 +412,7 @@ class TeacherDashboardService {
   // Get teacher ID from user data or fetch teacher profile
   async getTeacherIdFromUser(user: any): Promise<number | null> {
     try {
-    
-      
+      // 1) Direct mapping on user object if present
       // First, try to get teacher ID from user data structure
       let teacherId = (user as any)?.teacher_data?.id;
       
@@ -429,32 +428,10 @@ class TeacherDashboardService {
         return Number(teacherId);
       }
       
-      // If not found in teacher_data, try to get from user ID
+      // 2) Try direct backend endpoint by user id first (strongest signal)
       const userId = user?.id;
       if (userId) {
-        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Trying to find teacher by user ID:', userId);
-        
-        // Try to find teacher by user ID
-        const teachersResponse = await TeacherService.getTeachers({ 
-          search: user?.email || user?.username 
-        });
-        
-        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Teachers response:', teachersResponse);
-        
-        if (teachersResponse.results && teachersResponse.results.length > 0) {
-          // Find teacher that matches the current user
-          const teacher = teachersResponse.results.find((t: any) => 
-            t.user?.id === userId || t.user?.email === user?.email
-          );
-          
-          if (teacher) {
-            console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Found teacher by user ID:', teacher.id);
-            return Number(teacher.id);
-          }
-        }
-        
-        // If still not found, try a more direct approach
-        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Trying direct teacher lookup...');
+        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Trying direct teacher lookup by user ID:', userId);
         try {
           const directTeacherResponse = await TeacherService.getTeacherByUserId(userId);
           if (directTeacherResponse && directTeacherResponse.id) {
@@ -463,6 +440,29 @@ class TeacherDashboardService {
           }
         } catch (directError) {
           console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Direct lookup failed:', directError);
+        }
+
+        // 3) Fallback: search by email or username
+        console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Fallback search by email/username');
+        const teachersResponse = await TeacherService.getTeachers({ 
+          search: user?.email || user?.username 
+        });
+        if (teachersResponse.results && teachersResponse.results.length > 0) {
+          const teacher = teachersResponse.results.find((t: any) => 
+            t.user?.id === userId || t.user?.email === user?.email || t.username === user?.username
+          );
+          if (teacher?.id) {
+            console.log('🔍 TeacherDashboardService.getTeacherIdFromUser - Found teacher via search:', teacher.id);
+            return Number(teacher.id);
+          }
+        }
+
+        // 4) Last resort: broad scan to match by user.id/email
+        if (teachersResponse.results && teachersResponse.results.length > 0) {
+          const byId = teachersResponse.results.find((t: any) => t.user?.id === userId);
+          if (byId?.id) return Number(byId.id);
+          const byEmail = teachersResponse.results.find((t: any) => t.user?.email === user?.email);
+          if (byEmail?.id) return Number(byEmail.id);
         }
       }
       

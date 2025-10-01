@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Eye, Edit, Trash2, Download, Printer, CheckCircle, XCircle, 
-  Send, FileText, Filter, Search, MoreVertical, Calendar,
-  User, BookOpen, Award, AlertCircle, Clock, CheckSquare
+  Eye, Edit, Trash2, CheckCircle, XCircle, 
+ FileText, Filter, Search,
+  User, Award, AlertCircle, Plus
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ResultService from '@/services/ResultService';
 import { useSettings } from '@/contexts/SettingsContext';
 import EditSubjectResultForm from './EditSubjectResultForm';
+import AddResultForm from './AddResultForm';
 
 // Enhanced interfaces for result management
 interface StudentResult {
@@ -102,6 +103,7 @@ const EnhancedResultsManagement: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [resultToDelete, setResultToDelete] = useState<StudentResult | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,24 +113,8 @@ const EnhancedResultsManagement: React.FC = () => {
   const [termFilter, setTermFilter] = useState<string>('all');
   const [sessionFilter, setSessionFilter] = useState<string>('all');
 
-  // Status actions configuration
+  // Status actions configuration - Only essential actions for admin workflow
   const statusActions: StatusAction[] = [
-    {
-      id: 'DRAFT',
-      label: 'Mark as Draft',
-      icon: <Edit className="w-4 h-4" />,
-      color: 'text-gray-700',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'hover:bg-gray-200'
-    },
-    {
-      // SUBMITTED status removed as it's not used in StudentTermResult
-      label: 'Submit for Review',
-      icon: <Send className="w-4 h-4" />,
-      color: 'text-blue-700',
-      bgColor: 'bg-blue-100',
-      hoverColor: 'hover:bg-blue-200'
-    },
     {
       id: 'APPROVED',
       label: 'Approve Result',
@@ -222,9 +208,7 @@ const EnhancedResultsManagement: React.FC = () => {
           response = await ResultService.publishResult(resultId, educationLevel);
           break;
         default:
-          // For DRAFT status, we might need a different endpoint
-          // For now, we'll use a generic update
-          response = await ResultService.updateStudentResult(resultId, { status: newStatus }, educationLevel);
+          throw new Error(`Unsupported status change: ${newStatus}`);
       }
       
       // Update local state
@@ -241,6 +225,13 @@ const EnhancedResultsManagement: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  // Handle result added callback
+  const handleResultAdded = () => {
+    setShowAddForm(false);
+    loadResults(); // Reload the results list
+    toast.success('Result recorded successfully!');
   };
 
   const bulkUpdateStatus = async (resultIds: string[], newStatus: string) => {
@@ -267,7 +258,8 @@ const EnhancedResultsManagement: React.FC = () => {
   const deleteResult = async (result: StudentResult) => {
     try {
       setActionLoading('delete');
-      await ResultService.deleteStudentResult(result.id, result.student.education_level);
+      // Use the correct delete method for term results since we're loading term report data
+      await ResultService.deleteTermResult(result.id);
       
       setStudentResults(prev => prev.filter(r => r.id !== result.id));
       setShowDeleteModal(false);
@@ -422,6 +414,14 @@ const EnhancedResultsManagement: React.FC = () => {
             </div>
             
             <div className="flex gap-3">
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Record Result
+              </button>
+              
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
@@ -980,6 +980,18 @@ const EnhancedResultsManagement: React.FC = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Result Modal */}
+        {showAddForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <AddResultForm
+                onClose={() => setShowAddForm(false)}
+                onSuccess={handleResultAdded}
+              />
             </div>
           </div>
         )}

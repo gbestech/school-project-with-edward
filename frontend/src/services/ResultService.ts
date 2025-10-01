@@ -502,6 +502,26 @@ class ResultService {
     }
   }
 
+  // Delete term result
+  async deleteTermResult(termResultId: string): Promise<void> {
+    try {
+      // First check if the term result exists
+      try {
+        await api.get(`${this.baseURL}/student-term-results/${termResultId}/`);
+      } catch (checkError: any) {
+        if (checkError.response?.status === 404) {
+          throw new Error(`Term result with ID ${termResultId} not found.`);
+        }
+        throw checkError;
+      }
+      
+      await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
+    } catch (error) {
+      console.error('Error deleting term result:', error);
+      throw error;
+    }
+  }
+
   // Exam sessions - UPDATED
   async getExamSessions(params?: FilterParams): Promise<ExamSessionInfo[]> {
     try {
@@ -559,6 +579,16 @@ class ResultService {
       throw new Error(`Unsupported education level: ${educationLevel}`);
     }
     
+    // First check if the individual result exists
+    try {
+      await api.get(endpoint);
+    } catch (checkError: any) {
+      if (checkError.response?.status === 404) {
+        throw new Error(`${educationLevel} result with ID ${resultId} not found. This might be a term report ID instead of an individual result ID.`);
+      }
+      throw checkError;
+    }
+    
     return api.delete(endpoint);
   }
 
@@ -581,12 +611,12 @@ class ResultService {
 
   // NEW: Result approval and publishing
   async approveResult(resultId: string, educationLevel: string) {
-    // Use the student-term-results endpoint since that's where the data comes from
+    // Use the student-term-results endpoint for term reports
     return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
   }
 
   async publishResult(resultId: string, educationLevel: string) {
-    // Use the student-term-results endpoint since that's where the data comes from
+    // Use the student-term-results endpoint for term reports
     return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
   }
 

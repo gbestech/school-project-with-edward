@@ -251,7 +251,7 @@ class PermissionSerializer(serializers.ModelSerializer):
 
 class RoleSerializer(serializers.ModelSerializer):
     """Serializer for roles"""
-    permissions = PermissionSerializer(many=True, read_only=True)
+    permissions = serializers.SerializerMethodField()
     user_count = serializers.ReadOnlyField()
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
 
@@ -280,18 +280,11 @@ class RoleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user_count', 'created_at', 'updated_at']
 
-    def to_representation(self, instance):
-        """Custom representation to handle ManyRelatedManager properly"""
-        data = super().to_representation(instance)
-        
-        # Handle permissions field properly
-        if hasattr(instance, 'permissions'):
-            if instance.pk:  # If the instance is saved
-                data['permissions'] = PermissionSerializer(instance.permissions.all(), many=True).data
-            else:
-                data['permissions'] = []
-        
-        return data
+    def get_permissions(self, obj):
+        """Get permissions for the role"""
+        if obj.pk and hasattr(obj, 'permissions'):
+            return PermissionSerializer(obj.permissions.all(), many=True).data
+        return []
 
     def get_permissions_dict(self, obj):
         """
@@ -390,7 +383,7 @@ class UserRoleSerializer(serializers.ModelSerializer):
     role_name = serializers.CharField(source='role.name', read_only=True)
     role_color = serializers.CharField(source='role.color', read_only=True)
     assigned_by_name = serializers.CharField(source='assigned_by.full_name', read_only=True)
-    custom_permissions = PermissionSerializer(many=True, read_only=True)
+    custom_permissions = serializers.SerializerMethodField()
     
     class Meta:
         model = UserRole
@@ -414,18 +407,11 @@ class UserRoleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'assigned_at']
 
-    def to_representation(self, instance):
-        """Custom representation to handle ManyRelatedManager properly"""
-        data = super().to_representation(instance)
-        
-        # Handle custom_permissions field properly
-        if hasattr(instance, 'custom_permissions'):
-            if instance.pk:  # If the instance is saved
-                data['custom_permissions'] = PermissionSerializer(instance.custom_permissions.all(), many=True).data
-            else:
-                data['custom_permissions'] = []
-        
-        return data
+    def get_custom_permissions(self, obj):
+        """Get custom permissions for the user role"""
+        if obj.pk and hasattr(obj, 'custom_permissions'):
+            return PermissionSerializer(obj.custom_permissions.all(), many=True).data
+        return []
 
 
 class UserRoleCreateUpdateSerializer(serializers.ModelSerializer):
@@ -468,16 +454,3 @@ class UserRoleCreateUpdateSerializer(serializers.ModelSerializer):
             instance.custom_permissions.set(permissions)
         
         return instance
-
-    def to_representation(self, instance):
-        """Custom representation to handle ManyRelatedManager properly"""
-        data = super().to_representation(instance)
-        
-        # Handle custom_permissions field properly
-        if hasattr(instance, 'custom_permissions'):
-            if instance.pk:  # If the instance is saved
-                data['custom_permissions'] = PermissionSerializer(instance.custom_permissions.all(), many=True).data
-            else:
-                data['custom_permissions'] = []
-        
-        return data 

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useResultService } from "@/hooks/useResultService";
@@ -44,8 +44,10 @@ export interface SubjectResult {
   mark_obtained: number;
   grade?: string;
   position?: string;
+  subject_position?: number;
   teacher_remark?: string;
   is_passed?: boolean;
+  status?: string; // DRAFT, SUBMITTED, APPROVED, PUBLISHED
 }
 
 export interface JuniorSecondaryResultData {
@@ -147,6 +149,7 @@ interface JuniorSecondaryResultProps {
   onDataChange?: (data: JuniorSecondaryResultData) => void;
   onPDFGenerated?: (pdfUrl: string) => void;
   enableEnhancedFeatures?: boolean;
+  showOnlyPublished?: boolean; // NEW: Control whether to show only published results
 }
 
 export default function JuniorSecondaryResult({ 
@@ -156,7 +159,8 @@ export default function JuniorSecondaryResult({
   templateId,
   onDataChange,
   onPDFGenerated,
-  enableEnhancedFeatures = true
+  enableEnhancedFeatures = true,
+  showOnlyPublished = false // NEW: Default to false (show all results)
 }: JuniorSecondaryResultProps) {
   // State to store the corrected next_term_begins date
   const [correctedNextTermBegins, setCorrectedNextTermBegins] = useState<string | null>(null);
@@ -413,15 +417,69 @@ export default function JuniorSecondaryResult({
     };
   };
 
-  // Get subject result data
+  // Get subject result data - only from PUBLISHED subjects
   const getSubjectData = (subjectName: string) => {
-    if (!data.subjects || data.subjects.length === 0) return null;
+    if (!subjectsToUse || subjectsToUse.length === 0) return null;
     
-    return data.subjects.find(subject => 
+    return subjectsToUse.find((subject: any) => 
       subject.subject.name.toUpperCase().includes(subjectName.toUpperCase()) ||
       subjectName.toUpperCase().includes(subject.subject.name.toUpperCase())
     );
   };
+
+  // Calculate CA total for a subject
+  const calculateCATotal = (subject: SubjectResult): number => {
+    console.log('🔍 [JuniorSecondaryResult] calculateCATotal - Subject data:', subject);
+    
+    // Check if ca_total is already provided by backend
+    if (subject.ca_total !== undefined && subject.ca_total !== null && !isNaN(Number(subject.ca_total))) {
+      console.log('🔍 [JuniorSecondaryResult] calculateCATotal - Using backend ca_total:', subject.ca_total);
+      return Number(subject.ca_total);
+    }
+    
+    // Calculate from individual components if ca_total is not available
+    const components = [
+      subject.continuous_assessment_score || 0,
+      subject.take_home_test_score || 0,
+      subject.practical_score || 0,
+      subject.appearance_score || 0,
+      subject.project_score || 0,
+      subject.note_copying_score || 0
+    ];
+    
+    console.log('🔍 [JuniorSecondaryResult] calculateCATotal - Components:', components);
+    
+    const total = components.reduce((sum, score) => {
+      const numericScore = Number(score) || 0;
+      console.log(`🔍 [JuniorSecondaryResult] calculateCATotal - Adding ${numericScore} to sum ${sum}`);
+      return sum + numericScore;
+    }, 0);
+    
+    console.log('🔍 [JuniorSecondaryResult] calculateCATotal - Final total:', total);
+    return total;
+  };
+
+  // Filter subjects based on showOnlyPublished prop - using useMemo to avoid initialization issues
+  const subjectsToUse = useMemo(() => {
+    if (!data?.subjects) return [];
+    
+    if (showOnlyPublished) {
+      // Filter for published subjects only (for ResultChecker/student view)
+      const publishedSubjects = data.subjects.filter((subject: any) => subject.status === 'PUBLISHED');
+      
+      console.log('🔍 [JuniorSecondaryResult] FILTERING MODE: Published only');
+      console.log('🔍 [JuniorSecondaryResult] Total subjects:', data.subjects.length);
+      console.log('🔍 [JuniorSecondaryResult] Published subjects:', publishedSubjects.length);
+      console.log('🔍 [JuniorSecondaryResult] Published subject names:', publishedSubjects.map(s => s.subject?.name));
+      
+      return publishedSubjects;
+    } else {
+      // Show all subjects (for Admin Results tab)
+      console.log('🔍 [JuniorSecondaryResult] FILTERING MODE: Show all results');
+      console.log('🔍 [JuniorSecondaryResult] Total subjects:', data.subjects.length);
+      return data.subjects;
+    }
+  }, [data?.subjects, showOnlyPublished]);
 
   // Helper function to get position with ordinal suffix
   const getOrdinalSuffix = (num: number): string => {
@@ -432,6 +490,70 @@ export default function JuniorSecondaryResult({
     if (j === 3 && k !== 13) return "rd";
     return "th";
   };
+
+  // Calculate total and average scores from PUBLISHED subject data only
+  const calculateScores = () => {
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Data:', data);
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Data.total_score:', data.total_score);
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Data.average_score:', data.average_score);
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - All subjects:', data?.subjects?.length);
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Subjects to use:', subjectsToUse.length);
+    
+    // Fallback: Calculate from PUBLISHED subject results only
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Calculating from published subjects only');
+    
+    if (!subjectsToUse || subjectsToUse.length === 0) {
+      console.log('🔍 [JuniorSecondaryResult] calculateScores - No published subjects found');
+      return { totalScore: 0, averageScore: 0 };
+    }
+
+    const validSubjects = subjectsToUse.filter((subject: any) => {
+      const markObtained = Number(subject.mark_obtained) || 0;
+      const isMarkObtainedValid = subject.mark_obtained && 
+                                 !isNaN(markObtained) && 
+                                 markObtained > 0 &&
+                                 String(subject.mark_obtained).length < 20; // Check for concatenated strings
+      
+      console.log(`🔍 [JuniorSecondaryResult] calculateScores - Subject ${subject.subject?.name}: status=${subject.status}, mark_obtained=${subject.mark_obtained}, valid=${isMarkObtainedValid}`);
+      return isMarkObtainedValid;
+    });
+
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Valid published subjects:', validSubjects.length);
+
+    const totalScore = subjectsToUse.reduce((sum: number, subject: any) => {
+      const markObtained = Number(subject.mark_obtained) || 0;
+      const isMarkObtainedValid = subject.mark_obtained && 
+                                 !isNaN(markObtained) && 
+                                 markObtained > 0 &&
+                                 String(subject.mark_obtained).length < 20;
+      
+      let score = 0;
+      if (isMarkObtainedValid) {
+        score = markObtained;
+        console.log(`🔍 [JuniorSecondaryResult] calculateScores - Using mark_obtained: ${score}`);
+      } else {
+        // Fallback: Calculate from CA + Exam
+        const caTotal = calculateCATotal(subject);
+        const examMarks = Number(subject.exam_marks) || 0;
+        score = caTotal + examMarks;
+        console.log(`🔍 [JuniorSecondaryResult] calculateScores - Using calculated score (CA: ${caTotal} + Exam: ${examMarks} = ${score})`);
+      }
+      
+      console.log(`🔍 [JuniorSecondaryResult] calculateScores - Adding ${score} to sum ${sum}`);
+      return sum + score;
+    }, 0);
+    
+    const averageScore = subjectsToUse.length > 0 ? totalScore / subjectsToUse.length : 0;
+
+    console.log('🔍 [JuniorSecondaryResult] calculateScores - Calculated from published subjects:', { totalScore, averageScore });
+
+    return { 
+      totalScore: Math.round(totalScore), 
+      averageScore: Math.round(averageScore * 100) / 100 
+    };
+  };
+
+  const { totalScore, averageScore } = calculateScores();
 
   // Handle data changes and propagate to parent
   const handleDataUpdate = (updates: Partial<JuniorSecondaryResultData>) => {
@@ -730,8 +852,8 @@ export default function JuniorSecondaryResult({
             </thead>
 
             <tbody>
-              {SUBJECTS.map((subject, idx) => {
-                const subjectData = getSubjectData(subject);
+              {subjectsToUse.map((subjectData, idx) => {
+                const subject = subjectData.subject?.name || 'Unknown Subject';
                 const totalScore = subjectData ? subjectData.mark_obtained || 0 : 0;
                 const gradeInfo = getGradeForScore(totalScore);
                 
@@ -776,7 +898,12 @@ export default function JuniorSecondaryResult({
                     
                     {/* CA Total */}
                     <td className={`border border-slate-600 p-0.5 text-center text-xs font-semibold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                      {subjectData?.ca_total ? Math.round(subjectData.ca_total) : ''}
+                      {subjectData ? (() => {
+                        const caTotal = calculateCATotal(subjectData);
+                        const rounded = Math.round(caTotal);
+                        console.log(`🔍 [JuniorSecondaryResult] CA Total for ${subject}: ${caTotal} -> ${rounded}`);
+                        return isNaN(rounded) ? '0' : rounded;
+                      })() : ''}
                     </td>
                     
                     {/* Exam Score */}
@@ -786,12 +913,52 @@ export default function JuniorSecondaryResult({
                     
                     {/* Total Score */}
                     <td className={`border border-slate-600 p-0.5 text-center text-xs font-bold ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                      {subjectData?.mark_obtained ? Math.round(subjectData.mark_obtained) : ''}
+                      {(() => {
+                        if (!subjectData) return '';
+                        
+                        // Check if mark_obtained is valid (not concatenated)
+                        const markObtained = Number(subjectData.mark_obtained) || 0;
+                        const isMarkObtainedValid = subjectData.mark_obtained && 
+                                                 !isNaN(markObtained) && 
+                                                 markObtained > 0 &&
+                                                 String(subjectData.mark_obtained).length < 20;
+                        
+                        if (isMarkObtainedValid) {
+                          return Math.round(markObtained);
+                        } else {
+                          // Calculate from CA + Exam
+                          const caTotal = calculateCATotal(subjectData);
+                          const examMarks = Number(subjectData.exam_marks) || 0;
+                          const calculatedTotal = caTotal + examMarks;
+                          return Math.round(calculatedTotal);
+                        }
+                      })()}
                     </td>
                     
                     {/* Position */}
                     <td className={`border border-slate-600 p-0.5 text-center text-xs ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                      {subjectData?.position || ''}
+                      {(() => {
+                        // Try different possible position field names
+                        let position = '';
+                        
+                        // Check if position is already formatted (contains 'st', 'nd', 'rd', 'th')
+                        if (subjectData?.position && typeof subjectData.position === 'string' && 
+                            (subjectData.position.includes('st') || subjectData.position.includes('nd') || 
+                             subjectData.position.includes('rd') || subjectData.position.includes('th'))) {
+                          position = subjectData.position;
+                        } else if (subjectData?.subject_position && typeof subjectData.subject_position === 'number') {
+                          position = `${subjectData.subject_position}${getOrdinalSuffix(subjectData.subject_position)}`;
+                        } else if (subjectData?.position && typeof subjectData.position === 'number') {
+                          position = `${subjectData.position}${getOrdinalSuffix(subjectData.position)}`;
+                        }
+                        
+                        console.log(`🔍 [JuniorSecondaryResult] Position for ${subject}:`, {
+                          position: subjectData?.position,
+                          subject_position: subjectData?.subject_position,
+                          final: position
+                        });
+                        return position;
+                      })()}
                     </td>
                     
                     {/* Grade */}
@@ -823,13 +990,21 @@ export default function JuniorSecondaryResult({
           <div className="flex-1 pr-6">
             <div className="mb-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="mb-2 text-xs font-semibold text-slate-700">
-                Total Scores: <span className="inline-block w-20 text-center">
-                  {data.total_score ? Math.round(data.total_score) : ''}
+                Total Scores: <span className="inline-block w-20 text-center font-bold text-blue-800">
+                  {(() => {
+                    const displayTotal = totalScore || data.total_score || 0;
+                    console.log('🔍 [JuniorSecondaryResult] Display - Total score:', displayTotal);
+                    return Math.round(Number(displayTotal));
+                  })()}
                 </span>
               </div>
               <div className="mb-2 text-xs font-semibold text-slate-700">
-                Average Scores: <span className="inline-block w-20 text-center">
-                  {data.average_score ? Math.round(data.average_score) : ''}
+                Average Scores: <span className="inline-block w-20 text-center font-bold text-blue-800">
+                  {(() => {
+                    const displayAverage = averageScore || data.average_score || 0;
+                    console.log('🔍 [JuniorSecondaryResult] Display - Average score:', displayAverage);
+                    return Math.round(Number(displayAverage) * 100) / 100;
+                  })()}
                 </span>
               </div>
               <div className="text-xs font-semibold text-slate-700">
