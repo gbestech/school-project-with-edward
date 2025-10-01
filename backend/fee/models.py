@@ -98,6 +98,7 @@ REMINDER_TYPE_CHOICES = (
 
 class AcademicSession(models.Model):
     """Academic session model"""
+
     name = models.CharField(max_length=100)
     start_date = models.DateField()
     end_date = models.DateField()
@@ -117,6 +118,7 @@ class AcademicSession(models.Model):
 
 class FeeStructure(models.Model):
     """Fee structure model"""
+
     FEE_TYPE_CHOICES = FEE_TYPE_CHOICES
     name = models.CharField(max_length=100)
     fee_type = models.CharField(max_length=20, choices=FEE_TYPE_CHOICES)
@@ -140,28 +142,31 @@ class FeeStructure(models.Model):
 
 class StudentFee(models.Model):
     """Student fee model"""
+
     PAYMENT_STATUS_CHOICES = PAYMENT_STATUS_CHOICES
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="fees")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="fee")
     fee_structure = models.ForeignKey(FeeStructure, on_delete=models.CASCADE)
     academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
     term = models.CharField(max_length=10, choices=TERM_CHOICES)
-    
+
     # Amount fields
     amount_due = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     late_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    
+
     # Dates
     due_date = models.DateField()
-    
+
     # Status
-    status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default="PENDING")
-    
+    status = models.CharField(
+        max_length=10, choices=PAYMENT_STATUS_CHOICES, default="PENDING"
+    )
+
     # Additional info
     remarks = models.TextField(blank=True, null=True)
     is_overdue = models.BooleanField(default=False)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -190,25 +195,26 @@ class StudentFee(models.Model):
     def update_status(self):
         """Update payment status based on amounts"""
         total_paid = self.amount_paid + self.discount_amount
-        
+
         if total_paid >= self.amount_due:
             self.status = "PAID"
         elif total_paid > 0:
             self.status = "PARTIAL"
         else:
             self.status = "PENDING"
-        
+
         # Check if overdue
         if self.due_date < date.today() and self.status != "PAID":
             self.is_overdue = True
             if self.status == "PENDING":
                 self.status = "OVERDUE"
-        
+
         self.save()
 
 
 class FeeDiscount(models.Model):
     """Fee discount model"""
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     discount_type = models.CharField(max_length=15, choices=DISCOUNT_TYPE_CHOICES)
@@ -231,7 +237,10 @@ class FeeDiscount(models.Model):
 
 class StudentDiscount(models.Model):
     """Student discount application model"""
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="discounts")
+
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="discounts"
+    )
     discount = models.ForeignKey(FeeDiscount, on_delete=models.CASCADE)
     academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
     applied_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -249,7 +258,10 @@ class StudentDiscount(models.Model):
 
 class PaymentReminder(models.Model):
     """Payment reminder model"""
-    student_fee = models.ForeignKey(StudentFee, on_delete=models.CASCADE, related_name="reminders")
+
+    student_fee = models.ForeignKey(
+        StudentFee, on_delete=models.CASCADE, related_name="reminders"
+    )
     reminder_type = models.CharField(max_length=20, choices=REMINDER_TYPE_CHOICES)
     sent_date = models.DateTimeField(auto_now_add=True)
     is_sent = models.BooleanField(default=False)
@@ -262,7 +274,9 @@ class PaymentReminder(models.Model):
         ordering = ["-sent_date"]
 
     def __str__(self):
-        return f"{self.student_fee.student.full_name} - {self.get_reminder_type_display()}"
+        return (
+            f"{self.student_fee.student.full_name} - {self.get_reminder_type_display()}"
+        )
 
 
 class PaymentGatewayConfig(models.Model):
@@ -314,20 +328,26 @@ class Payment(models.Model):
     )
 
     # Payment details
-    reference = models.CharField(max_length=100, unique=True)
+    reference = models.CharField(max_length=100, unique=True)  # ✅ Already 100
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default="NGN")
 
     # Gateway information
     payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAY_CHOICES)
-    payment_method = models.CharField(max_length=25, choices=PAYMENT_METHOD_CHOICES)
+    payment_method = models.CharField(
+        max_length=50, choices=PAYMENT_METHOD_CHOICES
+    )  # ⚠️ CHANGE: 25 → 50
 
     # Payment status
     status = models.CharField(
-        max_length=10, choices=PAYMENT_STATUS_CHOICES, default="PENDING"
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default="PENDING",  # ⚠️ CHANGE: 10 → 20
     )
     gateway_status = models.CharField(
-        max_length=15, choices=GATEWAY_STATUS_CHOICES, default="PENDING"
+        max_length=20,
+        choices=GATEWAY_STATUS_CHOICES,
+        default="PENDING",  # ⚠️ CHANGE: 15 → 20
     )
 
     # Timestamps
@@ -336,23 +356,29 @@ class Payment(models.Model):
     verification_date = models.DateTimeField(blank=True, null=True)
 
     # Universal gateway fields
-    gateway_reference = models.CharField(max_length=100, blank=True, null=True)
-    gateway_transaction_id = models.CharField(max_length=100, blank=True, null=True)
-    gateway_response = models.JSONField(
-        blank=True, null=True
-    )  # Store full gateway response
+    gateway_reference = models.CharField(
+        max_length=200, blank=True, null=True
+    )  # ⚠️ CHANGE: 100 → 200
+    gateway_transaction_id = models.CharField(
+        max_length=200, blank=True, null=True
+    )  # ⚠️ CHANGE: 100 → 200
+    gateway_response = models.JSONField(blank=True, null=True)
 
     # Customer information
     payer_email = models.EmailField(blank=True, null=True)
-    payer_name = models.CharField(max_length=100, blank=True, null=True)
+    payer_name = models.CharField(
+        max_length=200, blank=True, null=True
+    )  # ⚠️ CHANGE: 100 → 200
     payer_phone = models.CharField(max_length=20, blank=True, null=True)
 
-    # Card/Bank details (for reporting, not storage of sensitive data)
+    # Card/Bank details
     card_last_four = models.CharField(max_length=4, blank=True, null=True)
     card_type = models.CharField(
-        max_length=20, blank=True, null=True
-    )  # visa, mastercard, etc.
-    bank_name = models.CharField(max_length=100, blank=True, null=True)
+        max_length=50, blank=True, null=True
+    )  # ⚠️ CHANGE: 20 → 50
+    bank_name = models.CharField(
+        max_length=200, blank=True, null=True
+    )  # ⚠️ CHANGE: 100 → 200
 
     # Transaction fees
     gateway_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -361,11 +387,13 @@ class Payment(models.Model):
     )
 
     # Receipt and documentation
-    receipt_number = models.CharField(max_length=20, unique=True, blank=True, null=True)
+    receipt_number = models.CharField(
+        max_length=50, unique=True, blank=True, null=True
+    )  # ⚠️ CHANGE: 20 → 50
     description = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
-    # Metadata for additional information
+    # Metadata
     metadata = models.JSONField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -447,11 +475,11 @@ class PaymentAttempt(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Attempt tracking
-    attempt_reference = models.CharField(max_length=100)
+    attempt_reference = models.CharField(max_length=200)
     status = models.CharField(max_length=15, choices=GATEWAY_STATUS_CHOICES)
 
     # Error tracking
-    error_code = models.CharField(max_length=50, blank=True, null=True)
+    error_code = models.CharField(max_length=100, blank=True, null=True)
     error_message = models.TextField(blank=True, null=True)
 
     # Gateway response

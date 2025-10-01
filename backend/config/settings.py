@@ -15,42 +15,41 @@ import os
 from dotenv import load_dotenv
 
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-STATIC_URL = "/static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
-# ✅ Media files configuration
-MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "edwardaja750@gmail.com")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "your-brevo-smtp-password")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "edwardaja750@gmail.com")
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-]
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", os.getenv("SECRET_KEY", ""))
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY", "django-insecure-your-secret-key-here-change-in-production"
-)
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY must be set in .env file")
 
 
-# SECURITY WARNING: don't run with debug turned on in production!
+import dj_database_url
+
+
 DEBUG = os.getenv("DEBUG", "True") == "True"
 
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend"]
 
+# Static and Media files
+STATIC_URL = "/static/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
+
+# ✅ Media files configuration
+MEDIA_URL = "/media/"
+
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# Email settings
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "edwardaja750@gmail.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "your-brevo-smtp-password")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "edwardaja750@gmail.com")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "your-brevo-api-key-here")
 
 # Application definition
 
@@ -106,11 +105,6 @@ SITE_ID = 1
 
 # Use JWT
 REST_USE_JWT = True
-
-
-# ACCOUNT_LOGIN_METHODS = {"email"}
-# ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
-
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
@@ -270,19 +264,25 @@ ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = (
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# Database: Neon (if DATABASE_URL is set) else SQLite fallback
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL, conn_max_age=600, ssl_require=True
+        )
     }
-}
-
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -345,10 +345,6 @@ REST_FRAMEWORK = {
 EMAIL_BACKEND = (
     "django.core.mail.backends.console.EmailBackend"  # Fallback for development
 )
-
-
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "your-brevo-api-key-here")
-
 
 from datetime import timedelta
 

@@ -60,7 +60,7 @@ class Term(models.Model):
 
     name = models.CharField(max_length=20, choices=TERM_CHOICES)
     academic_session = models.ForeignKey(
-        'fee.AcademicSession', on_delete=models.CASCADE, related_name="terms"
+        "academics.AcademicSession", on_delete=models.CASCADE, related_name="terms"
     )
     start_date = models.DateField()
     end_date = models.DateField()
@@ -210,7 +210,9 @@ class SubjectAllocation(models.Model):
         "teacher.Teacher", on_delete=models.CASCADE, related_name="subject_allocations"
     )
     academic_session = models.ForeignKey(
-        'fee.AcademicSession', on_delete=models.CASCADE, related_name="subject_allocations"
+        "academics.AcademicSession",
+        on_delete=models.CASCADE,
+        related_name="subject_allocations",
     )
 
     # Class assignment
@@ -246,7 +248,7 @@ class Curriculum(models.Model):
     name = models.CharField(max_length=100)
     education_level = models.CharField(max_length=20)
     academic_session = models.ForeignKey(
-        'fee.AcademicSession', on_delete=models.CASCADE, related_name="curricula"
+        "academics.AcademicSession", on_delete=models.CASCADE, related_name="curricula"
     )
     subjects = models.ManyToManyField(
         Subject, through="CurriculumSubject", related_name="curricula"
@@ -321,7 +323,9 @@ class AcademicCalendar(models.Model):
     event_type = models.CharField(max_length=20, choices=EVENT_TYPES)
 
     academic_session = models.ForeignKey(
-        'fee.AcademicSession', on_delete=models.CASCADE, related_name="calendar_events"
+        "academics.AcademicSession",
+        on_delete=models.CASCADE,
+        related_name="calendar_events",
     )
     term = models.ForeignKey(
         Term,
