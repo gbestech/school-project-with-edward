@@ -44,6 +44,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ["true", "1", "yes"]
 # ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend"]
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+
 # Static and Media files
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
@@ -230,23 +231,20 @@ MIDDLEWARE = [
 #     "http://127.0.0.1:3000",
 # ]
 
+# CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,https://your-frontend.vercel.app,https://www.godstreasureschools.com",
 ).split(",")
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",  # Add this if you're using Vite
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://localhost:8000",  # Add backend URL
-    "http://127.0.0.1:8000",  # Add backend URL
-]
+# CORS Allowed Origins
+CORS_ALLOWED_ORIGINS = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://your-frontend.vercel.app,https://www.godstreasureschools.com",
+).split(",")
 
-# CORS_ALLOW_ALL_ORIGINS = True
-
+# Allow cookies/auth credentials
 CORS_ALLOW_CREDENTIALS = True
-
 
 ROOT_URLCONF = "config.urls"
 
