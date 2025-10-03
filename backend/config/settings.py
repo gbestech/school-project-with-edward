@@ -19,19 +19,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
+# SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", os.getenv("SECRET_KEY", ""))
+
+# if not SECRET_KEY:
+#     raise ValueError("SECRET_KEY must be set in .env file")
+import sys
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", os.getenv("SECRET_KEY", ""))
 
+# Allow dummy SECRET_KEY during collectstatic build step
 if not SECRET_KEY:
-    raise ValueError("SECRET_KEY must be set in .env file")
-
+    if "collectstatic" in sys.argv:
+        SECRET_KEY = "temporary-secret-key-for-collectstatic-only"
+    else:
+        raise ValueError("SECRET_KEY must be set in .env file")
 
 import dj_database_url
 
 
-DEBUG = os.getenv("DEBUG", "True") == "True"
+# DEBUG = os.getenv("DEBUG", "True") == "True"
+DEBUG = os.getenv("DEBUG", "False").lower() in ["true", "1", "yes"]
 
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend"]
+# ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "backend"]
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Static and Media files
 STATIC_URL = "/static/"
@@ -264,15 +275,39 @@ ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = (
 WSGI_APPLICATION = "config.wsgi.application"
 
 
-# Database: Neon (if DATABASE_URL is set) else SQLite fallback
+# # Database: Neon (if DATABASE_URL is set) else SQLite fallback
+# DATABASE_URL = os.getenv("DATABASE_URL")
+
+# if DATABASE_URL:
+#     DATABASES = {
+#         "default": dj_database_url.parse(
+#             DATABASE_URL, conn_max_age=600, ssl_require=True
+#         )
+#     }
+# else:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": "django.db.backends.sqlite3",
+#             "NAME": BASE_DIR / "db.sqlite3",
+#         }
+#     }
+
+
+# Database: Neon (PostgreSQL)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
-            DATABASE_URL, conn_max_age=600, ssl_require=True
+            DATABASE_URL,
+            conn_max_age=60,  # keep connections alive for 60s, auto-reconnect after
+            ssl_require=True,
         )
     }
+
+    # Force SSL mode = require (important for Neon/hosted DBs)
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+
 else:
     DATABASES = {
         "default": {

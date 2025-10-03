@@ -5,8 +5,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from .views import api_root, debug_login_function
 from authentication.views import GoogleLogin
+from .health import health_check
 
 urlpatterns = [
+    path("health/", health_check, name="health"),
     path("admin/", admin.site.urls),
     # ===== API ROOT =====
     path("api/", api_root, name="api_root"),
