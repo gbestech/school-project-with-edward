@@ -124,169 +124,174 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // ✅ FIXED: Enhanced login function with better error handling
-  const login = async (credentials: LoginCredentials): Promise<FullUserData | undefined> => {
+//   
+
+// DEFINITIVE FIX for useAuth login function
+// This handles the exact response structure from your Django backend
+
+const login = async (credentials: LoginCredentials): Promise<FullUserData | undefined> => {
   setIsLoading(true);
 
   try {
-    console.log('Attempting login with:', { username: credentials.username });
+    console.log('🔐 Attempting login with:', { username: credentials.username });
 
     const loginData = {
       username: credentials.username,
       password: credentials.password,
     };
-
-    console.log('Login data prepared:', loginData);
     
-    // Use the custom JWT authentication endpoint
+    // Call the Django login endpoint
     const response = await api.post('/api/auth/login/', loginData);
-    console.log('Login response received:', {
-      hasUser: !!response.user,
-      hasAccessToken: !!response.access,
-      hasKey: !!response.key,
-      keys: Object.keys(response)
-    });
-
-    // Extract tokens - handle JWT format
-    let token: string | undefined;
-    let refreshToken: string | undefined;
-
-    if ('access' in response) {
-      token = response.access;
-      refreshToken = response.refresh;
-    } else if ('access_token' in response) {
-      token = response.access_token;
-      refreshToken = response.refresh_token;
-    } else if ('key' in response) {
-      token = response.key;
-    }
+    
+    console.log('🔍 Raw login response:', response);
+    console.log('🔍 Response type:', typeof response);
+    console.log('🔍 Response keys:', Object.keys(response));
+    
+    // Extract tokens from response
+    const token = response.access;
+    const refreshToken = response.refresh;
 
     if (!token) {
-      console.error('No token in response:', response.data);
+      console.error('❌ No access token in response');
       throw new Error('No authentication token received from server');
     }
 
+    // Store tokens
     localStorage.setItem('authToken', token);
     if (refreshToken) {
       localStorage.setItem('refreshToken', refreshToken);
     }
+    console.log('✅ Tokens stored successfully');
 
-    console.log('Tokens stored, fetching user data...');
-
-    let userData: FullUserData;
-    let role: UserRole;
-    let rawUserData: any;
-
-    if (response.user) {
-      rawUserData = response;
-      console.log('🔍 useAuth login: Response has user data:', rawUserData);
-      console.log('🔍 useAuth login: User role from response:', rawUserData.user.role || rawUserData.role);
-      role = mapServerRoleToEnum(rawUserData.user.role || rawUserData.role);
-    } else {
-      console.log('🔍 useAuth login: No user data in login response, fetching from profile...');
-      const profileResponse = await api.get('/api/profiles/me/');
-      rawUserData = profileResponse;
-      console.log('🔍 useAuth login: Profile response:', rawUserData);
-      console.log('🔍 useAuth login: Role from profile:', rawUserData.role || rawUserData.user?.role);
-      role = mapServerRoleToEnum(rawUserData.role || rawUserData.user?.role);
+    // Extract user data from response
+    const rawUserData = response.user;
+    
+    if (!rawUserData) {
+      console.error('❌ No user data in login response:', response);
+      throw new Error('No user data received from server');
     }
 
-    console.log('🔍 useAuth login: User role determined:', role);
+    console.log('🔍 Raw user data:', rawUserData);
+    console.log('🔍 User data keys:', Object.keys(rawUserData));
+    console.log('🔍 User role from response:', rawUserData.role);
+
+    // Extract and validate role
+    const roleValue = rawUserData.role;
+    
+    if (!roleValue) {
+      console.error('❌ No role in user data:', rawUserData);
+      throw new Error('No role provided by server');
+    }
+
+    console.log('🔍 Role value before mapping:', roleValue);
+    const role = mapServerRoleToEnum(roleValue);
+    console.log('✅ Mapped role:', role);
+
+    // Build userData object based on role
+    let userData: FullUserData;
+
+    const baseUserData = {
+      id: rawUserData.id,
+      email: rawUserData.email,
+      first_name: rawUserData.first_name || '',
+      last_name: rawUserData.last_name || '',
+      is_superuser: rawUserData.is_superuser || false,
+      is_staff: rawUserData.is_staff || false,
+      is_active: rawUserData.is_active !== undefined ? rawUserData.is_active : true,
+    };
 
     switch (role) {
       case UserRole.STUDENT:
         userData = {
-          id: rawUserData.user?.id || rawUserData.id,
-          email: rawUserData.user?.email || rawUserData.email,
-          first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
-          last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
+          ...baseUserData,
           role: UserRole.STUDENT,
-          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
-          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
-          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
           student_data: rawUserData.student_data || {},
         };
         break;
+
       case UserRole.TEACHER:
         userData = {
-          id: rawUserData.user?.id || rawUserData.id,
-          email: rawUserData.user?.email || rawUserData.email,
-          first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
-          last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
+          ...baseUserData,
           role: UserRole.TEACHER,
-          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
-          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
-          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
           teacher_data: rawUserData.teacher_data || {},
         };
         break;
+
       case UserRole.ADMIN:
         userData = {
-          id: rawUserData.user?.id || rawUserData.id,
-          email: rawUserData.user?.email || rawUserData.email,
-          first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
-          last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
+          ...baseUserData,
           role: UserRole.ADMIN,
-          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
-          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
-          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
         };
         break;
+
       case UserRole.PARENT:
         userData = {
-          id: rawUserData.user?.id || rawUserData.id,
-          email: rawUserData.user?.email || rawUserData.email,
-          first_name: rawUserData.user?.first_name || rawUserData.first_name || '',
-          last_name: rawUserData.user?.last_name || rawUserData.last_name || '',
+          ...baseUserData,
           role: UserRole.PARENT,
-          is_superuser: rawUserData.user?.is_superuser || rawUserData.is_superuser || false,
-          is_staff: rawUserData.user?.is_staff || rawUserData.is_staff || false,
-          is_active: rawUserData.user?.is_active || rawUserData.is_active || true,
           parent_data: rawUserData.parent_data || {},
         };
         break;
+
       default:
         throw new Error(`Unsupported role: ${role}`);
     }
 
-    try {
-      console.log('Fetching additional profile data...');
-      // Use correct endpoints based on actual backend URL structure
-      const [profileData, verificationStatus, contactInfo] = await Promise.allSettled([
-        api.get('/api/profiles/me/'),
-        api.get('/api/profiles/verification-status/'),
-        api.get('/api/profiles/contact-info/')
-      ]);
+    console.log('✅ User data object created:', userData);
+
+    // Fetch additional profile data (non-blocking, in background)
+    Promise.allSettled([
+      api.get('/api/profiles/me/'),
+      api.get('/api/profiles/verification-status/'),
+      api.get('/api/profiles/contact-info/')
+    ]).then(([profileData, verificationStatus, contactInfo]) => {
+      const updatedUser = { ...userData };
+      let hasUpdates = false;
 
       if (profileData.status === 'fulfilled') {
-        userData.profile = profileData.value;
+        updatedUser.profile = profileData.value;
+        hasUpdates = true;
       }
       if (verificationStatus.status === 'fulfilled') {
-        userData.verification_status = verificationStatus.value;
+        updatedUser.verification_status = verificationStatus.value;
+        hasUpdates = true;
       }
       if (contactInfo.status === 'fulfilled') {
-        userData.contact_info = contactInfo.value;
+        updatedUser.contact_info = contactInfo.value;
+        hasUpdates = true;
       }
-    } catch (error) {
-      console.warn('Some profile data could not be fetched:', error);
-    }
 
+      if (hasUpdates) {
+        setUser(updatedUser);
+        localStorage.setItem('userData', JSON.stringify(updatedUser));
+        console.log('✅ Additional profile data loaded');
+      }
+    }).catch(error => {
+      console.warn('⚠️ Could not fetch additional profile data:', error);
+    });
+
+    // Store initial user data and set state
     localStorage.setItem('userData', JSON.stringify(userData));
     setUser(userData);
 
-    console.log('🔍 useAuth login: ✅ Login successful, user state updated');
-    console.log('🔍 useAuth login: User data:', userData);
-    console.log('🔍 useAuth login: User role:', userData.role);
-    console.log('🔍 useAuth login: About to return user data');
-    return userData; // ✅ FIXED: Return actual user data
+    console.log('✅ Login successful');
+    console.log('✅ User role:', userData.role);
+    console.log('✅ Returning user data');
+    
+    return userData;
+    
   } catch (error) {
-    console.error('Login failed:', error);
+    console.error('❌ Login failed:', error);
+    
+    // Clear stored tokens on error
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userData');
+    
     if (axios.isAxiosError(error)) {
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error headers:', error.response?.headers);
+      console.error('❌ Axios error response:', error.response?.data);
+      console.error('❌ Axios error status:', error.response?.status);
     }
+    
     throw error;
   } finally {
     setIsLoading(false);

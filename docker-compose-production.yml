@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: edwad148/schoolmsapp-backend:latest
+    container_name: backend
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+    env_file:
+      - .env.backend
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    image: edwad148/schoolmsapp-frontend:latest
+    container_name: frontend
+    command: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+    expose:
+      - "80"
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: >
+      sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done"
