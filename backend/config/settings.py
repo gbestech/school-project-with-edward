@@ -468,7 +468,9 @@ import dj_database_url
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(dotenv_path=BASE_DIR / ".env")
+env_file = BASE_DIR / ".env"
+if env_file.exists():
+    load_dotenv(dotenv_path=env_file)
 
 # ============================================
 # SECURITY SETTINGS
@@ -478,13 +480,20 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
 
 # Allow dummy SECRET_KEY during collectstatic OR if explicitly building
+# Handle missing SECRET_KEY during build
 if not SECRET_KEY:
-    if "collectstatic" in sys.argv or os.getenv("BUILD_COMMAND"):
-        SECRET_KEY = (
-            "temporary-secret-key-for-collectstatic-only-do-not-use-in-production"
-        )
+    # Allow temporary key during collectstatic or on Render build
+    is_collectstatic = "collectstatic" in sys.argv
+    is_render_build = os.getenv("RENDER") is not None
+
+    if is_collectstatic or is_render_build:
+        print("⚠️  Using temporary SECRET_KEY for build/collectstatic")
+        SECRET_KEY = "django-insecure-temporary-key-for-build-only-not-for-production"
     else:
-        raise ValueError("DJANGO_SECRET_KEY must be set in environment variables")
+        raise ValueError(
+            "DJANGO_SECRET_KEY environment variable is required. "
+            "Set it in Render dashboard > Environment tab."
+        )
 
 DJANGO_SECRET_KEY = SECRET_KEY  # Keep as alias for compatibility
 
