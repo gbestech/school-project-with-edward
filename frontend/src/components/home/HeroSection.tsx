@@ -1143,72 +1143,72 @@ const HeroSection: React.FC = () => {
           
           {/* Admin Dropdown */}
           {showAdminDropdown && (
-            <div className="admin-dropdown absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 backdrop-blur-xl">
-              <div className="p-4">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Event Management</h3>
-                
-                {/* Current Active Event */}
-                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Current Active Event</h4>
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
-                    {activeEvent ? activeEvent.title : 'No active event'}
+  <div className="admin-dropdown absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-3rem)] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 backdrop-blur-xl">
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Event Management</h3>
+      
+      {/* Current Active Event */}
+      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Current Active Event</h4>
+        <p className="text-sm text-slate-700 dark:text-slate-300">
+          {activeEvent ? activeEvent.title : 'No active event'}
+        </p>
+      </div>
+      
+      {/* Available Events - MOBILE OPTIMIZED */}
+      <div className="space-y-2 max-h-[40vh] md:max-h-60 overflow-y-auto overscroll-contain">
+        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2 sticky top-0 bg-white dark:bg-slate-900 z-10 py-1">Available Events</h4>
+        {availableEvents.length > 0 ? (
+          availableEvents.map((event) => (
+            <button
+              key={event.id}
+              onClick={() => event.id && setActiveEventById(event.id)}
+              className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+                activeEvent?.id === event.id
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                  : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium truncate ${
+                    activeEvent?.id === event.id
+                      ? 'text-green-800 dark:text-green-200'
+                      : 'text-slate-900 dark:text-slate-100'
+                  }`}>
+                    {event.title}
+                  </p>
+                  <p className={`text-xs truncate ${
+                    activeEvent?.id === event.id
+                      ? 'text-green-600 dark:text-green-300'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}>
+                    {event.display_type} • {event.background_theme}
                   </p>
                 </div>
-                
-                {/* Available Events */}
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">Available Events</h4>
-                  {availableEvents.length > 0 ? (
-                    availableEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        onClick={() => event.id && setActiveEventById(event.id)}
-                        className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                          activeEvent?.id === event.id
-                            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                            : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className={`text-sm font-medium ${
-                              activeEvent?.id === event.id
-                                ? 'text-green-800 dark:text-green-200'
-                                : 'text-slate-900 dark:text-slate-100'
-                            }`}>
-                              {event.title}
-                            </p>
-                            <p className={`text-xs ${
-                              activeEvent?.id === event.id
-                                ? 'text-green-600 dark:text-green-300'
-                                : 'text-slate-600 dark:text-slate-400'
-                            }`}>
-                              {event.display_type} • {event.background_theme}
-                            </p>
-                          </div>
-                          {activeEvent?.id === event.id && (
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          )}
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-                      No events available
-                    </p>
-                  )}
-                </div>
-                
-                {/* Close Button */}
-                <button
-                  onClick={() => setShowAdminDropdown(false)}
-                  className="w-full mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200"
-                >
-                  Close
-                </button>
+                {activeEvent?.id === event.id && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0 ml-2"></div>
+                )}
               </div>
-            </div>
-          )}
+            </button>
+          ))
+        ) : (
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+            No events available
+          </p>
+        )}
+      </div>
+      
+      {/* Close Button */}
+      <button
+        onClick={() => setShowAdminDropdown(false)}
+        className="w-full mt-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors duration-200 sticky bottom-0"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
         </div>
       )}
     </section>

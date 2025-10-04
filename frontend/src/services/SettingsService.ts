@@ -315,6 +315,12 @@ class SettingsService {
       const response = await api.get('/school-settings/school-settings/');
 ;
       console.log('Raw API response:', response);
+
+       // Check if response is HTML (404 error page)
+    if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+      console.error('Received HTML instead of JSON - likely a 404 or auth error');
+      return this.getDefaultSettings();
+    }
       
       // Transform the response to match the frontend interface
       const transformedSettings: SchoolSettings = {
