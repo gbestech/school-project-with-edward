@@ -319,11 +319,15 @@ const handleResponseError = async (response: Response, endpoint: string, method:
 };
 
 // Helper function to process endpoint
+// const processEndpoint = (endpoint: string): string => {
+//   // If endpoint already starts with /api/, remove the /api prefix
+//   const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
+//   // Ensure cleanEndpoint starts with a slash
+//   return cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+// };
 const processEndpoint = (endpoint: string): string => {
-  // If endpoint already starts with /api/, remove the /api prefix
-  const cleanEndpoint = endpoint.startsWith('/api/') ? endpoint.substring(4) : endpoint;
-  // Ensure cleanEndpoint starts with a slash
-  return cleanEndpoint.startsWith('/') ? cleanEndpoint : `/${cleanEndpoint}`;
+  // Just ensure endpoint starts with a slash - don't strip /api/
+  return endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 };
 
 // Helper function to build URL with query parameters
