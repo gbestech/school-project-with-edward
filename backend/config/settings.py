@@ -25,14 +25,14 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 #     raise ValueError("SECRET_KEY must be set in .env file")
 import sys
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", os.getenv("SECRET_KEY", ""))
+DJANGO_SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", os.getenv("DJANGO_SECRET_KEY", ""))
 
 # Allow dummy SECRET_KEY during collectstatic build step
-if not SECRET_KEY:
+if not DJANGO_SECRET_KEY:
     if "collectstatic" in sys.argv:
-        SECRET_KEY = "temporary-secret-key-for-collectstatic-only"
+        DJANGO_SECRET_KEY = "temporary-secret-key-for-collectstatic-only"
     else:
-        raise ValueError("SECRET_KEY must be set in .env file")
+        raise ValueError("DJANGO_SECRET_KEY must be set in .env file")
 
 import dj_database_url
 

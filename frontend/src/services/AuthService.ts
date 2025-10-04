@@ -79,7 +79,7 @@ interface GoogleUserInfo {
 }
 
 export class AuthService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   private googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
   private isGoogleInitialized = false;
 
@@ -88,19 +88,15 @@ export class AuthService {
     console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
     console.log('VITE_GOOGLE_CLIENT_ID:', import.meta.env.VITE_GOOGLE_CLIENT_ID);
     console.log('Base URL:', this.baseUrl);
-    console.log('Google Client ID:', this.googleClientId);
+    console.log('Google Client ID:', this.googleClientId ? '✅ Set' : '❌ Missing');
     
     if (!this.googleClientId) {
       console.error('❌ Google Client ID is not set! Check your .env file');
       return;
     }
     
-    if (!this.googleClientId.includes('.apps.googleusercontent.com')) {
-      console.error('❌ Invalid Google Client ID format');
-      return;
-    }
+      
     
-    console.log('✅ Environment variables loaded successfully');
     this.initializeGoogle();
   }
 

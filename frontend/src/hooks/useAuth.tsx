@@ -1,8 +1,8 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import type { CustomUser, LoginCredentials, UserProfile, FullUserData, StudentUserData, TeacherUserData, ParentUserData } from '@/types/types';
+import type { LoginCredentials, UserProfile, FullUserData} from '@/types/types';
 import { UserRole, UserVerificationStatus, UserContactInfo } from '@/types/types';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import api from '@/services/api';
 
 
@@ -123,11 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  // ✅ FIXED: Enhanced login function with better error handling
-//   
-
-// DEFINITIVE FIX for useAuth login function
-// This handles the exact response structure from your Django backend
+  
 
 const login = async (credentials: LoginCredentials): Promise<FullUserData | undefined> => {
   setIsLoading(true);
