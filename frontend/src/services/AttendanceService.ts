@@ -39,7 +39,7 @@ export const AttendanceCodeToStatusMap: Record<'P' | 'A' | 'L' | 'E', 'present' 
 export async function getAttendance(params?: Record<string, any>) {
   console.log('🔍 AttendanceService: Calling getAttendance with params:', params);
   try {
-    const response = await api.get('/attendance/attendance/', params);
+    const response = await api.get('/api/attendance/attendance/', params);
     console.log('✅ AttendanceService: API response received:', response);
     return response;
   } catch (error) {
@@ -49,24 +49,24 @@ export async function getAttendance(params?: Record<string, any>) {
 }
 
 export async function addAttendance(data: Partial<AttendanceRecordBackend>) {
-  return api.post('/attendance/attendance/', data);
+  return api.post('/api/attendance/attendance/', data);
 }
 
 export async function updateAttendance(id: number, data: Partial<AttendanceRecordBackend>) {
-  return api.patch(`/attendance/attendance/${id}/`, data);
+  return api.patch(`/api/attendance/attendance/${id}/`, data);
 }
 
 export async function deleteAttendance(id: number) {
-  return api.delete(`/attendance/attendance/${id}/`);
+  return api.delete(`/api/attendance/attendance/${id}/`);
 }
 
 // Lesson/Class Attendance
 export async function getLessonAttendance(params?: Record<string, any>) {
-  return api.get('/lessons/attendances/', params);
+  return api.get('/api/lessons/attendances/', params);
 }
 
 export async function addLessonAttendance(data: any) {
-  return api.post('/lessons/attendances/', data);
+  return api.post('/api/lessons/attendances/', data);
 }
 
 export async function updateLessonAttendance(id: number, data: any) {
@@ -74,5 +74,5 @@ export async function updateLessonAttendance(id: number, data: any) {
 }
 
 export async function deleteLessonAttendance(id: number) {
-  return api.delete(`/lessons/attendances/${id}/`);
+  return api.delete(`/api/lessons/attendances/${id}/`);
 }

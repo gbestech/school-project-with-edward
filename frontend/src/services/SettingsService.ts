@@ -308,17 +308,12 @@ export interface UserRoleCreateUpdate {
 }
 
 class SettingsService {
-  /**
-   * School Settings Methods
-   */
   
-  /**
-   * Fetch current school settings
-   */
   async getSettings(): Promise<SchoolSettings> {
     try {
-      console.log('Making API call to school-settings/school-settings/');
-      const response = await api.get('school-settings/school-settings/');
+      console.log('Making API call to /api/school-settings/school-settings/');
+      const response = await api.get('/api/school-settings/school-settings/');
+;
       console.log('Raw API response:', response);
       
       // Transform the response to match the frontend interface
@@ -544,7 +539,7 @@ class SettingsService {
    */
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
     try {
-      const response = await api.put('school-settings/school-settings/', settings);
+      const response = await api.put('/api/school-settings/school-settings/', settings);
       return response.data;
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -561,7 +556,7 @@ class SettingsService {
    */
   async getCommunicationSettings(): Promise<CommunicationSettings> {
     try {
-      const response = await api.get('communication-settings/');
+      const response = await api.get('/api/communication-settings/');
       return response;
     } catch (error) {
       console.error('Error fetching communication settings:', error);
@@ -574,7 +569,7 @@ class SettingsService {
    */
   async updateCommunicationSettings(settings: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
     try {
-      const response = await api.put('school-settings/communication-settings/', settings);
+      const response = await api.put('/api/school-settings/communication-settings/', settings);
       return response.data;
     } catch (error) {
       console.error('Error updating communication settings:', error);
@@ -591,7 +586,7 @@ class SettingsService {
    */
   async testPaymentGateway(gateway: string, credentials: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post(`school-settings/payment-gateways/${gateway}/test/`, credentials);
+      const response = await api.post(`/api/school-settings/payment-gateways/${gateway}/test/`, credentials);
       return response;
     } catch (error) {
       console.error(`Error testing ${gateway} connection:`, error);
@@ -608,7 +603,7 @@ class SettingsService {
    */
   async testEmailConnection(emailConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('notifications/email/test/', emailConfig);
+      const response = await api.post('/api/notifications/email/test/', emailConfig);
       return response;
     } catch (error) {
       console.error('Error testing email connection:', error);
@@ -621,7 +616,7 @@ class SettingsService {
    */
   async testSMSConnection(smsConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('notifications/sms/test/', smsConfig);
+      const response = await api.post('/api/notifications/sms/test/', smsConfig);
       return response;
     } catch (error) {
       console.error('Error testing SMS connection:', error);
@@ -634,7 +629,7 @@ class SettingsService {
    */
   async testBrevoConnection(brevoConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('notifications/brevo/test/', brevoConfig);
+      const response = await api.post('/api/notifications/brevo/test/', brevoConfig);
       return response;
     } catch (error) {
       console.error('Error testing Brevo connection:', error);
@@ -647,7 +642,7 @@ class SettingsService {
    */
   async testTwilioConnection(twilioConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('notifications/twilio/test/', twilioConfig);
+      const response = await api.post('/api/notifications/twilio/test/', twilioConfig);
       return response;
     } catch (error) {
       console.error('Error testing Twilio connection:', error);
@@ -660,7 +655,7 @@ class SettingsService {
    */
   async sendTestEmail(emailData: { to: string; subject: string; content: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('notifications/brevo/send-test/', emailData);
+      const response = await api.post('/api/notifications/brevo/send-test/', emailData);
       return response;
     } catch (error) {
       console.error('Error sending test email:', error);
@@ -673,7 +668,7 @@ class SettingsService {
    */
   async sendTestSMS(smsData: { to: string; message: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('notifications/twilio/send-test/', smsData);
+      const response = await api.post('/api/notifications/twilio/send-test/', smsData);
       return response;
     } catch (error) {
       console.error('Error sending test SMS:', error);
@@ -752,7 +747,7 @@ class SettingsService {
     priority?: string;
   }): Promise<SchoolAnnouncement[]> {
     try {
-      let url = 'announcements/';
+      let url = '/api/announcements/';
       if (filters) {
         const params = new URLSearchParams();
         if (filters.target_audience) params.append('target_audience', filters.target_audience);
@@ -772,7 +767,7 @@ class SettingsService {
    * Get single announcement
    */
   async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
-    const response = await api.get(`school-settings/announcements/${id}/`);
+    const response = await api.get(`/api/school-settings/announcements/${id}/`);
     return response.data;
   }
 
@@ -780,7 +775,7 @@ class SettingsService {
    * Create announcement
    */
   async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
-    const response = await api.post('school-settings/announcements/', data);
+    const response = await api.post('/api/school-settings/announcements/', data);
     return response.data;
   }
 
@@ -788,7 +783,7 @@ class SettingsService {
    * Update announcement
    */
   async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
-    const response = await api.put(`announcements/${id}/`, data);
+    const response = await api.put(`/api/announcements/${id}/`, data);
     return response.data;
   }
 
@@ -796,7 +791,7 @@ class SettingsService {
    * Delete announcement
    */
   async deleteAnnouncement(id: string): Promise<void> {
-    await api.delete(`announcements/${id}/`);
+    await api.delete(`/api/announcements/${id}/`);
   }
 
   /**
@@ -808,7 +803,7 @@ class SettingsService {
    */
   async getPermissions(): Promise<Permission[]> {
     try {
-      const response = await api.get('permissions/');
+      const response = await api.get('/api/permissions/');
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching permissions:', error);
@@ -820,7 +815,7 @@ class SettingsService {
    * Get single permission
    */
   async getPermission(id: string): Promise<Permission> {
-    const response = await api.get(`permissions/${id}/`);
+    const response = await api.get(`/api/permissions/${id}/`);
     return response.data;
   }
 
@@ -833,7 +828,7 @@ class SettingsService {
    */
   async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
     try {
-      let url = 'roles/';
+      let url = 'api/roles/';
       if (filters?.is_active !== undefined) {
         url += `?is_active=${filters.is_active}`;
       }
@@ -849,7 +844,7 @@ class SettingsService {
    * Get single role
    */
   async getRole(id: string): Promise<Role> {
-    const response = await api.get(`roles/${id}/`);
+    const response = await api.get(`/api/roles/${id}/`);
     return response.data;
   }
 
@@ -857,7 +852,7 @@ class SettingsService {
    * Create role
    */
   async createRole(data: RoleCreateUpdate): Promise<Role> {
-    const response = await api.post('roles/', data);
+    const response = await api.post('/api/roles/', data);
     return response.data;
   }
 
@@ -865,7 +860,7 @@ class SettingsService {
    * Update role
    */
   async updateRole(id: string, data: Partial<RoleCreateUpdate>): Promise<Role> {
-    const response = await api.put(`roles/${id}/`, data);
+    const response = await api.put(`/api/roles/${id}/`, data);
     return response.data;
   }
 
@@ -873,7 +868,7 @@ class SettingsService {
    * Delete role
    */
   async deleteRole(id: string): Promise<void> {
-    await api.delete(`roles/${id}/`);
+    await api.delete(`/api/roles/${id}/`);
   }
 
   /**
@@ -889,7 +884,7 @@ class SettingsService {
     is_active?: boolean; 
   }): Promise<UserRole[]> {
     try {
-      let url = 'user-roles/';
+      let url = '/api/user-roles/';
       if (filters) {
         const params = new URLSearchParams();
         if (filters.user) params.append('user', filters.user);
@@ -909,7 +904,7 @@ class SettingsService {
    * Get single user role
    */
   async getUserRole(id: string): Promise<UserRole> {
-    const response = await api.get(`user-roles/${id}/`);
+    const response = await api.get(`/api/user-roles/${id}/`);
     return response.data;
   }
 
@@ -917,7 +912,7 @@ class SettingsService {
    * Create user role assignment
    */
   async createUserRole(data: UserRoleCreateUpdate): Promise<UserRole> {
-    const response = await api.post('user-roles/', data);
+    const response = await api.post('/api/user-roles/', data);
     return response.data;
   }
 
@@ -925,7 +920,7 @@ class SettingsService {
    * Update user role
    */
   async updateUserRole(id: string, data: Partial<UserRoleCreateUpdate>): Promise<UserRole> {
-    const response = await api.put(`user-roles/${id}/`, data);
+    const response = await api.put(`/api/user-roles/${id}/`, data);
     return response.data;
   }
 
@@ -933,7 +928,7 @@ class SettingsService {
    * Delete user role assignment
    */
   async deleteUserRole(id: string): Promise<void> {
-    await api.delete(`user-roles/${id}/`);
+    await api.delete(`/api/user-roles/${id}/`);
   }
 
   /**
@@ -941,8 +936,8 @@ class SettingsService {
    */
   private getDefaultSettings(): SchoolSettings {
     return {
-      site_name: 'EduAdmin Pro',
-      school_name: 'Springfield Elementary School',
+      site_name: 'AI Hustle Daily',
+      school_name: 'AI Hustle Daily School of Tech',
       address: '',
       phone: '',
       email: '',
