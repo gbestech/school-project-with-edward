@@ -454,7 +454,6 @@
 #     },
 # }
 
-
 """
 COMPLETE SETTINGS.PY FIX
 Replace your entire settings.py with this corrected version
@@ -475,13 +474,17 @@ load_dotenv(dotenv_path=BASE_DIR / ".env")
 # SECURITY SETTINGS
 # ============================================
 
-# Secret Key - FIXED to work with SIMPLE_JWT
+# Secret Key - FIXED to work with SIMPLE_JWT and Render builds
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+
+# Allow dummy SECRET_KEY during collectstatic OR if explicitly building
 if not SECRET_KEY:
-    if "collectstatic" in sys.argv:
-        SECRET_KEY = "temporary-secret-key-for-collectstatic-only"
+    if "collectstatic" in sys.argv or os.getenv("BUILD_COMMAND"):
+        SECRET_KEY = (
+            "temporary-secret-key-for-collectstatic-only-do-not-use-in-production"
+        )
     else:
-        raise ValueError("DJANGO_SECRET_KEY must be set in .env file")
+        raise ValueError("DJANGO_SECRET_KEY must be set in environment variables")
 
 DJANGO_SECRET_KEY = SECRET_KEY  # Keep as alias for compatibility
 
