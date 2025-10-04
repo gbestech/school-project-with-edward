@@ -233,14 +233,12 @@ MIDDLEWARE = [
 
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000,https://your-frontend.vercel.app,https://www.godstreasureschools.com",
+    "CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://localhost:3000"
 ).split(",")
 
 # CORS Allowed Origins
 CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173,https://your-frontend.vercel.app,https://www.godstreasureschools.com",
+    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
 ).split(",")
 
 # Allow cookies/auth credentials
