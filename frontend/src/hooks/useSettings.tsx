@@ -43,6 +43,7 @@ export const useSettings = (): UseSettingsReturn => {
       setIsLoading(false);
     }
   }, []);
+  
 
   const updateSettings = useCallback(async (newSettings: Partial<SchoolSettings>) => {
     setIsSaving(true);

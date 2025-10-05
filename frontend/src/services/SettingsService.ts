@@ -1196,12 +1196,13 @@ export interface UserRoleCreateUpdate {
 
 class SettingsService {
   
-  async getSettings(): Promise<SchoolSettings> {
-    try {
-      console.log('Making API call to school-settings/school-settings/');
-      // Remove leading slash - let buildUrl handle it
-      const response = await api.get('/api/school-settings/school-settings/');
-      console.log('Raw API response:', response);
+ async getSettings(): Promise<SchoolSettings> {
+  try {
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const response = await api.get(`/api/school-settings/school-settings/?t=${timestamp}`);
+    
+    console.log('Raw API response:', response);
 
       // Check if response is HTML (404 error page)
       if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {

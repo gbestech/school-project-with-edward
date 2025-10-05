@@ -306,6 +306,9 @@ const SettingsDashboard = () => {
     setSettings(savedSettings);
     setSuccessMessage('Settings saved successfully!');
     setError(null);
+
+    localStorage.removeItem('cachedSettings');
+    sessionStorage.removeItem('cachedSettings');
     
     setTimeout(() => setSuccessMessage(null), 3000);
     await refreshSettings();
