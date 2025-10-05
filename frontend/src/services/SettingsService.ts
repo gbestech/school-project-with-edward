@@ -307,20 +307,907 @@ export interface UserRoleCreateUpdate {
   is_active: boolean;
 }
 
+// class SettingsService {
+  
+//   async getSettings(): Promise<SchoolSettings> {
+//     try {
+//       console.log('Making API call to /school-settings/school-settings/');
+//       const response = await api.get('/school-settings/school-settings/');
+// ;
+//       console.log('Raw API response:', response);
+
+//        // Check if response is HTML (404 error page)
+//     if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+//       console.error('Received HTML instead of JSON - likely a 404 or auth error');
+//       return this.getDefaultSettings();
+//     }
+      
+//       // Transform the response to match the frontend interface
+//       const transformedSettings: SchoolSettings = {
+//         site_name: response.site_name || response.school_name || 'EduAdmin Pro',
+//         school_name: response.school_name || 'Springfield Elementary School',
+//         address: response.address || response.school_address || '',
+//         phone: response.phone || response.school_phone || '',
+//         email: response.email || response.school_email || '',
+//         logo: response.logo || response.logo_url || '',
+//         favicon: response.favicon || response.favicon_url || '',
+//         academicYearStart: response.academic_year_start || '',
+//         academicYearEnd: response.academic_year_end || '',
+//         motto: response.motto || response.school_motto || 'Excellence in Education',
+//         timezone: response.timezone || 'UTC-5',
+//         dateFormat: response.date_format || 'dd/mm/yyyy',
+//         language: response.language || 'English',
+//         theme: response.theme || 'light',
+//         primaryColor: response.primary_color || '#3B82F6',
+//         secondaryColor: response.secondary_color || '#6366F1',
+//         fontFamily: response.typography || 'Inter',
+//         fontSize: 'medium',
+//         notifications: {
+//           email: {
+//             enabled: response.notifications_enabled || false,
+//             welcomeEmail: false,
+//             resultReleased: false,
+//             absentNotice: false,
+//             feeReminder: false,
+//             examSchedule: false,
+//             eventAnnouncement: false,
+//             disciplinaryAction: false,
+//             provider: 'smtp',
+//             smtp: {
+//               host: '',
+//               port: 587,
+//               username: '',
+//               password: '',
+//               encryption: 'tls',
+//               fromName: '',
+//               fromEmail: '',
+//             },
+//             brevo: {
+//               apiKey: '',
+//               fromName: '',
+//               fromEmail: '',
+//               templateId: '',
+//               senderId: 0,
+//             },
+//           },
+//           sms: {
+//             enabled: false,
+//             welcomeSMS: false,
+//             resultReleased: false,
+//             absentNotice: false,
+//             feeReminder: false,
+//             examSchedule: false,
+//             eventAnnouncement: false,
+//             disciplinaryAction: false,
+//             provider: '',
+//             apiKey: '',
+//             apiSecret: '',
+//             senderID: '',
+//           },
+//           inApp: {
+//             enabled: true,
+//             welcomeMessage: true,
+//             resultReleased: true,
+//             absentNotice: true,
+//             feeReminder: true,
+//             examSchedule: true,
+//             eventAnnouncement: true,
+//             disciplinaryAction: true,
+//             soundEnabled: true,
+//             desktopNotifications: true,
+//           },
+//         },
+//         paymentGateways: {
+//           paystack: {
+//             enabled: false,
+//             publicKey: '',
+//             secretKey: '',
+//             testMode: true,
+//           },
+//           stripe: {
+//             enabled: false,
+//             publishableKey: '',
+//             secretKey: '',
+//             testMode: true,
+//           },
+//           flutterwave: {
+//             enabled: false,
+//             publicKey: '',
+//             secretKey: '',
+//             testMode: true,
+//           },
+//           bankTransfer: {
+//             enabled: false,
+//             bankName: '',
+//             accountNumber: '',
+//             accountName: '',
+//           },
+//         },
+//         allowSelfRegistration: true,
+//         emailVerificationRequired: true,
+//         registrationApprovalRequired: false,
+//         defaultUserRole: 'student',
+//         passwordMinLength: 8,
+//         passwordResetInterval: 90,
+//         passwordRequireNumbers: true,
+//         passwordRequireSymbols: false,
+//         passwordRequireUppercase: false,
+//         allowProfileImageUpload: true,
+//         profileImageMaxSize: 2,
+//         classLevels: [],
+//         subjects: [],
+//         sessions: [],
+//         grading: {
+//           grades: [],
+//           passMark: 40
+//         },
+//         markingScheme: {
+//           continuousAssessment: 30,
+//           examination: 70,
+//           components: []
+//         },
+//         messageTemplates: {
+//           welcomeEmail: { subject: '', content: '', active: false },
+//           resultReleased: { subject: '', content: '', active: false },
+//           absentNotice: { subject: '', content: '', active: false },
+//           feeReminder: { subject: '', content: '', active: false }
+//         },
+//         chatSystem: {
+//           enabled: true,
+//           adminToTeacher: {
+//             enabled: true,
+//             allowFileSharing: true,
+//             maxFileSize: 10,
+//             allowedFileTypes: ['pdf', 'doc', 'docx', 'jpg', 'png'],
+//             moderationEnabled: false
+//           },
+//           teacherToParent: {
+//             enabled: true,
+//             allowFileSharing: true,
+//             maxFileSize: 5,
+//             allowedFileTypes: ['pdf', 'jpg', 'png'],
+//             moderationEnabled: true,
+//             requireApproval: false
+//           },
+//           teacherToStudent: {
+//             enabled: false,
+//             allowFileSharing: false,
+//             maxFileSize: 2,
+//             allowedFileTypes: ['pdf'],
+//             moderationEnabled: true,
+//             requireApproval: true
+//           },
+//           parentToParent: {
+//             enabled: false,
+//             allowFileSharing: false,
+//             moderationEnabled: true,
+//             requireApproval: true
+//           },
+//           moderation: {
+//             enabled: true,
+//             profanityFilter: true,
+//             keywordBlacklist: [],
+//             autoModeration: true,
+//             flaggedContentAction: 'hide',
+//             moderators: [],
+//             businessHoursOnly: false,
+//             businessHours: { start: '08:00', end: '16:00' }
+//           }
+//         },
+//         userRolePaymentAccess: {
+//           teachers: {
+//             paystack: false,
+//             stripe: false,
+//             flutterwave: false,
+//             bankTransfer: false
+//           },
+//           students: {
+//             paystack: false,
+//             stripe: false,
+//             flutterwave: false,
+//             bankTransfer: false
+//           },
+//           parents: {
+//             paystack: false,
+//             stripe: false,
+//             flutterwave: false,
+//             bankTransfer: false
+//           }
+//         },
+//         feeStructure: {
+//           categories: [],
+//           paymentPlans: {
+//             fullPayment: false,
+//             twoInstallments: false,
+//             threeInstallments: false
+//           }
+//         },
+//         discountRules: {
+//           siblingDiscount: {
+//             enabled: false,
+//             secondChild: 0,
+//             thirdChild: 0
+//           }
+//         },
+//       };
+      
+//       console.log('Transformed settings:', transformedSettings);
+//       return transformedSettings;
+//     } catch (error) {
+//       console.error('Error fetching settings:', error);
+//       // Return default settings instead of throwing error
+//       return this.getDefaultSettings();
+//     }
+//   }
+
+//   /**
+//    * Update school settings
+//    */
+//   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
+//     try {
+//       const response = await api.put('/school-settings/school-settings/', settings);
+//       return response.data;
+//     } catch (error) {
+//       console.error('Error updating settings:', error);
+//       throw new Error('Failed to update school settings');
+//     }
+//   }
+
+//   /**
+//    * Communication Settings Methods
+//    */
+
+//   /**
+//    * Get communication settings
+//    */
+//   async getCommunicationSettings(): Promise<CommunicationSettings> {
+//     try {
+//       const response = await api.get('/communication-settings/');
+//       return response;
+//     } catch (error) {
+//       console.error('Error fetching communication settings:', error);
+//       throw new Error('Failed to fetch communication settings');
+//     }
+//   }
+
+//   /**
+//    * Update communication settings
+//    */
+//   async updateCommunicationSettings(settings: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
+//     try {
+//       const response = await api.put('/school-settings/communication-settings/', settings);
+//       return response.data;
+//     } catch (error) {
+//       console.error('Error updating communication settings:', error);
+//       throw new Error('Failed to update communication settings');
+//     }
+//   }
+
+//   /**
+//    * Payment Gateway Testing Methods
+//    */
+
+//   /**
+//    * Test payment gateway connection
+//    */
+//   async testPaymentGateway(gateway: string, credentials: any): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post(`/school-settings/payment-gateways/${gateway}/test/`, credentials);
+//       return response;
+//     } catch (error) {
+//       console.error(`Error testing ${gateway} connection:`, error);
+//       throw new Error(`Failed to test ${gateway} connection`);
+//     }
+//   }
+
+//   /**
+//    * Notification Testing Methods
+//    */
+
+//   /**
+//    * Test email provider connection
+//    */
+//   async testEmailConnection(emailConfig: any): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post('/notifications/email/test/', emailConfig);
+//       return response;
+//     } catch (error) {
+//       console.error('Error testing email connection:', error);
+//       throw new Error('Failed to test email connection');
+//     }
+//   }
+
+//   /**
+//    * Test SMS provider connection
+//    */
+//   async testSMSConnection(smsConfig: any): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post('/notifications/sms/test/', smsConfig);
+//       return response;
+//     } catch (error) {
+//       console.error('Error testing SMS connection:', error);
+//       throw new Error('Failed to test SMS connection');
+//     }
+//   }
+
+//   /**
+//    * Test Brevo email connection
+//    */
+//   async testBrevoConnection(brevoConfig: any): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post('/notifications/brevo/test/', brevoConfig);
+//       return response;
+//     } catch (error) {
+//       console.error('Error testing Brevo connection:', error);
+//       throw new Error('Failed to test Brevo connection');
+//     }
+//   }
+
+//   /**
+//    * Test Twilio SMS connection
+//    */
+//   async testTwilioConnection(twilioConfig: any): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post('/notifications/twilio/test/', twilioConfig);
+//       return response;
+//     } catch (error) {
+//       console.error('Error testing Twilio connection:', error);
+//       throw new Error('Failed to test Twilio connection');
+//     }
+//   }
+
+//   /**
+//    * Send test email via Brevo
+//    */
+//   async sendTestEmail(emailData: { to: string; subject: string; content: string }): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post('/notifications/brevo/send-test/', emailData);
+//       return response;
+//     } catch (error) {
+//       console.error('Error sending test email:', error);
+//       throw new Error('Failed to send test email');
+//     }
+//   }
+
+//   /**
+//    * Send test SMS via Twilio
+//    */
+//   async sendTestSMS(smsData: { to: string; message: string }): Promise<{ success: boolean; message: string }> {
+//     try {
+//       const response = await api.post('/notifications/twilio/send-test/', smsData);
+//       return response;
+//     } catch (error) {
+//       console.error('Error sending test SMS:', error);
+//       throw new Error('Failed to send test SMS');
+//     }
+//   }
+
+//   /**
+//    * File Upload Methods
+//    */
+
+//   /**
+//    * Upload school logo
+//    */
+//   async uploadLogo(file: File): Promise<{ logoUrl: string }> {
+//     try {
+//       const formData = new FormData();
+//       formData.append('file', file);
+      
+//       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/school-settings/school-settings/upload-logo/`, {   
+//         method: 'POST',
+//         headers: {
+//           'Authorization': `Token ${localStorage.getItem('authToken')}`,
+//         },
+//         body: formData,
+//       });
+      
+//       if (!response.ok) {
+//         throw new Error('Failed to upload logo');
+//       }
+      
+//       return await response.json();
+//     } catch (error) {
+//       console.error('Error uploading logo:', error);
+//       throw new Error('Failed to upload logo');
+//     }
+//   }
+
+//   /**
+//    * Upload school favicon
+//    */
+//   async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
+//     try {
+//       const formData = new FormData();
+//       formData.append('file', file);
+//       const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+//       const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-favicon/`, {
+//         method: 'POST',
+//         headers: {
+//           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+//         },
+//         body: formData,
+//       });
+      
+//       if (!response.ok) {
+//         throw new Error('Failed to upload favicon');
+//       }
+      
+//       return await response.json();
+//     } catch (error) {
+//       console.error('Error uploading favicon:', error);
+//       throw new Error('Failed to upload favicon');
+//     }
+//   }
+
+//   /**
+//    * Announcements Methods
+//    */
+
+//   /**
+//    * Get all announcements
+//    */
+//   async getAnnouncements(filters?: {
+//     target_audience?: string;
+//     is_active?: boolean;
+//     priority?: string;
+//   }): Promise<SchoolAnnouncement[]> {
+//     try {
+//       let url = '/announcements/';
+//       if (filters) {
+//         const params = new URLSearchParams();
+//         if (filters.target_audience) params.append('target_audience', filters.target_audience);
+//         if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
+//         if (filters.priority) params.append('priority', filters.priority);
+//         if (params.toString()) url += `?${params.toString()}`;
+//       }
+//       const response = await api.get(url);
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching announcements:', error);
+//       return [];
+//     }
+//   }
+
+//   /**
+//    * Get single announcement
+//    */
+//   async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
+//     const response = await api.get(`/school-settings/announcements/${id}/`);
+//     return response.data;
+//   }
+
+//   /**
+//    * Create announcement
+//    */
+//   async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
+//     const response = await api.post('/school-settings/announcements/', data);
+//     return response.data;
+//   }
+
+//   /**
+//    * Update announcement
+//    */
+//   async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
+//     const response = await api.put(`/announcements/${id}/`, data);
+//     return response.data;
+//   }
+
+//   /**
+//    * Delete announcement
+//    */
+//   async deleteAnnouncement(id: string): Promise<void> {
+//     await api.delete(`/announcements/${id}/`);
+//   }
+
+//   /**
+//    * Permissions Methods
+//    */
+
+//   /**
+//    * Get all permissions
+//    */
+//   async getPermissions(): Promise<Permission[]> {
+//     try {
+//       const response = await api.get('/permissions/');
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching permissions:', error);
+//       return [];
+//     }
+//   }
+
+//   /**
+//    * Get single permission
+//    */
+//   async getPermission(id: string): Promise<Permission> {
+//     const response = await api.get(`/permissions/${id}/`);
+//     return response.data;
+//   }
+
+//   /**
+//    * Roles Methods
+//    */
+
+//   /**
+//    * Get all roles
+//    */
+//   async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
+//     try {
+//       let url = 'roles/';
+//       if (filters?.is_active !== undefined) {
+//         url += `?is_active=${filters.is_active}`;
+//       }
+//       const response = await api.get(url);
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching roles:', error);
+//       return [];
+//     }
+//   }
+
+//   /**
+//    * Get single role
+//    */
+//   async getRole(id: string): Promise<Role> {
+//     const response = await api.get(`/roles/${id}/`);
+//     return response.data;
+//   }
+
+//   /**
+//    * Create role
+//    */
+//   async createRole(data: RoleCreateUpdate): Promise<Role> {
+//     const response = await api.post('/roles/', data);
+//     return response.data;
+//   }
+
+//   /**
+//    * Update role
+//    */
+//   async updateRole(id: string, data: Partial<RoleCreateUpdate>): Promise<Role> {
+//     const response = await api.put(`/roles/${id}/`, data);
+//     return response.data;
+//   }
+
+//   /**
+//    * Delete role
+//    */
+//   async deleteRole(id: string): Promise<void> {
+//     await api.delete(`/roles/${id}/`);
+//   }
+
+//   /**
+//    * User Roles Methods
+//    */
+
+//   /**
+//    * Get user roles
+//    */
+//   async getUserRoles(filters?: { 
+//     user?: string; 
+//     role?: string; 
+//     is_active?: boolean; 
+//   }): Promise<UserRole[]> {
+//     try {
+//       let url = '/user-roles/';
+//       if (filters) {
+//         const params = new URLSearchParams();
+//         if (filters.user) params.append('user', filters.user);
+//         if (filters.role) params.append('role', filters.role);
+//         if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
+//         if (params.toString()) url += `?${params.toString()}`;
+//       }
+//       const response = await api.get(url);
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching user roles:', error);
+//       return [];
+//     }
+//   }
+
+//   /**
+//    * Get single user role
+//    */
+//   async getUserRole(id: string): Promise<UserRole> {
+//     const response = await api.get(`/user-roles/${id}/`);
+//     return response.data;
+//   }
+
+//   /**
+//    * Create user role assignment
+//    */
+//   async createUserRole(data: UserRoleCreateUpdate): Promise<UserRole> {
+//     const response = await api.post('/user-roles/', data);
+//     return response.data;
+//   }
+
+//   /**
+//    * Update user role
+//    */
+//   async updateUserRole(id: string, data: Partial<UserRoleCreateUpdate>): Promise<UserRole> {
+//     const response = await api.put(`/user-roles/${id}/`, data);
+//     return response.data;
+//   }
+
+//   /**
+//    * Delete user role assignment
+//    */
+//   async deleteUserRole(id: string): Promise<void> {
+//     await api.delete(`/user-roles/${id}/`);
+//   }
+
+//   /**
+//    * Get default settings (private method)
+//    */
+//   private getDefaultSettings(): SchoolSettings {
+//     return {
+//       site_name: 'AI Hustle Daily',
+//       school_name: 'AI Hustle Daily School of Tech',
+//       address: '',
+//       phone: '',
+//       email: '',
+//       logo: '',
+//       favicon: '',
+//       academicYearStart: '',
+//       academicYearEnd: '',
+//       motto: 'Excellence in Education',
+//       timezone: 'UTC-5',
+//       dateFormat: 'dd/mm/yyyy',
+//       language: 'English',
+//       theme: 'light',
+//       primaryColor: '#3B82F6',
+//       secondaryColor: '#6366F1',
+//       fontFamily: 'Inter',
+//       fontSize: 'medium',
+//       notifications: {
+//         email: {
+//           enabled: true,
+//           welcomeEmail: true,
+//           resultReleased: true,
+//           absentNotice: true,
+//           feeReminder: true,
+//           examSchedule: true,
+//           eventAnnouncement: true,
+//           disciplinaryAction: false,
+//           provider: 'smtp',
+//           smtp: {
+//             host: 'smtp.gmail.com',
+//             port: 587,
+//             username: '',
+//             password: '',
+//             encryption: 'TLS',
+//             fromName: 'Springfield Elementary',
+//             fromEmail: 'admin@springfield.edu'
+//           },
+//           brevo: {
+//             apiKey: '',
+//             fromName: 'Springfield Elementary',
+//             fromEmail: 'admin@springfield.edu',
+//             templateId: '',
+//             senderId: 1
+//           }
+//         },
+//         sms: {
+//           enabled: false,
+//           welcomeSMS: false,
+//           resultReleased: true,
+//           absentNotice: true,
+//           feeReminder: true,
+//           examSchedule: false,
+//           eventAnnouncement: false,
+//           disciplinaryAction: false,
+//           provider: 'twilio',
+//           apiKey: '',
+//           apiSecret: '',
+//           senderID: 'SPRINGFIELD'
+//         },
+//         inApp: {
+//           enabled: true,
+//           welcomeMessage: true,
+//           resultReleased: true,
+//           absentNotice: true,
+//           feeReminder: true,
+//           examSchedule: true,
+//           eventAnnouncement: true,
+//           disciplinaryAction: true,
+//           soundEnabled: true,
+//           desktopNotifications: true
+//         }
+//       },
+//       paymentGateways: {
+//         paystack: {
+//           enabled: false,
+//           publicKey: '',
+//           secretKey: '',
+//           testMode: false
+//         },
+//         stripe: {
+//           enabled: false,
+//           publishableKey: '',
+//           secretKey: '',
+//           testMode: false
+//         },
+//         flutterwave: {
+//           enabled: false,
+//           publicKey: '',
+//           secretKey: '',
+//           testMode: true
+//         },
+//         bankTransfer: {
+//           enabled: false,
+//           bankName: '',
+//           accountNumber: '',
+//           accountName: ''
+//         }
+//       },
+//       userRolePaymentAccess: {
+//         teachers: {
+//           paystack: false,
+//           stripe: false,
+//           flutterwave: false,
+//           bankTransfer: false
+//         },
+//         students: {
+//           paystack: false,
+//           stripe: false,
+//           flutterwave: false,
+//           bankTransfer: false
+//         },
+//         parents: {
+//           paystack: false,
+//           stripe: false,
+//           flutterwave: false,
+//           bankTransfer: false
+//         }
+//       },
+//       feeStructure: {
+//         categories: [],
+//         paymentPlans: {
+//           fullPayment: false,
+//           twoInstallments: false,
+//           threeInstallments: false
+//         }
+//       },
+//       discountRules: {
+//         siblingDiscount: {
+//           enabled: false,
+//           secondChild: 0,
+//           thirdChild: 0
+//         }
+//       },
+//       classLevels: [
+//         { id: 1, name: 'Grade 1' },
+//         { id: 2, name: 'Grade 2' },
+//         { id: 3, name: 'Grade 3' }
+//       ],
+//       subjects: [
+//         { id: 1, name: 'Mathematics' },
+//         { id: 2, name: 'English' },
+//         { id: 3, name: 'Science' }
+//       ],
+//       sessions: [
+//         { id: 1, name: '2023/2024', terms: ['First Term', 'Second Term', 'Third Term'] }
+//       ],
+//       grading: {
+//         grades: [
+//           { letter: 'A', min: 70, max: 100 },
+//           { letter: 'B', min: 60, max: 69 },
+//           { letter: 'C', min: 50, max: 59 },
+//           { letter: 'D', min: 45, max: 49 },
+//           { letter: 'E', min: 40, max: 44 },
+//           { letter: 'F', min: 0, max: 39 }
+//         ],
+//         passMark: 40
+//       },
+//       markingScheme: {
+//         continuousAssessment: 30,
+//         examination: 70,
+//         components: [
+//           { name: 'Classwork', weight: 10, color: '#3B82F6' },
+//           { name: 'Homework', weight: 10, color: '#10B981' },
+//           { name: 'Projects', weight: 10, color: '#F59E0B' }
+//         ]
+//       },
+//       allowSelfRegistration: true,
+//       emailVerificationRequired: true,
+//       registrationApprovalRequired: false,
+//       defaultUserRole: 'student',
+//       passwordMinLength: 8,
+//       passwordResetInterval: 90,
+//       passwordRequireNumbers: true,
+//       passwordRequireSymbols: false,
+//       passwordRequireUppercase: false,
+//       allowProfileImageUpload: true,
+//       profileImageMaxSize: 2,
+//       messageTemplates: {
+//         welcomeEmail: {
+//           subject: 'Welcome to Springfield Elementary School',
+//           content: 'Welcome to our school!',
+//           active: true
+//         },
+//         resultReleased: {
+//           subject: 'Academic Results Available',
+//           content: 'Your results are now available.',
+//           active: true
+//         },
+//         absentNotice: {
+//           subject: 'Absence Notice',
+//           content: 'Your child was absent today.',
+//           active: true
+//         },
+//         feeReminder: {
+//           subject: 'Fee Payment Reminder',
+//           content: 'Please pay your fees.',
+//           active: true
+//         }
+//       },
+//       chatSystem: {
+//         enabled: true,
+//         adminToTeacher: {
+//           enabled: true,
+//           allowFileSharing: true,
+//           maxFileSize: 10,
+//           allowedFileTypes: ['pdf', 'doc', 'docx', 'jpg', 'png'],
+//           moderationEnabled: false
+//         },
+//         teacherToParent: {
+//           enabled: true,
+//           allowFileSharing: true,
+//           maxFileSize: 5,
+//           allowedFileTypes: ['pdf', 'jpg', 'png'],
+//           moderationEnabled: true,
+//           requireApproval: false
+//         },
+//         teacherToStudent: {
+//           enabled: false,
+//           allowFileSharing: false,
+//           maxFileSize: 2,
+//           allowedFileTypes: ['pdf'],
+//           moderationEnabled: true,
+//           requireApproval: true
+//         },
+//         parentToParent: {
+//           enabled: false,
+//           allowFileSharing: false,
+//           moderationEnabled: true,
+//           requireApproval: true
+//         },
+//         moderation: {
+//           enabled: true,
+//           profanityFilter: true,
+//           keywordBlacklist: ['inappropriate', 'bad_word_1', 'bad_word_2'],
+//           autoModeration: true,
+//           flaggedContentAction: 'hide',
+//           moderators: ['admin', 'principal'],
+//           businessHoursOnly: false,
+//           businessHours: {
+//             start: '08:00',
+//             end: '16:00'
+//           }
+//         }
+//       }
+//     };
+//   }
+// }
+
+// export default new SettingsService();
+
+
 class SettingsService {
   
   async getSettings(): Promise<SchoolSettings> {
     try {
-      console.log('Making API call to /school-settings/school-settings/');
-      const response = await api.get('/school-settings/school-settings/');
-;
+      console.log('Making API call to school-settings/school-settings/');
+      // Remove leading slash - let buildUrl handle it
+      const response = await api.get('school-settings/school-settings/');
       console.log('Raw API response:', response);
 
-       // Check if response is HTML (404 error page)
-    if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
-      console.error('Received HTML instead of JSON - likely a 404 or auth error');
-      return this.getDefaultSettings();
-    }
+      // Check if response is HTML (404 error page)
+      if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+        console.error('Received HTML instead of JSON - likely a 404 or auth error');
+        return this.getDefaultSettings();
+      }
       
       // Transform the response to match the frontend interface
       const transformedSettings: SchoolSettings = {
@@ -535,34 +1422,23 @@ class SettingsService {
       return transformedSettings;
     } catch (error) {
       console.error('Error fetching settings:', error);
-      // Return default settings instead of throwing error
       return this.getDefaultSettings();
     }
   }
 
-  /**
-   * Update school settings
-   */
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
     try {
-      const response = await api.put('/school-settings/school-settings/', settings);
-      return response.data;
+      const response = await api.put('school-settings/school-settings/', settings);
+      return response;
     } catch (error) {
       console.error('Error updating settings:', error);
       throw new Error('Failed to update school settings');
     }
   }
 
-  /**
-   * Communication Settings Methods
-   */
-
-  /**
-   * Get communication settings
-   */
   async getCommunicationSettings(): Promise<CommunicationSettings> {
     try {
-      const response = await api.get('/communication-settings/');
+      const response = await api.get('school-settings/communication-settings/');
       return response;
     } catch (error) {
       console.error('Error fetching communication settings:', error);
@@ -570,29 +1446,19 @@ class SettingsService {
     }
   }
 
-  /**
-   * Update communication settings
-   */
   async updateCommunicationSettings(settings: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
     try {
-      const response = await api.put('/school-settings/communication-settings/', settings);
-      return response.data;
+      const response = await api.put('school-settings/communication-settings/', settings);
+      return response;
     } catch (error) {
       console.error('Error updating communication settings:', error);
       throw new Error('Failed to update communication settings');
     }
   }
 
-  /**
-   * Payment Gateway Testing Methods
-   */
-
-  /**
-   * Test payment gateway connection
-   */
   async testPaymentGateway(gateway: string, credentials: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post(`/school-settings/payment-gateways/${gateway}/test/`, credentials);
+      const response = await api.post(`school-settings/payment-gateways/${gateway}/test/`, credentials);
       return response;
     } catch (error) {
       console.error(`Error testing ${gateway} connection:`, error);
@@ -600,16 +1466,9 @@ class SettingsService {
     }
   }
 
-  /**
-   * Notification Testing Methods
-   */
-
-  /**
-   * Test email provider connection
-   */
   async testEmailConnection(emailConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('/notifications/email/test/', emailConfig);
+      const response = await api.post('school-settings/notifications/email/test/', emailConfig);
       return response;
     } catch (error) {
       console.error('Error testing email connection:', error);
@@ -617,12 +1476,9 @@ class SettingsService {
     }
   }
 
-  /**
-   * Test SMS provider connection
-   */
   async testSMSConnection(smsConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('/notifications/sms/test/', smsConfig);
+      const response = await api.post('school-settings/notifications/sms/test/', smsConfig);
       return response;
     } catch (error) {
       console.error('Error testing SMS connection:', error);
@@ -630,12 +1486,9 @@ class SettingsService {
     }
   }
 
-  /**
-   * Test Brevo email connection
-   */
   async testBrevoConnection(brevoConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('/notifications/brevo/test/', brevoConfig);
+      const response = await api.post('school-settings/notifications/brevo/test/', brevoConfig);
       return response;
     } catch (error) {
       console.error('Error testing Brevo connection:', error);
@@ -643,12 +1496,9 @@ class SettingsService {
     }
   }
 
-  /**
-   * Test Twilio SMS connection
-   */
   async testTwilioConnection(twilioConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('/notifications/twilio/test/', twilioConfig);
+      const response = await api.post('school-settings/notifications/twilio/test/', twilioConfig);
       return response;
     } catch (error) {
       console.error('Error testing Twilio connection:', error);
@@ -656,12 +1506,9 @@ class SettingsService {
     }
   }
 
-  /**
-   * Send test email via Brevo
-   */
   async sendTestEmail(emailData: { to: string; subject: string; content: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('/notifications/brevo/send-test/', emailData);
+      const response = await api.post('school-settings/notifications/brevo/send-test/', emailData);
       return response;
     } catch (error) {
       console.error('Error sending test email:', error);
@@ -669,12 +1516,9 @@ class SettingsService {
     }
   }
 
-  /**
-   * Send test SMS via Twilio
-   */
   async sendTestSMS(smsData: { to: string; message: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('/notifications/twilio/send-test/', smsData);
+      const response = await api.post('school-settings/notifications/twilio/send-test/', smsData);
       return response;
     } catch (error) {
       console.error('Error sending test SMS:', error);
@@ -682,22 +1526,16 @@ class SettingsService {
     }
   }
 
-  /**
-   * File Upload Methods
-   */
-
-  /**
-   * Upload school logo
-   */
   async uploadLogo(file: File): Promise<{ logoUrl: string }> {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/school-settings/school-settings/upload-logo/`, {   
+      const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-logo/`, {   
         method: 'POST',
         headers: {
-          'Authorization': `Token ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: formData,
       });
@@ -713,14 +1551,12 @@ class SettingsService {
     }
   }
 
-  /**
-   * Upload school favicon
-   */
   async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     try {
       const formData = new FormData();
       formData.append('file', file);
       const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+      
       const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-favicon/`, {
         method: 'POST',
         headers: {
@@ -740,28 +1576,13 @@ class SettingsService {
     }
   }
 
-  /**
-   * Announcements Methods
-   */
-
-  /**
-   * Get all announcements
-   */
   async getAnnouncements(filters?: {
     target_audience?: string;
     is_active?: boolean;
     priority?: string;
   }): Promise<SchoolAnnouncement[]> {
     try {
-      let url = '/announcements/';
-      if (filters) {
-        const params = new URLSearchParams();
-        if (filters.target_audience) params.append('target_audience', filters.target_audience);
-        if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
-        if (filters.priority) params.append('priority', filters.priority);
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
+      const response = await api.get('school-settings/announcements/', filters);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching announcements:', error);
@@ -769,47 +1590,28 @@ class SettingsService {
     }
   }
 
-  /**
-   * Get single announcement
-   */
   async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
-    const response = await api.get(`/school-settings/announcements/${id}/`);
-    return response.data;
+    const response = await api.get(`school-settings/announcements/${id}/`);
+    return response;
   }
 
-  /**
-   * Create announcement
-   */
   async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
-    const response = await api.post('/school-settings/announcements/', data);
-    return response.data;
+    const response = await api.post('school-settings/announcements/', data);
+    return response;
   }
 
-  /**
-   * Update announcement
-   */
   async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
-    const response = await api.put(`/announcements/${id}/`, data);
-    return response.data;
+    const response = await api.put(`school-settings/announcements/${id}/`, data);
+    return response;
   }
 
-  /**
-   * Delete announcement
-   */
   async deleteAnnouncement(id: string): Promise<void> {
-    await api.delete(`/announcements/${id}/`);
+    await api.delete(`school-settings/announcements/${id}/`);
   }
 
-  /**
-   * Permissions Methods
-   */
-
-  /**
-   * Get all permissions
-   */
   async getPermissions(): Promise<Permission[]> {
     try {
-      const response = await api.get('/permissions/');
+      const response = await api.get('school-settings/permissions/');
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching permissions:', error);
@@ -817,28 +1619,14 @@ class SettingsService {
     }
   }
 
-  /**
-   * Get single permission
-   */
   async getPermission(id: string): Promise<Permission> {
-    const response = await api.get(`/permissions/${id}/`);
-    return response.data;
+    const response = await api.get(`school-settings/permissions/${id}/`);
+    return response;
   }
 
-  /**
-   * Roles Methods
-   */
-
-  /**
-   * Get all roles
-   */
   async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
     try {
-      let url = 'roles/';
-      if (filters?.is_active !== undefined) {
-        url += `?is_active=${filters.is_active}`;
-      }
-      const response = await api.get(url);
+      const response = await api.get('school-settings/roles/', filters);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching roles:', error);
@@ -846,59 +1634,32 @@ class SettingsService {
     }
   }
 
-  /**
-   * Get single role
-   */
   async getRole(id: string): Promise<Role> {
-    const response = await api.get(`/roles/${id}/`);
-    return response.data;
+    const response = await api.get(`school-settings/roles/${id}/`);
+    return response;
   }
 
-  /**
-   * Create role
-   */
   async createRole(data: RoleCreateUpdate): Promise<Role> {
-    const response = await api.post('/roles/', data);
-    return response.data;
+    const response = await api.post('school-settings/roles/', data);
+    return response;
   }
 
-  /**
-   * Update role
-   */
   async updateRole(id: string, data: Partial<RoleCreateUpdate>): Promise<Role> {
-    const response = await api.put(`/roles/${id}/`, data);
-    return response.data;
+    const response = await api.put(`school-settings/roles/${id}/`, data);
+    return response;
   }
 
-  /**
-   * Delete role
-   */
   async deleteRole(id: string): Promise<void> {
-    await api.delete(`/roles/${id}/`);
+    await api.delete(`school-settings/roles/${id}/`);
   }
 
-  /**
-   * User Roles Methods
-   */
-
-  /**
-   * Get user roles
-   */
   async getUserRoles(filters?: { 
     user?: string; 
     role?: string; 
     is_active?: boolean; 
   }): Promise<UserRole[]> {
     try {
-      let url = '/user-roles/';
-      if (filters) {
-        const params = new URLSearchParams();
-        if (filters.user) params.append('user', filters.user);
-        if (filters.role) params.append('role', filters.role);
-        if (filters.is_active !== undefined) params.append('is_active', filters.is_active.toString());
-        if (params.toString()) url += `?${params.toString()}`;
-      }
-      const response = await api.get(url);
+      const response = await api.get('school-settings/user-roles/', filters);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching user roles:', error);
@@ -906,41 +1667,27 @@ class SettingsService {
     }
   }
 
-  /**
-   * Get single user role
-   */
   async getUserRole(id: string): Promise<UserRole> {
-    const response = await api.get(`/user-roles/${id}/`);
-    return response.data;
+    const response = await api.get(`school-settings/user-roles/${id}/`);
+    return response;
   }
 
-  /**
-   * Create user role assignment
-   */
   async createUserRole(data: UserRoleCreateUpdate): Promise<UserRole> {
-    const response = await api.post('/user-roles/', data);
-    return response.data;
+    const response = await api.post('school-settings/user-roles/', data);
+    return response;
   }
 
-  /**
-   * Update user role
-   */
   async updateUserRole(id: string, data: Partial<UserRoleCreateUpdate>): Promise<UserRole> {
-    const response = await api.put(`/user-roles/${id}/`, data);
-    return response.data;
+    const response = await api.put(`school-settings/user-roles/${id}/`, data);
+    return response;
   }
 
-  /**
-   * Delete user role assignment
-   */
   async deleteUserRole(id: string): Promise<void> {
-    await api.delete(`/user-roles/${id}/`);
+    await api.delete(`school-settings/user-roles/${id}/`);
   }
 
-  /**
-   * Get default settings (private method)
-   */
   private getDefaultSettings(): SchoolSettings {
+    // ... keep your existing default settings implementation
     return {
       site_name: 'AI Hustle Daily',
       school_name: 'AI Hustle Daily School of Tech',
