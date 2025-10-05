@@ -39,7 +39,7 @@ const AddAdminForm: React.FC = () => {
         last_name: formData.lastName,
         is_staff: true,
         is_superuser: true,
-        role: 'Admin'
+        role: 'admin'
       };
       
       // Fixed: Use correct endpoint with /api prefix
