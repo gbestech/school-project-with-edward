@@ -43,7 +43,7 @@ const AddAdminForm: React.FC = () => {
       };
       
       // Fixed: Use correct endpoint with /api prefix
-      const response = await api.post('auth/register/', payload);
+      const response = await api.post('/api/auth/register/', payload);
       
       // Use response data if available
       const createdEmail = response?.email || response?.user?.email || formData.email;
