@@ -65,6 +65,8 @@ const AddAdminForm: React.FC = () => {
       });
       setLoading(false);
     } catch (err: any) {
+       console.error('Full error object:', err);
+       console.error('Error response data:', err.response?.data);
       const errorMessage = err.response?.data?.detail 
         || err.response?.data?.email?.[0]
         || err.response?.data?.message
