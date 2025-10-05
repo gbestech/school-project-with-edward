@@ -1,25 +1,13 @@
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-// import tailwindcss from '@tailwindcss/vite'
-
-// export default defineConfig({
-//   plugins: [
-//     react(),
-//     tailwindcss(),
-//   ],
-// })
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'path' // ✅ Required for aliasing
+import path from 'path'
 
 export default defineConfig({
-  plugins: [
-    react(),
-  ],
+  plugins: [react()],
+  base: '/', // Add this line
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'), // ✅ This enables @/ to point to src/
+      '@': path.resolve(__dirname, 'src'),
     },
   },
   server: {
@@ -34,11 +22,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
-    },
-  },
-  build: {
-    rollupOptions: {
-      external: ["react-to-print"],
     },
   },
 })
