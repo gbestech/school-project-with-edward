@@ -399,6 +399,41 @@ def user_profile(request):
         )
 
 
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def list_admins(request):
+    """List all admin users"""
+    try:
+        admins = User.objects.filter(role="admin").order_by("-date_joined")
+
+        admin_list = []
+        for admin in admins:
+            admin_list.append(
+                {
+                    "id": admin.id,
+                    "username": admin.username,
+                    "email": admin.email,
+                    "first_name": admin.first_name,
+                    "last_name": admin.last_name,
+                    "full_name": admin.full_name,
+                    "is_active": admin.is_active,
+                    "is_staff": admin.is_staff,
+                    "is_superuser": admin.is_superuser,
+                    "date_joined": admin.date_joined,
+                    "last_login": admin.last_login,
+                    "phone": admin.phone,
+                }
+            )
+
+        return Response(admin_list, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error(f"Error listing admins: {str(e)}")
+        return Response(
+            {"detail": f"Failed to list admins: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):

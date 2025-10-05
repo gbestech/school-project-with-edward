@@ -34,18 +34,15 @@ const AllAdmins = () => {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      // Fetch all users and filter for admins
-      const response = await api.get('/api/profiles/users/');
-      const allUsers = Array.isArray(response.data) ? response.data : 
-                      Array.isArray(response.data?.results) ? response.data.results : [];
+      // Use the dedicated admin list endpoint
+      const response = await api.get('/api/auth/admins/list/');
+      const adminList = Array.isArray(response.data) ? response.data : 
+                       Array.isArray(response.data?.results) ? response.data.results : [];
       
-      // Filter for admin role
-      const adminUsers = allUsers.filter((user: any) => user.role === 'admin');
-      
-      setAdmins(adminUsers);
+      setAdmins(adminList);
     } catch (error: any) {
       console.error('Error fetching admins:', error);
-      toast.error('Failed to load admins');
+      toast.error('Failed to load admins. Please ensure the endpoint exists.');
     } finally {
       setLoading(false);
     }

@@ -10,6 +10,7 @@ from .views import (
     ResendVerificationView,
     CheckVerificationStatusView,
     create_admin,
+    list_admins,
     user_profile,
     logout_view,
     password_reset_request,
@@ -52,6 +53,7 @@ urlpatterns = [
     ),
     path("admin-reset-password/", admin_reset_password, name="admin_reset_password"),
     path("admins/", create_admin, name="create-admin"),
+    path("admins/list/", list_admins, name="list-admins"),
     # ================== Utility endpoints ==================
     path("check-email/", check_email_view, name="check_email"),
     path(

@@ -1200,7 +1200,7 @@ class SettingsService {
     try {
       console.log('Making API call to school-settings/school-settings/');
       // Remove leading slash - let buildUrl handle it
-      const response = await api.get('school-settings/school-settings/');
+      const response = await api.get('/api/school-settings/school-settings/');
       console.log('Raw API response:', response);
 
       // Check if response is HTML (404 error page)
@@ -1428,7 +1428,7 @@ class SettingsService {
 
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
     try {
-      const response = await api.put('school-settings/school-settings/', settings);
+      const response = await api.put('/api/school-settings/school-settings/', settings);
       return response;
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -1438,7 +1438,7 @@ class SettingsService {
 
   async getCommunicationSettings(): Promise<CommunicationSettings> {
     try {
-      const response = await api.get('school-settings/communication-settings/');
+      const response = await api.get('/api/school-settings/communication-settings/');
       return response;
     } catch (error) {
       console.error('Error fetching communication settings:', error);
@@ -1448,7 +1448,7 @@ class SettingsService {
 
   async updateCommunicationSettings(settings: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
     try {
-      const response = await api.put('school-settings/communication-settings/', settings);
+      const response = await api.put('/api/school-settings/communication-settings/', settings);
       return response;
     } catch (error) {
       console.error('Error updating communication settings:', error);
@@ -1458,7 +1458,7 @@ class SettingsService {
 
   async testPaymentGateway(gateway: string, credentials: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post(`school-settings/payment-gateways/${gateway}/test/`, credentials);
+      const response = await api.post(`/api/school-settings/payment-gateways/${gateway}/test/`, credentials);
       return response;
     } catch (error) {
       console.error(`Error testing ${gateway} connection:`, error);
@@ -1468,7 +1468,7 @@ class SettingsService {
 
   async testEmailConnection(emailConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('school-settings/notifications/email/test/', emailConfig);
+      const response = await api.post('/api/school-settings/notifications/email/test/', emailConfig);
       return response;
     } catch (error) {
       console.error('Error testing email connection:', error);
@@ -1478,7 +1478,7 @@ class SettingsService {
 
   async testSMSConnection(smsConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('school-settings/notifications/sms/test/', smsConfig);
+      const response = await api.post('/api/school-settings/notifications/sms/test/', smsConfig);
       return response;
     } catch (error) {
       console.error('Error testing SMS connection:', error);
@@ -1488,7 +1488,7 @@ class SettingsService {
 
   async testBrevoConnection(brevoConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('school-settings/notifications/brevo/test/', brevoConfig);
+      const response = await api.post('/api/school-settings/notifications/brevo/test/', brevoConfig);
       return response;
     } catch (error) {
       console.error('Error testing Brevo connection:', error);
@@ -1498,7 +1498,7 @@ class SettingsService {
 
   async testTwilioConnection(twilioConfig: any): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('school-settings/notifications/twilio/test/', twilioConfig);
+      const response = await api.post('/api/school-settings/notifications/twilio/test/', twilioConfig);
       return response;
     } catch (error) {
       console.error('Error testing Twilio connection:', error);
@@ -1508,7 +1508,7 @@ class SettingsService {
 
   async sendTestEmail(emailData: { to: string; subject: string; content: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('school-settings/notifications/brevo/send-test/', emailData);
+      const response = await api.post('/api/school-settings/notifications/brevo/send-test/', emailData);
       return response;
     } catch (error) {
       console.error('Error sending test email:', error);
@@ -1518,7 +1518,7 @@ class SettingsService {
 
   async sendTestSMS(smsData: { to: string; message: string }): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post('school-settings/notifications/twilio/send-test/', smsData);
+      const response = await api.post('/api/school-settings/notifications/twilio/send-test/', smsData);
       return response;
     } catch (error) {
       console.error('Error sending test SMS:', error);
@@ -1582,7 +1582,7 @@ class SettingsService {
     priority?: string;
   }): Promise<SchoolAnnouncement[]> {
     try {
-      const response = await api.get('school-settings/announcements/', filters);
+      const response = await api.get('/api/school-settings/announcements/', filters);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching announcements:', error);
@@ -1591,27 +1591,27 @@ class SettingsService {
   }
 
   async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
-    const response = await api.get(`school-settings/announcements/${id}/`);
+    const response = await api.get(`/api/school-settings/announcements/${id}/`);
     return response;
   }
 
   async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
-    const response = await api.post('school-settings/announcements/', data);
+    const response = await api.post('/api/school-settings/announcements/', data);
     return response;
   }
 
   async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
-    const response = await api.put(`school-settings/announcements/${id}/`, data);
+    const response = await api.put(`/api/school-settings/announcements/${id}/`, data);
     return response;
   }
 
   async deleteAnnouncement(id: string): Promise<void> {
-    await api.delete(`school-settings/announcements/${id}/`);
+    await api.delete(`/api/school-settings/announcements/${id}/`);
   }
 
   async getPermissions(): Promise<Permission[]> {
     try {
-      const response = await api.get('school-settings/permissions/');
+      const response = await api.get('/api/school-settings/permissions/');
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching permissions:', error);
@@ -1620,13 +1620,13 @@ class SettingsService {
   }
 
   async getPermission(id: string): Promise<Permission> {
-    const response = await api.get(`school-settings/permissions/${id}/`);
+    const response = await api.get(`/api/school-settings/permissions/${id}/`);
     return response;
   }
 
   async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
     try {
-      const response = await api.get('school-settings/roles/', filters);
+      const response = await api.get('/api/school-settings/roles/', filters);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching roles:', error);
@@ -1635,22 +1635,22 @@ class SettingsService {
   }
 
   async getRole(id: string): Promise<Role> {
-    const response = await api.get(`school-settings/roles/${id}/`);
+    const response = await api.get(`/api/school-settings/roles/${id}/`);
     return response;
   }
 
   async createRole(data: RoleCreateUpdate): Promise<Role> {
-    const response = await api.post('school-settings/roles/', data);
+    const response = await api.post('/api/school-settings/roles/', data);
     return response;
   }
 
   async updateRole(id: string, data: Partial<RoleCreateUpdate>): Promise<Role> {
-    const response = await api.put(`school-settings/roles/${id}/`, data);
+    const response = await api.put(`/api/school-settings/roles/${id}/`, data);
     return response;
   }
 
   async deleteRole(id: string): Promise<void> {
-    await api.delete(`school-settings/roles/${id}/`);
+    await api.delete(`/api/school-settings/roles/${id}/`);
   }
 
   async getUserRoles(filters?: { 
@@ -1659,7 +1659,7 @@ class SettingsService {
     is_active?: boolean; 
   }): Promise<UserRole[]> {
     try {
-      const response = await api.get('school-settings/user-roles/', filters);
+      const response = await api.get('/api/school-settings/user-roles/', filters);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching user roles:', error);
@@ -1668,22 +1668,22 @@ class SettingsService {
   }
 
   async getUserRole(id: string): Promise<UserRole> {
-    const response = await api.get(`school-settings/user-roles/${id}/`);
+    const response = await api.get(`/api/school-settings/user-roles/${id}/`);
     return response;
   }
 
   async createUserRole(data: UserRoleCreateUpdate): Promise<UserRole> {
-    const response = await api.post('school-settings/user-roles/', data);
+    const response = await api.post('/api/school-settings/user-roles/', data);
     return response;
   }
 
   async updateUserRole(id: string, data: Partial<UserRoleCreateUpdate>): Promise<UserRole> {
-    const response = await api.put(`school-settings/user-roles/${id}/`, data);
+    const response = await api.put(`/api/school-settings/user-roles/${id}/`, data);
     return response;
   }
 
   async deleteUserRole(id: string): Promise<void> {
-    await api.delete(`school-settings/user-roles/${id}/`);
+    await api.delete(`/api/school-settings/user-roles/${id}/`);
   }
 
   private getDefaultSettings(): SchoolSettings {
@@ -1834,7 +1834,7 @@ class SettingsService {
         { id: 3, name: 'Science' }
       ],
       sessions: [
-        { id: 1, name: '2023/2024', terms: ['First Term', 'Second Term', 'Third Term'] }
+        { id: 1, name: '2025/2026', terms: ['First Term', 'Second Term', 'Third Term'] }
       ],
       grading: {
         grades: [
