@@ -342,11 +342,17 @@ const handleResponseError = async (response: Response, endpoint: string, method:
     errorData = `HTTP error! status: ${response.status}`;
   }
   
+  // Enhanced logging for 400 errors
   console.error(`❌ Error response for ${endpoint}:`, errorData);
+  if (response.status === 400) {
+    console.error('❌ 400 Bad Request Details:', JSON.stringify(errorData, null, 2));
+  }
   
   const error = new Error(
     typeof errorData === 'object' && errorData.detail 
       ? errorData.detail 
+      : typeof errorData === 'object'
+      ? JSON.stringify(errorData)
       : `HTTP error! status: ${response.status}`
   );
   (error as any).response = { 

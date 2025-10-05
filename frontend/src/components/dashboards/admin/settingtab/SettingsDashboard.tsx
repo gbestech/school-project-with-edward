@@ -266,30 +266,56 @@ const SettingsDashboard = () => {
     fetchSettings();
   }, []);
 
+  // const handleSettingsUpdate = async (updatedSettings: any) => {
+  //   try {
+  //     console.log('Updating settings via SettingsService:', updatedSettings);
+      
+  //     // Use SettingsService instead of direct fetch
+  //     const savedSettings = await SettingsService.updateSettings(updatedSettings);
+      
+  //     console.log('Settings updated successfully:', savedSettings);
+  //     setSettings(savedSettings);
+  //     setSuccessMessage('Settings saved successfully!');
+  //     setError(null);
+      
+  //     // Clear success message after 3 seconds
+  //     setTimeout(() => setSuccessMessage(null), 3000);
+      
+  //     // Refresh settings in context
+  //     await refreshSettings();
+  //   } catch (err: any) {
+  //     console.error('Error saving settings:', err);
+  //     const errorMessage = err.message || 'Failed to save settings';
+  //     setError(errorMessage);
+  //     setSuccessMessage(null);
+  //   }
+  // };
   const handleSettingsUpdate = async (updatedSettings: any) => {
-    try {
-      console.log('Updating settings via SettingsService:', updatedSettings);
-      
-      // Use SettingsService instead of direct fetch
-      const savedSettings = await SettingsService.updateSettings(updatedSettings);
-      
-      console.log('Settings updated successfully:', savedSettings);
-      setSettings(savedSettings);
-      setSuccessMessage('Settings saved successfully!');
-      setError(null);
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000);
-      
-      // Refresh settings in context
-      await refreshSettings();
-    } catch (err: any) {
-      console.error('Error saving settings:', err);
-      const errorMessage = err.message || 'Failed to save settings';
-      setError(errorMessage);
-      setSuccessMessage(null);
-    }
-  };
+  try {
+    console.log('🔍 Original settings being sent:', updatedSettings);
+    console.log('🔍 Settings keys:', Object.keys(updatedSettings));
+    console.log('🔍 Settings values sample:', {
+      school_name: updatedSettings.school_name,
+      site_name: updatedSettings.site_name,
+      email: updatedSettings.email,
+    });
+    
+    const savedSettings = await SettingsService.updateSettings(updatedSettings);
+    
+    console.log('Settings updated successfully:', savedSettings);
+    setSettings(savedSettings);
+    setSuccessMessage('Settings saved successfully!');
+    setError(null);
+    
+    setTimeout(() => setSuccessMessage(null), 3000);
+    await refreshSettings();
+  } catch (err: any) {
+    console.error('Error saving settings:', err);
+    const errorMessage = err.message || 'Failed to save settings';
+    setError(errorMessage);
+    setSuccessMessage(null);
+  }
+};
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings, component: GeneralTab },

@@ -1426,15 +1426,75 @@ class SettingsService {
     }
   }
 
+  // async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
+  //   try {
+  //     const response = await api.put('/api/school-settings/school-settings/', settings);
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Error updating settings:', error);
+  //     throw new Error('Failed to update school settings');
+  //   }
+  // }
+
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
-    try {
-      const response = await api.put('/api/school-settings/school-settings/', settings);
-      return response;
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      throw new Error('Failed to update school settings');
+  try {
+    console.log('📤 Sending settings update:', settings);
+    
+    // Transform frontend data to backend format if needed
+    const backendSettings = {
+      school_name: settings.school_name,
+      site_name: settings.site_name,
+      address: settings.address,
+      phone: settings.phone,
+      email: settings.email,
+      motto: settings.motto,
+      timezone: settings.timezone,
+      date_format: settings.dateFormat,
+      language: settings.language,
+      theme: settings.theme,
+      primary_color: settings.primaryColor,
+      secondary_color: settings.secondaryColor,
+      typography: settings.fontFamily,
+      academic_year_start: settings.academicYearStart,
+      academic_year_end: settings.academicYearEnd,
+      // Only include fields that are actually being updated
+      ...(settings.logo && { logo: settings.logo }),
+      ...(settings.favicon && { favicon: settings.favicon }),
+    };
+    
+    console.log('📤 Transformed for backend:', backendSettings);
+    
+    const response = await api.put('/api/school-settings/school-settings/', backendSettings);
+    console.log('✅ Update response:', response);
+    return response;
+  } catch (error: any) {
+    console.error('❌ Error updating settings:', error);
+    console.error('❌ Error details:', error.response?.data);
+    
+    // Extract meaningful error message
+    const errorData = error.response?.data;
+    let errorMessage = 'Failed to update school settings';
+    
+    if (typeof errorData === 'object') {
+      // Handle Django validation errors
+      const errors = [];
+      for (const [field, messages] of Object.entries(errorData)) {
+        if (Array.isArray(messages)) {
+          errors.push(`${field}: ${messages.join(', ')}`);
+        } else {
+          errors.push(`${field}: ${messages}`);
+        }
+      }
+      if (errors.length > 0) {
+        errorMessage = `Validation errors: ${errors.join('; ')}`;
+      }
+    } else if (typeof errorData === 'string') {
+      errorMessage = errorData;
     }
+    
+    throw new Error(errorMessage);
   }
+}
 
   async getCommunicationSettings(): Promise<CommunicationSettings> {
     try {
