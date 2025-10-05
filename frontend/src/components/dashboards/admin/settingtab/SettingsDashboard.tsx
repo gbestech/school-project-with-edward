@@ -292,25 +292,23 @@ const SettingsDashboard = () => {
   // };
   const handleSettingsUpdate = async (updatedSettings: any) => {
   try {
-    console.log('🔍 Original settings being sent:', updatedSettings);
-    console.log('🔍 Settings keys:', Object.keys(updatedSettings));
-    console.log('🔍 Settings values sample:', {
-      school_name: updatedSettings.school_name,
-      site_name: updatedSettings.site_name,
-      email: updatedSettings.email,
-    });
+    console.log('🔍 Updating settings:', updatedSettings);
     
     const savedSettings = await SettingsService.updateSettings(updatedSettings);
     
-    console.log('Settings updated successfully:', savedSettings);
+    console.log('✅ Settings updated successfully:', savedSettings);
     setSettings(savedSettings);
     setSuccessMessage('Settings saved successfully!');
     setError(null);
     
     setTimeout(() => setSuccessMessage(null), 3000);
-    await refreshSettings();
+    
+    // Update context directly without refetching
+    if (window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('settings-updated', { detail: savedSettings }));
+    }
   } catch (err: any) {
-    console.error('Error saving settings:', err);
+    console.error('❌ Error saving settings:', err);
     const errorMessage = err.message || 'Failed to save settings';
     setError(errorMessage);
     setSuccessMessage(null);

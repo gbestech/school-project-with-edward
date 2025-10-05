@@ -195,32 +195,37 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   };
 
   const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Add cache buster
-      const cacheBuster = `${Date.now()}_${Math.random()}`;
-      const response = await fetch(`/api/school-settings/school-settings/?_=${cacheBuster}`, {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      });
+  try {
+    setLoading(true);
+    setError(null);
+    
+    // Use the EXACT same endpoint format that works for PUT
+    const response = await fetch('/api/school-settings/school-settings/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        ...(localStorage.getItem('authToken') && {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }),
+      },
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-
-      const data = await response.json();
-      console.log('Context fetched settings:', data);
-      setSettings(data);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch settings';
-      console.error('Context fetch error:', errorMsg);
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch settings: ${response.status}`);
     }
-  };
+
+    const data = await response.json();
+    console.log('✅ Context fetched settings:', data);
+    setSettings(data);
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : 'Failed to fetch settings';
+    console.error('❌ Context fetch error:', errorMsg);
+    setError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const updateSettings = async (newSettings: Partial<SchoolSettings>) => {
     if (!settings) return;
