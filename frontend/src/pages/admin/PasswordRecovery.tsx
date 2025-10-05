@@ -241,6 +241,8 @@
 // export default PasswordRecovery; 
 
 
+// 
+
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import api from '@/services/api';
@@ -268,34 +270,40 @@ const PasswordRecovery: React.FC = () => {
       const input = username.trim();
       const prefix = (input.split('/')[0] || '').toUpperCase();
 
+      console.log('🔍 Searching for user:', input, 'Prefix:', prefix);
+
       let resolved: { user_id: number; details: any } | null = null;
 
       // Route by prefix
       if (prefix === 'ADM') {
-        // Handle admin users - search directly in users endpoint
+        // Handle admin users
         try {
           const usersRes = await api.get('/api/auth/admins/list/', { params: { search: input } });
           const usersList = Array.isArray(usersRes.data) ? usersRes.data : 
                            Array.isArray(usersRes.data?.results) ? usersRes.data.results : [];
           
-          const adminMatch = usersList.find((u: any) => 
-            u.username === input && u.role === 'admin'
-          );
+          console.log('📋 Admin search results:', usersList);
+          
+          // Match by username, regardless of role field
+          const adminMatch = usersList.find((u: any) => u.username === input);
 
           if (adminMatch) {
+            console.log('✅ Found admin:', adminMatch);
             resolved = {
               user_id: adminMatch.id,
               details: {
                 username: adminMatch.username,
-                full_name: `${adminMatch.first_name} ${adminMatch.last_name}`,
+                full_name: adminMatch.full_name || `${adminMatch.first_name} ${adminMatch.last_name}`.trim() || 'N/A',
                 email: adminMatch.email,
                 phone: adminMatch.phone || 'N/A',
                 role: 'Admin'
               }
             };
+          } else {
+            console.log('❌ No admin match found in results');
           }
         } catch (error) {
-          console.error('Error searching for admin:', error);
+          console.error('❌ Error searching for admin:', error);
         }
       } else if (prefix === 'TCH') {
         // Teachers
@@ -303,25 +311,29 @@ const PasswordRecovery: React.FC = () => {
           const tRes = await api.get('/api/teachers/teachers/', { params: { search: input } });
           const tList = Array.isArray(tRes.data) ? tRes.data : 
                        Array.isArray(tRes.data?.results) ? tRes.data.results : [];
+          
+          console.log('📋 Teacher search results:', tList);
+          
           const tMatch = tList.find((t: any) => (t.user?.username || t.username) === input);
           
           if (tMatch) {
+            console.log('✅ Found teacher:', tMatch);
             const uid = Number(tMatch.user?.id || tMatch.id);
             if (uid) {
               resolved = {
                 user_id: uid,
                 details: {
                   username: input,
-                  full_name: tMatch.user?.full_name || tMatch.full_name,
+                  full_name: tMatch.user?.full_name || tMatch.full_name || 'N/A',
                   email: tMatch.user?.email || tMatch.email,
-                  phone: tMatch.user?.phone || tMatch.phone,
+                  phone: tMatch.user?.phone || tMatch.phone || 'N/A',
                   role: 'Teacher'
                 }
               };
             }
           }
         } catch (error) {
-          console.error('Error searching for teacher:', error);
+          console.error('❌ Error searching for teacher:', error);
         }
       } else if (prefix === 'STU') {
         // Students
@@ -329,25 +341,29 @@ const PasswordRecovery: React.FC = () => {
           const stRes = await api.get('/api/students/students/', { params: { search: input } });
           const stList = Array.isArray(stRes.data) ? stRes.data : 
                         Array.isArray(stRes.data?.results) ? stRes.data.results : [];
+          
+          console.log('📋 Student search results:', stList);
+          
           const stMatch = stList.find((s: any) => (s.user?.username || s.username) === input);
           
           if (stMatch) {
+            console.log('✅ Found student:', stMatch);
             const uid = Number(stMatch.user?.id || stMatch.id);
             if (uid) {
               resolved = {
                 user_id: uid,
                 details: {
                   username: input,
-                  full_name: stMatch.user?.full_name || stMatch.full_name,
+                  full_name: stMatch.user?.full_name || stMatch.full_name || 'N/A',
                   email: stMatch.user?.email || stMatch.email,
-                  phone: stMatch.user?.phone || stMatch.phone,
+                  phone: stMatch.user?.phone || stMatch.phone || 'N/A',
                   role: 'Student'
                 }
               };
             }
           }
         } catch (error) {
-          console.error('Error searching for student:', error);
+          console.error('❌ Error searching for student:', error);
         }
       } else if (prefix === 'PAR') {
         // Parents
@@ -362,45 +378,62 @@ const PasswordRecovery: React.FC = () => {
                    Array.isArray(pRes.data?.results) ? pRes.data.results : [];
           }
           
+          console.log('📋 Parent search results:', pList);
+          
           const pMatch = pList.find((p: any) => (p.user?.username || p.username) === input);
           
           if (pMatch) {
+            console.log('✅ Found parent:', pMatch);
             const uid = Number(pMatch.user?.id || pMatch.id);
             if (uid) {
               resolved = {
                 user_id: uid,
                 details: {
                   username: input,
-                  full_name: pMatch.user?.full_name || pMatch.full_name,
+                  full_name: pMatch.user?.full_name || pMatch.full_name || 'N/A',
                   email: pMatch.user?.email || pMatch.email,
-                  phone: pMatch.user?.phone || pMatch.phone,
+                  phone: pMatch.user?.phone || pMatch.phone || 'N/A',
                   role: 'Parent'
                 }
               };
             }
           }
         } catch (error) {
-          console.error('Error searching for parent:', error);
+          console.error('❌ Error searching for parent:', error);
         }
+      } else {
+        setResult({ 
+          success: false, 
+          message: 'Invalid username format. Username must start with ADM/, TCH/, STU/, or PAR/' 
+        });
+        toast.error('Invalid username format');
+        setLoading(false);
+        return;
       }
 
       if (!resolved) {
+        console.log('❌ No user found for username:', input);
         setResult({ 
           success: false, 
           message: 'User not found. Please check the username and try again.' 
         });
         toast.error('User not found');
+        setLoading(false);
         return;
       }
+
+      console.log('🔐 Resetting password for user ID:', resolved.user_id);
 
       // Generate a new password
       const newPassword = generatePassword();
 
       // Reset password via admin endpoint
-      await api.post(`/api/auth/admin-reset-password/`, {
+      const resetResponse = await api.post(`/api/auth/admin-reset-password/`, {
         user_id: resolved.user_id,
         new_password: newPassword
       });
+
+      console.log('✅ Password reset response:', resetResponse.data);
 
       setResult({
         success: true,
@@ -411,12 +444,19 @@ const PasswordRecovery: React.FC = () => {
 
       toast.success('Password reset successful!');
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      console.error('❌ Password reset error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail || 
+                          error.response?.data?.message ||
+                          'Failed to reset password. Please try again.';
+      
       setResult({
         success: false,
-        message: error.response?.data?.error || error.response?.data?.detail || 'Failed to reset password. Please try again.'
+        message: errorMessage
       });
-      toast.error('Failed to reset password');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -430,21 +470,29 @@ const PasswordRecovery: React.FC = () => {
     const all = uppercase + lowercase + numbers + special;
     
     let password = '';
+    // Ensure at least one character from each set
     password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
     password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
     password += numbers.charAt(Math.floor(Math.random() * numbers.length));
     password += special.charAt(Math.floor(Math.random() * special.length));
     
+    // Fill the rest randomly
     for (let i = 4; i < 12; i++) {
       password += all.charAt(Math.floor(Math.random() * all.length));
     }
     
+    // Shuffle the password
     return password.split('').sort(() => Math.random() - 0.5).join('');
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
+  };
+
+  const handleReset = () => {
+    setUsername('');
+    setResult(null);
   };
 
   return (
@@ -467,12 +515,18 @@ const PasswordRecovery: React.FC = () => {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="flex-1 p-3 border border-gray-300 rounded-lg"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !loading) {
+                handlePasswordReset();
+              }
+            }}
+            className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
             placeholder="Enter username (e.g., ADM/GTS/OCT/25/001)"
+            disabled={loading}
           />
           <button
             onClick={handlePasswordReset}
-            disabled={loading}
+            disabled={loading || !username.trim()}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Resetting...' : 'Reset Password'}
@@ -547,7 +601,25 @@ const PasswordRecovery: React.FC = () => {
                   The user should change this password upon their next login.
                 </p>
               </div>
+
+              <div className="mt-4">
+                <button
+                  onClick={handleReset}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-medium transition-colors"
+                >
+                  Reset Another Password
+                </button>
+              </div>
             </div>
+          )}
+          
+          {!result.success && (
+            <button
+              onClick={handleReset}
+              className="mt-3 text-blue-600 hover:text-blue-800 font-medium text-sm"
+            >
+              Try Again
+            </button>
           )}
         </div>
       )}
