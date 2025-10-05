@@ -268,21 +268,26 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     await fetchSettings();
   };
 
-  useEffect(() => {
-    fetchSettings();
+  // useEffect(() => {
+  //   fetchSettings();
 
-    // Listen for updates from other tabs
-    const handleStorageUpdate = (event: CustomEvent) => {
-      console.log('Settings updated in another tab:', event.detail);
-      setSettings(event.detail);
-    };
+  //   // Listen for updates from other tabs
+  //   const handleStorageUpdate = (event: CustomEvent) => {
+  //     console.log('Settings updated in another tab:', event.detail);
+  //     setSettings(event.detail);
+  //   };
 
-    window.addEventListener('settings-updated' as any, handleStorageUpdate);
+  //   window.addEventListener('settings-updated' as any, handleStorageUpdate);
     
-    return () => {
-      window.removeEventListener('settings-updated' as any, handleStorageUpdate);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener('settings-updated' as any, handleStorageUpdate);
+  //   };
+  // }, []);
+
+  useEffect(() => {
+  fetchSettings();
+}, []);
+
 
   const value: SettingsContextType = {
     settings,

@@ -304,9 +304,9 @@ const SettingsDashboard = () => {
     setTimeout(() => setSuccessMessage(null), 3000);
     
     // Update context directly without refetching
-    if (window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent('settings-updated', { detail: savedSettings }));
-    }
+    // if (window.dispatchEvent) {
+    //   window.dispatchEvent(new CustomEvent('settings-updated', { detail: savedSettings }));
+    // }
   } catch (err: any) {
     console.error('❌ Error saving settings:', err);
     const errorMessage = err.message || 'Failed to save settings';
