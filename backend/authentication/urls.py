@@ -9,6 +9,7 @@ from .views import (
     VerifyAccountView,
     ResendVerificationView,
     CheckVerificationStatusView,
+    create_admin,
     user_profile,
     logout_view,
     password_reset_request,
@@ -50,6 +51,7 @@ urlpatterns = [
         name="password_reset_confirm",
     ),
     path("admin-reset-password/", admin_reset_password, name="admin_reset_password"),
+    path("admins/", create_admin, name="create-admin"),
     # ================== Utility endpoints ==================
     path("check-email/", check_email_view, name="check_email"),
     path(
@@ -66,5 +68,5 @@ urlpatterns = [
     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
     path("debug/auth/", debug_auth, name="debug_auth"),
     path("debug/token/", debug_token, name="debug_token"),
-    path('users/<int:user_id>/activate/', activate_user, name='activate_user'),
+    path("users/<int:user_id>/activate/", activate_user, name="activate_user"),
 ]

@@ -36,6 +36,9 @@ import random
 import string
 import logging
 import json
+from utils import generate_unique_username
+import secrets
+from django.db import transaction
 
 from .serializers import (
     RegisterSerializer,
@@ -54,7 +57,8 @@ logger = logging.getLogger(__name__)
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
-@method_decorator(csrf_exempt, name='dispatch')
+
+@method_decorator(csrf_exempt, name="dispatch")
 class RegisterView(generics.CreateAPIView):
     """User registration view - creates inactive user and sends verification code"""
 
@@ -67,8 +71,8 @@ class RegisterView(generics.CreateAPIView):
         if serializer.is_valid():
             user = serializer.save()
             # Access generated credentials from the user object
-            generated_username = getattr(user, '_generated_username', None)
-            generated_password = getattr(user, '_generated_password', None)
+            generated_username = getattr(user, "_generated_username", None)
+            generated_password = getattr(user, "_generated_password", None)
             response_data = {
                 "message": "Account created successfully. Please check your email/SMS for verification code.",
                 "email": user.email,
@@ -84,7 +88,7 @@ class RegisterView(generics.CreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name="dispatch")
 class VerifyAccountView(APIView):
     """Verify user account with verification code and auto-login"""
 
@@ -134,7 +138,7 @@ class VerifyAccountView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name="dispatch")
 class ResendVerificationView(APIView):
     """Resend verification code to user's email or phone"""
 
@@ -183,7 +187,7 @@ class SimpleLoginView(APIView):
             data=request.data, context={"request": request}
         )
         if serializer.is_valid():
-            user = serializer.validated_data["user"] # type: ignore
+            user = serializer.validated_data["user"]  # type: ignore
 
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
@@ -233,7 +237,7 @@ def simple_login_view(request):
     """Simple login view (function-based)"""
     serializer = SimpleLoginSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
-        user = serializer.validated_data["user"] # type: ignore
+        user = serializer.validated_data["user"]  # type: ignore
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
@@ -958,60 +962,147 @@ def debug_login_function(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-@api_view(['PATCH'])
+@api_view(["PATCH"])
 @permission_classes([IsAdminUser])
 def activate_user(request, user_id):
     try:
         print(f"🔍 activate_user called with user_id: {user_id}")
         print(f"🔍 Request data: {request.data}")
         print(f"🔍 Request user: {request.user}")
-        
+
         user = User.objects.get(pk=user_id)
-        print(f"🔍 Found user: {user.username} (ID: {user.id}), current is_active: {user.is_active}")
-        
-        is_active = request.data.get('is_active')
+        print(
+            f"🔍 Found user: {user.username} (ID: {user.id}), current is_active: {user.is_active}"
+        )
+
+        is_active = request.data.get("is_active")
         print(f"🔍 Requested is_active value: {is_active}")
-        
+
         if is_active is not None:
             user.is_active = bool(is_active)
             user.save()
             print(f"🔍 Updated user.is_active to: {user.is_active}")
-            return Response({'success': True, 'is_active': user.is_active})
+            return Response({"success": True, "is_active": user.is_active})
         else:
             print(f"🔍 Missing is_active field in request data")
-            return Response({'error': 'Missing is_active field'}, status=400)
+            return Response({"error": "Missing is_active field"}, status=400)
     except User.DoesNotExist:
         print(f"🔍 User with ID {user_id} not found")
-        return Response({'error': 'User not found'}, status=404)
+        return Response({"error": "User not found"}, status=404)
     except Exception as e:
         print(f"🔍 Unexpected error: {str(e)}")
-        return Response({'error': str(e)}, status=500)
+        return Response({"error": str(e)}, status=500)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAdminUser])
 def admin_reset_password(request):
     """Reset user password (admin only)"""
     try:
-        user_id = request.data.get('user_id')
-        new_password = request.data.get('new_password')
-        
+        user_id = request.data.get("user_id")
+        new_password = request.data.get("new_password")
+
         if not user_id or not new_password:
             return Response(
-                {"error": "user_id and new_password are required."}, 
-                status=400
+                {"error": "user_id and new_password are required."}, status=400
             )
-        
+
         user = User.objects.get(id=user_id)
         user.set_password(new_password)
         user.save()
-        
-        return Response({
-            "message": f"Password for user {user.email} has been reset successfully.",
-            "username": user.username,
-            "email": user.email
-        })
+
+        return Response(
+            {
+                "message": f"Password for user {user.email} has been reset successfully.",
+                "username": user.username,
+                "email": user.email,
+            }
+        )
     except User.DoesNotExist:
         return Response({"error": "User not found."}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+
+def generate_temp_password(length=12):
+    """Generate a secure temporary password"""
+    chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + "!@#$%"
+    password = "".join(secrets.choice(chars) for _ in range(length))
+
+    # Ensure it has at least one of each type
+    if not any(c.isupper() for c in password):
+        password = secrets.choice(string.ascii_uppercase) + password[1:]
+    if not any(c.islower() for c in password):
+        password = password[0] + secrets.choice(string.ascii_lowercase) + password[2:]
+    if not any(c.isdigit() for c in password):
+        password = password[:2] + secrets.choice(string.digits) + password[3:]
+    if not any(c in "!@#$%" for c in password):
+        password = password[:3] + secrets.choice("!@#$%") + password[4:]
+
+    return password
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def create_admin(request):
+    """Create a new admin with auto-generated username and password"""
+    email = request.data.get("email")
+    first_name = request.data.get("first_name")
+    last_name = request.data.get("last_name")
+
+    # Validate required fields
+    if not all([email, first_name, last_name]):
+        return Response(
+            {"detail": "Email, first name, and last name are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Check if email already exists
+    if User.objects.filter(email=email).exists():
+        return Response(
+            {"detail": "A user with this email already exists"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        with transaction.atomic():
+            # Generate unique username using your existing utility
+            # Format will be: ADM/GTS/OCT/25/001
+            username = generate_unique_username("admin")
+            temp_password = generate_temp_password()
+
+            # Create the admin user
+            admin = User.objects.create_user(
+                username=username,
+                email=email,
+                password=temp_password,
+                first_name=first_name,
+                last_name=last_name,
+                role="admin",
+                is_staff=True,
+                is_superuser=True,
+                is_active=True,
+                email_verified=True,
+            )
+
+            logger.info(f"Admin created: {username} ({email})")
+
+            return Response(
+                {
+                    "id": admin.id,
+                    "admin_username": username,
+                    "admin_password": temp_password,
+                    "email": email,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "message": "Admin created successfully",
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+    except Exception as e:
+        logger.error(f"Failed to create admin: {str(e)}")
+        return Response(
+            {"detail": f"Failed to create admin: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

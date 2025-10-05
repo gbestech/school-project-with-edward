@@ -29,44 +29,38 @@ const AddAdminForm: React.FC = () => {
     setShowPasswordModal(false);
     
     try {
-      // Generate a temporary password
-      const tempPassword = `Admin${Math.random().toString(36).slice(-8)}!`;
-      
       const payload = {
         email: formData.email,
-        password: tempPassword,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        is_staff: true,
-        is_superuser: true,
-        role: 'admin'
       };
       
-      // Fixed: Use correct endpoint with /api prefix
-      const response = await api.post('/api/auth/register/', payload);
+      // Use the admins endpoint that generates unique username
+      const response = await api.post('/api/auth/admins/', payload);
       
-      // Use response data if available
-      const createdEmail = response?.email || response?.user?.email || formData.email;
-      const userId = response?.id || response?.user?.id;
-      
-      setSuccess(`Admin created successfully! ${userId ? `User ID: ${userId}` : ''}`);
+      setSuccess('Admin created successfully!');
       toast.success('Admin added successfully');
       
-      // Set credentials to show in modal
-      setAdminUsername(createdEmail);
-      setAdminPassword(tempPassword);
-      setShowPasswordModal(true);
+      // Set credentials from response
+      if (response.data) {
+        setAdminUsername(response.data.admin_username);
+        setAdminPassword(response.data.admin_password);
+        setShowPasswordModal(true);
+      }
       
-      // Reset form after showing modal
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-      });
+      // Reset form after a delay
+      setTimeout(() => {
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+        });
+      }, 1200);
+      
       setLoading(false);
     } catch (err: any) {
-       console.error('Full error object:', err);
-       console.error('Error response data:', err.response?.data);
+      console.error('Full error object:', err);
+      console.error('Error response data:', err.response?.data);
       const errorMessage = err.response?.data?.detail 
         || err.response?.data?.email?.[0]
         || err.response?.data?.message
@@ -159,7 +153,7 @@ const AddAdminForm: React.FC = () => {
                 <h4 className="font-semibold text-blue-800 mb-3">Login Credentials</h4>
                 <div className="space-y-3">
                   <div>
-                    <span className="text-sm font-semibold text-gray-700 block mb-1">Email/Username:</span>
+                    <span className="text-sm font-semibold text-gray-700 block mb-1">Username:</span>
                     <div className="flex items-center gap-2">
                       <span className="flex-1 font-mono text-sm bg-white px-3 py-2 rounded border border-gray-200">{adminUsername}</span>
                       <button 
