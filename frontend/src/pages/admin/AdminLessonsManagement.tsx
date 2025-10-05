@@ -1,4 +1,4 @@
-import React from 'react'
+
 import LessonManagement from './LessonManagement'
 
 const AdminLessonsManagement = () => {

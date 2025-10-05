@@ -278,9 +278,9 @@ const PasswordRecovery: React.FC = () => {
       if (prefix === 'ADM') {
         // Handle admin users
         try {
-          const usersRes = await api.get('/api/auth/admins/list/', { params: { search: input } });
-          const usersList = Array.isArray(usersRes.data) ? usersRes.data : 
-                           Array.isArray(usersRes.data?.results) ? usersRes.data.results : [];
+          const usersRes = await api.get('/api/auth/admins/list/', { search: input });
+          const usersList = Array.isArray(usersRes) ? usersRes : 
+                           Array.isArray(usersRes?.results) ? usersRes.results : [];
           
           console.log('📋 Admin search results:', usersList);
           
@@ -308,9 +308,9 @@ const PasswordRecovery: React.FC = () => {
       } else if (prefix === 'TCH') {
         // Teachers
         try {
-          const tRes = await api.get('/api/teachers/teachers/', { params: { search: input } });
-          const tList = Array.isArray(tRes.data) ? tRes.data : 
-                       Array.isArray(tRes.data?.results) ? tRes.data.results : [];
+          const tRes = await api.get('/api/teachers/teachers/', { search: input });
+          const tList = Array.isArray(tRes) ? tRes : 
+                       Array.isArray(tRes?.results) ? tRes.results : [];
           
           console.log('📋 Teacher search results:', tList);
           
@@ -338,9 +338,9 @@ const PasswordRecovery: React.FC = () => {
       } else if (prefix === 'STU') {
         // Students
         try {
-          const stRes = await api.get('/api/students/students/', { params: { search: input } });
-          const stList = Array.isArray(stRes.data) ? stRes.data : 
-                        Array.isArray(stRes.data?.results) ? stRes.data.results : [];
+          const stRes = await api.get('/api/students/students/', { search: input });
+          const stList = Array.isArray(stRes) ? stRes : 
+                        Array.isArray(stRes?.results) ? stRes.results : [];
           
           console.log('📋 Student search results:', stList);
           
@@ -368,14 +368,14 @@ const PasswordRecovery: React.FC = () => {
       } else if (prefix === 'PAR') {
         // Parents
         try {
-          let pRes = await api.get(`/api/parents/search/`, { params: { q: input } });
-          let pList = Array.isArray(pRes.data) ? pRes.data : 
-                     Array.isArray(pRes.data?.results) ? pRes.data.results : [];
+          let pRes = await api.get('/api/parents/search/', { q: input });
+          let pList = Array.isArray(pRes) ? pRes : 
+                     Array.isArray(pRes?.results) ? pRes.results : [];
           
           if (!Array.isArray(pList) || pList.length === 0) {
-            pRes = await api.get('/api/parents/', { params: { search: input } });
-            pList = Array.isArray(pRes.data) ? pRes.data : 
-                   Array.isArray(pRes.data?.results) ? pRes.data.results : [];
+            pRes = await api.get('/api/parents/', { search: input });
+            pList = Array.isArray(pRes) ? pRes : 
+                   Array.isArray(pRes?.results) ? pRes.results : [];
           }
           
           console.log('📋 Parent search results:', pList);
