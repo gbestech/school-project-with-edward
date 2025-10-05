@@ -415,13 +415,17 @@ def list_admins(request):
                     "email": admin.email,
                     "first_name": admin.first_name,
                     "last_name": admin.last_name,
+                    "full_name": getattr(
+                        admin, "full_name", f"{admin.first_name} {admin.last_name}"
+                    ),
+                    "role": getattr(admin, "role", "user"),
                     "full_name": admin.full_name,
                     "is_active": admin.is_active,
                     "is_staff": admin.is_staff,
                     "is_superuser": admin.is_superuser,
                     "date_joined": admin.date_joined,
                     "last_login": admin.last_login,
-                    "phone": admin.phone,
+                    "phone": getattr(admin, "phone", None),
                 }
             )
 

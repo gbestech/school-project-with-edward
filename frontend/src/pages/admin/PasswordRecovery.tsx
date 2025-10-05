@@ -274,7 +274,7 @@ const PasswordRecovery: React.FC = () => {
       if (prefix === 'ADM') {
         // Handle admin users - search directly in users endpoint
         try {
-          const usersRes = await api.get('/api/profiles/users/', { params: { search: input } });
+          const usersRes = await api.get('/api/auth/admins/list/', { params: { search: input } });
           const usersList = Array.isArray(usersRes.data) ? usersRes.data : 
                            Array.isArray(usersRes.data?.results) ? usersRes.data.results : [];
           
