@@ -466,7 +466,7 @@ export const usePermissions = () => {
 
     try {
       // Fixed: Remove user_id query param and response.data access
-      const response = await api.get('school-settings/user-roles/user_permissions/');
+      const response = await api.get('/api/school-settings/user-roles/user_permissions/');
       setPermissions(response); // api.get already returns parsed data
     } catch (err: any) {
       console.error('Failed to fetch permissions:', err);
