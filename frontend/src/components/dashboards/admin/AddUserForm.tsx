@@ -290,7 +290,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
         academic_year: formData.academicYear,
         education_level: formData.education_level,
         student_class: formData.student_class,
-        stream: formData.stream || null,
+        stream: formData.stream ?? null,
         registration_number: formData.registration_number,
         classroom: formData.classroom,
         address: formData.address,
