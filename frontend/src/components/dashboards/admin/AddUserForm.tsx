@@ -218,11 +218,11 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       console.log("🔍 useEffect for fetching streams ran");
     const fetchStreams = async () => {
       try {
-        // const response = await api.get('/api/classrooms/streams/');
         const response = await api.get('/api/classrooms/streams/');
+        // const response = await api.get('/api/classrooms/streams/');
          console.log("Fetched streams response:", response);
-        // setStreams(response || []);
-        setStreams(response.data || []);
+        setStreams(response || []);
+        // setStreams(response.data || []);
       } catch (error) {
         console.error('Error fetching streams:', error);
         setStreams([]);

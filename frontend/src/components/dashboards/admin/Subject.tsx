@@ -22,7 +22,6 @@ import {
   subjectService, 
   Subject, 
   CreateSubjectData, 
-  UpdateSubjectData, 
   SubjectFilters,
   SubjectStatistics 
 } from '@/services/SubjectService';
