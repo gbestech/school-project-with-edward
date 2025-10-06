@@ -55,31 +55,21 @@ const AllAdmins = () => {
   //   }
   // };
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = async (): Promise<void> => {
   setLoading(true);
   try {
     const response = await api.get('/api/auth/admins/list/');
-    console.log("📊 Raw API response:", response.data);
+    console.log("✅ Raw API response data:", response.data);
 
-    // Handle multiple response shapes
-    let adminList = [];
-    if (Array.isArray(response.data)) {
-      adminList = response.data;
-    } else if (Array.isArray(response.data?.results)) {
-      adminList = response.data.results;
-    } else if (response.data?.data && Array.isArray(response.data.data)) {
-      adminList = response.data.data;
-    }
+    // The response is already a plain array of admin objects
+    const adminList: Admin[] = Array.isArray(response.data) ? response.data : [];
 
     console.log("✅ Extracted admin list:", adminList);
 
-    // Optional filter (if you want only admin roles)
-    const filtered = adminList.filter(
-      (user: Admin) => user.role === "admin" || user.is_staff === true
-    );
+    // No further filtering required, since all are already admins
+    setAdmins(adminList);
 
-    console.log("🧾 Filtered to admins:", filtered);
-    setAdmins(filtered);
+    console.log("🧠 Admin state updated:", adminList);
   } catch (error) {
     console.error("❌ Error fetching admins:", error);
     toast.error("Failed to load admins. Please ensure the endpoint exists.");
@@ -87,6 +77,7 @@ const AllAdmins = () => {
     setLoading(false);
   }
 };
+
 
   useEffect(() => {
   console.log("🧠 Admin state updated:", admins);
