@@ -33,23 +33,48 @@ const AllAdmins = () => {
     }
   }, [showAddForm]);
 
-  const fetchAdmins = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get('/api/auth/admins/list/');
-      const adminList = Array.isArray(response.data) ? response.data : 
-                       Array.isArray(response.data?.results) ? response.data.results : [];
+  // const fetchAdmins = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const response = await api.get('/api/auth/admins/list/');
+  //     const adminList = Array.isArray(response.data) ? response.data : 
+  //                      Array.isArray(response.data?.results) ? response.data.results : [];
       
-      console.log('✅ Fetched admins:', adminList);
-      setAdmins(adminList);
+  //     console.log('✅ Fetched admins:', adminList);
+  //     setAdmins(adminList);
    
-    } catch (error: any) {
-      console.error('❌ Error fetching admins:', error);
-      toast.error('Failed to load admins. Please ensure the endpoint exists.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   } catch (error: any) {
+  //     console.error('❌ Error fetching admins:', error);
+  //     toast.error('Failed to load admins. Please ensure the endpoint exists.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const fetchAdmins = async () => {
+  setLoading(true);
+  try {
+    const response = await api.get('/api/auth/admins/list/');
+
+    // Safely extract admin list
+    const rawData = response.data?.results || response.data || [];
+    const adminList = Array.isArray(rawData)
+      ? rawData.filter((user) => user.role === 'admin' || user.is_staff)
+      : [];
+
+    console.log('✅ GET request successful for /api/auth/admins/list/:', rawData);
+    console.log('🧾 Filtered to admins:', adminList);
+
+    // ✅ Now update the state
+    setAdmins(adminList);
+  } catch (error) {
+    console.error('❌ Error fetching admins:', error);
+    toast.error('Failed to load admins. Please ensure the endpoint exists.');
+  } finally {
+    setLoading(false);
+  }
+};
+
   useEffect(() => {
   console.log("🧠 Admin state updated:", admins);
 }, [admins]);
