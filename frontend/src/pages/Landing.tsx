@@ -1,4 +1,4 @@
-import React from 'react';
+
 import Hero from '@/components/home/HeroSection';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 

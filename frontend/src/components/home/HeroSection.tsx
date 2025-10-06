@@ -17,15 +17,15 @@ import {
   BookOpen,
   Award,
   Lightbulb,
-  GraduationCap,
-  UserCheck
+  // GraduationCap,
+  // UserCheck
 } from 'lucide-react';
 import { eventManagementService, EnhancedEvent } from '@/services/eventService';
 import { useDesign } from '@/contexts/DesignContext';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { UserRole } from '@/types/types';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 
 interface HeroContent {
   title: string;
@@ -56,7 +56,7 @@ const HeroSection: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [contactRibbonVisible, setContactRibbonVisible] = useState(true);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   // Check ContactRibbon visibility
   useEffect(() => {
@@ -80,10 +80,7 @@ const HeroSection: React.FC = () => {
     };
   }, []);
 
-  // Calculate top padding based on ContactRibbon visibility
-  // When ContactRibbon visible: ContactRibbon height (~64px) + navbar height (64px) + extra margin
-  // Increase padding so the top content is fully visible under fixed headers
-  const topPadding = contactRibbonVisible ? 'pt-56' : 'pt-40';
+   const topPadding = contactRibbonVisible ? 'pt-56' : 'pt-40';
 
   // Admin event management state
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
