@@ -25,8 +25,11 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [faviconPreview, setFaviconPreview] = useState<string>('');
 
@@ -64,41 +67,48 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       ...prev,
       [field]: value
     }));
+    // Clear any previous errors when user makes changes
+    setError(null);
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Clear previous upload errors
+    setUploadError(null);
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file');
+      setUploadError('Please upload an image file (JPG, PNG, etc.)');
       return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      setError('Logo file size must be less than 2MB');
+      setUploadError('Logo file size must be less than 2MB');
       return;
     }
 
     try {
-      setIsLoading(true);
-      setError(null);
+      setIsUploadingLogo(true);
+      console.log('GeneralTab: Uploading logo...', file.name);
       
       const result = await SettingsService.uploadLogo(file);
+      console.log('GeneralTab: Logo upload result:', result);
       
       setFormData(prev => ({
         ...prev,
         logo: result.logoUrl
       }));
       setLogoPreview(result.logoUrl);
-      setSuccess('Logo uploaded successfully!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Failed to upload logo. Please try again.');
+      setSuccess('Logo uploaded successfully! Remember to click "Save Changes" to apply.');
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('GeneralTab: Logo upload error:', err);
+      setUploadError(err.message || 'Failed to upload logo. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsUploadingLogo(false);
     }
   };
 
@@ -106,33 +116,37 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadError(null);
+
     if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file');
+      setUploadError('Please upload an image file (ICO, PNG, etc.)');
       return;
     }
 
     if (file.size > 1 * 1024 * 1024) {
-      setError('Favicon file size must be less than 1MB');
+      setUploadError('Favicon file size must be less than 1MB');
       return;
     }
 
     try {
-      setIsLoading(true);
-      setError(null);
+      setIsUploadingFavicon(true);
+      console.log('GeneralTab: Uploading favicon...', file.name);
       
       const result = await SettingsService.uploadFavicon(file);
+      console.log('GeneralTab: Favicon upload result:', result);
       
       setFormData(prev => ({
         ...prev,
         favicon: result.faviconUrl
       }));
       setFaviconPreview(result.faviconUrl);
-      setSuccess('Favicon uploaded successfully!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Failed to upload favicon. Please try again.');
+      setSuccess('Favicon uploaded successfully! Remember to click "Save Changes" to apply.');
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('GeneralTab: Favicon upload error:', err);
+      setUploadError(err.message || 'Failed to upload favicon. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsUploadingFavicon(false);
     }
   };
 
@@ -140,28 +154,57 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
     setIsLoading(true);
     setError(null);
     setSuccess(null);
+    setUploadError(null);
 
     // Validate required fields
-    if (!formData.school_name || !formData.email) {
-      setError('School name and email are required fields');
+    if (!formData.school_name?.trim()) {
+      setError('School name is required');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.email?.trim()) {
+      setError('Email is required');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('GeneralTab: Saving settings:', formData);
+      console.log('GeneralTab: Attempting to save settings...');
+      console.log('GeneralTab: Form data being sent:', formData);
       
       // Call parent's update handler which uses SettingsContext
       if (onSettingsUpdate) {
         await onSettingsUpdate(formData);
+        console.log('GeneralTab: Settings saved successfully!');
         setSuccess('Settings saved successfully!');
         setTimeout(() => setSuccess(null), 3000);
+      } else {
+        console.error('GeneralTab: No onSettingsUpdate handler provided');
+        setError('Cannot save settings - no update handler provided');
       }
     } catch (err: any) {
       console.error('GeneralTab: Save error:', err);
-      const errorMessage = err.message || 'Failed to save settings';
+      console.error('GeneralTab: Error stack:', err.stack);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to save settings';
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
       setError(errorMessage);
-      setTimeout(() => setError(null), 5000);
+      setTimeout(() => setError(null), 8000);
     } finally {
       setIsLoading(false);
     }
@@ -179,17 +222,33 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
 
   return (
     <div className="p-8 space-y-8">
-      {/* Success/Error Messages */}
+      {/* Success Message */}
       {success && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-          <Check className="w-5 h-5 text-green-600" />
+          <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
           <p className="text-green-800 text-sm">{success}</p>
         </div>
       )}
+      
+      {/* General Save Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-          <X className="w-5 h-5 text-red-600" />
-          <p className="text-red-800 text-sm whitespace-pre-wrap">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-red-800 text-sm font-medium mb-1">Save Error</p>
+            <p className="text-red-700 text-sm whitespace-pre-wrap">{error}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Upload Error (separate from save errors) */}
+      {uploadError && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start gap-3">
+          <X className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-orange-800 text-sm font-medium mb-1">Upload Error</p>
+            <p className="text-orange-700 text-sm">{uploadError}</p>
+          </div>
         </div>
       )}
 
@@ -205,7 +264,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              School Name *
+              School Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -213,6 +272,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               onChange={(e) => handleInputChange('school_name', e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
               placeholder="Enter school name"
+              required
             />
           </div>
 
@@ -257,7 +317,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Email *
+              Email <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -265,6 +325,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               onChange={(e) => handleInputChange('email', e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
               placeholder="school@example.com"
+              required
             />
           </div>
 
@@ -386,17 +447,25 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               School Logo
             </label>
             {logoPreview && (
-              <div className="mb-4">
+              <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <img src={logoPreview} alt="Logo" className="h-20 object-contain" />
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleLogoUpload}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-            />
-            <p className="text-xs text-slate-500 mt-2">Max file size: 2MB</p>
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                disabled={isUploadingLogo}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              {isUploadingLogo && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-xl">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Max file size: 2MB. Supported: JPG, PNG, SVG</p>
           </div>
 
           <div>
@@ -404,17 +473,25 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               Favicon
             </label>
             {faviconPreview && (
-              <div className="mb-4">
+              <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <img src={faviconPreview} alt="Favicon" className="h-8 object-contain" />
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFaviconUpload}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-            />
-            <p className="text-xs text-slate-500 mt-2">Max file size: 1MB</p>
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFaviconUpload}
+                disabled={isUploadingFavicon}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              {isUploadingFavicon && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-xl">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">Max file size: 1MB. Supported: ICO, PNG</p>
           </div>
         </div>
       </div>
