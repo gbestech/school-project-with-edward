@@ -218,12 +218,14 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
     const fetchStreams = async () => {
       try {
         const response = await api.get('/api/classrooms/streams/');
+        console.log('This is the nature of stream data', response)
         setStreams(response || []);
       } catch (error) {
         console.error('Error fetching streams:', error);
         setStreams([]);
       }
     };
+     
     fetchStreams();
   }, []);
 
