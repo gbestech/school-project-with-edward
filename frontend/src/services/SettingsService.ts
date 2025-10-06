@@ -734,56 +734,120 @@ async testSaveAndRetrieve() {
     }
   }
 
-  async uploadLogo(file: File): Promise<{ logoUrl: string }> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+  // async uploadLogo(file: File): Promise<{ logoUrl: string }> {
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('file', file);
+  //     const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
       
-      const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-logo/`, {   
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: formData,
-      });
+  //     const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-logo/`, {   
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+  //       },
+  //       body: formData,
+  //     });
       
-      if (!response.ok) {
-        throw new Error('Failed to upload logo');
-      }
+  //     if (!response.ok) {
+  //       throw new Error('Failed to upload logo');
+  //     }
       
-      return await response.json();
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      throw new Error('Failed to upload logo');
-    }
-  }
+  //     return await response.json();
+  //   } catch (error) {
+  //     console.error('Error uploading logo:', error);
+  //     throw new Error('Failed to upload logo');
+  //   }
+  // }
 
-  async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+  // async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
+  //   try {
+  //     const formData = new FormData();
+  //     formData.append('file', file);
+  //     const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
       
-      const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-favicon/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-        },
-        body: formData,
-      });
+  //     const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-favicon/`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+  //       },
+  //       body: formData,
+  //     });
       
-      if (!response.ok) {
-        throw new Error('Failed to upload favicon');
-      }
+  //     if (!response.ok) {
+  //       throw new Error('Failed to upload favicon');
+  //     }
       
-      return await response.json();
-    } catch (error) {
-      console.error('Error uploading favicon:', error);
-      throw new Error('Failed to upload favicon');
+  //     return await response.json();
+  //   } catch (error) {
+  //     console.error('Error uploading favicon:', error);
+  //     throw new Error('Failed to upload favicon');
+  //   }
+  // }
+async uploadLogo(file: File): Promise<{ logoUrl: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('logo', file); // Changed from 'file' to 'logo'
+    
+    // VITE_API_URL already includes /api, so don't add it again
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+    
+    console.log('Uploading to:', `${baseUrl}/school-settings/school-settings/upload-logo/`);
+    
+    const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-logo/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload failed:', response.status, errorText);
+      throw new Error(`Failed to upload logo: ${response.status} - ${errorText}`);
     }
+    
+    const result = await response.json();
+    console.log('Upload successful:', result);
+    return result;
+  } catch (error) {
+    console.error('Error uploading logo:', error);
+    throw error;
   }
+}
 
+async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('favicon', file); // Changed from 'file' to 'favicon'
+    
+    // VITE_API_URL already includes /api, so don't add it again
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+    
+    console.log('Uploading to:', `${baseUrl}/school-settings/school-settings/upload-favicon/`);
+    
+    const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-favicon/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload failed:', response.status, errorText);
+      throw new Error(`Failed to upload favicon: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('Upload successful:', result);
+    return result;
+  } catch (error) {
+    console.error('Error uploading favicon:', error);
+    throw error;
+  }
+}
   async getAnnouncements(filters?: {
     target_audience?: string;
     is_active?: boolean;
