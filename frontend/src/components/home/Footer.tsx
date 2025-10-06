@@ -81,18 +81,18 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             {/* Brand */}
             <div className="flex items-center space-x-3 group">
-              {settings?.logo_url ? (
+              {settings?.logo ? (
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
                   <img 
-                    src={getAbsoluteUrl(settings.logo_url)} 
+                    src={getAbsoluteUrl(settings.logo)} 
                     alt={`${settings.school_name} logo`}
                     className="w-8 h-8 object-contain"
                     onError={(e) => {
-                      console.error('Footer logo failed to load:', getAbsoluteUrl(settings.logo_url));
+                      console.error('Footer logo failed to load:', getAbsoluteUrl(settings.logo));
                       e.currentTarget.style.display = 'none';
                     }}
                     onLoad={() => {
-                      console.log('Footer logo loaded successfully:', getAbsoluteUrl(settings.logo_url));
+                      console.log('Footer logo loaded successfully:', getAbsoluteUrl(settings.logo));
                     }}
                   />
                 </div>
@@ -144,18 +144,18 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
             {/* Brand Section */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-3 mb-6 group">
-                {settings?.logo_url ? (
+                {settings?.logo ? (
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-500 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-110">
                     <img 
-                      src={getAbsoluteUrl(settings.logo_url)} 
+                      src={getAbsoluteUrl(settings.logo)} 
                       alt={`${settings.school_name} logo`}
                       className="w-10 h-10 object-contain"
                       onError={(e) => {
-                        console.error('Main footer logo failed to load:', getAbsoluteUrl(settings.logo_url));
+                        console.error('Main footer logo failed to load:', getAbsoluteUrl(settings.logo));
                         e.currentTarget.style.display = 'none';
                       }}
                       onLoad={() => {
-                        console.log('Main footer logo loaded successfully:', getAbsoluteUrl(settings.logo_url));
+                        console.log('Main footer logo loaded successfully:', getAbsoluteUrl(settings.logo));
                       }}
                     />
                   </div>
@@ -171,7 +171,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
                 </div>
               </div>
               <p className="mb-6 leading-relaxed text-slate-600 dark:text-slate-400">
-                {settings?.school_motto || "Empowering the next generation with cutting-edge AI education and innovative learning experiences. Join thousands of students transforming their future."}
+                {settings?.motto || "Empowering the next generation with cutting-edge AI education and innovative learning experiences. Join thousands of students transforming their future."}
               </p>
               {/* Contact Info */}
               <div className="space-y-3 mb-8">
@@ -179,19 +179,19 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
                   <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center group-hover:bg-blue-500/20 transition-colors duration-300">
                     <Mail size={16} />
                   </div>
-                  <span>{settings?.school_email || "contact@aihustledaily.com"}</span>
+                  <span>{settings?.email || "contact@aihustledaily.com"}</span>
                 </div>
                 <div className="flex items-center space-x-3 transition-colors duration-300 group cursor-pointer text-slate-600 dark:text-slate-400">
                   <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center group-hover:bg-green-500/20 transition-colors duration-300">
                     <Phone size={16} />
                   </div>
-                  <span>{settings?.school_phone || "+234 (0) 123 456 7890"}</span>
+                  <span>{settings?.phone || "+234 (0) 123 456 7890"}</span>
                 </div>
                 <div className="flex items-center space-x-3 transition-colors duration-300 group cursor-pointer text-slate-600 dark:text-slate-400">
                   <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center group-hover:bg-red-500/20 transition-colors duration-300">
                     <MapPin size={16} />
                   </div>
-                  <span>{settings?.school_address || "Lagos, Nigeria"}</span>
+                  <span>{settings?.address || "Lagos, Nigeria"}</span>
                 </div>
               </div>
               {/* Social Links */}
