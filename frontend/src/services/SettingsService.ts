@@ -788,15 +788,26 @@ async uploadLogo(file: File): Promise<{ logoUrl: string }> {
     const formData = new FormData();
     formData.append('logo', file);
     
-    // Hardcoded with /api included - env variable not loading properly
-    const apiUrl = import.meta.env.VITE_API_URL;
-    const baseUrl = apiUrl || 'https://school-management-project-qpox.onrender.com/api';
+    // Check if we're in production (Vercel) or development
+    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
     
-    console.log('ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('Using baseUrl:', baseUrl);
-    console.log('Uploading to:', `${baseUrl}/school-settings/school-settings/upload-logo/`);
+    let uploadUrl;
+    if (isProduction) {
+      // On Vercel: use relative path, Vercel proxy handles the rest
+      uploadUrl = '/api/school-settings/school-settings/upload-logo/';
+    } else {
+      // Local dev: use full backend URL
+      let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      if (!baseUrl.endsWith('/api')) {
+        baseUrl = `${baseUrl}/api`;
+      }
+      uploadUrl = `${baseUrl}/school-settings/school-settings/upload-logo/`;
+    }
     
-    const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-logo/`, {
+    console.log('Is Production:', isProduction);
+    console.log('Upload URL:', uploadUrl);
+    
+    const response = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -824,9 +835,13 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     const formData = new FormData();
     formData.append('favicon', file);
     
-    // Hardcoded with /api included - env variable not loading properly
-    const apiUrl = import.meta.env.VITE_API_URL;
-    const baseUrl = apiUrl || 'https://school-management-project-qpox.onrender.com/api';
+    // Get env variable and ensure /api is included
+    let baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+    
+    // If baseUrl doesn't end with /api, add it
+    if (!baseUrl.endsWith('/api')) {
+      baseUrl = `${baseUrl}/api`;
+    }
     
     console.log('ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
     console.log('Using baseUrl:', baseUrl);
