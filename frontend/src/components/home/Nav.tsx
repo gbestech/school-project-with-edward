@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/contexts/SettingsContext';
 import { getAbsoluteUrl } from '@/utils/urlUtils';
 
+
 const Nav: React.FC = () => {
   const { isDarkMode, toggleTheme } = useGlobalTheme();
   const { user, logout } = useAuth();
@@ -137,7 +138,7 @@ const Nav: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo and School Name */}
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
+            <div className="w-20 h-20 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
               {settings?.logo ? (
                 <img 
                   src={getAbsoluteUrl(settings.logo)} 
@@ -152,7 +153,10 @@ const Nav: React.FC = () => {
                   }}
                 />
               ) : (
-                <GraduationCap className="w-12 h-12 text-white" />
+                <img 
+               src={`${import.meta.env.BASE_URL}images/GodsTreasureLogoRedesigned.jpg`}
+                alt='Gods Treasure Schools Logo'
+                className="w-20 h-20 text-white" />
               )}
             </div>
             <span className="hidden md:block text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
