@@ -122,15 +122,14 @@ const AllAdmins = () => {
       filterStatus === 'all' ? true :
       filterStatus === 'active' ? admin.is_active :
       !admin.is_active;
-      console.log("🧩 Filter Status:", filterStatus);
-console.log("🔍 Search Term:", searchTerm);
-console.log("👥 Admins Before Filter:", admins);
-console.log("✅ Filtered Admins:", filteredAdmins);
-
-
+      
     return matchesSearch && matchesFilter;
   });
 
+  console.log("🧩 Filter Status:", filterStatus);
+console.log("🔍 Search Term:", searchTerm);
+console.log("👥 Admins Before Filter:", admins);
+console.log("✅ Filtered Admins:", filteredAdmins);
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
