@@ -465,9 +465,11 @@ export const usePermissions = () => {
     setError(null);
 
     try {
-      // Fixed: Remove user_id query param and response.data access
-      const response = await api.get('/api/school-settings/user-roles/user_permissions/');
-      setPermissions(response.data);
+      // Fixed: Include user_id as a query parameter
+      const response = await api.get('/api/school-settings/user-roles/user_permissions/', {
+        user_id: user.id
+      });
+      setPermissions(response);
 
     } catch (err: any) {
       console.error('Failed to fetch permissions:', err);
@@ -651,8 +653,6 @@ export const usePermissions = () => {
     return roleAccess[section] || false;
   };
 
-  // ... rest of your convenience methods remain the same ...
-
   const canRead = (module: string): boolean => hasPermission(module, 'read');
   const canWrite = (module: string): boolean => hasPermission(module, 'write');
   const canDelete = (module: string): boolean => hasPermission(module, 'delete');
@@ -740,7 +740,7 @@ export const usePermissions = () => {
 
   useEffect(() => {
     fetchPermissions();
-  }, [user?.id, isAuthenticated]); // Added user?.id to dependencies
+  }, [user?.id, isAuthenticated]);
 
   return {
     permissions,
