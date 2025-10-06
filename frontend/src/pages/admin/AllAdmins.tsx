@@ -82,17 +82,20 @@ const AllAdmins = () => {
 }, [admins]);
 
   const handleToggleStatus = async (adminId: number, currentStatus: boolean) => {
-    try {
-      await api.patch(`/api/auth/users/${adminId}/activate`, {
-      });
-      
-      toast.success(`Admin ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-      fetchAdmins();
-    } catch (error: any) {
-      console.error('Error toggling admin status:', error);
-      toast.error('Failed to update admin status');
-    }
-  };
+  try {
+    // Toggle the current status
+    await api.patch(`/api/auth/users/${adminId}/activate/`, {
+      is_active: !currentStatus,
+    });
+
+    toast.success(`Admin ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+    fetchAdmins();
+  } catch (error: any) {
+    console.error('Error toggling admin status:', error);
+    toast.error('Failed to update admin status');
+  }
+};
+
 
   const handleDeleteAdmin = async (adminId: number, adminName: string) => {
     if (!window.confirm(`Are you sure you want to delete admin "${adminName}"? This action cannot be undone.`)) {
