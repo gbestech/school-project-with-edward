@@ -1,8 +1,16 @@
-
-
-
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
-  "framework": "vite"
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://school-management-project-qpox.onrender.com/api/:path*"
+    },
+    {
+      "source": "/media/:path*",
+      "destination": "https://school-management-project-qpox.onrender.com/media/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
