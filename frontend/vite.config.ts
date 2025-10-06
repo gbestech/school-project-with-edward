@@ -4,7 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // Add this line
+  base: '/', // base path
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
@@ -23,5 +23,12 @@ export default defineConfig({
         secure: false,
       },
     },
+  },
+  build: {
+    outDir: 'dist', // ✅ ensures Vercel finds your built files
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
   },
 })
