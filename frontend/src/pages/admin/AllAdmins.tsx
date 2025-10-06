@@ -61,10 +61,10 @@ const AllAdmins = () => {
     const response = await api.get("/api/auth/admins/list/");
     console.log("✅ Full response:", response);
 
-    // The admins are directly returned as an array
-    const adminList = Array.isArray(response.data) ? response.data : [];
-    console.log("✅ Extracted admin list:", adminList);
+    // since API returns array directly, not wrapped in response.data
+    const adminList = Array.isArray(response) ? response : [];
 
+    console.log("✅ Extracted admin list:", adminList);
     setAdmins(adminList);
   } catch (error: any) {
     console.error("❌ Error fetching admins:", error);
@@ -73,6 +73,7 @@ const AllAdmins = () => {
     setLoading(false);
   }
 };
+
 
 
 
