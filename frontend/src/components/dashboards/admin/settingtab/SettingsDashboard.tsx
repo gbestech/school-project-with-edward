@@ -211,7 +211,7 @@
 
 
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   Settings, 
   Palette, 
@@ -239,81 +239,35 @@ import SettingsService from '@/services/SettingsService';
 
 const SettingsDashboard = () => {
   const [activeTab, setActiveTab] = useState('general');
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const { refreshSettings } = useSettings();
+  const { settings, loading, error, setError, refreshSettings } = useSettings();
 
-  // Fetch settings on component mount using SettingsService
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        console.log('Fetching settings via SettingsService...');
-        const data = await SettingsService.getSettings();
-        console.log('Settings fetched successfully:', data);
-        setSettings(data);
-        setError(null);
-      } catch (err: any) {
-        console.error('Error fetching settings:', err);
-        const errorMessage = err.message || 'Failed to load settings';
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings();
-  }, []);
-
-  // const handleSettingsUpdate = async (updatedSettings: any) => {
-  //   try {
-  //     console.log('Updating settings via SettingsService:', updatedSettings);
-      
-  //     // Use SettingsService instead of direct fetch
-  //     const savedSettings = await SettingsService.updateSettings(updatedSettings);
-      
-  //     console.log('Settings updated successfully:', savedSettings);
-  //     setSettings(savedSettings);
-  //     setSuccessMessage('Settings saved successfully!');
-  //     setError(null);
-      
-  //     // Clear success message after 3 seconds
-  //     setTimeout(() => setSuccessMessage(null), 3000);
-      
-  //     // Refresh settings in context
-  //     await refreshSettings();
-  //   } catch (err: any) {
-  //     console.error('Error saving settings:', err);
-  //     const errorMessage = err.message || 'Failed to save settings';
-  //     setError(errorMessage);
-  //     setSuccessMessage(null);
-  //   }
-  // };
   const handleSettingsUpdate = async (updatedSettings: any) => {
-  try {
-    console.log('🔍 Updating settings:', updatedSettings);
-    
-    const savedSettings = await SettingsService.updateSettings(updatedSettings);
-    
-    console.log('✅ Settings updated successfully:', savedSettings);
-    setSettings(savedSettings);
-    setSuccessMessage('Settings saved successfully!');
+    try {
+      console.log('Dashboard: Updating settings:', updatedSettings);
+      
+      const savedSettings = await SettingsService.updateSettings(updatedSettings);
+      
+      console.log('Dashboard: Settings updated successfully:', savedSettings);
+      setSuccessMessage('Settings saved successfully!');
+      setError(null);
+      
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // Refresh context to sync across the entire application
+      await refreshSettings();
+    } catch (err: any) {
+      console.error('Dashboard: Error saving settings:', err);
+      const errorMessage = err.message || 'Failed to save settings';
+      setError(errorMessage);
+      setSuccessMessage(null);
+    }
+  };
+
+  const handleRetry = async () => {
     setError(null);
-    
-    setTimeout(() => setSuccessMessage(null), 3000);
-    
-    // Update context directly without refetching
-    // if (window.dispatchEvent) {
-    //   window.dispatchEvent(new CustomEvent('settings-updated', { detail: savedSettings }));
-    // }
-  } catch (err: any) {
-    console.error('❌ Error saving settings:', err);
-    const errorMessage = err.message || 'Failed to save settings';
-    setError(errorMessage);
-    setSuccessMessage(null);
-  }
-};
+    await refreshSettings();
+  };
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings, component: GeneralTab },
@@ -392,18 +346,7 @@ const SettingsDashboard = () => {
                     Refresh Page
                   </button>
                   <button 
-                    onClick={async () => {
-                      setLoading(true);
-                      setError(null);
-                      try {
-                        const data = await SettingsService.getSettings();
-                        setSettings(data);
-                      } catch (err: any) {
-                        setError(err.message || 'Failed to load settings');
-                      } finally {
-                        setLoading(false);
-                      }
-                    }} 
+                    onClick={handleRetry}
                     className="px-4 py-2 text-sm bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
                   >
                     Retry

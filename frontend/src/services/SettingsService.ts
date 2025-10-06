@@ -560,7 +560,7 @@ class SettingsService {
   try {
     console.log('📤 Sending settings update:', settings);
     
-    // Transform frontend data to backend format if needed
+    // Transform frontend data to backend format
     const backendSettings = {
       school_name: settings.school_name,
       site_name: settings.site_name,
@@ -577,7 +577,6 @@ class SettingsService {
       typography: settings.fontFamily,
       academic_year_start: settings.academicYearStart,
       academic_year_end: settings.academicYearEnd,
-      // Only include fields that are actually being updated
       ...(settings.logo && { logo: settings.logo }),
       ...(settings.favicon && { favicon: settings.favicon }),
     };
@@ -585,18 +584,26 @@ class SettingsService {
     console.log('📤 Transformed for backend:', backendSettings);
     
     const response = await api.put('/api/school-settings/school-settings/', backendSettings);
-    console.log('✅ Update response:', response);
-    return response;
+    console.log('✅ Backend response:', response);
+    
+    // Transform response back to frontend format
+    const transformedResponse = await this.transformBackendToFrontend(response);
+    console.log('✅ Transformed response:', transformedResponse);
+    
+    // Broadcast the update to all listeners
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('settings-updated', { detail: transformedResponse }));
+    }
+    
+    return transformedResponse;
   } catch (error: any) {
     console.error('❌ Error updating settings:', error);
     console.error('❌ Error details:', error.response?.data);
     
-    // Extract meaningful error message
     const errorData = error.response?.data;
     let errorMessage = 'Failed to update school settings';
     
     if (typeof errorData === 'object') {
-      // Handle Django validation errors
       const errors = [];
       for (const [field, messages] of Object.entries(errorData)) {
         if (Array.isArray(messages)) {
@@ -615,6 +622,57 @@ class SettingsService {
     throw new Error(errorMessage);
   }
 }
+
+private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
+    return {
+      site_name: response.site_name || response.school_name || 'EduAdmin Pro',
+      school_name: response.school_name || 'Springfield Elementary School',
+      address: response.address || response.school_address || '',
+      phone: response.phone || response.school_phone || '',
+      email: response.email || response.school_email || '',
+      logo: response.logo || response.logo_url || '',
+      favicon: response.favicon || response.favicon_url || '',
+      academicYearStart: response.academic_year_start || '',
+      academicYearEnd: response.academic_year_end || '',
+      motto: response.motto || response.school_motto || 'Excellence in Education',
+      timezone: response.timezone || 'UTC-5',
+      dateFormat: response.date_format || 'dd/mm/yyyy',
+      language: response.language || 'English',
+      theme: response.theme || 'light',
+      primaryColor: response.primary_color || '#3B82F6',
+      secondaryColor: response.secondary_color || '#6366F1',
+      fontFamily: response.typography || 'Inter',
+      fontSize: 'medium',
+      notifications: response.notifications || this.getDefaultSettings().notifications,
+      paymentGateways: response.paymentGateways || this.getDefaultSettings().paymentGateways,
+      allowSelfRegistration: response.allow_self_registration ?? true,
+      emailVerificationRequired: response.email_verification_required ?? true,
+      registrationApprovalRequired: response.registration_approval_required ?? false,
+      defaultUserRole: response.default_user_role || 'student',
+      passwordMinLength: response.password_min_length || 8,
+      passwordResetInterval: response.password_reset_interval || 90,
+      passwordRequireNumbers: response.password_require_numbers ?? true,
+      passwordRequireSymbols: response.password_require_symbols ?? false,
+      passwordRequireUppercase: response.password_require_uppercase ?? false,
+      allowProfileImageUpload: response.allow_profile_image_upload ?? true,
+      profileImageMaxSize: response.profile_image_max_size || 2,
+      classLevels: response.classLevels || [],
+      subjects: response.subjects || [],
+      sessions: response.sessions || [],
+      grading: response.grading || { grades: [], passMark: 40 },
+      markingScheme: response.markingScheme || {
+        continuousAssessment: 30,
+        examination: 70,
+        components: []
+      },
+      messageTemplates: response.messageTemplates || this.getDefaultSettings().messageTemplates,
+      chatSystem: response.chatSystem || this.getDefaultSettings().chatSystem,
+      userRolePaymentAccess: response.userRolePaymentAccess || this.getDefaultSettings().userRolePaymentAccess,
+      feeStructure: response.feeStructure || this.getDefaultSettings().feeStructure,
+      discountRules: response.discountRules || this.getDefaultSettings().discountRules,
+    };
+  }
+
 
   async getCommunicationSettings(): Promise<CommunicationSettings> {
     try {
