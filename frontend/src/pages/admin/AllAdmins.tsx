@@ -83,8 +83,7 @@ const AllAdmins = () => {
 
   const handleToggleStatus = async (adminId: number, currentStatus: boolean) => {
     try {
-      await api.patch(`/api/auth/activate-user/${adminId}/`, {
-        is_active: !currentStatus
+      await api.patch(`/api/auth/users/${adminId}/activate`, {
       });
       
       toast.success(`Admin ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
