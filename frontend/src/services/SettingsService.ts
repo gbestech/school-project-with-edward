@@ -322,6 +322,9 @@ class SettingsService {
     });
     
     console.log('Raw API response:', response);
+     console.log('🔍 Raw API response:', response);
+    console.log('🔍 Response type:', typeof response);
+    console.log('🔍 Response keys:', Object.keys(response));
 
       // Check if response is HTML (404 error page)
       if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
@@ -330,28 +333,28 @@ class SettingsService {
       }
       
       // Transform the response to match the frontend interface
-      const transformedSettings: SchoolSettings = {
-        site_name: response.site_name || response.school_name || 'EduAdmin Pro',
-        school_name: response.school_name || 'Springfield Elementary School',
-        address: response.address || response.school_address || '',
-        phone: response.phone || response.school_phone || '',
-        email: response.email || response.school_email || '',
-        logo: response.logo || response.logo_url || '',
-        favicon: response.favicon || response.favicon_url || '',
-        academicYearStart: response.academic_year_start || '',
-        academicYearEnd: response.academic_year_end || '',
-        motto: response.motto || response.school_motto || 'Excellence in Education',
-        timezone: response.timezone || 'UTC-5',
-        dateFormat: response.date_format || 'dd/mm/yyyy',
-        language: response.language || 'English',
-        theme: response.theme || 'light',
-        primaryColor: response.primary_color || '#3B82F6',
-        secondaryColor: response.secondary_color || '#6366F1',
-        fontFamily: response.typography || 'Inter',
+       const transformedSettings: SchoolSettings = {
+        site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
+        school_name: response.school_name ?? 'Springfield Elementary School',
+        address: response.address ?? response.school_address ?? '',
+        phone: response.phone ?? response.school_phone ?? '',
+        email: response.email ?? response.school_email ?? '',
+        logo: response.logo ?? response.logo_url ?? '',
+        favicon: response.favicon ?? response.favicon_url ?? '',
+        academicYearStart: response.academic_year_start ?? '',
+        academicYearEnd: response.academic_year_end ?? '',
+        motto: response.motto ?? response.school_motto ?? 'Excellence in Education',
+        timezone: response.timezone ?? 'UTC-5',
+        dateFormat: response.date_format ?? 'dd/mm/yyyy',
+        language: response.language ?? 'English',
+        theme: response.theme ?? 'light',
+        primaryColor: response.primary_color ?? '#3B82F6',
+        secondaryColor: response.secondary_color ?? '#6366F1',
+        fontFamily: response.typography ?? 'Inter',
         fontSize: 'medium',
         notifications: {
           email: {
-            enabled: response.notifications_enabled || false,
+            enabled: response.notifications_enabled ?? false,
             welcomeEmail: false,
             resultReleased: false,
             absentNotice: false,
@@ -662,56 +665,81 @@ class SettingsService {
   }
 }
 
-private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
-    return {
-      site_name: response.site_name || response.school_name || 'EduAdmin Pro',
-      school_name: response.school_name || 'Springfield Elementary School',
-      address: response.address || response.school_address || '',
-      phone: response.phone || response.school_phone || '',
-      email: response.email || response.school_email || '',
-      logo: response.logo || response.logo_url || '',
-      favicon: response.favicon || response.favicon_url || '',
-      academicYearStart: response.academic_year_start || '',
-      academicYearEnd: response.academic_year_end || '',
-      motto: response.motto || response.school_motto || 'Excellence in Education',
-      timezone: response.timezone || 'UTC-5',
-      dateFormat: response.date_format || 'dd/mm/yyyy',
-      language: response.language || 'English',
-      theme: response.theme || 'light',
-      primaryColor: response.primary_color || '#3B82F6',
-      secondaryColor: response.secondary_color || '#6366F1',
-      fontFamily: response.typography || 'Inter',
-      fontSize: 'medium',
-      notifications: response.notifications || this.getDefaultSettings().notifications,
-      paymentGateways: response.paymentGateways || this.getDefaultSettings().paymentGateways,
+private transformBackendToFrontend(response: any): SchoolSettings {
+  return {
+    site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
+    school_name: response.school_name ?? 'Springfield Elementary School',
+    address: response.address ?? response.school_address ?? '',
+    phone: response.phone ?? response.school_phone ?? '',
+    email: response.email ?? response.school_email ?? '',
+    logo: response.logo ?? response.logo_url ?? '',
+    favicon: response.favicon ?? response.favicon_url ?? '',
+    academicYearStart: response.academic_year_start ?? '',
+    academicYearEnd: response.academic_year_end ?? '',
+    motto: response.motto ?? response.school_motto ?? 'Excellence in Education',
+    timezone: response.timezone ?? 'UTC-5',
+    dateFormat: response.date_format ?? 'dd/mm/yyyy',
+    language: response.language ?? 'English',
+    theme: response.theme ?? 'light',
+    primaryColor: response.primary_color ?? '#3B82F6',
+    secondaryColor: response.secondary_color ?? '#6366F1',
+    fontFamily: response.typography ?? 'Inter',
+    fontSize: 'medium',
+      notifications: response.notifications ?? this.getDefaultSettings().notifications,
+      paymentGateways: response.paymentGateways ?? this.getDefaultSettings().paymentGateways,
       allowSelfRegistration: response.allow_self_registration ?? true,
       emailVerificationRequired: response.email_verification_required ?? true,
       registrationApprovalRequired: response.registration_approval_required ?? false,
-      defaultUserRole: response.default_user_role || 'student',
-      passwordMinLength: response.password_min_length || 8,
-      passwordResetInterval: response.password_reset_interval || 90,
+      defaultUserRole: response.default_user_role ?? 'student',
+      passwordMinLength: response.password_min_length ?? 8,
+      passwordResetInterval: response.password_reset_interval ?? 90,
       passwordRequireNumbers: response.password_require_numbers ?? true,
       passwordRequireSymbols: response.password_require_symbols ?? false,
       passwordRequireUppercase: response.password_require_uppercase ?? false,
       allowProfileImageUpload: response.allow_profile_image_upload ?? true,
-      profileImageMaxSize: response.profile_image_max_size || 2,
-      classLevels: response.classLevels || [],
-      subjects: response.subjects || [],
-      sessions: response.sessions || [],
-      grading: response.grading || { grades: [], passMark: 40 },
-      markingScheme: response.markingScheme || {
+      profileImageMaxSize: response.profile_image_max_size ?? 2,
+      classLevels: response.classLevels ?? [],
+      subjects: response.subjects ?? [],
+      sessions: response.sessions ?? [],
+      grading: response.grading ?? { grades: [], passMark: 40 },
+      markingScheme: response.markingScheme ?? {
         continuousAssessment: 30,
         examination: 70,
         components: []
       },
-      messageTemplates: response.messageTemplates || this.getDefaultSettings().messageTemplates,
-      chatSystem: response.chatSystem || this.getDefaultSettings().chatSystem,
-      userRolePaymentAccess: response.userRolePaymentAccess || this.getDefaultSettings().userRolePaymentAccess,
-      feeStructure: response.feeStructure || this.getDefaultSettings().feeStructure,
-      discountRules: response.discountRules || this.getDefaultSettings().discountRules,
+      messageTemplates: response.messageTemplates ?? this.getDefaultSettings().messageTemplates,
+      chatSystem: response.chatSystem ?? this.getDefaultSettings().chatSystem,
+      userRolePaymentAccess: response.userRolePaymentAccess ?? this.getDefaultSettings().userRolePaymentAccess,
+      feeStructure: response.feeStructure ?? this.getDefaultSettings().feeStructure,
+      discountRules: response.discountRules ?? this.getDefaultSettings().discountRules,
     };
   }
+async testSaveAndRetrieve() {
+  console.log('🧪 Testing save and retrieve...');
+  
+  // Save test data
+  const testData = {
+    school_name: 'Test School ' + Date.now(),
+    email: 'test@example.com'
+  };
+  console.log('📤 Saving:', testData);
+  const saved = await this.updateSettings(testData);
+  console.log('✅ Saved response:', saved);
 
+  await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+  console.log('📥 Retrieving...');
+  const retrieved = await this.getSettings();
+  console.log('✅ Retrieved:', retrieved);
+
+  // Check if they match
+  if (retrieved.school_name === testData.school_name) {
+    console.log('✅ TEST PASSED: Data persisted correctly!');
+  } else {
+    console.error('❌ TEST FAILED: Data did not persist');
+    console.error('Expected:', testData.school_name);
+    console.error('Got:', retrieved.school_name);
+  }
+}
 
   async getCommunicationSettings(): Promise<CommunicationSettings> {
     try {
