@@ -154,7 +154,7 @@ const Nav: React.FC = () => {
                 />
               ) : (
                 <img 
-               src={`${import.meta.env.BASE_URL}images/GodsTreasureLogoRedesigned.jpg`}
+               src={`${import.meta.env.BASE_URL}images/godstreasurelogo.png`}
                 alt='Gods Treasure Schools Logo'
                 className="w-20 h-20 text-white" />
               )}
