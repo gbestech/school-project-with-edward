@@ -740,7 +740,7 @@ async testSaveAndRetrieve() {
       formData.append('file', file);
       const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
       
-      const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-logo/`, {   
+      const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-logo/`, {   
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -765,7 +765,7 @@ async testSaveAndRetrieve() {
       formData.append('file', file);
       const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
       
-      const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-favicon/`, {
+      const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-favicon/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
