@@ -311,8 +311,6 @@ class SettingsService {
   
  async getSettings(): Promise<SchoolSettings> {
   try {
-    // Add timestamp to prevent caching
-  
     const cacheBuster = `${Date.now()}_${Math.random()}`;
     const response = await api.get(`/api/school-settings/school-settings/?_=${cacheBuster}`, {
       headers: {
@@ -321,233 +319,134 @@ class SettingsService {
       }
     });
     
-    console.log('Raw API response:', response);
-     console.log('🔍 Raw API response:', response);
-    console.log('🔍 Response type:', typeof response);
-    console.log('🔍 Response keys:', Object.keys(response));
+    console.log('🔍 Raw API response:', response);
 
-      // Check if response is HTML (404 error page)
-      if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
-        console.error('Received HTML instead of JSON - likely a 404 or auth error');
-        return this.getDefaultSettings();
-      }
-      
-      // Transform the response to match the frontend interface
-       const transformedSettings: SchoolSettings = {
-        site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
-        school_name: response.school_name ?? 'Springfield Elementary School',
-        address: response.address ?? response.school_address ?? '',
-        phone: response.phone ?? response.school_phone ?? '',
-        email: response.email ?? response.school_email ?? '',
-        logo: response.logo ?? response.logo_url ?? '',
-        favicon: response.favicon ?? response.favicon_url ?? '',
-        academicYearStart: response.academic_year_start ?? '',
-        academicYearEnd: response.academic_year_end ?? '',
-        motto: response.motto ?? response.school_motto ?? 'Excellence in Education',
-        timezone: response.timezone ?? 'UTC-5',
-        dateFormat: response.date_format ?? 'dd/mm/yyyy',
-        language: response.language ?? 'English',
-        theme: response.theme ?? 'light',
-        primaryColor: response.primary_color ?? '#3B82F6',
-        secondaryColor: response.secondary_color ?? '#6366F1',
-        fontFamily: response.typography ?? 'Inter',
-        fontSize: 'medium',
-        notifications: {
-          email: {
-            enabled: response.notifications_enabled ?? false,
-            welcomeEmail: false,
-            resultReleased: false,
-            absentNotice: false,
-            feeReminder: false,
-            examSchedule: false,
-            eventAnnouncement: false,
-            disciplinaryAction: false,
-            provider: 'smtp',
-            smtp: {
-              host: '',
-              port: 587,
-              username: '',
-              password: '',
-              encryption: 'tls',
-              fromName: '',
-              fromEmail: '',
-            },
-            brevo: {
-              apiKey: '',
-              fromName: '',
-              fromEmail: '',
-              templateId: '',
-              senderId: 0,
-            },
-          },
-          sms: {
-            enabled: false,
-            welcomeSMS: false,
-            resultReleased: false,
-            absentNotice: false,
-            feeReminder: false,
-            examSchedule: false,
-            eventAnnouncement: false,
-            disciplinaryAction: false,
-            provider: '',
-            apiKey: '',
-            apiSecret: '',
-            senderID: '',
-          },
-          inApp: {
-            enabled: true,
-            welcomeMessage: true,
-            resultReleased: true,
-            absentNotice: true,
-            feeReminder: true,
-            examSchedule: true,
-            eventAnnouncement: true,
-            disciplinaryAction: true,
-            soundEnabled: true,
-            desktopNotifications: true,
-          },
-        },
-        paymentGateways: {
-          paystack: {
-            enabled: false,
-            publicKey: '',
-            secretKey: '',
-            testMode: true,
-          },
-          stripe: {
-            enabled: false,
-            publishableKey: '',
-            secretKey: '',
-            testMode: true,
-          },
-          flutterwave: {
-            enabled: false,
-            publicKey: '',
-            secretKey: '',
-            testMode: true,
-          },
-          bankTransfer: {
-            enabled: false,
-            bankName: '',
-            accountNumber: '',
-            accountName: '',
-          },
-        },
-        allowSelfRegistration: true,
-        emailVerificationRequired: true,
-        registrationApprovalRequired: false,
-        defaultUserRole: 'student',
-        passwordMinLength: 8,
-        passwordResetInterval: 90,
-        passwordRequireNumbers: true,
-        passwordRequireSymbols: false,
-        passwordRequireUppercase: false,
-        allowProfileImageUpload: true,
-        profileImageMaxSize: 2,
-        classLevels: [],
-        subjects: [],
-        sessions: [],
-        grading: {
-          grades: [],
-          passMark: 40
-        },
-        markingScheme: {
-          continuousAssessment: 30,
-          examination: 70,
-          components: []
-        },
-        messageTemplates: {
-          welcomeEmail: { subject: '', content: '', active: false },
-          resultReleased: { subject: '', content: '', active: false },
-          absentNotice: { subject: '', content: '', active: false },
-          feeReminder: { subject: '', content: '', active: false }
-        },
-        chatSystem: {
-          enabled: true,
-          adminToTeacher: {
-            enabled: true,
-            allowFileSharing: true,
-            maxFileSize: 10,
-            allowedFileTypes: ['pdf', 'doc', 'docx', 'jpg', 'png'],
-            moderationEnabled: false
-          },
-          teacherToParent: {
-            enabled: true,
-            allowFileSharing: true,
-            maxFileSize: 5,
-            allowedFileTypes: ['pdf', 'jpg', 'png'],
-            moderationEnabled: true,
-            requireApproval: false
-          },
-          teacherToStudent: {
-            enabled: false,
-            allowFileSharing: false,
-            maxFileSize: 2,
-            allowedFileTypes: ['pdf'],
-            moderationEnabled: true,
-            requireApproval: true
-          },
-          parentToParent: {
-            enabled: false,
-            allowFileSharing: false,
-            moderationEnabled: true,
-            requireApproval: true
-          },
-          moderation: {
-            enabled: true,
-            profanityFilter: true,
-            keywordBlacklist: [],
-            autoModeration: true,
-            flaggedContentAction: 'hide',
-            moderators: [],
-            businessHoursOnly: false,
-            businessHours: { start: '08:00', end: '16:00' }
-          }
-        },
-        userRolePaymentAccess: {
-          teachers: {
-            paystack: false,
-            stripe: false,
-            flutterwave: false,
-            bankTransfer: false
-          },
-          students: {
-            paystack: false,
-            stripe: false,
-            flutterwave: false,
-            bankTransfer: false
-          },
-          parents: {
-            paystack: false,
-            stripe: false,
-            flutterwave: false,
-            bankTransfer: false
-          }
-        },
-        feeStructure: {
-          categories: [],
-          paymentPlans: {
-            fullPayment: false,
-            twoInstallments: false,
-            threeInstallments: false
-          }
-        },
-        discountRules: {
-          siblingDiscount: {
-            enabled: false,
-            secondChild: 0,
-            thirdChild: 0
-          }
-        },
-      };
-      
-      console.log('Transformed settings:', transformedSettings);
-      return transformedSettings;
-    } catch (error) {
-      console.error('Error fetching settings:', error);
+    // Check if response is HTML (404 error page)
+    if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+      console.error('Received HTML instead of JSON - likely a 404 or auth error');
       return this.getDefaultSettings();
     }
+    
+    // Transform with CORRECT field mapping based on actual backend response
+    const transformedSettings: SchoolSettings = {
+      // Use school_address not address (backend field name)
+      site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
+      school_name: response.school_name ?? 'Springfield Elementary School',
+      address: response.school_address ?? '', // FIXED: was response.address
+      phone: response.school_phone ?? '',     // FIXED: was response.phone
+      email: response.school_email ?? '',     // FIXED: was response.email
+      logo: response.logo_url ?? response.logo ?? '',
+      favicon: response.favicon_url ?? response.favicon ?? '',
+      
+      // Parse academic_year if it exists (might be "2024/2025" format)
+      academicYearStart: response.academic_year_start ?? '',
+      academicYearEnd: response.academic_year_end ?? '',
+      
+      motto: response.school_motto ?? 'Excellence in Education', // FIXED: was response.motto
+      timezone: response.timezone ?? 'UTC-5',
+      dateFormat: response.date_format ?? 'dd/mm/yyyy',
+      language: response.language ?? 'English',
+      theme: response.theme ?? 'light',
+      primaryColor: response.primary_color ?? '#3B82F6',
+      secondaryColor: response.secondary_color ?? '#6366F1',
+      fontFamily: response.typography ?? 'Inter',
+      fontSize: 'medium',
+      
+      notifications: {
+        email: {
+          enabled: response.notifications_enabled ?? false,
+          welcomeEmail: false,
+          resultReleased: false,
+          absentNotice: false,
+          feeReminder: false,
+          examSchedule: false,
+          eventAnnouncement: false,
+          disciplinaryAction: false,
+          provider: 'smtp',
+          smtp: {
+            host: '',
+            port: 587,
+            username: '',
+            password: '',
+            encryption: 'tls',
+            fromName: '',
+            fromEmail: '',
+          },
+          brevo: {
+            apiKey: '',
+            fromName: '',
+            fromEmail: '',
+            templateId: '',
+            senderId: 0,
+          },
+        },
+        sms: {
+          enabled: false,
+          welcomeSMS: false,
+          resultReleased: false,
+          absentNotice: false,
+          feeReminder: false,
+          examSchedule: false,
+          eventAnnouncement: false,
+          disciplinaryAction: false,
+          provider: '',
+          apiKey: '',
+          apiSecret: '',
+          senderID: '',
+        },
+        inApp: {
+          enabled: true,
+          welcomeMessage: true,
+          resultReleased: true,
+          absentNotice: true,
+          feeReminder: true,
+          examSchedule: true,
+          eventAnnouncement: true,
+          disciplinaryAction: true,
+          soundEnabled: true,
+          desktopNotifications: true,
+        },
+      },
+      
+      // Rest of the settings with defaults
+      paymentGateways: this.getDefaultSettings().paymentGateways,
+      allowSelfRegistration: true,
+      emailVerificationRequired: true,
+      registrationApprovalRequired: false,
+      defaultUserRole: 'student',
+      passwordMinLength: 8,
+      passwordResetInterval: 90,
+      passwordRequireNumbers: true,
+      passwordRequireSymbols: false,
+      passwordRequireUppercase: false,
+      allowProfileImageUpload: true,
+      profileImageMaxSize: 2,
+      classLevels: [],
+      subjects: [],
+      sessions: [],
+      grading: {
+        grades: [],
+        passMark: 40
+      },
+      markingScheme: {
+        continuousAssessment: 30,
+        examination: 70,
+        components: []
+      },
+      messageTemplates: this.getDefaultSettings().messageTemplates,
+      chatSystem: this.getDefaultSettings().chatSystem,
+      userRolePaymentAccess: this.getDefaultSettings().userRolePaymentAccess,
+      feeStructure: this.getDefaultSettings().feeStructure,
+      discountRules: this.getDefaultSettings().discountRules,
+    };
+    
+    console.log('✅ Transformed settings:', transformedSettings);
+    return transformedSettings;
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    return this.getDefaultSettings();
   }
+}
 
   // async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
   //   try {
@@ -665,55 +564,55 @@ class SettingsService {
   }
 }
 
-private transformBackendToFrontend(response: any): SchoolSettings {
+private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
   return {
     site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
     school_name: response.school_name ?? 'Springfield Elementary School',
-    address: response.address ?? response.school_address ?? '',
-    phone: response.phone ?? response.school_phone ?? '',
-    email: response.email ?? response.school_email ?? '',
-    logo: response.logo ?? response.logo_url ?? '',
-    favicon: response.favicon ?? response.favicon_url ?? '',
+    address: response.school_address ?? '',     // FIXED
+    phone: response.school_phone ?? '',         // FIXED
+    email: response.school_email ?? '',         // FIXED
+    logo: response.logo_url ?? response.logo ?? '',
+    favicon: response.favicon_url ?? response.favicon ?? '',
     academicYearStart: response.academic_year_start ?? '',
     academicYearEnd: response.academic_year_end ?? '',
-    motto: response.motto ?? response.school_motto ?? 'Excellence in Education',
+    motto: response.school_motto ?? 'Excellence in Education', // FIXED
     timezone: response.timezone ?? 'UTC-5',
     dateFormat: response.date_format ?? 'dd/mm/yyyy',
     language: response.language ?? 'English',
     theme: response.theme ?? 'light',
     primaryColor: response.primary_color ?? '#3B82F6',
-    secondaryColor: response.secondary_color ?? '#6366F1',
+    secondaryColor: response.secondary_color ?? '#6366F6',
     fontFamily: response.typography ?? 'Inter',
     fontSize: 'medium',
-      notifications: response.notifications ?? this.getDefaultSettings().notifications,
-      paymentGateways: response.paymentGateways ?? this.getDefaultSettings().paymentGateways,
-      allowSelfRegistration: response.allow_self_registration ?? true,
-      emailVerificationRequired: response.email_verification_required ?? true,
-      registrationApprovalRequired: response.registration_approval_required ?? false,
-      defaultUserRole: response.default_user_role ?? 'student',
-      passwordMinLength: response.password_min_length ?? 8,
-      passwordResetInterval: response.password_reset_interval ?? 90,
-      passwordRequireNumbers: response.password_require_numbers ?? true,
-      passwordRequireSymbols: response.password_require_symbols ?? false,
-      passwordRequireUppercase: response.password_require_uppercase ?? false,
-      allowProfileImageUpload: response.allow_profile_image_upload ?? true,
-      profileImageMaxSize: response.profile_image_max_size ?? 2,
-      classLevels: response.classLevels ?? [],
-      subjects: response.subjects ?? [],
-      sessions: response.sessions ?? [],
-      grading: response.grading ?? { grades: [], passMark: 40 },
-      markingScheme: response.markingScheme ?? {
-        continuousAssessment: 30,
-        examination: 70,
-        components: []
-      },
-      messageTemplates: response.messageTemplates ?? this.getDefaultSettings().messageTemplates,
-      chatSystem: response.chatSystem ?? this.getDefaultSettings().chatSystem,
-      userRolePaymentAccess: response.userRolePaymentAccess ?? this.getDefaultSettings().userRolePaymentAccess,
-      feeStructure: response.feeStructure ?? this.getDefaultSettings().feeStructure,
-      discountRules: response.discountRules ?? this.getDefaultSettings().discountRules,
-    };
-  }
+    notifications: response.notifications ?? this.getDefaultSettings().notifications,
+    paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
+    allowSelfRegistration: response.allow_self_registration ?? true,
+    emailVerificationRequired: response.email_verification_required ?? true,
+    registrationApprovalRequired: response.registration_approval_required ?? false,
+    defaultUserRole: response.default_user_role ?? 'student',
+    passwordMinLength: response.password_min_length ?? 8,
+    passwordResetInterval: response.password_reset_interval ?? 90,
+    passwordRequireNumbers: response.password_require_numbers ?? true,
+    passwordRequireSymbols: response.password_require_symbols ?? false,
+    passwordRequireUppercase: response.password_require_uppercase ?? false,
+    allowProfileImageUpload: response.allow_profile_image_upload ?? true,
+    profileImageMaxSize: response.profile_image_max_size ?? 2,
+    classLevels: response.classLevels ?? [],
+    subjects: response.subjects ?? [],
+    sessions: response.sessions ?? [],
+    grading: response.grading ?? { grades: [], passMark: 40 },
+    markingScheme: response.markingScheme ?? {
+      continuousAssessment: 30,
+      examination: 70,
+      components: []
+    },
+    messageTemplates: response.messageTemplates ?? this.getDefaultSettings().messageTemplates,
+    chatSystem: response.chatSystem ?? this.getDefaultSettings().chatSystem,
+    userRolePaymentAccess: response.userRolePaymentAccess ?? this.getDefaultSettings().userRolePaymentAccess,
+    feeStructure: response.feeStructure ?? this.getDefaultSettings().feeStructure,
+    discountRules: response.discountRules ?? this.getDefaultSettings().discountRules,
+  };
+}
 async testSaveAndRetrieve() {
   console.log('🧪 Testing save and retrieve...');
   
