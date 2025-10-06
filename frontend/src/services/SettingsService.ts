@@ -466,12 +466,16 @@ class SettingsService {
     const backendSettings: any = {};
     
     // General settings transformations
+     // CRITICAL FIXES - Map frontend field names to backend field names
     if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
     if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
-    if (settings.address !== undefined) backendSettings.address = settings.address;
-    if (settings.phone !== undefined) backendSettings.phone = settings.phone;
-    if (settings.email !== undefined) backendSettings.email = settings.email;
-    if (settings.motto !== undefined) backendSettings.motto = settings.motto;
+    
+    // These were WRONG - they need the school_ prefix
+    if (settings.address !== undefined) backendSettings.school_address = settings.address;  // ← FIX
+    if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;        // ← FIX
+    if (settings.email !== undefined) backendSettings.school_email = settings.email;        // ← FIX
+    if (settings.motto !== undefined) backendSettings.school_motto = settings.motto;        // ← FIX
+    
     if (settings.timezone !== undefined) backendSettings.timezone = settings.timezone;
     if (settings.dateFormat !== undefined) backendSettings.date_format = settings.dateFormat;
     if (settings.language !== undefined) backendSettings.language = settings.language;
