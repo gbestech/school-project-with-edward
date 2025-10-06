@@ -8,24 +8,18 @@ import {
   Save
 } from 'lucide-react';
 import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
-import { useSettings } from '@/contexts/SettingsContext';
 
 interface GeneralTabProps {
   settings?: any;
   onSettingsUpdate?: (settings: any) => void;
 }
 
-const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSettingsUpdate }) => {
-  const { settings, loading, error, updateSettings, refreshSettings } = useSettings();
-  
-  // Use parent settings if available, otherwise use context settings
-  const currentSettings = parentSettings || settings;
-  const isLoading = parentSettings ? false : loading;
-  
+const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) => {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
@@ -33,291 +27,120 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
     setTimeout(() => setShowSuccessMessage(false), 3000);
   };
 
-  // Initialize local state with settings data
-  const [schoolInfo, setSchoolInfo] = useState({
-    schoolName: '',
-    siteName: '',
-    motto: '',
-    academicYearStart: ''
+  // Local state matching backend model fields
+  const [formData, setFormData] = useState({
+    school_name: '',
+    school_address: '',
+    school_phone: '',
+    school_email: '',
+    school_website: '',
+    school_motto: '',
+    academic_year: '',
+    current_term: '',
+    timezone: 'Africa/Lagos',
+    maintenance_mode: false,
+    notifications_enabled: true,
+    student_portal_enabled: true,
+    parent_portal_enabled: true,
+    teacher_portal_enabled: true,
   });
 
-  const [contactInfo, setContactInfo] = useState({
-    email: '',
-    phone: '',
-    address: '',
-    website: '',
-    workingHours: '',
-    timezone: 'Africa/Lagos'
-  });
-
-  const [socialMedia, setSocialMedia] = useState({
-    facebook: '',
-    twitter: '',
-    instagram: '',
-    linkedin: '',
-    youtube: ''
-  });
-
-  const [systemSettings, setSystemSettings] = useState({
-    maintenanceMode: false,
-    allowRegistration: true,
-    requireEmailVerification: true,
-    allowPasswordReset: true,
-    sessionTimeout: 30,
-    maxFileUploadSize: 10,
-    allowedFileTypes: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
-    enableNotifications: true,
-    enableAuditLog: true
-  });
-
-  const [portalSettings, setPortalSettings] = useState({
-    studentPortalEnabled: true,
-    parentPortalEnabled: true,
-    teacherPortalEnabled: true
-  });
-
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Update local state when settings are loaded
+  // Update form when settings change
   useEffect(() => {
-    if (currentSettings) {
-      // Update school info from settings
-      setSchoolInfo({
-        schoolName: currentSettings.school_name || '',
-        siteName: currentSettings.site_name || '',
-        motto: currentSettings.school_motto || '',
-        academicYearStart: currentSettings.academic_year || ''
-      });
-
-      // Update contact info from settings
-      setContactInfo({
-        email: currentSettings.school_email || '',
-        phone: currentSettings.school_phone || '',
-        address: currentSettings.school_address || '',
-        website: currentSettings.school_website || '',
-        workingHours: currentSettings.working_hours || '',
-        timezone: currentSettings.timezone || 'Africa/Lagos'
-      });
-
-      // Update system settings from settings
-      setSystemSettings({
-        maintenanceMode: currentSettings.maintenance_mode || false,
-        allowRegistration: currentSettings.allow_self_registration || true,
-        requireEmailVerification: currentSettings.email_verification_required || true,
-        allowPasswordReset: true, // Add to settings if needed
-        sessionTimeout: currentSettings.session_timeout || 30,
-        maxFileUploadSize: currentSettings.profile_image_max_size || 10,
-        allowedFileTypes: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
-        enableNotifications: currentSettings.notifications_enabled !== false,
-        enableAuditLog: true // Add to settings if needed
-      });
-
-      // Update portal settings from settings
-      setPortalSettings({
-        studentPortalEnabled: currentSettings.student_portal_enabled !== false,
-        parentPortalEnabled: currentSettings.parent_portal_enabled !== false,
-        teacherPortalEnabled: currentSettings.teacher_portal_enabled !== false
+    if (settings) {
+      setFormData({
+        school_name: settings.school_name || '',
+        school_address: settings.school_address || '',
+        school_phone: settings.school_phone || '',
+        school_email: settings.school_email || '',
+        school_website: settings.school_website || '',
+        school_motto: settings.school_motto || '',
+        academic_year: settings.academic_year || '',
+        current_term: settings.current_term || '',
+        timezone: settings.timezone || 'Africa/Lagos',
+        maintenance_mode: settings.maintenance_mode || false,
+        notifications_enabled: settings.notifications_enabled !== false,
+        student_portal_enabled: settings.student_portal_enabled !== false,
+        parent_portal_enabled: settings.parent_portal_enabled !== false,
+        teacher_portal_enabled: settings.teacher_portal_enabled !== false,
       });
     }
-  }, [currentSettings]);
+  }, [settings]);
 
-  const updateSchoolInfo = (field: string, value: string) => {
-    setSchoolInfo(prev => ({ ...prev, [field]: value }));
-    // Don't call backend immediately - only update local state
-  };
-
-  const updateContactInfo = (field: string, value: string) => {
-    setContactInfo(prev => ({ ...prev, [field]: value }));
-    // Don't call backend immediately - only update local state
-  };
-
-  const updateSocialMedia = (platform: string, url: string) => {
-    setSocialMedia(prev => ({ ...prev, [platform]: url }));
-    // Don't call backend immediately - only update local state
-  };
-
-  const updateSystemSetting = (field: string, value: any) => {
-    setSystemSettings(prev => ({ ...prev, [field]: value }));
-    // Don't call backend immediately - only update local state
-  };
-
-  const updatePortalSetting = (field: string, value: boolean) => {
-    setPortalSettings(prev => ({ ...prev, [field]: value }));
-    // Don't call backend immediately - only update local state
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setIsUploadingLogo(true);
-      try {
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-        if (!allowedTypes.includes(file.type)) {
-          alert('Please select a valid image file (JPG, PNG, or GIF)');
-          return;
-        }
+    if (!file) return;
 
-        // Validate file size (5MB limit)
-        if (file.size > 5 * 1024 * 1024) {
-          alert('File size must be less than 5MB');
-          return;
-        }
-
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append('logo', file);
-
-        // Upload logo to backend
-        const token = localStorage.getItem('authToken');
-        const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const logoUrl = result.logo_url || result.url;
-          
-          // Update settings with new logo URL
-          if (onSettingsUpdate && currentSettings) {
-            const updatedSettings = { ...currentSettings, logo: logoUrl };
-            onSettingsUpdate(updatedSettings);
-          } else {
-            await updateSettings({ logo: logoUrl });
-          }
-
-          // Refresh settings to update all components
-          await refreshSettings();
-          
-          showSuccess('School logo uploaded successfully!');
-          console.log('Logo uploaded successfully:', logoUrl);
-        } else {
-          throw new Error('Failed to upload logo');
-        }
-        
-      } catch (error) {
-        console.error('Failed to upload logo:', error);
-        alert('Failed to upload logo. Please try again.');
-      } finally {
-        setIsUploadingLogo(false);
+    setIsUploadingLogo(true);
+    try {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid image file (JPG, PNG, or GIF)');
+        return;
       }
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+
+      // Send file through main update
+      await onSettingsUpdate?.({ logo: file });
+      showSuccess('School logo uploaded successfully!');
+    } catch (error) {
+      console.error('Failed to upload logo:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload logo. Please try again.');
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
   const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setIsUploadingFavicon(true);
-      try {
-        // Validate file type
-        const allowedTypes = ['image/x-icon', 'image/png'];
-        if (!allowedTypes.includes(file.type)) {
-          alert('Please select a valid favicon file (ICO or PNG)');
-          return;
-        }
+    if (!file) return;
 
-        // Validate file size (1MB limit)
-        if (file.size > 1 * 1024 * 1024) {
-          alert('File size must be less than 1MB');
-          return;
-        }
-
-        // Create FormData for file upload
-        const formData = new FormData();
-        formData.append('favicon', file);
-
-        // Upload favicon to backend
-        const token = localStorage.getItem('authToken');
-        const response = await fetch('/api/school-settings/school-settings/upload-favicon/', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          const faviconUrl = result.favicon_url || result.url;
-          
-          // Update settings with new favicon URL
-          if (onSettingsUpdate && currentSettings) {
-            const updatedSettings = { ...currentSettings, favicon: faviconUrl };
-            onSettingsUpdate(updatedSettings);
-          } else {
-            await updateSettings({ favicon: faviconUrl });
-          }
-
-          // Refresh settings to update all components
-          await refreshSettings();
-          
-          showSuccess('School favicon uploaded successfully!');
-          console.log('Favicon uploaded successfully:', faviconUrl);
-        } else {
-          throw new Error('Failed to upload favicon');
-        }
-        
-      } catch (error) {
-        console.error('Failed to upload favicon:', error);
-        alert('Failed to upload favicon. Please try again.');
-      } finally {
-        setIsUploadingFavicon(false);
+    setIsUploadingFavicon(true);
+    try {
+      const allowedTypes = ['image/x-icon', 'image/png', 'image/vnd.microsoft.icon'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a valid favicon file (ICO or PNG)');
+        return;
       }
+
+      if (file.size > 1 * 1024 * 1024) {
+        alert('File size must be less than 1MB');
+        return;
+      }
+
+      await onSettingsUpdate?.({ favicon: file });
+      showSuccess('School favicon uploaded successfully!');
+    } catch (error) {
+      console.error('Failed to upload favicon:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload favicon. Please try again.');
+    } finally {
+      setIsUploadingFavicon(false);
     }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Collect all current data and map to correct backend field names
-      const allData = {
-        // School information - using the correct field names for backend model
-        school_name: schoolInfo.schoolName,
-        school_address: contactInfo.address,
-        school_phone: contactInfo.phone,
-        school_email: contactInfo.email,
-        school_website: contactInfo.website,
-        school_motto: schoolInfo.motto,
-        academic_year: schoolInfo.academicYearStart,
-        timezone: contactInfo.timezone,
-        // System settings
-        maintenance_mode: systemSettings.maintenanceMode,
-        notifications_enabled: systemSettings.enableNotifications,
-        // Portal access control
-        student_portal_enabled: portalSettings.studentPortalEnabled,
-        parent_portal_enabled: portalSettings.parentPortalEnabled,
-        teacher_portal_enabled: portalSettings.teacherPortalEnabled
-      };
-
-      console.log('Saving settings with data:', allData);
-
-      if (onSettingsUpdate && currentSettings) {
-        // Update parent settings
-        const updatedSettings = { ...currentSettings, ...allData };
-        onSettingsUpdate(updatedSettings);
-      } else {
-        // Use context updateSettings
-        await updateSettings(allData);
-      }
-
-      // Refresh settings to update all components across the app
-      await refreshSettings();
-      
+      console.log('Saving settings:', formData);
+      await onSettingsUpdate?.(formData);
       showSuccess('Settings saved successfully!');
-      console.log('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Failed to save settings. Please try again.');
+      alert(error instanceof Error ? error.message : 'Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (isLoading) {
+  if (!settings) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-slate-600">Loading settings...</div>
@@ -327,7 +150,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
   return (
     <div className="space-y-8">
-      {/* Success Message */}
       {showSuccessMessage && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-right">
           {successMessage}
@@ -335,8 +157,8 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
       )}
 
       {/* School Information */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
             <Settings className="w-4 h-4 text-white" />
           </div>
@@ -345,62 +167,64 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               School Name
             </label>
             <input
               type="text"
-              value={schoolInfo.schoolName}
-              onChange={(e) => updateSchoolInfo('schoolName', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={formData.school_name}
+              onChange={(e) => handleChange('school_name', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter school name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Site Name
-            </label>
-            <input
-              type="text"
-              value={schoolInfo.siteName}
-              onChange={(e) => updateSchoolInfo('siteName', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter site name"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               School Motto
             </label>
             <input
               type="text"
-              value={schoolInfo.motto}
-              onChange={(e) => updateSchoolInfo('motto', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={formData.school_motto}
+              onChange={(e) => handleChange('school_motto', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter school motto"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Academic Year Start
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Academic Year
             </label>
             <input
               type="text"
-              value={schoolInfo.academicYearStart}
-              onChange={(e) => updateSchoolInfo('academicYearStart', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter academic year start"
+              value={formData.academic_year}
+              onChange={(e) => handleChange('academic_year', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g., 2024-2025"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Current Term
+            </label>
+            <select
+              value={formData.current_term}
+              onChange={(e) => handleChange('current_term', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="First Term">First Term</option>
+              <option value="Second Term">Second Term</option>
+              <option value="Third Term">Third Term</option>
+            </select>
           </div>
         </div>
       </div>
 
       {/* Contact Information */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
             <Mail className="w-4 h-4 text-white" />
           </div>
@@ -409,123 +233,79 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Email Address
             </label>
             <input
               type="email"
-              value={contactInfo.email}
-              onChange={(e) => updateContactInfo('email', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              value={formData.school_email}
+              onChange={(e) => handleChange('school_email', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Enter email address"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Phone Number
             </label>
             <input
               type="tel"
-              value={contactInfo.phone}
-              onChange={(e) => updateContactInfo('phone', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              value={formData.school_phone}
+              onChange={(e) => handleChange('school_phone', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Enter phone number"
             />
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Address
             </label>
             <textarea
-              value={contactInfo.address}
-              onChange={(e) => updateContactInfo('address', e.target.value)}
+              value={formData.school_address}
+              onChange={(e) => handleChange('school_address', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               placeholder="Enter school address"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Website
             </label>
             <input
               type="url"
-              value={contactInfo.website}
-              onChange={(e) => updateContactInfo('website', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Enter website URL"
+              value={formData.school_website}
+              onChange={(e) => handleChange('school_website', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="https://example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Working Hours
-            </label>
-            <input
-              type="text"
-              value={contactInfo.workingHours}
-              onChange={(e) => updateContactInfo('workingHours', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Enter working hours"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Timezone
             </label>
             <select
-              value={contactInfo.timezone}
-              onChange={(e) => updateContactInfo('timezone', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              value={formData.timezone}
+              onChange={(e) => handleChange('timezone', e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             >
               <option value="Africa/Lagos">West African Time (WAT) - GMT+1</option>
               <option value="Africa/Accra">Ghana Time (GMT) - GMT+0</option>
-              <option value="Africa/Casablanca">Morocco Time (WET) - GMT+0</option>
               <option value="Europe/London">British Time (GMT/BST) - GMT+0/+1</option>
               <option value="America/New_York">Eastern Time (ET) - GMT-5/-4</option>
-              <option value="America/Chicago">Central Time (CT) - GMT-6/-5</option>
-              <option value="America/Denver">Mountain Time (MT) - GMT-7/-6</option>
-              <option value="America/Los_Angeles">Pacific Time (PT) - GMT-8/-7</option>
-              <option value="UTC">UTC (Coordinated Universal Time)</option>
+              <option value="UTC">UTC</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Social Media Links */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
-            <Globe className="w-4 h-4 text-white" />
-          </div>
-          Social Media Links
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Object.entries(socialMedia).map(([platform, url]) => (
-            <div key={platform}>
-              <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                {platform}
-              </label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => updateSocialMedia(platform, e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder={`Enter ${platform} URL`}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* System Settings */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
             <Settings className="w-4 h-4 text-white" />
           </div>
@@ -535,85 +315,25 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
         <div className="space-y-6">
           <ToggleSwitch
             id="maintenance-mode"
-            checked={systemSettings.maintenanceMode}
-            onChange={(checked) => updateSystemSetting('maintenanceMode', checked)}
+            checked={formData.maintenance_mode}
+            onChange={(checked) => handleChange('maintenance_mode', checked)}
             label="Maintenance Mode"
             description="Temporarily disable the system for maintenance"
           />
 
           <ToggleSwitch
-            id="allow-registration"
-            checked={systemSettings.allowRegistration}
-            onChange={(checked) => updateSystemSetting('allowRegistration', checked)}
-            label="Allow User Registration"
-            description="Allow new users to register accounts"
-          />
-
-          <ToggleSwitch
-            id="require-email-verification"
-            checked={systemSettings.requireEmailVerification}
-            onChange={(checked) => updateSystemSetting('requireEmailVerification', checked)}
-            label="Require Email Verification"
-            description="Users must verify their email before accessing the system"
-          />
-
-          <ToggleSwitch
-            id="allow-password-reset"
-            checked={systemSettings.allowPasswordReset}
-            onChange={(checked) => updateSystemSetting('allowPasswordReset', checked)}
-            label="Allow Password Reset"
-            description="Users can reset their passwords via email"
-          />
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Session Timeout (minutes)
-            </label>
-            <input
-              type="number"
-              value={systemSettings.sessionTimeout}
-              onChange={(e) => updateSystemSetting('sessionTimeout', parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              min="5"
-              max="480"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Maximum File Upload Size (MB)
-            </label>
-            <input
-              type="number"
-              value={systemSettings.maxFileUploadSize}
-              onChange={(e) => updateSystemSetting('maxFileUploadSize', parseInt(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              min="1"
-              max="100"
-            />
-          </div>
-
-          <ToggleSwitch
             id="enable-notifications"
-            checked={systemSettings.enableNotifications}
-            onChange={(checked) => updateSystemSetting('enableNotifications', checked)}
+            checked={formData.notifications_enabled}
+            onChange={(checked) => handleChange('notifications_enabled', checked)}
             label="Enable Notifications"
             description="Send email and in-app notifications to users"
-          />
-
-          <ToggleSwitch
-            id="enable-audit-log"
-            checked={systemSettings.enableAuditLog}
-            onChange={(checked) => updateSystemSetting('enableAuditLog', checked)}
-            label="Enable Audit Log"
-            description="Log all system activities for security monitoring"
           />
         </div>
       </div>
 
       {/* Portal Access Control */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
             <Users className="w-4 h-4 text-white" />
           </div>
@@ -623,24 +343,24 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
         <div className="space-y-6">
           <ToggleSwitch
             id="student-portal-enabled"
-            checked={portalSettings.studentPortalEnabled}
-            onChange={(checked) => updatePortalSetting('studentPortalEnabled', checked)}
+            checked={formData.student_portal_enabled}
+            onChange={(checked) => handleChange('student_portal_enabled', checked)}
             label="Student Portal Access"
             description="Allow students to access their portal and view results"
           />
 
           <ToggleSwitch
             id="parent-portal-enabled"
-            checked={portalSettings.parentPortalEnabled}
-            onChange={(checked) => updatePortalSetting('parentPortalEnabled', checked)}
+            checked={formData.parent_portal_enabled}
+            onChange={(checked) => handleChange('parent_portal_enabled', checked)}
             label="Parent Portal Access"
             description="Allow parents to access their portal and view their children's information"
           />
 
           <ToggleSwitch
             id="teacher-portal-enabled"
-            checked={portalSettings.teacherPortalEnabled}
-            onChange={(checked) => updatePortalSetting('teacherPortalEnabled', checked)}
+            checked={formData.teacher_portal_enabled}
+            onChange={(checked) => handleChange('teacher_portal_enabled', checked)}
             label="Teacher Portal Access"
             description="Allow teachers to access their portal and manage classes"
           />
@@ -648,8 +368,8 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
       </div>
 
       {/* Logo and Branding */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Upload className="w-4 h-4 text-white" />
           </div>
@@ -658,27 +378,27 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               School Logo
             </label>
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/jpg,image/png,image/gif"
                 onChange={handleLogoUpload}
                 className="hidden"
                 id="logo-upload"
                 disabled={isUploadingLogo}
               />
               <label htmlFor="logo-upload" className={`cursor-pointer ${isUploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}>
-                {currentSettings?.logo ? (
+                {settings?.logo || settings?.logo_url ? (
                   <div className="mb-4">
                     <img 
-                      src={currentSettings.logo} 
+                      src={settings.logo || settings.logo_url} 
                       alt="School Logo" 
-                      className="w-24 h-24 mx-auto object-contain rounded-lg border border-slate-200"
+                      className="w-24 h-24 mx-auto object-contain rounded-lg border border-slate-200 dark:border-slate-700"
                     />
-                    <p className="text-slate-600 font-medium mt-2">Current Logo</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium mt-2">Current Logo</p>
                   </div>
                 ) : (
                   <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
@@ -686,12 +406,12 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
                 {isUploadingLogo ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                    <p className="text-slate-600 font-medium">Uploading...</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">Uploading...</p>
                   </div>
                 ) : (
                   <>
-                    <p className="text-slate-600 font-medium">Click to upload logo</p>
-                    <p className="text-slate-500 text-sm">Supports JPG, PNG, GIF (Max 5MB)</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">Click to upload logo</p>
+                    <p className="text-slate-500 dark:text-slate-500 text-sm">Supports JPG, PNG, GIF (Max 5MB)</p>
                   </>
                 )}
               </label>
@@ -699,27 +419,27 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Favicon
             </label>
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
+            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/x-icon,image/png,image/vnd.microsoft.icon"
                 onChange={handleFaviconUpload}
                 className="hidden"
                 id="favicon-upload"
                 disabled={isUploadingFavicon}
               />
               <label htmlFor="favicon-upload" className={`cursor-pointer ${isUploadingFavicon ? 'opacity-50 pointer-events-none' : ''}`}>
-                {currentSettings?.favicon ? (
+                {settings?.favicon || settings?.favicon_url ? (
                   <div className="mb-4">
                     <img 
-                      src={currentSettings.favicon} 
+                      src={settings.favicon || settings.favicon_url} 
                       alt="Favicon" 
-                      className="w-16 h-16 mx-auto object-contain rounded-lg border border-slate-200"
+                      className="w-16 h-16 mx-auto object-contain rounded-lg border border-slate-200 dark:border-slate-700"
                     />
-                    <p className="text-slate-600 font-medium mt-2">Current Favicon</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium mt-2">Current Favicon</p>
                   </div>
                 ) : (
                   <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
@@ -727,12 +447,12 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
                 {isUploadingFavicon ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                    <p className="text-slate-600 font-medium">Uploading...</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">Uploading...</p>
                   </div>
                 ) : (
                   <>
-                    <p className="text-slate-600 font-medium">Click to upload favicon</p>
-                    <p className="text-slate-500 text-sm">Supports ICO, PNG (Max 1MB)</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">Click to upload favicon</p>
+                    <p className="text-slate-500 dark:text-slate-500 text-sm">Supports ICO, PNG (Max 1MB)</p>
                   </>
                 )}
               </label>
@@ -742,7 +462,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: parentSettings, onSet
       </div>
 
       {/* Save Button */}
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
         <div className="flex justify-end">
           <button
             onClick={handleSave}
