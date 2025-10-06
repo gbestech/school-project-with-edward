@@ -786,11 +786,14 @@ async testSaveAndRetrieve() {
 async uploadLogo(file: File): Promise<{ logoUrl: string }> {
   try {
     const formData = new FormData();
-    formData.append('logo', file); // Changed from 'file' to 'logo'
+    formData.append('logo', file);
     
-    // VITE_API_URL already includes /api, so don't add it again
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+    // Hardcoded with /api included - env variable not loading properly
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const baseUrl = apiUrl || 'https://school-management-project-qpox.onrender.com/api';
     
+    console.log('ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('Using baseUrl:', baseUrl);
     console.log('Uploading to:', `${baseUrl}/school-settings/school-settings/upload-logo/`);
     
     const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-logo/`, {
@@ -819,11 +822,14 @@ async uploadLogo(file: File): Promise<{ logoUrl: string }> {
 async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
   try {
     const formData = new FormData();
-    formData.append('favicon', file); // Changed from 'file' to 'favicon'
+    formData.append('favicon', file);
     
-    // VITE_API_URL already includes /api, so don't add it again
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+    // Hardcoded with /api included - env variable not loading properly
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const baseUrl = apiUrl || 'https://school-management-project-qpox.onrender.com/api';
     
+    console.log('ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('Using baseUrl:', baseUrl);
     console.log('Uploading to:', `${baseUrl}/school-settings/school-settings/upload-favicon/`);
     
     const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-favicon/`, {
