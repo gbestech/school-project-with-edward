@@ -58,25 +58,22 @@ const AllAdmins = () => {
   const fetchAdmins = async (): Promise<void> => {
   setLoading(true);
   try {
-    const response = await api.get('/api/auth/admins/list/');
-    console.log("✅ Raw API response data:", response.data);
+    const response = await api.get("/api/auth/admins/list/");
+    console.log("✅ Full response:", response);
 
-    // The response is already a plain array of admin objects
-    const adminList: Admin[] = Array.isArray(response.data) ? response.data : [];
-
+    // The admins are directly returned as an array
+    const adminList = Array.isArray(response.data) ? response.data : [];
     console.log("✅ Extracted admin list:", adminList);
 
-    // No further filtering required, since all are already admins
     setAdmins(adminList);
-
-    console.log("🧠 Admin state updated:", adminList);
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error fetching admins:", error);
-    toast.error("Failed to load admins. Please ensure the endpoint exists.");
+    toast.error("Failed to load admins.");
   } finally {
     setLoading(false);
   }
 };
+
 
 
   useEffect(() => {
