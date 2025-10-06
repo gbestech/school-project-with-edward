@@ -42,6 +42,7 @@ const AllAdmins = () => {
       
       console.log('✅ Fetched admins:', adminList);
       setAdmins(adminList);
+      console.log('This is the new Admins', admins)
     } catch (error: any) {
       console.error('❌ Error fetching admins:', error);
       toast.error('Failed to load admins. Please ensure the endpoint exists.');

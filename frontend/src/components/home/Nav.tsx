@@ -138,17 +138,17 @@ const Nav: React.FC = () => {
           {/* Logo and School Name */}
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
-              {settings?.logo_url ? (
+              {settings?.logo ? (
                 <img 
-                  src={getAbsoluteUrl(settings.logo_url)} 
+                  src={getAbsoluteUrl(settings.logo)} 
                   alt={`${settings.school_name} logo`}
                   className="w-12 h-12 object-cover"
                   onError={(e) => {
-                    console.error('Navbar logo failed to load:', getAbsoluteUrl(settings.logo_url));
+                    console.error('Navbar logo failed to load:', getAbsoluteUrl(settings.logo));
                     e.currentTarget.style.display = 'none';
                   }}
                   onLoad={() => {
-                    console.log('Navbar logo loaded successfully:', getAbsoluteUrl(settings.logo_url));
+                    console.log('Navbar logo loaded successfully:', getAbsoluteUrl(settings.logo));
                   }}
                 />
               ) : (
