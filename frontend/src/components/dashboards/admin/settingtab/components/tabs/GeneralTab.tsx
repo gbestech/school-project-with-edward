@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
-  Globe, 
   Mail, 
   Upload,
   Users,
   Save
 } from 'lucide-react';
 import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
+import SettingsService from '@/services/SettingsService';
 
 interface GeneralTabProps {
   settings?: any;
@@ -27,7 +27,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) =
     setTimeout(() => setShowSuccessMessage(false), 3000);
   };
 
-  // Local state matching backend model fields
   const [formData, setFormData] = useState({
     school_name: '',
     school_address: '',
@@ -45,18 +44,17 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) =
     teacher_portal_enabled: true,
   });
 
-  // Update form when settings change
   useEffect(() => {
     if (settings) {
       setFormData({
         school_name: settings.school_name || '',
-        school_address: settings.school_address || '',
-        school_phone: settings.school_phone || '',
-        school_email: settings.school_email || '',
-        school_website: settings.school_website || '',
-        school_motto: settings.school_motto || '',
-        academic_year: settings.academic_year || '',
-        current_term: settings.current_term || '',
+        school_address: settings.address || settings.school_address || '',
+        school_phone: settings.phone || settings.school_phone || '',
+        school_email: settings.email || settings.school_email || '',
+        school_website: settings.school_website || settings.website || '',
+        school_motto: settings.motto || settings.school_motto || '',
+        academic_year: settings.academicYearStart || settings.academic_year || '',
+        current_term: settings.current_term || 'First Term',
         timezone: settings.timezone || 'Africa/Lagos',
         maintenance_mode: settings.maintenance_mode || false,
         notifications_enabled: settings.notifications_enabled !== false,
@@ -88,8 +86,12 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) =
         return;
       }
 
-      // Send file through main update
-      await onSettingsUpdate?.({ logo: file });
+      // Upload logo separately using SettingsService
+      await SettingsService.uploadLogo(file);
+      
+      // Refresh settings to get updated logo URL
+      await onSettingsUpdate?.({});
+      
       showSuccess('School logo uploaded successfully!');
     } catch (error) {
       console.error('Failed to upload logo:', error);
@@ -116,7 +118,12 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) =
         return;
       }
 
-      await onSettingsUpdate?.({ favicon: file });
+      // Upload favicon separately using SettingsService
+      await SettingsService.uploadFavicon(file);
+      
+      // Refresh settings to get updated favicon URL
+      await onSettingsUpdate?.({});
+      
       showSuccess('School favicon uploaded successfully!');
     } catch (error) {
       console.error('Failed to upload favicon:', error);
@@ -130,7 +137,26 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) =
     setIsSaving(true);
     try {
       console.log('Saving settings:', formData);
-      await onSettingsUpdate?.(formData);
+      
+      // Transform to match SettingsService expected format
+      const settingsUpdate = {
+        school_name: formData.school_name,
+        address: formData.school_address,
+        phone: formData.school_phone,
+        email: formData.school_email,
+        school_website: formData.school_website,
+        motto: formData.school_motto,
+        academicYearStart: formData.academic_year,
+        current_term: formData.current_term,
+        timezone: formData.timezone,
+        maintenance_mode: formData.maintenance_mode,
+        notifications_enabled: formData.notifications_enabled,
+        student_portal_enabled: formData.student_portal_enabled,
+        parent_portal_enabled: formData.parent_portal_enabled,
+        teacher_portal_enabled: formData.teacher_portal_enabled,
+      };
+      
+      await onSettingsUpdate?.(settingsUpdate);
       showSuccess('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save settings:', error);
