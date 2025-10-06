@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Settings, 
-  Mail, 
-  Upload,
-  Users,
-  Save
-} from 'lucide-react';
-import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
+import { Save, Upload, Loader2, Building2, Globe, Calendar, Check, X } from 'lucide-react';
 import SettingsService from '@/services/SettingsService';
 
 interface GeneralTabProps {
@@ -14,491 +7,432 @@ interface GeneralTabProps {
   onSettingsUpdate?: (settings: any) => void;
 }
 
-const GeneralTab: React.FC<GeneralTabProps> = ({ settings, onSettingsUpdate }) => {
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  const showSuccess = (message: string) => {
-    setSuccessMessage(message);
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
-  };
-
+const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSettingsUpdate }) => {
   const [formData, setFormData] = useState({
     school_name: '',
-    school_address: '',
-    school_phone: '',
-    school_email: '',
-    school_website: '',
-    school_motto: '',
-    academic_year: '',
-    current_term: '',
-    timezone: 'Africa/Lagos',
-    maintenance_mode: false,
-    notifications_enabled: true,
-    student_portal_enabled: true,
-    parent_portal_enabled: true,
-    teacher_portal_enabled: true,
+    site_name: '',
+    address: '',
+    phone: '',
+    email: '',
+    motto: '',
+    timezone: 'UTC-5',
+    dateFormat: 'dd/mm/yyyy',
+    language: 'English',
+    academicYearStart: '',
+    academicYearEnd: '',
+    logo: '',
+    favicon: ''
   });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [faviconPreview, setFaviconPreview] = useState<string>('');
+
   useEffect(() => {
-    if (settings) {
+    if (initialSettings) {
+      console.log('GeneralTab: Initializing with settings:', initialSettings);
       setFormData({
-        school_name: settings.school_name || '',
-        school_address: settings.address || settings.school_address || '',
-        school_phone: settings.phone || settings.school_phone || '',
-        school_email: settings.email || settings.school_email || '',
-        school_website: settings.school_website || settings.website || '',
-        school_motto: settings.motto || settings.school_motto || '',
-        academic_year: settings.academicYearStart || settings.academic_year || '',
-        current_term: settings.current_term || 'First Term',
-        timezone: settings.timezone || 'Africa/Lagos',
-        maintenance_mode: settings.maintenance_mode || false,
-        notifications_enabled: settings.notifications_enabled !== false,
-        student_portal_enabled: settings.student_portal_enabled !== false,
-        parent_portal_enabled: settings.parent_portal_enabled !== false,
-        teacher_portal_enabled: settings.teacher_portal_enabled !== false,
+        school_name: initialSettings.school_name || '',
+        site_name: initialSettings.site_name || '',
+        address: initialSettings.address || '',
+        phone: initialSettings.phone || '',
+        email: initialSettings.email || '',
+        motto: initialSettings.motto || '',
+        timezone: initialSettings.timezone || 'UTC-5',
+        dateFormat: initialSettings.dateFormat || 'dd/mm/yyyy',
+        language: initialSettings.language || 'English',
+        academicYearStart: initialSettings.academicYearStart || '',
+        academicYearEnd: initialSettings.academicYearEnd || '',
+        logo: initialSettings.logo || '',
+        favicon: initialSettings.favicon || ''
       });
+      
+      if (initialSettings.logo) {
+        setLogoPreview(initialSettings.logo);
+      }
+      if (initialSettings.favicon) {
+        setFaviconPreview(initialSettings.favicon);
+      }
     }
-  }, [settings]);
+  }, [initialSettings]);
 
-  const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: string, value: string) => {
+    console.log(`GeneralTab: Field "${field}" changed to:`, value);
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploadingLogo(true);
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo file size must be less than 2MB');
+      return;
+    }
+
     try {
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Please select a valid image file (JPG, PNG, or GIF)');
-        return;
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
-        return;
-      }
-
-      // Upload logo separately using SettingsService
-      await SettingsService.uploadLogo(file);
+      setIsLoading(true);
+      setError(null);
       
-      // Refresh settings to get updated logo URL
-      await onSettingsUpdate?.({});
+      const result = await SettingsService.uploadLogo(file);
       
-      showSuccess('School logo uploaded successfully!');
-    } catch (error) {
-      console.error('Failed to upload logo:', error);
-      alert(error instanceof Error ? error.message : 'Failed to upload logo. Please try again.');
+      setFormData(prev => ({
+        ...prev,
+        logo: result.logoUrl
+      }));
+      setLogoPreview(result.logoUrl);
+      setSuccess('Logo uploaded successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to upload logo. Please try again.');
     } finally {
-      setIsUploadingLogo(false);
+      setIsLoading(false);
     }
   };
 
-  const handleFaviconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploadingFavicon(true);
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 1 * 1024 * 1024) {
+      setError('Favicon file size must be less than 1MB');
+      return;
+    }
+
     try {
-      const allowedTypes = ['image/x-icon', 'image/png', 'image/vnd.microsoft.icon'];
-      if (!allowedTypes.includes(file.type)) {
-        alert('Please select a valid favicon file (ICO or PNG)');
-        return;
-      }
-
-      if (file.size > 1 * 1024 * 1024) {
-        alert('File size must be less than 1MB');
-        return;
-      }
-
-      // Upload favicon separately using SettingsService
-      await SettingsService.uploadFavicon(file);
+      setIsLoading(true);
+      setError(null);
       
-      // Refresh settings to get updated favicon URL
-      await onSettingsUpdate?.({});
+      const result = await SettingsService.uploadFavicon(file);
       
-      showSuccess('School favicon uploaded successfully!');
-    } catch (error) {
-      console.error('Failed to upload favicon:', error);
-      alert(error instanceof Error ? error.message : 'Failed to upload favicon. Please try again.');
+      setFormData(prev => ({
+        ...prev,
+        favicon: result.faviconUrl
+      }));
+      setFaviconPreview(result.faviconUrl);
+      setSuccess('Favicon uploaded successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to upload favicon. Please try again.');
     } finally {
-      setIsUploadingFavicon(false);
+      setIsLoading(false);
     }
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    // Validate required fields
+    if (!formData.school_name || !formData.email) {
+      setError('School name and email are required fields');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      console.log('Saving settings:', formData);
+      console.log('GeneralTab: Saving settings:', formData);
       
-      // Transform to match SettingsService expected format
-      const settingsUpdate = {
-        school_name: formData.school_name,
-        address: formData.school_address,
-        phone: formData.school_phone,
-        email: formData.school_email,
-        school_website: formData.school_website,
-        motto: formData.school_motto,
-        academicYearStart: formData.academic_year,
-        current_term: formData.current_term,
-        timezone: formData.timezone,
-        maintenance_mode: formData.maintenance_mode,
-        notifications_enabled: formData.notifications_enabled,
-        student_portal_enabled: formData.student_portal_enabled,
-        parent_portal_enabled: formData.parent_portal_enabled,
-        teacher_portal_enabled: formData.teacher_portal_enabled,
-      };
-      
-      await onSettingsUpdate?.(settingsUpdate);
-      showSuccess('Settings saved successfully!');
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      alert(error instanceof Error ? error.message : 'Failed to save settings. Please try again.');
+      // Call parent's update handler which uses SettingsContext
+      if (onSettingsUpdate) {
+        await onSettingsUpdate(formData);
+        setSuccess('Settings saved successfully!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err: any) {
+      console.error('GeneralTab: Save error:', err);
+      const errorMessage = err.message || 'Failed to save settings';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     } finally {
-      setIsSaving(false);
+      setIsLoading(false);
     }
   };
 
-  if (!settings) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-slate-600">Loading settings...</div>
-      </div>
-    );
-  }
+  const timezones = [
+    'UTC-12', 'UTC-11', 'UTC-10', 'UTC-9', 'UTC-8', 'UTC-7', 'UTC-6',
+    'UTC-5', 'UTC-4', 'UTC-3', 'UTC-2', 'UTC-1', 'UTC',
+    'UTC+1', 'UTC+2', 'UTC+3', 'UTC+4', 'UTC+5', 'UTC+6',
+    'UTC+7', 'UTC+8', 'UTC+9', 'UTC+10', 'UTC+11', 'UTC+12'
+  ];
+
+  const dateFormats = ['dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd', 'dd-mm-yyyy'];
+  const languages = ['English', 'Spanish', 'French', 'German', 'Chinese', 'Arabic'];
 
   return (
-    <div className="space-y-8">
-      {showSuccessMessage && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-right">
-          {successMessage}
+    <div className="p-8 space-y-8">
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+          <Check className="w-5 h-5 text-green-600" />
+          <p className="text-green-800 text-sm">{success}</p>
+        </div>
+      )}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+          <X className="w-5 h-5 text-red-600" />
+          <p className="text-red-800 text-sm whitespace-pre-wrap">{error}</p>
         </div>
       )}
 
-      {/* School Information */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
-            <Settings className="w-4 h-4 text-white" />
+      {/* School Information Section */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <Building2 className="w-4 h-4 text-white" />
           </div>
           School Information
         </h3>
-
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              School Name
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Name *
             </label>
             <input
               type="text"
               value={formData.school_name}
-              onChange={(e) => handleChange('school_name', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => handleInputChange('school_name', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
               placeholder="Enter school name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              School Motto
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Site Name
             </label>
             <input
               type="text"
-              value={formData.school_motto}
-              onChange={(e) => handleChange('school_motto', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter school motto"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Academic Year
-            </label>
-            <input
-              type="text"
-              value={formData.academic_year}
-              onChange={(e) => handleChange('academic_year', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., 2024-2025"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Current Term
-            </label>
-            <select
-              value={formData.current_term}
-              onChange={(e) => handleChange('current_term', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="First Term">First Term</option>
-              <option value="Second Term">Second Term</option>
-              <option value="Third Term">Third Term</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Contact Information */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-            <Mail className="w-4 h-4 text-white" />
-          </div>
-          Contact Information
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={formData.school_email}
-              onChange={(e) => handleChange('school_email', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Enter email address"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={formData.school_phone}
-              onChange={(e) => handleChange('school_phone', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="Enter phone number"
+              value={formData.site_name}
+              onChange={(e) => handleInputChange('site_name', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              placeholder="Enter site name"
             />
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Address
             </label>
             <textarea
-              value={formData.school_address}
-              onChange={(e) => handleChange('school_address', e.target.value)}
+              value={formData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
               placeholder="Enter school address"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Website
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Phone
             </label>
             <input
-              type="url"
-              value={formData.school_website}
-              onChange={(e) => handleChange('school_website', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              placeholder="https://example.com"
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              placeholder="+1234567890"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange('email', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              placeholder="school@example.com"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Motto
+            </label>
+            <input
+              type="text"
+              value={formData.motto}
+              onChange={(e) => handleInputChange('motto', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              placeholder="Excellence in Education"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Localization Section */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
+            <Globe className="w-4 h-4 text-white" />
+          </div>
+          Localization
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Timezone
             </label>
             <select
               value={formData.timezone}
-              onChange={(e) => handleChange('timezone', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              onChange={(e) => handleInputChange('timezone', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
             >
-              <option value="Africa/Lagos">West African Time (WAT) - GMT+1</option>
-              <option value="Africa/Accra">Ghana Time (GMT) - GMT+0</option>
-              <option value="Europe/London">British Time (GMT/BST) - GMT+0/+1</option>
-              <option value="America/New_York">Eastern Time (ET) - GMT-5/-4</option>
-              <option value="UTC">UTC</option>
+              {timezones.map(tz => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Date Format
+            </label>
+            <select
+              value={formData.dateFormat}
+              onChange={(e) => handleInputChange('dateFormat', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            >
+              {dateFormats.map(format => (
+                <option key={format} value={format}>{format}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Language
+            </label>
+            <select
+              value={formData.language}
+              onChange={(e) => handleInputChange('language', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            >
+              {languages.map(lang => (
+                <option key={lang} value={lang}>{lang}</option>
+              ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* System Settings */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
+      {/* Academic Year Section */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 className="text-xl font-semibold text-slate-900 mb-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-            <Settings className="w-4 h-4 text-white" />
+            <Calendar className="w-4 h-4 text-white" />
           </div>
-          System Settings
+          Academic Year
         </h3>
-
-        <div className="space-y-6">
-          <ToggleSwitch
-            id="maintenance-mode"
-            checked={formData.maintenance_mode}
-            onChange={(checked) => handleChange('maintenance_mode', checked)}
-            label="Maintenance Mode"
-            description="Temporarily disable the system for maintenance"
-          />
-
-          <ToggleSwitch
-            id="enable-notifications"
-            checked={formData.notifications_enabled}
-            onChange={(checked) => handleChange('notifications_enabled', checked)}
-            label="Enable Notifications"
-            description="Send email and in-app notifications to users"
-          />
-        </div>
-      </div>
-
-      {/* Portal Access Control */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center">
-            <Users className="w-4 h-4 text-white" />
-          </div>
-          Portal Access Control
-        </h3>
-
-        <div className="space-y-6">
-          <ToggleSwitch
-            id="student-portal-enabled"
-            checked={formData.student_portal_enabled}
-            onChange={(checked) => handleChange('student_portal_enabled', checked)}
-            label="Student Portal Access"
-            description="Allow students to access their portal and view results"
-          />
-
-          <ToggleSwitch
-            id="parent-portal-enabled"
-            checked={formData.parent_portal_enabled}
-            onChange={(checked) => handleChange('parent_portal_enabled', checked)}
-            label="Parent Portal Access"
-            description="Allow parents to access their portal and view their children's information"
-          />
-
-          <ToggleSwitch
-            id="teacher-portal-enabled"
-            checked={formData.teacher_portal_enabled}
-            onChange={(checked) => handleChange('teacher_portal_enabled', checked)}
-            label="Teacher Portal Access"
-            description="Allow teachers to access their portal and manage classes"
-          />
-        </div>
-      </div>
-
-      {/* Logo and Branding */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Upload className="w-4 h-4 text-white" />
-          </div>
-          Logo and Branding
-        </h3>
-
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              School Logo
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Start Date
             </label>
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/gif"
-                onChange={handleLogoUpload}
-                className="hidden"
-                id="logo-upload"
-                disabled={isUploadingLogo}
-              />
-              <label htmlFor="logo-upload" className={`cursor-pointer ${isUploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}>
-                {settings?.logo || settings?.logo_url ? (
-                  <div className="mb-4">
-                    <img 
-                      src={settings.logo || settings.logo_url} 
-                      alt="School Logo" 
-                      className="w-24 h-24 mx-auto object-contain rounded-lg border border-slate-200 dark:border-slate-700"
-                    />
-                    <p className="text-slate-600 dark:text-slate-400 font-medium mt-2">Current Logo</p>
-                  </div>
-                ) : (
-                  <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                )}
-                {isUploadingLogo ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">Uploading...</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">Click to upload logo</p>
-                    <p className="text-slate-500 dark:text-slate-500 text-sm">Supports JPG, PNG, GIF (Max 5MB)</p>
-                  </>
-                )}
-              </label>
-            </div>
+            <input
+              type="date"
+              value={formData.academicYearStart}
+              onChange={(e) => handleInputChange('academicYearStart', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              End Date
+            </label>
+            <input
+              type="date"
+              value={formData.academicYearEnd}
+              onChange={(e) => handleInputChange('academicYearEnd', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Branding Section */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 className="text-xl font-semibold text-slate-900 mb-6">Branding</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              School Logo
+            </label>
+            {logoPreview && (
+              <div className="mb-4">
+                <img src={logoPreview} alt="Logo" className="h-20 object-contain" />
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            />
+            <p className="text-xs text-slate-500 mt-2">Max file size: 2MB</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Favicon
             </label>
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-indigo-400 transition-colors">
-              <input
-                type="file"
-                accept="image/x-icon,image/png,image/vnd.microsoft.icon"
-                onChange={handleFaviconUpload}
-                className="hidden"
-                id="favicon-upload"
-                disabled={isUploadingFavicon}
-              />
-              <label htmlFor="favicon-upload" className={`cursor-pointer ${isUploadingFavicon ? 'opacity-50 pointer-events-none' : ''}`}>
-                {settings?.favicon || settings?.favicon_url ? (
-                  <div className="mb-4">
-                    <img 
-                      src={settings.favicon || settings.favicon_url} 
-                      alt="Favicon" 
-                      className="w-16 h-16 mx-auto object-contain rounded-lg border border-slate-200 dark:border-slate-700"
-                    />
-                    <p className="text-slate-600 dark:text-slate-400 font-medium mt-2">Current Favicon</p>
-                  </div>
-                ) : (
-                  <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                )}
-                {isUploadingFavicon ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">Uploading...</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">Click to upload favicon</p>
-                    <p className="text-slate-500 dark:text-slate-500 text-sm">Supports ICO, PNG (Max 1MB)</p>
-                  </>
-                )}
-              </label>
-            </div>
+            {faviconPreview && (
+              <div className="mb-4">
+                <img src={faviconPreview} alt="Favicon" className="h-8 object-contain" />
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFaviconUpload}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+            />
+            <p className="text-xs text-slate-500 mt-2">Max file size: 1MB</p>
           </div>
         </div>
       </div>
 
       {/* Save Button */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
-        <div className="flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
+      <div className="flex justify-end pt-6 border-t border-slate-200">
+        <button
+          onClick={handleSave}
+          disabled={isLoading}
+          className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Save className="w-5 h-5" />
+          )}
+          {isLoading ? 'Saving...' : 'Save Changes'}
+        </button>
       </div>
     </div>
   );

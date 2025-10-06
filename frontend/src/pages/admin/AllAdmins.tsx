@@ -277,7 +277,7 @@ console.log("✅ Filtered Admins:", filteredAdmins);
                 </tr>
               </thead>
             
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 w-auto">
                 {filteredAdmins.map((admin) => (
                   
                   <tr key={admin.id} className="hover:bg-gray-50 transition-colors">

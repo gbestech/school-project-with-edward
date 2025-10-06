@@ -560,26 +560,60 @@ class SettingsService {
   try {
     console.log('📤 Sending settings update:', settings);
     
-    // Transform frontend data to backend format
-    const backendSettings = {
-      school_name: settings.school_name,
-      site_name: settings.site_name,
-      address: settings.address,
-      phone: settings.phone,
-      email: settings.email,
-      motto: settings.motto,
-      timezone: settings.timezone,
-      date_format: settings.dateFormat,
-      language: settings.language,
-      theme: settings.theme,
-      primary_color: settings.primaryColor,
-      secondary_color: settings.secondaryColor,
-      typography: settings.fontFamily,
-      academic_year_start: settings.academicYearStart,
-      academic_year_end: settings.academicYearEnd,
-      ...(settings.logo && { logo: settings.logo }),
-      ...(settings.favicon && { favicon: settings.favicon }),
-    };
+    // Transform ALL frontend fields to backend format
+    const backendSettings: any = {};
+    
+    // General settings transformations
+    if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
+    if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
+    if (settings.address !== undefined) backendSettings.address = settings.address;
+    if (settings.phone !== undefined) backendSettings.phone = settings.phone;
+    if (settings.email !== undefined) backendSettings.email = settings.email;
+    if (settings.motto !== undefined) backendSettings.motto = settings.motto;
+    if (settings.timezone !== undefined) backendSettings.timezone = settings.timezone;
+    if (settings.dateFormat !== undefined) backendSettings.date_format = settings.dateFormat;
+    if (settings.language !== undefined) backendSettings.language = settings.language;
+    
+    // Design settings transformations
+    if (settings.theme !== undefined) backendSettings.theme = settings.theme;
+    if (settings.primaryColor !== undefined) backendSettings.primary_color = settings.primaryColor;
+    if (settings.secondaryColor !== undefined) backendSettings.secondary_color = settings.secondaryColor;
+    if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
+    
+    // Academic year transformations
+    if (settings.academicYearStart !== undefined) backendSettings.academic_year_start = settings.academicYearStart;
+    if (settings.academicYearEnd !== undefined) backendSettings.academic_year_end = settings.academicYearEnd;
+    
+    // File uploads (only if they're actual files or URLs)
+    if (settings.logo !== undefined) backendSettings.logo = settings.logo;
+    if (settings.favicon !== undefined) backendSettings.favicon = settings.favicon;
+    
+    // Security settings transformations
+    if (settings.allowSelfRegistration !== undefined) backendSettings.allow_self_registration = settings.allowSelfRegistration;
+    if (settings.emailVerificationRequired !== undefined) backendSettings.email_verification_required = settings.emailVerificationRequired;
+    if (settings.registrationApprovalRequired !== undefined) backendSettings.registration_approval_required = settings.registrationApprovalRequired;
+    if (settings.defaultUserRole !== undefined) backendSettings.default_user_role = settings.defaultUserRole;
+    if (settings.passwordMinLength !== undefined) backendSettings.password_min_length = settings.passwordMinLength;
+    if (settings.passwordResetInterval !== undefined) backendSettings.password_reset_interval = settings.passwordResetInterval;
+    if (settings.passwordRequireNumbers !== undefined) backendSettings.password_require_numbers = settings.passwordRequireNumbers;
+    if (settings.passwordRequireSymbols !== undefined) backendSettings.password_require_symbols = settings.passwordRequireSymbols;
+    if (settings.passwordRequireUppercase !== undefined) backendSettings.password_require_uppercase = settings.passwordRequireUppercase;
+    if (settings.allowProfileImageUpload !== undefined) backendSettings.allow_profile_image_upload = settings.allowProfileImageUpload;
+    if (settings.profileImageMaxSize !== undefined) backendSettings.profile_image_max_size = settings.profileImageMaxSize;
+    
+    // Nested object transformations (if your backend accepts them)
+    if (settings.notifications !== undefined) backendSettings.notifications = settings.notifications;
+    if (settings.paymentGateways !== undefined) backendSettings.payment_gateways = settings.paymentGateways;
+    if (settings.classLevels !== undefined) backendSettings.class_levels = settings.classLevels;
+    if (settings.subjects !== undefined) backendSettings.subjects = settings.subjects;
+    if (settings.sessions !== undefined) backendSettings.sessions = settings.sessions;
+    if (settings.grading !== undefined) backendSettings.grading = settings.grading;
+    if (settings.markingScheme !== undefined) backendSettings.marking_scheme = settings.markingScheme;
+    if (settings.messageTemplates !== undefined) backendSettings.message_templates = settings.messageTemplates;
+    if (settings.chatSystem !== undefined) backendSettings.chat_system = settings.chatSystem;
+    if (settings.userRolePaymentAccess !== undefined) backendSettings.user_role_payment_access = settings.userRolePaymentAccess;
+    if (settings.feeStructure !== undefined) backendSettings.fee_structure = settings.feeStructure;
+    if (settings.discountRules !== undefined) backendSettings.discount_rules = settings.discountRules;
     
     console.log('📤 Transformed for backend:', backendSettings);
     
@@ -598,25 +632,30 @@ class SettingsService {
     return transformedResponse;
   } catch (error: any) {
     console.error('❌ Error updating settings:', error);
-    console.error('❌ Error details:', error.response?.data);
+    console.error('❌ Error response:', error.response);
+    console.error('❌ Error data:', error.response?.data);
     
     const errorData = error.response?.data;
     let errorMessage = 'Failed to update school settings';
     
-    if (typeof errorData === 'object') {
-      const errors = [];
+    if (typeof errorData === 'object' && errorData !== null) {
+      const errors: string[] = [];
       for (const [field, messages] of Object.entries(errorData)) {
         if (Array.isArray(messages)) {
           errors.push(`${field}: ${messages.join(', ')}`);
-        } else {
+        } else if (typeof messages === 'string') {
           errors.push(`${field}: ${messages}`);
+        } else if (typeof messages === 'object') {
+          errors.push(`${field}: ${JSON.stringify(messages)}`);
         }
       }
       if (errors.length > 0) {
-        errorMessage = `Validation errors: ${errors.join('; ')}`;
+        errorMessage = `Validation errors:\n${errors.join('\n')}`;
       }
     } else if (typeof errorData === 'string') {
       errorMessage = errorData;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
     
     throw new Error(errorMessage);
@@ -927,8 +966,8 @@ private async transformBackendToFrontend(response: any): Promise<SchoolSettings>
   private getDefaultSettings(): SchoolSettings {
     // ... keep your existing default settings implementation
     return {
-      site_name: 'AI Hustle Daily',
-      school_name: 'AI Hustle Daily School of Tech',
+      site_name: 'Gods treasure schools',
+      school_name: 'Gods Treasure Schools',
       address: '',
       phone: '',
       email: '',
