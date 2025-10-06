@@ -27,11 +27,15 @@ const AllAdmins = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
+  // useEffect(() => {
+  //   if (!showAddForm) {
+  //     fetchAdmins();
+  //   }
+  // }, [showAddForm]);
+
   useEffect(() => {
-    if (!showAddForm) {
-      fetchAdmins();
-    }
-  }, [showAddForm]);
+  fetchAdmins();
+}, []);
 
   // const fetchAdmins = async () => {
   //   setLoading(true);
@@ -55,21 +59,30 @@ const AllAdmins = () => {
   setLoading(true);
   try {
     const response = await api.get('/api/auth/admins/list/');
+    console.log("📊 Raw API response:", response.data);
 
-    // Safely extract admin list
-    const rawData = response.data?.results || response.data || [];
-    const adminList = Array.isArray(rawData)
-      ? rawData.filter((user) => user.role === 'admin' || user.is_staff)
-      : [];
+    // Handle multiple response shapes
+    let adminList = [];
+    if (Array.isArray(response.data)) {
+      adminList = response.data;
+    } else if (Array.isArray(response.data?.results)) {
+      adminList = response.data.results;
+    } else if (response.data?.data && Array.isArray(response.data.data)) {
+      adminList = response.data.data;
+    }
 
-    console.log('✅ GET request successful for /api/auth/admins/list/:', rawData);
-    console.log('🧾 Filtered to admins:', adminList);
+    console.log("✅ Extracted admin list:", adminList);
 
-    // ✅ Now update the state
-    setAdmins(adminList);
+    // Optional filter (if you want only admin roles)
+    const filtered = adminList.filter(
+      (user: Admin) => user.role === "admin" || user.is_staff === true
+    );
+
+    console.log("🧾 Filtered to admins:", filtered);
+    setAdmins(filtered);
   } catch (error) {
-    console.error('❌ Error fetching admins:', error);
-    toast.error('Failed to load admins. Please ensure the endpoint exists.');
+    console.error("❌ Error fetching admins:", error);
+    toast.error("Failed to load admins. Please ensure the endpoint exists.");
   } finally {
     setLoading(false);
   }
