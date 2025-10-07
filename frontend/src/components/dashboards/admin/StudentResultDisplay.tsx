@@ -45,10 +45,7 @@ const isAcademicSessionObject = (value: any): value is AcademicSession => {
 };
 
 const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, selections }) => {
-  console.log('🏫 [StudentResultDisplay] Component received student prop:', student);
-  console.log('🏫 [StudentResultDisplay] Student age:', student.age);
-  console.log('🏫 [StudentResultDisplay] Student gender:', student.gender);
-  console.log('🏫 [StudentResultDisplay] Student date_of_birth:', student.date_of_birth);
+  
   
   const { isDarkMode } = useGlobalTheme();
   const { service: resultService, schoolSettings, loading: settingsLoading, isReady } = useResultService();

@@ -6,232 +6,150 @@ import uuid
 
 User = get_user_model()
 
+
 class SchoolSettings(models.Model):
-    """Main school settings model"""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
-    # School Information
-    school_name = models.CharField(max_length=200, default="Gods Treasure Schools")
+    # Basic Information
+    school_name = models.CharField(max_length=255, default="School Name")
+    site_name = models.CharField(max_length=255, blank=True, null=True)
     school_address = models.TextField(blank=True, null=True)
     school_phone = models.CharField(max_length=20, blank=True, null=True)
     school_email = models.EmailField(blank=True, null=True)
-    school_website = models.URLField(blank=True, null=True)
-    
-    # Academic Information
-    academic_year = models.CharField(max_length=20, default="2024-2025")
-    current_term = models.CharField(max_length=20, default="First Term")
-    school_motto = models.CharField(max_length=200, blank=True, null=True)
-    
-    # System Preferences
+    school_motto = models.CharField(max_length=500, blank=True, null=True)
+
+    # UPDATED: Change from ImageField to URLField for Cloudinary
+    logo = models.URLField(
+        max_length=500, blank=True, null=True, help_text="School logo (Cloudinary URL)"
+    )
+    favicon = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="School favicon (Cloudinary URL)",
+    )
+
+    # Academic Year
+    academic_year_start = models.DateField(blank=True, null=True)
+    academic_year_end = models.DateField(blank=True, null=True)
+
+    # Localization
     timezone = models.CharField(max_length=50, default="UTC")
-    date_format = models.CharField(max_length=20, default="DD/MM/YYYY")
-    time_format = models.CharField(max_length=10, default="12", choices=[("12", "12-hour"), ("24", "24-hour")])
-    language = models.CharField(max_length=10, default="en", choices=[("en", "English"), ("es", "Spanish"), ("fr", "French")])
-    
-    # Logo and Branding
-    logo = models.ImageField(upload_to='school_logos/', blank=True, null=True, 
-                           validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif'])])
-    favicon = models.ImageField(upload_to='school_favicons/', blank=True, null=True,
-                              validators=[FileExtensionValidator(allowed_extensions=['ico', 'png'])])
-    
-    # General Preferences
-    auto_save = models.BooleanField(default=True)
-    notifications_enabled = models.BooleanField(default=True)
-    dark_mode = models.BooleanField(default=False)
-    maintenance_mode = models.BooleanField(default=False)
-    
-    # Portal Access Control
-    student_portal_enabled = models.BooleanField(default=True, help_text="Enable/disable student portal access")
-    parent_portal_enabled = models.BooleanField(default=True, help_text="Enable/disable parent portal access")
-    teacher_portal_enabled = models.BooleanField(default=True, help_text="Enable/disable teacher portal access")
-    
+    date_format = models.CharField(max_length=20, default="YYYY-MM-DD")
+    language = models.CharField(max_length=50, default="English")
+
     # Design Settings
-    primary_color = models.CharField(max_length=7, default="#3B82F6", help_text="Primary color in hex format")
-    theme = models.CharField(max_length=20, default="default", choices=[
-        ("default", "Default"),
-        ("modern", "Modern"),
-        ("classic", "Classic"), 
-        ("vibrant", "Vibrant"),
-        ("minimal", "Minimal"),
-        ("corporate", "Corporate"),
-        ("premium", "Premium"),
-        ("obsidian", "Obsidian (Ultra Premium)"),
-        ("aurora", "Aurora (Ultra Premium)"),
-        ("midnight", "Midnight (Ultra Premium)"),
-        ("crimson", "Crimson (Ultra Premium)"),
-        ("forest", "Forest (Ultra Premium)"),
-        ("golden", "Golden (Ultra Premium)")
-    ])
-    animations_enabled = models.BooleanField(default=True, help_text="Enable smooth transitions and animations")
-    compact_mode = models.BooleanField(default=False, help_text="Reduce spacing for more content density")
-    typography = models.CharField(max_length=50, default="Inter", choices=[
-        ("Inter", "Inter"),
-        ("Roboto", "Roboto"),
-        ("Open Sans", "Open Sans"),
-        ("Poppins", "Poppins"),
-        ("Montserrat", "Montserrat")
-    ])
-    border_radius = models.CharField(max_length=20, default="rounded-lg", choices=[
-        ("rounded-none", "Sharp"),
-        ("rounded", "Slightly Rounded"),
-        ("rounded-lg", "Rounded"),
-        ("rounded-xl", "More Rounded"),
-        ("rounded-2xl", "Very Rounded")
-    ])
-    shadow_style = models.CharField(max_length=20, default="shadow-md", choices=[
-        ("shadow-none", "No Shadow"),
-        ("shadow-sm", "Subtle Shadow"),
-        ("shadow-md", "Medium Shadow"),
-        ("shadow-lg", "Large Shadow"),
-        ("shadow-xl", "Extra Large Shadow")
-    ])
-    
-    # Session Management
-    session_timeout = models.IntegerField(default=30, help_text="Session timeout in minutes")
-    max_login_attempts = models.IntegerField(default=5)
-    
-    # Created and Updated
+    theme = models.CharField(max_length=20, default="light")
+    primary_color = models.CharField(max_length=7, default="#3B82F6")
+    secondary_color = models.CharField(max_length=7, default="#6366F1")
+    typography = models.CharField(max_length=50, default="Inter")
+
+    # Security Settings
+    allow_self_registration = models.BooleanField(default=True)
+    email_verification_required = models.BooleanField(default=True)
+    registration_approval_required = models.BooleanField(default=False)
+    default_user_role = models.CharField(max_length=20, default="student")
+    password_min_length = models.IntegerField(default=8)
+    password_reset_interval = models.IntegerField(default=90)
+    password_require_numbers = models.BooleanField(default=True)
+    password_require_symbols = models.BooleanField(default=False)
+    password_require_uppercase = models.BooleanField(default=False)
+    allow_profile_image_upload = models.BooleanField(default=True)
+    profile_image_max_size = models.IntegerField(default=2)
+
+    # Notifications
+    notifications_enabled = models.BooleanField(default=True)
+
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
+
     class Meta:
         verbose_name = "School Settings"
         verbose_name_plural = "School Settings"
-    
+
     def __str__(self):
         return f"Settings for {self.school_name}"
-    
-    def save(self, *args, **kwargs):
-        # Ensure only one settings instance exists
-        if not self.pk and SchoolSettings.objects.exists():
-            return
-        super().save(*args, **kwargs)
-
-
-class NotificationSettings(models.Model):
-    """Notification preferences for different user types"""
-    NOTIFICATION_TYPES = [
-        ('email', 'Email'),
-        ('sms', 'SMS'),
-        ('push', 'Push Notification'),
-        ('in_app', 'In-App Notification'),
-    ]
-    
-    user_type = models.CharField(max_length=20, choices=[
-        ('admin', 'Administrator'),
-        ('teacher', 'Teacher'),
-        ('student', 'Student'),
-        ('parent', 'Parent'),
-    ])
-    
-    # Notification types enabled
-    email_notifications = models.BooleanField(default=True)
-    sms_notifications = models.BooleanField(default=False)
-    push_notifications = models.BooleanField(default=True)
-    in_app_notifications = models.BooleanField(default=True)
-    
-    # Specific notification settings
-    academic_updates = models.BooleanField(default=True)
-    attendance_alerts = models.BooleanField(default=True)
-    fee_reminders = models.BooleanField(default=True)
-    exam_notifications = models.BooleanField(default=True)
-    general_announcements = models.BooleanField(default=True)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = "Notification Setting"
-        verbose_name_plural = "Notification Settings"
-        unique_together = ['user_type']
-    
-    def __str__(self):
-        return f"Notification Settings for {self.get_user_type_display()}"
-
-
-class SystemPreferences(models.Model):
-    """System-wide preferences and configurations"""
-    
-    # Academic Settings
-    grading_system = models.CharField(max_length=20, default="percentage", 
-                                   choices=[("percentage", "Percentage"), ("letter", "Letter Grade"), ("gpa", "GPA")])
-    pass_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=40.00)
-    max_attendance_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=75.00)
-    
-    # Fee Settings
-    currency = models.CharField(max_length=3, default="NGN")
-    currency_symbol = models.CharField(max_length=5, default="₦")
-    late_fee_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=5.00)
-    
-    # Security Settings
-    password_min_length = models.IntegerField(default=8)
-    password_require_special = models.BooleanField(default=True)
-    password_require_numbers = models.BooleanField(default=True)
-    password_require_uppercase = models.BooleanField(default=True)
-    
-    # Backup Settings
-    auto_backup = models.BooleanField(default=True)
-    backup_frequency = models.CharField(max_length=20, default="daily", 
-                                     choices=[("daily", "Daily"), ("weekly", "Weekly"), ("monthly", "Monthly")])
-    backup_retention_days = models.IntegerField(default=30)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = "System Preference"
-        verbose_name_plural = "System Preferences"
-    
-    def __str__(self):
-        return "System Preferences"
 
 
 class CommunicationSettings(models.Model):
     """Communication settings for email and SMS providers"""
+
     # Brevo (Email) Settings
-    brevo_api_key = models.CharField(max_length=255, blank=True, null=True, help_text="Brevo API key for email delivery")
-    brevo_sender_email = models.EmailField(blank=True, null=True, help_text="Default sender email address")
-    brevo_sender_name = models.CharField(max_length=100, blank=True, null=True, help_text="Default sender name")
-    brevo_test_mode = models.BooleanField(default=True, help_text="Enable test mode to prevent actual email sending")
-    
-    # Twilio (SMS) Settings
-    twilio_account_sid = models.CharField(max_length=255, blank=True, null=True, help_text="Twilio Account SID")
-    twilio_auth_token = models.CharField(max_length=255, blank=True, null=True, help_text="Twilio Auth Token")
-    twilio_phone_number = models.CharField(max_length=20, blank=True, null=True, help_text="Twilio phone number for sending SMS")
-    twilio_test_mode = models.BooleanField(default=True, help_text="Enable test mode to prevent actual SMS sending")
-    
-    # Notification Preferences
-    email_notifications_enabled = models.BooleanField(default=True, help_text="Enable email notifications")
-    sms_notifications_enabled = models.BooleanField(default=False, help_text="Enable SMS notifications")
-    in_app_notifications_enabled = models.BooleanField(default=True, help_text="Enable in-app notifications")
-    digest_frequency = models.CharField(
-        max_length=20, 
-        default='daily',
-        choices=[
-            ('realtime', 'Real-time'),
-            ('hourly', 'Hourly'),
-            ('daily', 'Daily'),
-            ('weekly', 'Weekly')
-        ],
-        help_text="Frequency for digest notifications"
+    brevo_api_key = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Brevo API key for email delivery",
     )
-    
+    brevo_sender_email = models.EmailField(
+        blank=True, null=True, help_text="Default sender email address"
+    )
+    brevo_sender_name = models.CharField(
+        max_length=100, blank=True, null=True, help_text="Default sender name"
+    )
+    brevo_test_mode = models.BooleanField(
+        default=True, help_text="Enable test mode to prevent actual email sending"
+    )
+
+    # Twilio (SMS) Settings
+    twilio_account_sid = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Twilio Account SID"
+    )
+    twilio_auth_token = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Twilio Auth Token"
+    )
+    twilio_phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Twilio phone number for sending SMS",
+    )
+    twilio_test_mode = models.BooleanField(
+        default=True, help_text="Enable test mode to prevent actual SMS sending"
+    )
+
+    # Notification Preferences
+    email_notifications_enabled = models.BooleanField(
+        default=True, help_text="Enable email notifications"
+    )
+    sms_notifications_enabled = models.BooleanField(
+        default=False, help_text="Enable SMS notifications"
+    )
+    in_app_notifications_enabled = models.BooleanField(
+        default=True, help_text="Enable in-app notifications"
+    )
+    digest_frequency = models.CharField(
+        max_length=20,
+        default="daily",
+        choices=[
+            ("realtime", "Real-time"),
+            ("hourly", "Hourly"),
+            ("daily", "Daily"),
+            ("weekly", "Weekly"),
+        ],
+        help_text="Frequency for digest notifications",
+    )
+
     # Connection Status
-    brevo_configured = models.BooleanField(default=False, help_text="Brevo is properly configured")
-    twilio_configured = models.BooleanField(default=False, help_text="Twilio is properly configured")
-    
+    brevo_configured = models.BooleanField(
+        default=False, help_text="Brevo is properly configured"
+    )
+    twilio_configured = models.BooleanField(
+        default=False, help_text="Twilio is properly configured"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
     class Meta:
         verbose_name = "Communication Setting"
         verbose_name_plural = "Communication Settings"
-    
+
     def __str__(self):
         return "Communication Settings"
-    
+
     def save(self, *args, **kwargs):
         # Ensure only one communication settings instance exists
         if not self.pk and CommunicationSettings.objects.exists():
@@ -239,206 +157,251 @@ class CommunicationSettings(models.Model):
         super().save(*args, **kwargs)
 
 
+class NotificationSettings(models.Model):
+    email_notifications_enabled = models.BooleanField(default=True)
+    sms_notifications_enabled = models.BooleanField(default=False)
+    push_notifications_enabled = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Notifications (Email: {self.email_notifications_enabled}, SMS: {self.sms_notifications_enabled})"
+
+
+class SystemPreferences(models.Model):
+    timezone = models.CharField(max_length=100, default="UTC")
+    date_format = models.CharField(max_length=20, default="YYYY-MM-DD")
+    time_format = models.CharField(max_length=10, default="24-hour")
+    language = models.CharField(max_length=50, default="English")
+
+    def __str__(self):
+        return f"{self.language} ({self.timezone})"
+
+
 class SchoolHoliday(models.Model):
     """School holidays and breaks"""
+
     name = models.CharField(max_length=100)
     start_date = models.DateField()
     end_date = models.DateField()
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "School Holiday"
         verbose_name_plural = "School Holidays"
-        ordering = ['start_date']
-    
+        ordering = ["start_date"]
+
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
 
 class Permission(models.Model):
     """Granular permissions for different modules"""
+
     MODULE_CHOICES = [
-        ('dashboard', 'Dashboard'),
-        ('students', 'Students'),
-        ('teachers', 'Teachers'),
-        ('parents', 'Parents'),
-        ('attendance', 'Attendance'),
-        ('results', 'Results'),
-        ('exams', 'Exams'),
-        ('messaging', 'Messaging'),
-        ('finance', 'Finance'),
-        ('reports', 'Reports'),
-        ('settings', 'Settings'),
-        ('announcements', 'Announcements'),
-        ('events', 'Events'),
-        ('library', 'Library'),
-        ('timetable', 'Timetable'),
-        ('subjects', 'Subjects'),
-        ('classes', 'Classes'),
+        ("dashboard", "Dashboard"),
+        ("students", "Students"),
+        ("teachers", "Teachers"),
+        ("parents", "Parents"),
+        ("attendance", "Attendance"),
+        ("results", "Results"),
+        ("exams", "Exams"),
+        ("messaging", "Messaging"),
+        ("finance", "Finance"),
+        ("reports", "Reports"),
+        ("settings", "Settings"),
+        ("announcements", "Announcements"),
+        ("events", "Events"),
+        ("library", "Library"),
+        ("timetable", "Timetable"),
+        ("subjects", "Subjects"),
+        ("classes", "Classes"),
     ]
-    
+
     PERMISSION_TYPE_CHOICES = [
-        ('read', 'Read'),
-        ('write', 'Write'),
-        ('delete', 'Delete'),
-        ('admin', 'Admin'),
+        ("read", "Read"),
+        ("write", "Write"),
+        ("delete", "Delete"),
+        ("admin", "Admin"),
     ]
-    
+
     SECTION_CHOICES = [
-        ('all', 'All Sections'),
-        ('primary', 'Primary Section'),
-        ('secondary', 'Secondary Section'),
-        ('nursery', 'Nursery Section'),
+        ("all", "All Sections"),
+        ("primary", "Primary Section"),
+        ("secondary", "Secondary Section"),
+        ("nursery", "Nursery Section"),
     ]
-    
+
     module = models.CharField(max_length=20, choices=MODULE_CHOICES)
     permission_type = models.CharField(max_length=10, choices=PERMISSION_TYPE_CHOICES)
-    section = models.CharField(max_length=15, choices=SECTION_CHOICES, default='all')
+    section = models.CharField(max_length=15, choices=SECTION_CHOICES, default="all")
     granted = models.BooleanField(default=False)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "Permission"
         verbose_name_plural = "Permissions"
-        unique_together = ['module', 'permission_type', 'section']
-        ordering = ['module', 'permission_type', 'section']
-    
+        unique_together = ["module", "permission_type", "section"]
+        ordering = ["module", "permission_type", "section"]
+
     def __str__(self):
         return f"{self.get_module_display()} - {self.get_permission_type_display()} - {self.get_section_display()}"
 
 
 class Role(models.Model):
     """Custom roles with specific permissions"""
+
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
-    color = models.CharField(max_length=7, default='#3B82F6', help_text="Hex color for role display")
-    is_system = models.BooleanField(default=False, help_text="System roles cannot be deleted")
+    color = models.CharField(
+        max_length=7, default="#3B82F6", help_text="Hex color for role display"
+    )
+    is_system = models.BooleanField(
+        default=False, help_text="System roles cannot be deleted"
+    )
     is_active = models.BooleanField(default=True)
-    
+
     # Permissions
-    permissions = models.ManyToManyField(Permission, blank=True, related_name='roles')
-    
+    permissions = models.ManyToManyField(Permission, blank=True, related_name="roles")
+
     # Section restrictions
     primary_section_access = models.BooleanField(default=True)
     secondary_section_access = models.BooleanField(default=True)
     nursery_section_access = models.BooleanField(default=True)
-    
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='roles_created')
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="roles_created",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "Role"
         verbose_name_plural = "Roles"
-        ordering = ['name']
-    
+        ordering = ["name"]
+
     def __str__(self):
         return self.name
-    
+
     @property
     def user_count(self):
         """Get the number of users with this role"""
         from users.models import CustomUser
+
         return CustomUser.objects.filter(role=self.name).count()
-    
-    def has_permission(self, module, permission_type, section='all'):
+
+    def has_permission(self, module, permission_type, section="all"):
         """Check if role has specific permission"""
         return self.permissions.filter(
-            module=module,
-            permission_type=permission_type,
-            section__in=[section, 'all']
+            module=module, permission_type=permission_type, section__in=[section, "all"]
         ).exists()
 
 
 class UserRole(models.Model):
     """User-specific role assignments with section restrictions"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_roles')
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name='user_assignments')
-    
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_roles")
+    role = models.ForeignKey(
+        Role, on_delete=models.CASCADE, related_name="user_assignments"
+    )
+
     # Section-specific permissions
     primary_section_access = models.BooleanField(default=True)
     secondary_section_access = models.BooleanField(default=True)
     nursery_section_access = models.BooleanField(default=True)
-    
+
     # Custom permissions override
-    custom_permissions = models.ManyToManyField(Permission, blank=True, related_name='user_role_assignments')
-    
+    custom_permissions = models.ManyToManyField(
+        Permission, blank=True, related_name="user_role_assignments"
+    )
+
     # Assignment details
-    assigned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='user_role_assignments_made')
+    assigned_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="user_role_assignments_made",
+    )
     assigned_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         verbose_name = "User Role Assignment"
         verbose_name_plural = "User Role Assignments"
-        unique_together = ['user', 'role']
-        ordering = ['-assigned_at']
-    
+        unique_together = ["user", "role"]
+        ordering = ["-assigned_at"]
+
     def __str__(self):
         return f"{self.user.full_name} - {self.role.name}"
-    
+
     def is_expired(self):
         """Check if role assignment has expired"""
         if self.expires_at:
             return timezone.now() > self.expires_at
         return False
-    
-    def has_permission(self, module, permission_type, section='all'):
+
+    def has_permission(self, module, permission_type, section="all"):
         """Check if user has specific permission through this role"""
         if not self.is_active or self.is_expired():
             return False
-        
+
         # Check custom permissions first
         custom_perm = self.custom_permissions.filter(
-            module=module,
-            permission_type=permission_type,
-            section__in=[section, 'all']
+            module=module, permission_type=permission_type, section__in=[section, "all"]
         ).first()
-        
+
         if custom_perm:
             return custom_perm.granted
-        
+
         # Check role permissions
         return self.role.has_permission(module, permission_type, section)
 
 
 class SchoolAnnouncement(models.Model):
     """School-wide announcements"""
+
     ANNOUNCEMENT_TYPES = [
-        ('general', 'General'),
-        ('academic', 'Academic'),
-        ('event', 'Event'),
-        ('emergency', 'Emergency'),
+        ("general", "General"),
+        ("academic", "Academic"),
+        ("event", "Event"),
+        ("emergency", "Emergency"),
     ]
-    
+
     title = models.CharField(max_length=200)
     content = models.TextField()
-    announcement_type = models.CharField(max_length=20, choices=ANNOUNCEMENT_TYPES, default='general')
+    announcement_type = models.CharField(
+        max_length=20, choices=ANNOUNCEMENT_TYPES, default="general"
+    )
     is_active = models.BooleanField(default=True)
     is_pinned = models.BooleanField(default=False)
-    
+
     # Target audience
-    target_audience = models.JSONField(default=list, help_text="List of user types to target")
-    
+    target_audience = models.JSONField(
+        default=list, help_text="List of user types to target"
+    )
+
     # Schedule
     start_date = models.DateTimeField(default=timezone.now)
     end_date = models.DateTimeField(blank=True, null=True)
-    
+
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = "School Announcement"
         verbose_name_plural = "School Announcements"
-        ordering = ['-created_at']
-    
+        ordering = ["-created_at"]
+
     def __str__(self):
         return self.title

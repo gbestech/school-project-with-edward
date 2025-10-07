@@ -733,81 +733,16 @@ async testSaveAndRetrieve() {
       throw new Error('Failed to send test SMS');
     }
   }
+// Update these methods in your SettingsService.ts
 
-  // async uploadLogo(file: File): Promise<{ logoUrl: string }> {
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append('file', file);
-  //     const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
-      
-  //     const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-logo/`, {   
-  //       method: 'POST',
-  //       headers: {
-  //         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-  //       },
-  //       body: formData,
-  //     });
-      
-  //     if (!response.ok) {
-  //       throw new Error('Failed to upload logo');
-  //     }
-      
-  //     return await response.json();
-  //   } catch (error) {
-  //     console.error('Error uploading logo:', error);
-  //     throw new Error('Failed to upload logo');
-  //   }
-  // }
-
-  // async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
-  //   try {
-  //     const formData = new FormData();
-  //     formData.append('file', file);
-  //     const baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
-      
-  //     const response = await fetch(`${baseUrl}/api/school-settings/school-settings/upload-favicon/`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-  //       },
-  //       body: formData,
-  //     });
-      
-  //     if (!response.ok) {
-  //       throw new Error('Failed to upload favicon');
-  //     }
-      
-  //     return await response.json();
-  //   } catch (error) {
-  //     console.error('Error uploading favicon:', error);
-  //     throw new Error('Failed to upload favicon');
-  //   }
-  // }
 async uploadLogo(file: File): Promise<{ logoUrl: string }> {
   try {
     const formData = new FormData();
     formData.append('logo', file);
     
-    // Check if we're in production (Vercel) or development
-    const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    console.log('Uploading logo to Cloudinary via backend...');
     
-    let uploadUrl;
-    if (isProduction) {
-      // On Vercel: use relative path, Vercel proxy handles the rest
-      uploadUrl = '/api/school-settings/school-settings/upload-logo/';
-    } else {
-      // Local dev: use full backend URL
-      let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-      if (!baseUrl.endsWith('/api')) {
-        baseUrl = `${baseUrl}/api`;
-      }
-      uploadUrl = `${baseUrl}/school-settings/school-settings/upload-logo/`;
-    }
-    
-    console.log('Is Production:', isProduction);
-    console.log('Upload URL:', uploadUrl);
-    
-    const response = await fetch(uploadUrl, {
+    const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -835,19 +770,9 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     const formData = new FormData();
     formData.append('favicon', file);
     
-    // Get env variable and ensure /api is included
-    let baseUrl = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+    console.log('Uploading favicon to Cloudinary via backend...');
     
-    // If baseUrl doesn't end with /api, add it
-    if (!baseUrl.endsWith('/api')) {
-      baseUrl = `${baseUrl}/api`;
-    }
-    
-    console.log('ENV VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('Using baseUrl:', baseUrl);
-    console.log('Uploading to:', `${baseUrl}/school-settings/school-settings/upload-favicon/`);
-    
-    const response = await fetch(`${baseUrl}/school-settings/school-settings/upload-favicon/`, {
+    const response = await fetch('/api/school-settings/school-settings/upload-favicon/', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

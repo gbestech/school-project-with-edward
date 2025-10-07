@@ -9,6 +9,8 @@ import sys
 from dotenv import load_dotenv
 from datetime import timedelta
 import dj_database_url
+import cloudinary
+
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,6 +83,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt.token_blacklist",
+    "cloudinary",  # ✅ ADD THIS LINE - Important for Django integration
+    "cloudinary_storage",
     # Auth apps
     "allauth",
     "allauth.account",
@@ -91,6 +95,7 @@ INSTALLED_APPS = [
     "dj_rest_auth.registration",
     # Your apps
     "messaging",
+    "debug_toolbar",
     "utils",
     "userprofile.apps.UserprofileConfig",
     "dashboard",
@@ -126,6 +131,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # Must be at the top
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -219,6 +225,29 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+
+# Validate Cloudinary credentials
+if not all([CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET]):
+    print("⚠️  WARNING: Cloudinary credentials not fully configured")
+    print(f"   Cloud Name: {'✓' if CLOUDINARY_CLOUD_NAME else '✗'}")
+    print(f"   API Key: {'✓' if CLOUDINARY_API_KEY else '✗'}")
+    print(f"   API Secret: {'✓' if CLOUDINARY_API_SECRET else '✗'}")
+
+cloudinary.config(
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET,
+    secure=True,
+)
+
+
+print(f"✅ Cloudinary configured: {CLOUDINARY_CLOUD_NAME}")
 
 # ============================================
 # PASSWORD VALIDATION

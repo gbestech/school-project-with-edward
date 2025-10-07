@@ -1,11 +1,14 @@
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from .permissions import (
     HasSettingsPermission,
     HasSettingsPermissionOrReadOnly,
     PublicReadOnly,
 )
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.http import JsonResponse
@@ -21,6 +24,9 @@ from .models import (
     Role,
     UserRole,
 )
+import cloudinary
+import cloudinary.uploader
+
 from .serializers import (
     SchoolSettingsSerializer,
     SchoolAnnouncementSerializer,
@@ -928,184 +934,179 @@ class UserRoleViewSet(viewsets.ModelViewSet):
             )
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-# class FileUploadView(APIView):
-#     """Handle file uploads for logo and favicon"""
-#     permission_classes = [AllowAny]  # Temporarily allow any access for testing
-
-#     def post(self, request, file_type):
-#         self.context = {'request': request}
-#         """Upload logo or favicon"""
-#         try:
-#             if file_type not in ['logo', 'favicon']:
-#                 return Response(
-#                     {'error': 'Invalid file type. Must be logo or favicon'},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             # Check for the correct field name based on file_type
-#             field_name = file_type
-#             if field_name not in request.FILES:
-#                 return Response(
-#                     {'error': f'No {file_type} file provided'},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             uploaded_file = request.FILES[field_name]
-
-#             # Validate file type
-#             allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml']
-#             if uploaded_file.content_type not in allowed_types:
-#                 return Response(
-#                     {'error': 'Invalid file type. Only JPEG, PNG, GIF, and SVG are allowed'},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             # Validate file size (max 5MB)
-#             if uploaded_file.size > 5 * 1024 * 1024:
-#                 return Response(
-#                     {'error': 'File size too large. Maximum size is 5MB'},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-
-#             # Get the settings instance
-#             settings = SchoolSettings.objects.first()
-#             if not settings:
-#                 settings = SchoolSettings.objects.create()
-
-#             # Delete old file if it exists before saving the new one
-#             if file_type == 'logo':
-#                 if settings.logo:
-#                     # Delete the old logo file from storage
-#                     settings.logo.delete(save=False)
-#                 settings.logo = uploaded_file
-#             elif file_type == 'favicon':
-#                 if settings.favicon:
-#                     # Delete the old favicon file from storage
-#                     settings.favicon.delete(save=False)
-#                 settings.favicon = uploaded_file
-
-#             settings.save()
-
-#             # Return the file URL (using relative URLs)
-#             if file_type == 'logo' and settings.logo:
-#                 file_url = settings.logo.url
-#             elif file_type == 'favicon' and settings.favicon:
-#                 file_url = settings.favicon.url
-#             else:
-#                 file_url = None
-
-#             return Response({
-#                 f'{file_type}_url': file_url,
-#                 'message': f'{file_type.capitalize()} uploaded successfully'
-#             })
-
-#         except Exception as e:
-#             return Response(
-#                 {'error': f'Failed to upload {file_type}: {str(e)}'},
-#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-#             )
-
-
-class FileUploadView(APIView):
-    """Handle file uploads for logo and favicon"""
-
-    permission_classes = [AllowAny]  # Temporarily allow any access for testing
-
-    def post(self, request, *args, **kwargs):
-        """Upload logo or favicon based on URL path"""
-        try:
-            # Determine file type from the URL path
-            path = request.path
-            if "upload-logo" in path:
-                file_type = "logo"
-            elif "upload-favicon" in path:
-                file_type = "favicon"
-            else:
-                return Response(
-                    {"error": "Invalid endpoint. Use upload-logo or upload-favicon"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Check for the correct field name based on file_type
-            field_name = file_type
-            if field_name not in request.FILES:
-                return Response(
-                    {
-                        "error": f"No {file_type} file provided. Expected field name: {field_name}"
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            uploaded_file = request.FILES[field_name]
-
-            # Validate file type
-            allowed_types = ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]
-            if file_type == "favicon":
-                allowed_types.append("image/x-icon")  # Add .ico for favicons
-
-            if uploaded_file.content_type not in allowed_types:
-                return Response(
-                    {
-                        "error": f'Invalid file type: {uploaded_file.content_type}. Allowed: {", ".join(allowed_types)}'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Validate file size (max 5MB for logo, 1MB for favicon)
-            max_size = 1 * 1024 * 1024 if file_type == "favicon" else 5 * 1024 * 1024
-            if uploaded_file.size > max_size:
-                max_size_mb = max_size / (1024 * 1024)
-                return Response(
-                    {"error": f"File size too large. Maximum size is {max_size_mb}MB"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Get the settings instance
-            settings = SchoolSettings.objects.first()
-            if not settings:
-                settings = SchoolSettings.objects.create()
-
-            # Delete old file if it exists before saving the new one
-            if file_type == "logo":
-                if settings.logo:
-                    settings.logo.delete(save=False)
-                settings.logo = uploaded_file
-            elif file_type == "favicon":
-                if settings.favicon:
-                    settings.favicon.delete(save=False)
-                settings.favicon = uploaded_file
-
-            settings.save()
-
-            # Return the file URL
-            if file_type == "logo" and settings.logo:
-                file_url = settings.logo.url
-            elif file_type == "favicon" and settings.favicon:
-                file_url = settings.favicon.url
-            else:
-                file_url = None
-
-            # Use consistent response format
-            response_key = f"{file_type}Url"  # camelCase for frontend
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def upload_logo(request):
+    """Upload school logo to Cloudinary"""
+    try:
+        if "logo" not in request.FILES:
             return Response(
-                {
-                    response_key: file_url,
-                    "message": f"{file_type.capitalize()} uploaded successfully",
-                },
-                status=status.HTTP_201_CREATED,
+                {"error": "No logo file provided. Expected field name: logo"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        except Exception as e:
-            import traceback
+        uploaded_file = request.FILES["logo"]
 
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/png", "image/gif", "image/svg+xml"]
+        if uploaded_file.content_type not in allowed_types:
             return Response(
                 {
-                    "error": f"Failed to upload {file_type}: {str(e)}",
-                    "traceback": traceback.format_exc(),
+                    "error": f'Invalid file type: {uploaded_file.content_type}. Allowed: {", ".join(allowed_types)}'
                 },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate file size (max 5MB)
+        if uploaded_file.size > 5 * 1024 * 1024:
+            return Response(
+                {"error": "File size too large. Maximum size is 5MB"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Upload to Cloudinary
+        try:
+            upload_result = cloudinary.uploader.upload(
+                uploaded_file,
+                folder="school_logos",  # Organize in a folder
+                resource_type="image",
+                transformation=[
+                    {
+                        "width": 500,
+                        "height": 500,
+                        "crop": "limit",
+                    },  # Resize if too large
+                    {"quality": "auto:good"},  # Optimize quality
+                ],
+            )
+
+            logo_url = upload_result.get("secure_url")
+
+            if not logo_url:
+                raise Exception("Failed to get Cloudinary URL")
+
+        except Exception as cloudinary_error:
+            return Response(
+                {"error": f"Cloudinary upload failed: {str(cloudinary_error)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+        # Get or create settings instance
+        settings = SchoolSettings.objects.first()
+        if not settings:
+            settings = SchoolSettings.objects.create()
+
+        # Save the Cloudinary URL to the database
+        settings.logo = logo_url
+        settings.save()
+
+        return Response(
+            {"logoUrl": logo_url, "message": "Logo uploaded successfully"},
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        import traceback
+
+        return Response(
+            {
+                "error": f"Failed to upload logo: {str(e)}",
+                "traceback": traceback.format_exc(),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def upload_favicon(request):
+    """Upload school favicon to Cloudinary"""
+    try:
+        if "favicon" not in request.FILES:
+            return Response(
+                {"error": "No favicon file provided. Expected field name: favicon"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        uploaded_file = request.FILES["favicon"]
+
+        # Validate file type (include .ico for favicons)
+        allowed_types = [
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/svg+xml",
+            "image/x-icon",
+            "image/vnd.microsoft.icon",
+        ]
+        if uploaded_file.content_type not in allowed_types:
+            return Response(
+                {
+                    "error": f'Invalid file type: {uploaded_file.content_type}. Allowed: {", ".join(allowed_types)}'
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate file size (max 1MB for favicon)
+        if uploaded_file.size > 1 * 1024 * 1024:
+            return Response(
+                {"error": "File size too large. Maximum size is 1MB"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Upload to Cloudinary
+        try:
+            upload_result = cloudinary.uploader.upload(
+                uploaded_file,
+                folder="school_favicons",  # Organize in a folder
+                resource_type="image",
+                transformation=[
+                    {
+                        "width": 64,
+                        "height": 64,
+                        "crop": "fill",
+                    },  # Standard favicon size
+                    {"quality": "auto:good"},
+                ],
+            )
+
+            favicon_url = upload_result.get("secure_url")
+
+            if not favicon_url:
+                raise Exception("Failed to get Cloudinary URL")
+
+        except Exception as cloudinary_error:
+            return Response(
+                {"error": f"Cloudinary upload failed: {str(cloudinary_error)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # Get or create settings instance
+        settings = SchoolSettings.objects.first()
+        if not settings:
+            settings = SchoolSettings.objects.create()
+
+        # Save the Cloudinary URL to the database
+        settings.favicon = favicon_url
+        settings.save()
+
+        return Response(
+            {"faviconUrl": favicon_url, "message": "Favicon uploaded successfully"},
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        import traceback
+
+        return Response(
+            {
+                "error": f"Failed to upload favicon: {str(e)}",
+                "traceback": traceback.format_exc(),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 class SchoolAnnouncementViewSet(viewsets.ModelViewSet):
