@@ -383,10 +383,20 @@ def upload_favicon(request):
 class UploadLogoView(APIView):
     """DEPRECATED: Use upload_logo function instead"""
 
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def post(self, request):
-        return upload_logo(request)
+    def post(self, request, *args, **kwargs):
+
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"error": "No file provided"}, status=400)
+
+        settings = SchoolSettings.objects.first()
+        settings.logo = file
+        settings.save()
+
+        return Response({"message": "Logo uploaded successfully"}, status=200)
 
 
 class UploadFaviconView(APIView):
