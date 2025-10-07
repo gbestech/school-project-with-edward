@@ -10,8 +10,7 @@ export interface SchoolSettings {
   email: string;
   logo: string;
   favicon: string;
-  academicYearStart: string;
-  academicYearEnd: string;
+  academicYear: string;
   motto: string;
   timezone: string;
   dateFormat: string;
@@ -339,8 +338,7 @@ class SettingsService {
       favicon: response.favicon_url ?? response.favicon ?? '',
       
       // Parse academic_year if it exists (might be "2024/2025" format)
-      academicYearStart: response.academic_year_start ?? '',
-      academicYearEnd: response.academic_year_end ?? '',
+      academicYear: response.academic_year ?? '',
       
       motto: response.school_motto ?? 'Knowledge at its spring', // FIXED: was response.motto
       timezone: response.timezone ?? 'UTC-5',
@@ -477,8 +475,7 @@ class SettingsService {
     if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
     
     // Academic year transformations
-    if (settings.academicYearStart !== undefined) backendSettings.academic_year_start = settings.academicYearStart;
-    if (settings.academicYearEnd !== undefined) backendSettings.academic_year_end = settings.academicYearEnd;
+    if (settings.academicYear !== undefined) backendSettings.academic_year = settings.academicYear;
     
     // File uploads (only if they're actual files or URLs)
     if (settings.logo !== undefined) backendSettings.logo = settings.logo;
@@ -567,8 +564,7 @@ private async transformBackendToFrontend(response: any): Promise<SchoolSettings>
     email: response.school_email ?? '',         // FIXED
     logo: response.logo_url ?? response.logo ?? '',
     favicon: response.favicon_url ?? response.favicon ?? '',
-    academicYearStart: response.academic_year_start ?? '',
-    academicYearEnd: response.academic_year_end ?? '',
+    academicYear: response.academic_year ?? '',
     motto: response.school_motto ?? 'Excellence in Education', // FIXED
     timezone: response.timezone ?? 'UTC-5',
     dateFormat: response.date_format ?? 'dd/mm/yyyy',
@@ -1015,8 +1011,7 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
       email: '',
       logo: '',
       favicon: '',
-      academicYearStart: '',
-      academicYearEnd: '',
+      academicYear: '',
       motto: 'Excellence in Education',
       timezone: 'UTC-5',
       dateFormat: 'dd/mm/yyyy',

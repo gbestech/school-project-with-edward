@@ -22,39 +22,43 @@ class PermissionSerializer(serializers.ModelSerializer):
 class RoleSerializer(serializers.ModelSerializer):
     permissions = PermissionSerializer(many=True, read_only=True)
     permission_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False
+        child=serializers.IntegerField(), write_only=True, required=False
     )
 
     class Meta:
         model = Role
         fields = [
-            "id", "name", "description", "is_active", 
-            "permissions", "permission_ids", "created_at", "updated_at"
+            "id",
+            "name",
+            "description",
+            "is_active",
+            "permissions",
+            "permission_ids",
+            "created_at",
+            "updated_at",
         ]
 
     def create(self, validated_data):
-        permission_ids = validated_data.pop('permission_ids', [])
+        permission_ids = validated_data.pop("permission_ids", [])
         role = Role.objects.create(**validated_data)
-        
+
         if permission_ids:
             permissions = Permission.objects.filter(id__in=permission_ids)
             role.permissions.set(permissions)
-        
+
         return role
 
     def update(self, instance, validated_data):
-        permission_ids = validated_data.pop('permission_ids', None)
-        
+        permission_ids = validated_data.pop("permission_ids", None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        
+
         if permission_ids is not None:
             permissions = Permission.objects.filter(id__in=permission_ids)
             instance.permissions.set(permissions)
-        
+
         return instance
 
 
@@ -62,9 +66,16 @@ class SchoolAnnouncementSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolAnnouncement
         fields = [
-            "id", "title", "content", "announcement_type", 
-            "priority", "is_active", "start_date", "end_date", 
-            "created_at", "updated_at"
+            "id",
+            "title",
+            "content",
+            "announcement_type",
+            "priority",
+            "is_active",
+            "start_date",
+            "end_date",
+            "created_at",
+            "updated_at",
         ]
 
 
@@ -72,12 +83,12 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
     # Custom fields for frontend compatibility
     logo_url = serializers.SerializerMethodField()
     favicon_url = serializers.SerializerMethodField()
-    
+
     # Field aliases for frontend compatibility
-    address = serializers.CharField(source='school_address', read_only=True)
-    phone = serializers.CharField(source='school_phone', read_only=True)
-    email = serializers.EmailField(source='school_email', read_only=True)
-    motto = serializers.CharField(source='school_motto', read_only=True)
+    address = serializers.CharField(source="school_address", read_only=True)
+    phone = serializers.CharField(source="school_phone", read_only=True)
+    email = serializers.EmailField(source="school_email", read_only=True)
+    motto = serializers.CharField(source="school_motto", read_only=True)
 
     class Meta:
         model = SchoolSettings
@@ -96,7 +107,7 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "favicon_url",
             # Frontend compatibility aliases
             "address",
-            "phone", 
+            "phone",
             "email",
             "motto",
             # System Settings
@@ -113,19 +124,16 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "dark_mode",
             "maintenance_mode",
             "created_at",
-            "updated_at"
+            "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_logo_url(self, obj):
-        if obj.logo:
-            return obj.logo.url
-        return None
-
-    def get_favicon_url(self, obj):
-        if obj.favicon:
-            return obj.favicon.url
-        return None
+    def to_representation(self, instance):
+        """Custom representation to include logo and favicon URLs"""
+        data = super().to_representation(instance)
+        data["logo_url"] = instance.logo if instance.logo else None
+        data["favicon_url"] = instance.favicon if instance.favicon else None
+        return data
 
 
 class SchoolSettingsUpdateSerializer(serializers.ModelSerializer):
@@ -133,7 +141,7 @@ class SchoolSettingsUpdateSerializer(serializers.ModelSerializer):
         model = SchoolSettings
         fields = [
             "school_name",
-            "school_address", 
+            "school_address",
             "school_phone",
             "school_email",
             "school_website",
@@ -151,43 +159,40 @@ class SchoolSettingsUpdateSerializer(serializers.ModelSerializer):
             "auto_save",
             "notifications_enabled",
             "dark_mode",
-            "maintenance_mode"
+            "maintenance_mode",
         ]
 
 
 class RoleCreateUpdateSerializer(serializers.ModelSerializer):
     permission_ids = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=False
+        child=serializers.IntegerField(), required=False
     )
 
     class Meta:
         model = Role
-        fields = [
-            "name", "description", "is_active", "permission_ids"
-        ]
+        fields = ["name", "description", "is_active", "permission_ids"]
 
     def create(self, validated_data):
-        permission_ids = validated_data.pop('permission_ids', [])
+        permission_ids = validated_data.pop("permission_ids", [])
         role = Role.objects.create(**validated_data)
-        
+
         if permission_ids:
             permissions = Permission.objects.filter(id__in=permission_ids)
             role.permissions.set(permissions)
-        
+
         return role
 
     def update(self, instance, validated_data):
-        permission_ids = validated_data.pop('permission_ids', None)
-        
+        permission_ids = validated_data.pop("permission_ids", None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        
+
         if permission_ids is not None:
             permissions = Permission.objects.filter(id__in=permission_ids)
             instance.permissions.set(permissions)
-        
+
         return instance
 
 
@@ -195,6 +200,11 @@ class SchoolAnnouncementCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = SchoolAnnouncement
         fields = [
-            "title", "content", "announcement_type", 
-            "priority", "is_active", "start_date", "end_date"
+            "title",
+            "content",
+            "announcement_type",
+            "priority",
+            "is_active",
+            "start_date",
+            "end_date",
         ]

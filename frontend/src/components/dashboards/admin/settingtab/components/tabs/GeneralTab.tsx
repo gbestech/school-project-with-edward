@@ -18,8 +18,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
     timezone: 'UTC-5',
     dateFormat: 'dd/mm/yyyy',
     language: 'English',
-    academicYearStart: '',
-    academicYearEnd: '',
+    academicYear: '',
     logo: '',
     favicon: ''
   });
@@ -46,8 +45,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         timezone: initialSettings.timezone || 'UTC-5',
         dateFormat: initialSettings.dateFormat || 'dd/mm/yyyy',
         language: initialSettings.language || 'English',
-        academicYearStart: initialSettings.academicYearStart || '',
-        academicYearEnd: initialSettings.academicYearEnd || '',
+        academicYear: initialSettings.academicYear || '',
         logo: initialSettings.logo || '',
         favicon: initialSettings.favicon || ''
       });
@@ -415,31 +413,20 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
           Academic Year
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={formData.academicYearStart}
-              onChange={(e) => handleInputChange('academicYearStart', e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={formData.academicYearEnd}
-              onChange={(e) => handleInputChange('academicYearEnd', e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-            />
-          </div>
-        </div>
+        <div>
+  <label className="block text-sm font-medium text-slate-700 mb-2">
+    Academic Year
+  </label>
+  <input
+    type="number" // or "text" if you want format like "2025/2026"
+    value={formData.academicYear}
+    onChange={(e) => handleInputChange('academicYear', e.target.value)}
+    placeholder="e.g., 2025/2026"
+    min={1900} // optional: prevent very old years
+    max={2100} // optional: prevent future invalid years
+    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+  />
+</div>
       </div>
 
       {/* Branding Section */}

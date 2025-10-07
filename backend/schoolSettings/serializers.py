@@ -27,8 +27,7 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "school_motto",
             "logo",  # This is now a URL string
             "favicon",  # This is now a URL string
-            "academic_year_start",
-            "academic_year_end",
+            "academic_year",
             "timezone",
             "date_format",
             "language",
@@ -56,13 +55,8 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Custom representation to include logo and favicon URLs"""
         data = super().to_representation(instance)
-
-        # Always return relative URLs so frontend can handle them properly
-        if instance.logo:
-            data["logo_url"] = instance.logo.url if instance.logo else None
-        if instance.favicon:
-            data["favicon_url"] = instance.favicon.url if instance.favicon else None
-
+        data["logo_url"] = instance.logo if instance.logo else None
+        data["favicon_url"] = instance.favicon if instance.favicon else None
         return data
 
 

@@ -11,7 +11,7 @@ class SchoolSettings(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Basic Information
     school_name = models.CharField(max_length=255, default="School Name")
-    # site_name = models.CharField(max_length=255, blank=True, null=True)
+    site_name = models.CharField(max_length=255, blank=True, null=True)
     school_address = models.TextField(blank=True, null=True)
     school_phone = models.CharField(max_length=20, blank=True, null=True)
     school_email = models.EmailField(blank=True, null=True)
@@ -29,8 +29,7 @@ class SchoolSettings(models.Model):
     )
 
     # Academic Year
-    academic_year_start = models.DateField(blank=True, null=True)
-    academic_year_end = models.DateField(blank=True, null=True)
+    academic_year = models.CharField(max_length=50, blank=True, null=True)
 
     # Localization
     timezone = models.CharField(max_length=50, default="UTC")
