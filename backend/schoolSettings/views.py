@@ -388,7 +388,7 @@ class UploadLogoView(APIView):
 
     def post(self, request, *args, **kwargs):
 
-        file = request.FILES.get("file")
+        file = request.FILES.get("logo")
         if not file:
             return Response({"error": "No file provided"}, status=400)
 
@@ -405,7 +405,16 @@ class UploadFaviconView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
-        return upload_favicon(request)
+
+        file = request.FILES.get("favicon")
+        if not file:
+            return Response({"error": "No file provided"}, status=400)
+
+        settings = SchoolSettings.objects.first()
+        settings.favicon = file
+        settings.save()
+
+        return Response({"message": "Favicon uploaded successfully"}, status=200)
 
 
 @api_view(["POST"])
