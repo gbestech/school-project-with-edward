@@ -228,6 +228,10 @@ else:
 
 
 # Cloudinary Configuration
+# ============================================
+# CLOUDINARY CONFIGURATION
+# ============================================
+
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
 CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
@@ -238,16 +242,18 @@ if not all([CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET]):
     print(f"   Cloud Name: {'✓' if CLOUDINARY_CLOUD_NAME else '✗'}")
     print(f"   API Key: {'✓' if CLOUDINARY_API_KEY else '✗'}")
     print(f"   API Secret: {'✓' if CLOUDINARY_API_SECRET else '✗'}")
+else:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+    print(f"✅ Cloudinary configured: {CLOUDINARY_CLOUD_NAME}")
 
-cloudinary.config(
-    cloud_name=CLOUDINARY_CLOUD_NAME,
-    api_key=CLOUDINARY_API_KEY,
-    api_secret=CLOUDINARY_API_SECRET,
-    secure=True,
-)
-
-
-print(f"✅ Cloudinary configured: {CLOUDINARY_CLOUD_NAME}")
+# Use Cloudinary for media file storage
+if not DEBUG:
+    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # ============================================
 # PASSWORD VALIDATION
