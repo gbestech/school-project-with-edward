@@ -8,9 +8,10 @@ User = get_user_model()
 
 
 class SchoolSettings(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Basic Information
     school_name = models.CharField(max_length=255, default="School Name")
-    site_name = models.CharField(max_length=255, blank=True, null=True)
+    # site_name = models.CharField(max_length=255, blank=True, null=True)
     school_address = models.TextField(blank=True, null=True)
     school_phone = models.CharField(max_length=20, blank=True, null=True)
     school_email = models.EmailField(blank=True, null=True)
