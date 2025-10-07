@@ -733,7 +733,8 @@ async uploadLogo(file: File): Promise<{ logoUrl: string }> {
     console.log('Uploading logo to Cloudinary via backend...');
 
     
-    const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
+    // const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
+    const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/", {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -763,7 +764,8 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     
     console.log('Uploading favicon to Cloudinary via backend...');
     
-    const response = await fetch('/api/school-settings/school-settings/upload-favicon/ ', {
+    // const response = await fetch('/api/school-settings/school-settings/upload-favicon/ ', {
+    const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/", {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

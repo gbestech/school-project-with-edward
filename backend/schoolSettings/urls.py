@@ -15,13 +15,21 @@ router.register(r"user-roles", views.UserRoleViewSet, basename="user-role")
 
 urlpatterns = [
     # File upload endpoints - CRITICAL: These MUST come FIRST before all other patterns
-    path("school-settings/upload-logo/", views.upload_logo, name="upload-logo"),
     path(
-        "school-settings/upload-favicon/", views.upload_favicon, name="upload-favicon"
+        "school-settings/upload-logo/",
+        views.UploadLogoView.as_view(),
+        name="upload-logo",
+    ),
+    path(
+        "school-settings/upload-favicon/",
+        views.UploadFaviconView.as_view(),  # ✅ corrected view
+        name="upload-favicon",
     ),
     # Main settings endpoints
     path(
-        "school-settings/", views.SchoolSettingsDetail.as_view(), name="settings-detail"
+        "school-settings/",
+        views.SchoolSettingsDetail.as_view(),
+        name="settings-detail",
     ),
     # Payment gateway testing
     path(

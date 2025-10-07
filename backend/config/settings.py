@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_filters",
     "django.contrib.sites",
+    "django_extensions",
     # Third-party apps
     "corsheaders",
     "rest_framework",
@@ -249,7 +250,7 @@ else:
         api_secret=CLOUDINARY_API_SECRET,
         secure=True,
     )
-    print(f"✅ Cloudinary configured: {CLOUDINARY_CLOUD_NAME}")
+    print(f"Cloudinary configured: {CLOUDINARY_CLOUD_NAME}")
 
 # Use Cloudinary for media file storage
 if not DEBUG:
