@@ -47,6 +47,14 @@ class SchoolSettingsDetail(APIView):
 
     permission_classes = [PublicReadOnly]  # Allow public read access for logo/favicon
 
+    def get_permissions(self):
+        """
+        Override to allow different permissions for different methods
+        """
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminUser()]
+
     def get(self, request):
         """Get current school settings"""
         try:
@@ -68,6 +76,12 @@ class SchoolSettingsDetail(APIView):
 
     def put(self, request):
         """Update school settings"""
+
+        print(f"🔍 PUT request received")
+        print(f"🔍 User: {request.user}")
+        print(f"🔍 Is authenticated: {request.user.is_authenticated}")
+        print(f"🔍 Is admin: {request.user.is_staff}")
+        print(f"🔍 Data: {request.data}")
         try:
             settings = SchoolSettings.objects.first()
             if not settings:
