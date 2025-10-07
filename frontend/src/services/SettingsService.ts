@@ -312,7 +312,7 @@ class SettingsService {
  async getSettings(): Promise<SchoolSettings> {
   try {
     const cacheBuster = `${Date.now()}_${Math.random()}`;
-    const response = await api.get(`/api/school-settings/?_=${cacheBuster}`, {
+    const response = await api.get(`/api/school-settings/school-settings/?_=${cacheBuster}`, {
       headers: {
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
@@ -523,7 +523,7 @@ class SettingsService {
     
     console.log('📤 Transformed for backend:', backendSettings);
     
-    const response = await api.put('/api/school-settings/', backendSettings);
+    const response = await api.put('/api/school-settings/school-settings/', backendSettings);
     console.log('✅ Backend response:', response);
     
     // Transform response back to frontend format
@@ -773,7 +773,7 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     
     console.log('Uploading favicon to Cloudinary via backend...');
     
-    const response = await fetch('/api/school-settings/upload-favicon/', {
+    const response = await fetch('/api/school-settings/school-settings/upload-favicon/', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
