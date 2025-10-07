@@ -330,7 +330,7 @@ class SettingsService {
     // Transform with CORRECT field mapping based on actual backend response
     const transformedSettings: SchoolSettings = {
       // Use school_address not address (backend field name)
-      site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
+      site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
       school_name: response.school_name ?? 'Springfield Elementary School',
       address: response.school_address ?? '', // FIXED: was response.address
       phone: response.school_phone ?? '',     // FIXED: was response.phone
@@ -342,7 +342,7 @@ class SettingsService {
       academicYearStart: response.academic_year_start ?? '',
       academicYearEnd: response.academic_year_end ?? '',
       
-      motto: response.school_motto ?? 'Excellence in Education', // FIXED: was response.motto
+      motto: response.school_motto ?? 'Knowledge at its spring', // FIXED: was response.motto
       timezone: response.timezone ?? 'UTC-5',
       dateFormat: response.date_format ?? 'dd/mm/yyyy',
       language: response.language ?? 'English',
@@ -447,16 +447,6 @@ class SettingsService {
     return this.getDefaultSettings();
   }
 }
-
-  // async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
-  //   try {
-  //     const response = await api.put('/api/school-settings/school-settings/', settings);
-  //     return response;
-  //   } catch (error) {
-  //     console.error('Error updating settings:', error);
-  //     throw new Error('Failed to update school settings');
-  //   }
-  // }
 
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
   try {
@@ -743,7 +733,7 @@ async uploadLogo(file: File): Promise<{ logoUrl: string }> {
     console.log('Uploading logo to Cloudinary via backend...');
 
     
-    const response = await fetch('/api/school-settings/upload-logo/', {
+    const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -773,7 +763,7 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     
     console.log('Uploading favicon to Cloudinary via backend...');
     
-    const response = await fetch('/api/school-settings/school-settings/upload-favicon/', {
+    const response = await fetch('/api/school-settings/school-settings/upload-favicon/ ', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

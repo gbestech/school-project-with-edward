@@ -116,6 +116,78 @@ class SchoolSettingsDetail(APIView):
             )
 
 
+class UploadLogoView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request):
+        """Upload logo to Cloudinary and update settings"""
+        try:
+            file = request.FILES.get("file")
+            if not file:
+                return Response(
+                    {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Upload to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                file, folder="school_logos/", resource_type="image"
+            )
+
+            settings = SchoolSettings.objects.first()
+            if not settings:
+                settings = SchoolSettings.objects.create()
+
+            settings.logo = upload_result.get("secure_url")
+            settings.save()
+
+            serializer = SchoolSettingsSerializer(settings)
+            return Response(
+                {"message": "Logo uploaded successfully", "data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to upload logo: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class UploadFaviconView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request):
+        """Upload favicon to Cloudinary and update settings"""
+        try:
+            file = request.FILES.get("file")
+            if not file:
+                return Response(
+                    {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Upload to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                file, folder="school_favicons/", resource_type="image"
+            )
+
+            settings = SchoolSettings.objects.first()
+            if not settings:
+                settings = SchoolSettings.objects.create()
+
+            settings.favicon = upload_result.get("secure_url")
+            settings.save()
+
+            serializer = SchoolSettingsSerializer(settings)
+            return Response(
+                {"message": "Favicon uploaded successfully", "data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to upload favicon: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def test_payment_gateway(request, gateway):
