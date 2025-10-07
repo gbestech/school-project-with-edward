@@ -134,10 +134,10 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
     try {
       setIsUploadingFavicon(true);
       console.log('GeneralTab: Uploading favicon...', file.name);
-      
+         
       const result = await SettingsService.uploadFavicon(file);
     
-      const fullLFaviconUrl = result.faviconUrl
+      const fullFaviconUrl = result.faviconUrl
       ?result.faviconUrl.startsWith('http')
         ? result.faviconUrl
         : `https://school-management-project-qpox.onrender.com${result.faviconUrl}`
@@ -147,9 +147,9 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       
       setFormData(prev => ({
         ...prev,
-        favicon: fullLFaviconUrl
+        favicon: fullFaviconUrl
       }));
-      setFaviconPreview(result.faviconUrl);
+      setFaviconPreview(fullFaviconUrl);
       setSuccess('Favicon uploaded successfully! Remember to click "Save Changes" to apply.');
       setTimeout(() => setSuccess(null), 5000);
     } catch (err: any) {
