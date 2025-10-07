@@ -19,7 +19,6 @@ export interface SchoolSettings {
   // Design settings
   theme: string;
   primaryColor: string;
-  secondaryColor: string;
   fontFamily: string;
   fontSize: string;
   
@@ -346,7 +345,6 @@ class SettingsService {
       language: response.language ?? 'English',
       theme: response.theme ?? 'light',
       primaryColor: response.primary_color ?? '#3B82F6',
-      secondaryColor: response.secondary_color ?? '#6366F1',
       fontFamily: response.typography ?? 'Inter',
       fontSize: 'medium',
       
@@ -471,7 +469,7 @@ class SettingsService {
     // Design settings transformations
     if (settings.theme !== undefined) backendSettings.theme = settings.theme;
     if (settings.primaryColor !== undefined) backendSettings.primary_color = settings.primaryColor;
-    if (settings.secondaryColor !== undefined) backendSettings.secondary_color = settings.secondaryColor;
+    
     if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
     
     // Academic year transformations
@@ -571,7 +569,7 @@ private async transformBackendToFrontend(response: any): Promise<SchoolSettings>
     language: response.language ?? 'English',
     theme: response.theme ?? 'light',
     primaryColor: response.primary_color ?? '#3B82F6',
-    secondaryColor: response.secondary_color ?? '#6366F6',
+
     fontFamily: response.typography ?? 'Inter',
     fontSize: 'medium',
     notifications: response.notifications ?? this.getDefaultSettings().notifications,
@@ -1018,7 +1016,7 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
       language: 'English',
       theme: 'light',
       primaryColor: '#3B82F6',
-      secondaryColor: '#6366F1',
+
       fontFamily: 'Inter',
       fontSize: 'medium',
       notifications: {

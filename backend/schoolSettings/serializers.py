@@ -33,7 +33,6 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "language",
             "theme",
             "primary_color",
-            "secondary_color",
             "typography",
             "allow_self_registration",
             "email_verification_required",
