@@ -39,7 +39,6 @@ class SchoolSettings(models.Model):
     # Design Settings
     theme = models.CharField(max_length=20, default="light")
     primary_color = models.CharField(max_length=7, default="#3B82F6")
-    # secondary_color = models.CharField(max_length=7, default="#6366F1")
 
     typography = models.CharField(max_length=50, default="Inter")
 
