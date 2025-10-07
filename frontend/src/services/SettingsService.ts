@@ -725,27 +725,127 @@ async testSaveAndRetrieve() {
   }
 // Update these methods in your SettingsService.ts
 
+// async uploadLogo(file: File): Promise<{ logoUrl: string }> {
+//   try {
+//     const formData = new FormData();
+//     formData.append('logo', file);
+    
+//     console.log('Uploading logo to Cloudinary via backend...');
+
+    
+//     // const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
+//     const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/", {
+//       method: 'POST',
+//       headers: {
+//         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+//       },
+//       body: formData,
+//     });
+    
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error('Upload failed:', response.status, errorText);
+//       throw new Error(`Failed to upload logo: ${response.status} - ${errorText}`);
+//     }
+    
+//     const result = await response.json();
+//     console.log('Upload successful:', result);
+//     return result;
+//   } catch (error) {
+//     console.error('Error uploading logo:', error);
+//     throw error;
+//   }
+// }
+
+// async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
+//   try {
+//     const formData = new FormData();
+//     formData.append('favicon', file);
+    
+//     console.log('Uploading favicon to Cloudinary via backend...');
+    
+//     // const response = await fetch('/api/school-settings/school-settings/upload-favicon/ ', {
+//     const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/", {
+//       method: 'POST',
+//       headers: {
+//         'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+//       },
+//       body: formData,
+//     });
+    
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error('Upload failed:', response.status, errorText);
+//       throw new Error(`Failed to upload favicon: ${response.status} - ${errorText}`);
+//     }
+    
+//     const result = await response.json();
+//     console.log('Upload successful:', result);
+//     return result;
+//   } catch (error) {
+//     console.error('Error uploading favicon:', error);
+//     throw error;
+//   }
+// }
+//   async getAnnouncements(filters?: {
+//     target_audience?: string;
+//     is_active?: boolean;
+//     priority?: string;
+//   }): Promise<SchoolAnnouncement[]> {
+//     try {
+//       const response = await api.get('/api/school-settings/announcements/', filters);
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching announcements:', error);
+//       return [];
+//     }
+//   }
+
+//   async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
+//     const response = await api.get(`/api/school-settings/announcements/${id}/`);
+//     return response;
+//   }
+
+//   async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
+//     const response = await api.post('/api/school-settings/announcements/', data);
+//     return response;
+//   }
+
 async uploadLogo(file: File): Promise<{ logoUrl: string }> {
   try {
     const formData = new FormData();
     formData.append('logo', file);
     
+    // Debug: Check what's in FormData
     console.log('Uploading logo to Cloudinary via backend...');
-
-    
-    // const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
-    const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/", {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-      },
-      body: formData,
+    console.log('File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
     });
     
+    // Check FormData contents
+    for (let pair of formData.entries()) {
+      console.log('FormData:', pair[0], pair[1]);
+    }
+    
+    const response = await fetch(
+      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/",
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          // DO NOT set Content-Type - let browser set it with boundary
+        },
+        body: formData,
+        credentials: 'include', // Include cookies if needed
+      }
+    );
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Upload failed:', response.status, errorText);
-      throw new Error(`Failed to upload logo: ${response.status} - ${errorText}`);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('Upload failed:', response.status, errorData);
+      throw new Error(`Failed to upload logo: ${response.status} - ${JSON.stringify(errorData)}`);
     }
     
     const result = await response.json();
@@ -763,20 +863,29 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     formData.append('favicon', file);
     
     console.log('Uploading favicon to Cloudinary via backend...');
-    
-    // const response = await fetch('/api/school-settings/school-settings/upload-favicon/ ', {
-    const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/", {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-      },
-      body: formData,
+    console.log('File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
     });
     
+    const response = await fetch(
+      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/",
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          // DO NOT set Content-Type
+        },
+        body: formData,
+        credentials: 'include',
+      }
+    );
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Upload failed:', response.status, errorText);
-      throw new Error(`Failed to upload favicon: ${response.status} - ${errorText}`);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('Upload failed:', response.status, errorData);
+      throw new Error(`Failed to upload favicon: ${response.status} - ${JSON.stringify(errorData)}`);
     }
     
     const result = await response.json();
@@ -787,30 +896,6 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     throw error;
   }
 }
-  async getAnnouncements(filters?: {
-    target_audience?: string;
-    is_active?: boolean;
-    priority?: string;
-  }): Promise<SchoolAnnouncement[]> {
-    try {
-      const response = await api.get('/api/school-settings/announcements/', filters);
-      return Array.isArray(response) ? response : [];
-    } catch (error) {
-      console.error('Error fetching announcements:', error);
-      return [];
-    }
-  }
-
-  async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
-    const response = await api.get(`/api/school-settings/announcements/${id}/`);
-    return response;
-  }
-
-  async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
-    const response = await api.post('/api/school-settings/announcements/', data);
-    return response;
-  }
-
   async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
     const response = await api.put(`/api/school-settings/announcements/${id}/`, data);
     return response;
