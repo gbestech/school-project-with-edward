@@ -122,7 +122,7 @@ class UploadLogoView(APIView):
     def post(self, request):
         """Upload logo to Cloudinary and update settings"""
         try:
-            file = request.FILES.get("file")
+            file = request.FILES.get("logo")
             if not file:
                 return Response(
                     {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
@@ -158,7 +158,7 @@ class UploadFaviconView(APIView):
     def post(self, request):
         """Upload favicon to Cloudinary and update settings"""
         try:
-            file = request.FILES.get("file")
+            file = request.FILES.get("favicon")
             if not file:
                 return Response(
                     {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
