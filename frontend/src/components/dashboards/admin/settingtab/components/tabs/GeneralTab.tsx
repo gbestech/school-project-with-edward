@@ -137,7 +137,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       console.log('GeneralTab: Uploading favicon...', file.name);
       
       const result = await SettingsService.uploadFavicon(file);
-
       
       console.log('GeneralTab: Favicon upload result:', result);
       

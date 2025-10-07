@@ -725,34 +725,97 @@ async testSaveAndRetrieve() {
   }
 // Update these methods in your SettingsService.ts
 
+// Replace your uploadLogo and uploadFavicon methods with these fixed versions
+
 async uploadLogo(file: File): Promise<{ logoUrl: string }> {
   try {
     const formData = new FormData();
     formData.append('logo', file);
     
+    // Debug logging
     console.log('Uploading logo to Cloudinary via backend...');
-
-    
-    // const response = await fetch('/api/school-settings/school-settings/upload-logo/', {
-    const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/", {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-      },
-      body: formData,
+    console.log('File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: new Date(file.lastModified).toISOString()
     });
     
+    // Check FormData contents
+    for (let pair of formData.entries()) {
+      console.log('FormData entry:', pair[0], pair[1]);
+    }
+    
+    // Get CSRF token (Django requires this)
+    const getCsrfToken = () => {
+      const name = 'csrftoken';
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    };
+    
+    const csrfToken = getCsrfToken();
+    console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+    
+    // Get auth token
+    const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+    console.log('Auth Token:', authToken ? 'Found' : 'Not found');
+    
+    // Build headers
+    const headers: any = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    
+    console.log('Request headers:', headers);
+    
+    const response = await fetch(
+      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/",
+      {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+        credentials: 'include', // Important for Django CSRF
+      }
+    );
+    
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Upload failed:', response.status, errorText);
-      throw new Error(`Failed to upload logo: ${response.status} - ${errorText}`);
+      let errorData;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        errorData = await response.json();
+      } else {
+        errorData = { error: await response.text() };
+      }
+      
+      console.error('Upload failed:', response.status, errorData);
+      throw new Error(`Failed to upload logo: ${response.status} - ${JSON.stringify(errorData)}`);
     }
     
     const result = await response.json();
     console.log('Upload successful:', result);
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading logo:', error);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 }
@@ -763,26 +826,71 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
     formData.append('favicon', file);
     
     console.log('Uploading favicon to Cloudinary via backend...');
-    
-    // const response = await fetch('/api/school-settings/school-settings/upload-favicon/ ', {
-    const response = await fetch("https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/", {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-      },
-      body: formData,
+    console.log('File details:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: new Date(file.lastModified).toISOString()
     });
     
+    // Get CSRF token
+    const getCsrfToken = () => {
+      const name = 'csrftoken';
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    };
+    
+    const csrfToken = getCsrfToken();
+    const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+    
+    const headers: any = {};
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    
+    const response = await fetch(
+      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/",
+      {
+        method: 'POST',
+        headers: headers,
+        body: formData,
+        credentials: 'include',
+      }
+    );
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Upload failed:', response.status, errorText);
-      throw new Error(`Failed to upload favicon: ${response.status} - ${errorText}`);
+      let errorData;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        errorData = await response.json();
+      } else {
+        errorData = { error: await response.text() };
+      }
+      
+      console.error('Upload failed:', response.status, errorData);
+      throw new Error(`Failed to upload favicon: ${response.status} - ${JSON.stringify(errorData)}`);
     }
     
     const result = await response.json();
     console.log('Upload successful:', result);
     return result;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading favicon:', error);
     throw error;
   }
