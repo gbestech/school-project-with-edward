@@ -99,6 +99,10 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         : `https://school-management-project-qpox.onrender.com${result.logoUrl}`
       : '';
       console.log('GeneralTab: Logo upload result:', result);
+       console.log('GeneralTab: Logo upload result:', result);
+      console.log('GeneralTab: Full Logo URL:', fullLogoUrl);
+      
+      console.log('GeneralTab: Logo upload result:', result);
       
       setFormData(prev => ({
         ...prev,
@@ -138,10 +142,13 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       const result = await SettingsService.uploadFavicon(file);
     
       const fullFaviconUrl = result.faviconUrl
-      ?result.faviconUrl.startsWith('http')
-        ? result.faviconUrl
-        : `https://school-management-project-qpox.onrender.com${result.faviconUrl}`
-      : '';
+        ? result.faviconUrl.startsWith('http')
+          ? result.faviconUrl
+          : `https://school-management-project-qpox.onrender.com${result.faviconUrl}`
+        : '';
+      
+      console.log('GeneralTab: Favicon upload result:', result);
+      console.log('GeneralTab: Full favicon URL:', fullFaviconUrl);
       
       console.log('GeneralTab: Favicon upload result:', result);
       
