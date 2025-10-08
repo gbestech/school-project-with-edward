@@ -17,12 +17,12 @@ urlpatterns = [
     # File upload endpoints - CRITICAL: These MUST come FIRST before all other patterns
     path(
         "school-settings/upload-logo/",
-        views.UploadLogoView.as_view(),
+        views.upload_logo,  # ✅ Use the function-based view
         name="upload-logo",
     ),
     path(
         "school-settings/upload-favicon/",
-        views.UploadFaviconView.as_view(),  # ✅ corrected view
+        views.upload_favicon,  # ✅ Use the function-based view
         name="upload-favicon",
     ),
     # Main settings endpoints

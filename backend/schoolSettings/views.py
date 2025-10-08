@@ -380,41 +380,41 @@ def upload_favicon(request):
         )
 
 
-class UploadLogoView(APIView):
-    """DEPRECATED: Use upload_logo function instead"""
+# class UploadLogoView(APIView):
+#     """DEPRECATED: Use upload_logo function instead"""
 
-    parser_classes = [MultiPartParser, FormParser]
-    permission_classes = [IsAuthenticated, IsAdminUser]
+#     parser_classes = [MultiPartParser, FormParser]
+#     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def post(self, request, *args, **kwargs):
+#     def post(self, request, *args, **kwargs):
 
-        file = request.FILES.get("logo")
-        if not file:
-            return Response({"error": "No file provided"}, status=400)
+#         file = request.FILES.get("logo")
+#         if not file:
+#             return Response({"error": "No file provided"}, status=400)
 
-        settings = SchoolSettings.objects.first()
-        settings.logo = file
-        settings.save()
+#         settings = SchoolSettings.objects.first()
+#         settings.logo = file
+#         settings.save()
 
-        return Response({"message": "Logo uploaded successfully"}, status=200)
+#         return Response({"message": "Logo uploaded successfully"}, status=200)
 
 
-class UploadFaviconView(APIView):
-    """DEPRECATED: Use upload_favicon function instead"""
+# class UploadFaviconView(APIView):
+#     """DEPRECATED: Use upload_favicon function instead"""
 
-    permission_classes = [IsAuthenticated, IsAdminUser]
+#     permission_classes = [IsAuthenticated, IsAdminUser]
 
-    def post(self, request):
+#     def post(self, request):
 
-        file = request.FILES.get("favicon")
-        if not file:
-            return Response({"error": "No file provided"}, status=400)
+#         file = request.FILES.get("favicon")
+#         if not file:
+#             return Response({"error": "No file provided"}, status=400)
 
-        settings = SchoolSettings.objects.first()
-        settings.favicon = file
-        settings.save()
+#         settings = SchoolSettings.objects.first()
+#         settings.favicon = file
+#         settings.save()
 
-        return Response({"message": "Favicon uploaded successfully"}, status=200)
+#         return Response({"message": "Favicon uploaded successfully"}, status=200)
 
 
 @api_view(["POST"])
