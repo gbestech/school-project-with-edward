@@ -355,7 +355,7 @@ const RolesPermissions = () => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/school-settings/roles/${roleId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${roleId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -378,7 +378,7 @@ const RolesPermissions = () => {
   const duplicateRole = async (role: Role) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/school-settings/roles/${role.id}/duplicate/`, {
+      const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${role.id}/duplicate/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -426,7 +426,7 @@ const RolesPermissions = () => {
         });
       });
 
-      const response = await fetch(`${API_BASE_URL}/school-settings/roles/${editingRolePermissions.id}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -502,7 +502,7 @@ const RolesPermissions = () => {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/school-settings/user-roles/${userRoleId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/school-settings/user-roles/${userRoleId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
