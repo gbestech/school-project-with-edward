@@ -28,6 +28,12 @@ class SchoolSettings(models.Model):
         help_text="School favicon (Cloudinary URL)",
     )
 
+    @property
+    def favicon_url(self):
+        """Return the full Cloudinary URL"""
+        # Since favicon already stores the full URL, just return it
+        return self.favicon if self.favicon else None
+
     # Academic Year
     academic_year = models.CharField(max_length=50, blank=True, null=True)
 

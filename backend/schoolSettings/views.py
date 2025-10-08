@@ -227,10 +227,18 @@ def upload_logo(request):
         # Update database - CRITICAL FIX
         try:
             with transaction.atomic():
-                settings, created = SchoolSettings.objects.get_or_create(pk=1)
+                # settings, created = SchoolSettings.objects.get_or_create(pk=1)
+                settings, created = SchoolSettings.objects.first()
+                if not settings:
+                    return Response(
+                        {"error": "No SchoolSettings record found."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
                 settings.logo = logo_url
                 # CRITICAL: Only update logo field to avoid querying missing columns
                 settings.save(update_fields=["logo", "updated_at"])
+                if created:
+                    logger.info("Created new SchoolSettings record")
 
             logger.info(f"Logo URL saved to database: {logo_url}")
 
@@ -351,31 +359,37 @@ def upload_favicon(request):
 
             with transaction.atomic():
                 # ✅ FIXED: Provide defaults for all NOT NULL fields
-                settings, created = SchoolSettings.objects.get_or_create(
-                    pk=1,
-                    defaults={
-                        "academic_year": f"{datetime.now().year}-{datetime.now().year + 1}",
-                        "school_name": "School Name",
-                        "timezone": "UTC",
-                        "date_format": "YYYY-MM-DD",
-                        "language": "English",
-                        "primary_color": "#3B82F6",
-                        "theme_mode": "light",
-                        "font_family": "Inter",
-                        "default_user_role": "student",
-                        "session_timeout": 8,
-                        "password_expiry_days": 90,
-                        "enable_notifications": True,
-                        "enable_email_notifications": True,
-                        "enable_sms_notifications": False,
-                        "maintenance_mode": False,
-                        "allow_self_registration": False,
-                        "require_email_verification": False,
-                        "enable_two_factor_auth": True,
-                        "max_login_attempts": 2,
-                    },
-                )
+                # settings, created = SchoolSettings.objects.get_or_create(
+                #     pk=1,
+                #     defaults={
+                #         "academic_year": f"{datetime.now().year}-{datetime.now().year + 1}",
+                #         "school_name": "School Name",
+                #         "timezone": "UTC",
+                #         "date_format": "YYYY-MM-DD",
+                #         "language": "English",
+                #         "primary_color": "#3B82F6",
+                #         "theme_mode": "light",
+                #         "font_family": "Inter",
+                #         "default_user_role": "student",
+                #         "session_timeout": 8,
+                #         "password_expiry_days": 90,
+                #         "enable_notifications": True,
+                #         "enable_email_notifications": True,
+                #         "enable_sms_notifications": False,
+                #         "maintenance_mode": False,
+                #         "allow_self_registration": False,
+                #         "require_email_verification": False,
+                #         "enable_two_factor_auth": True,
+                #         "max_login_attempts": 2,
+                #     },
+                # )
 
+                settings, created = SchoolSettings.objects.first()
+                if not settings:
+                    return Response(
+                        {"error": "No SchoolSettings record found."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
                 logger.info(
                     f"🔍 About to save favicon URL (length: {len(favicon_url)})"
                 )
