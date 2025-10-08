@@ -333,7 +333,10 @@ def upload_favicon(request):
             if not favicon_url:
                 raise Exception("Cloudinary did not return a URL")
 
+            # 🔍 ADD THESE LOGS
             logger.info(f"Favicon uploaded to Cloudinary: {favicon_url}")
+            logger.info(f"🔍 Favicon URL LENGTH: {len(favicon_url)} characters")
+            logger.info(f"🔍 Full Cloudinary response: {upload_result}")
 
         except Exception as cloudinary_error:
             logger.error(
@@ -347,11 +350,18 @@ def upload_favicon(request):
         try:
             with transaction.atomic():
                 settings, created = SchoolSettings.objects.get_or_create(pk=1)
+
+                # 🔍 ADD THESE LOGS BEFORE SAVING
+                logger.info(
+                    f"🔍 About to save favicon URL (length: {len(favicon_url)})"
+                )
+                logger.info(f"🔍 Favicon URL being saved: {favicon_url}")
+
                 settings.favicon = favicon_url
                 # CRITICAL: Only update favicon field to avoid querying missing columns
                 settings.save(update_fields=["favicon", "updated_at"])
 
-            logger.info(f"Favicon URL saved to database: {favicon_url}")
+            logger.info(f"✅ Favicon URL saved to database: {favicon_url}")
 
             # Clear cache
             cache.delete("school_settings")
@@ -366,9 +376,21 @@ def upload_favicon(request):
             )
 
         except Exception as db_error:
-            logger.error(f"Database save failed: {str(db_error)}", exc_info=True)
+            # 🔍 ADD MORE DETAILED ERROR LOGGING
+            logger.error(f"❌ Database save failed: {str(db_error)}", exc_info=True)
+            logger.error(f"❌ Favicon URL that failed: {favicon_url}")
+            logger.error(f"❌ Favicon URL length: {len(favicon_url)}")
+
             return Response(
-                {"error": f"Failed to save favicon URL: {str(db_error)}"},
+                {
+                    "error": f"Failed to save favicon URL: {str(db_error)}",
+                    "url_length": len(favicon_url),
+                    "url": (
+                        favicon_url[:100] + "..."
+                        if len(favicon_url) > 100
+                        else favicon_url
+                    ),
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -378,43 +400,6 @@ def upload_favicon(request):
             {"error": f"Failed to upload favicon: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
-# class UploadLogoView(APIView):
-#     """DEPRECATED: Use upload_logo function instead"""
-
-#     parser_classes = [MultiPartParser, FormParser]
-#     permission_classes = [IsAuthenticated, IsAdminUser]
-
-#     def post(self, request, *args, **kwargs):
-
-#         file = request.FILES.get("logo")
-#         if not file:
-#             return Response({"error": "No file provided"}, status=400)
-
-#         settings = SchoolSettings.objects.first()
-#         settings.logo = file
-#         settings.save()
-
-#         return Response({"message": "Logo uploaded successfully"}, status=200)
-
-
-# class UploadFaviconView(APIView):
-#     """DEPRECATED: Use upload_favicon function instead"""
-
-#     permission_classes = [IsAuthenticated, IsAdminUser]
-
-#     def post(self, request):
-
-#         file = request.FILES.get("favicon")
-#         if not file:
-#             return Response({"error": "No file provided"}, status=400)
-
-#         settings = SchoolSettings.objects.first()
-#         settings.favicon = file
-#         settings.save()
-
-#         return Response({"message": "Favicon uploaded successfully"}, status=200)
 
 
 @api_view(["POST"])
