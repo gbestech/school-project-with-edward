@@ -5,7 +5,7 @@ import { getAbsoluteUrl } from '../utils/urlUtils';
 const FaviconUpdater: React.FC = () => {
   const { settings } = useSettings();
   
-  useFavicon({ faviconUrl: getAbsoluteUrl(settings?.favicon_url) });
+  useFavicon({ faviconUrl: getAbsoluteUrl(settings?.favicon) });
 
   return null; // This component doesn't render anything
 };
