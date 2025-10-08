@@ -123,13 +123,6 @@ const DashboardHome: React.FC = () => {
               specification = await fetchUserSpecification(user.user_data.id);
             } catch (error) {}
           }
-          // Debug gender data (commented out for production)
-          // console.log('🎯 Student Gender Debug:', {
-          //   userId: user.id,
-          //   studentName: `${user.user_data.first_name} ${user.user_data.last_name}`,
-          //   studentDataGender: studentData?.gender,
-          //   finalGender: studentData?.gender || 'not_specified'
-          // });
 
           const student: Student = {
             id: studentData?.id || user.id,

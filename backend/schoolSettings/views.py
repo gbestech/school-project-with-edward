@@ -333,10 +333,8 @@ def upload_favicon(request):
             if not favicon_url:
                 raise Exception("Cloudinary did not return a URL")
 
-            # 🔍 ADD THESE LOGS
             logger.info(f"Favicon uploaded to Cloudinary: {favicon_url}")
             logger.info(f"🔍 Favicon URL LENGTH: {len(favicon_url)} characters")
-            logger.info(f"🔍 Full Cloudinary response: {upload_result}")
 
         except Exception as cloudinary_error:
             logger.error(
@@ -349,17 +347,16 @@ def upload_favicon(request):
         # Update database - CRITICAL FIX
         try:
             with transaction.atomic():
-                settings, created = SchoolSettings.objects.get_or_create(pk=1)
+                settings = SchoolSettings.objects.get(pk=1)
 
-                # 🔍 ADD THESE LOGS BEFORE SAVING
                 logger.info(
                     f"🔍 About to save favicon URL (length: {len(favicon_url)})"
                 )
                 logger.info(f"🔍 Favicon URL being saved: {favicon_url}")
 
                 settings.favicon = favicon_url
-                # CRITICAL: Only update favicon field to avoid querying missing columns
-                settings.save(update_fields=["favicon", "updated_at"])
+                # CRITICAL: Only update favicon field to avoid triggering NOT NULL constraints on other fields
+                settings.save(update_fields=["favicon"])
 
             logger.info(f"✅ Favicon URL saved to database: {favicon_url}")
 
@@ -376,7 +373,6 @@ def upload_favicon(request):
             )
 
         except Exception as db_error:
-            # 🔍 ADD MORE DETAILED ERROR LOGGING
             logger.error(f"❌ Database save failed: {str(db_error)}", exc_info=True)
             logger.error(f"❌ Favicon URL that failed: {favicon_url}")
             logger.error(f"❌ Favicon URL length: {len(favicon_url)}")
