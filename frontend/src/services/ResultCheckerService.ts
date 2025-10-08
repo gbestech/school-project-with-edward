@@ -528,7 +528,7 @@ class ResultCheckerService {
 
   // Get available academic sessions for filtering
   async getAvailableSessions(): Promise<AcademicSession[]> {
-    const response = await api.get('fee/academic-sessions/');
+    const response = await api.get('/api/fee/academic-sessions/');
      const data = response.results || response;
     
      return data.map((s: any) => ({
@@ -552,7 +552,7 @@ class ResultCheckerService {
   }[]> {
     try {
       // Try to get classes from classrooms endpoint
-      const response = await api.get('classrooms/classrooms/');
+      const response = await api.get('/api/classrooms/classrooms/');
       const classrooms = response.results || response;
       
       if (classrooms && classrooms.length > 0) {

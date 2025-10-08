@@ -885,7 +885,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   }) => {
     // Use dynamic school information from settings
     const schoolName = settings?.school_name || 'School Name';
-    const schoolAddress = settings?.school_address || 'School Address';
+    const schoolAddress = settings?.address || 'School Address';
     const academicSession = settings?.academic_year || 'Academic Year';
     const currentTerm = settings?.current_term || 'Current Term';
     
@@ -1060,7 +1060,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   }) => {
     // Use dynamic school information from settings
     const schoolName = settings?.school_name || 'School Name';
-    const schoolAddress = settings?.school_address || 'School Address';
+    const schoolAddress = settings?.address || 'School Address';
     const academicSession = settings?.academic_year || 'Academic Year';
     const currentTerm = settings?.current_term || 'Current Term';
     
