@@ -19,7 +19,7 @@ const ParentLoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useDocumentTitle(t('login.title', 'Student Login - AI Hustle Daily'));
+  useDocumentTitle(t('login.title', 'Student Login - Gods Treasure Schools'));
 
   const handleLogin = async (credentials: LoginCredentials) => {
     try {

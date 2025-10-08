@@ -1,4 +1,3 @@
-import React from 'react'
 import AddTeacher from '@/components/dashboards/admin/AddTeacherForm'
 
 const AddTeacherForm = () => {

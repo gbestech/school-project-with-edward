@@ -1,4 +1,3 @@
-import React from 'react'
 import ParentList from '@/components/dashboards/admin/ParentList'
 const AdminParentListManagement = () => {
   return (

@@ -11,7 +11,7 @@ const Login = () => {
   const { t } = useTranslation()
 
   // Set document title
-  useDocumentTitle(t('login.title', 'Login - AI Hustle Daily'))
+  useDocumentTitle(t('login.title', 'Login - Gods Treasure Schools'))
 
   const handleRoleSelection = (role: UserRole) => {
     switch (role) {

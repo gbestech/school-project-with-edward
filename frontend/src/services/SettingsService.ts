@@ -317,8 +317,7 @@ class SettingsService {
       }
     });
     
-    console.log('🔍 Raw API response:', response);
-
+   
     // Check if response is HTML (404 error page)
     if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
       console.error('Received HTML instead of JSON - likely a 404 or auth error');
@@ -329,7 +328,7 @@ class SettingsService {
     const transformedSettings: SchoolSettings = {
       // Use school_address not address (backend field name)
       site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
-      school_name: response.school_name ?? 'Springfield Elementary School',
+      school_name: response.school_name ?? 'Gods Treasure Schools',
       address: response.school_address ?? '', // FIXED: was response.address
       phone: response.school_phone ?? '',     // FIXED: was response.phone
       email: response.school_email ?? '',     // FIXED: was response.email
@@ -522,9 +521,7 @@ class SettingsService {
     
     return transformedResponse;
   } catch (error: any) {
-    console.error('❌ Error updating settings:', error);
-    console.error('❌ Error response:', error.response);
-    console.error('❌ Error data:', error.response?.data);
+    console.error('Error updating settings:', error);
     
     const errorData = error.response?.data;
     let errorMessage = 'Failed to update school settings';
@@ -555,15 +552,15 @@ class SettingsService {
 
 private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
   return {
-    site_name: response.site_name ?? response.school_name ?? 'EduAdmin Pro',
-    school_name: response.school_name ?? 'Springfield Elementary School',
+    site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
+    school_name: response.school_name ?? 'GodS Treasure Schools',
     address: response.school_address ?? '',     // FIXED
     phone: response.school_phone ?? '',         // FIXED
     email: response.school_email ?? '',         // FIXED
     logo: response.logo_url ?? response.logo ?? '',
     favicon: response.favicon_url ?? response.favicon ?? '',
     academicYear: response.academic_year ?? '',
-    motto: response.school_motto ?? 'Excellence in Education', // FIXED
+    motto: response.school_motto ?? 'Knowledge at its spring', // FIXED
     timezone: response.timezone ?? 'UTC-5',
     dateFormat: response.date_format ?? 'dd/mm/yyyy',
     language: response.language ?? 'English',
@@ -602,28 +599,27 @@ private async transformBackendToFrontend(response: any): Promise<SchoolSettings>
   };
 }
 async testSaveAndRetrieve() {
-  console.log('🧪 Testing save and retrieve...');
+  
   
   // Save test data
   const testData = {
     school_name: 'Test School ' + Date.now(),
     email: 'test@example.com'
   };
-  console.log('📤 Saving:', testData);
+
   const saved = await this.updateSettings(testData);
   console.log('✅ Saved response:', saved);
 
   await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-  console.log('📥 Retrieving...');
+  
   const retrieved = await this.getSettings();
-  console.log('✅ Retrieved:', retrieved);
+ 
 
   // Check if they match
   if (retrieved.school_name === testData.school_name) {
     console.log('✅ TEST PASSED: Data persisted correctly!');
   } else {
-    console.error('❌ TEST FAILED: Data did not persist');
-    console.error('Expected:', testData.school_name);
+    
     console.error('Got:', retrieved.school_name);
   }
 }
@@ -1010,7 +1006,7 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
       logo: '',
       favicon: '',
       academicYear: '',
-      motto: 'Excellence in Education',
+      motto: 'Knowledge at its spring',
       timezone: 'UTC-5',
       dateFormat: 'dd/mm/yyyy',
       language: 'English',
