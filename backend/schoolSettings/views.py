@@ -347,7 +347,7 @@ def upload_favicon(request):
         # Update database - CRITICAL FIX
         try:
             with transaction.atomic():
-                settings = SchoolSettings.objects.get(pk=1)
+                settings, created = SchoolSettings.objects.get_or_create(pk=1)
 
                 logger.info(
                     f"🔍 About to save favicon URL (length: {len(favicon_url)})"

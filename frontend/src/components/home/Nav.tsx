@@ -137,7 +137,7 @@ const Nav: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo and School Name */}
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
+            <div className="w-15 h-15 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-blue-500/40 group-hover:scale-105">
               {settings?.logo ? (
                 <img 
                   src={getAbsoluteUrl(settings.logo)} 
