@@ -1,5 +1,7 @@
 
 // router/index.tsx
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { UserRole } from '@/types/types';
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import ErrorBoundary from './../components/ErrorBoundary';
 import { AuthProvider } from './../hooks/useAuth';
@@ -111,58 +113,6 @@ const RouteErrorElement = () => {
   );
 };
 
-// Root layout component with error handling
-// const RootLayout = () => {
-//   const { isDarkMode } = useGlobalTheme();
-  
-//   // Effect to adjust main content padding based on ContactRibbon visibility
-//   React.useEffect(() => {
-//     const adjustPadding = () => {
-//       const mainContent = document.getElementById('main-content');
-//       const contactRibbonVisible = localStorage.getItem('contactRibbonVisible') !== 'false';
-      
-//       if (mainContent) {
-//         if (contactRibbonVisible) {
-//           mainContent.style.paddingTop = '6rem'; // Reduced padding when ContactRibbon is visible
-//         } else {
-//           mainContent.style.paddingTop = '4rem'; // Minimal padding when ContactRibbon is hidden
-//         }
-//       }
-//     };
-
-//     // Initial adjustment
-//     adjustPadding();
-
-//     // Listen for storage changes
-//     const handleStorageChange = (e: StorageEvent) => {
-//       if (e.key === 'contactRibbonVisible') {
-//         adjustPadding();
-//       }
-//     };
-
-//     window.addEventListener('storage', handleStorageChange);
-    
-//     // Also check periodically for immediate updates
-//     const interval = setInterval(adjustPadding, 100);
-
-//     return () => {
-//       window.removeEventListener('storage', handleStorageChange);
-//       clearInterval(interval);
-//     };
-//   }, []);
-
-//   return (
-//     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
-//       <ContactRibbon />
-//       <div className="pt-0" id="main-content"> {/* Let individual components handle their own padding */}
-//         <Suspense fallback={<LoadingSpinner />}>
-//           <Outlet />
-//         </Suspense>
-//       </div>
-//     </div>
-//   );
-// };
-
 // MainLayout component
 const MainLayout = () => (
   <>
@@ -230,7 +180,7 @@ export const router = createBrowserRouter([
         errorElement: <RouteErrorElement />
       },
     {
-        path: 'school_activities', // Fixed typo: was 'school_activites'
+        path: 'school_activities', 
       element: <School_Activities/>,
       errorElement: <RouteErrorElement />
     },
@@ -239,7 +189,11 @@ export const router = createBrowserRouter([
         children: [
           {
             path: 'dashboard',
-            element: <StudentDashboard />,
+            element:(
+              <ProtectedRoute allowedRoles={[UserRole.STUDENT]}>
+          <StudentDashboard />
+        </ProtectedRoute>
+            ),
             errorElement: <RouteErrorElement />
           }
         ]
@@ -249,7 +203,11 @@ export const router = createBrowserRouter([
         children: [
           {
             path: 'dashboard',
-            element: <ParentDashboard />,
+            element: (
+          <ProtectedRoute allowedRoles={[UserRole.PARENT]}>
+          <ParentDashboard />
+          </ProtectedRoute>
+            ),
             errorElement: <RouteErrorElement />
           }
         ]
@@ -300,7 +258,9 @@ export const router = createBrowserRouter([
         <AuthProvider>
           <AuthLostProvider>
             <ErrorBoundary>
+              <ProtectedRoute allowedRoles={[UserRole.TEACHER]}>
               <TeacherLayout />
+              </ProtectedRoute>
             </ErrorBoundary>
           </AuthLostProvider>
         </AuthProvider>
@@ -383,7 +343,9 @@ export const router = createBrowserRouter([
         <AuthProvider>
           <AuthLostProvider>
             <ErrorBoundary>
+             <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
               <AdminLayout />
+            </ProtectedRoute>
             </ErrorBoundary>
           </AuthLostProvider>
         </AuthProvider>
