@@ -344,15 +344,45 @@ def upload_favicon(request):
                 {"error": f"Cloudinary upload failed: {str(cloudinary_error)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
         # Update database - CRITICAL FIX
         try:
+            from datetime import datetime
+
             with transaction.atomic():
-                settings, created = SchoolSettings.objects.get_or_create(pk=1)
+                # ✅ FIXED: Provide defaults for all NOT NULL fields
+                settings, created = SchoolSettings.objects.get_or_create(
+                    pk=1,
+                    defaults={
+                        "academic_year": f"{datetime.now().year}-{datetime.now().year + 1}",
+                        "school_name": "School Name",
+                        "timezone": "UTC",
+                        "date_format": "YYYY-MM-DD",
+                        "language": "English",
+                        "primary_color": "#3B82F6",
+                        "theme_mode": "light",
+                        "font_family": "Inter",
+                        "default_user_role": "student",
+                        "session_timeout": 8,
+                        "password_expiry_days": 90,
+                        "enable_notifications": True,
+                        "enable_email_notifications": True,
+                        "enable_sms_notifications": False,
+                        "maintenance_mode": False,
+                        "allow_self_registration": False,
+                        "require_email_verification": False,
+                        "enable_two_factor_auth": True,
+                        "max_login_attempts": 2,
+                    },
+                )
 
                 logger.info(
                     f"🔍 About to save favicon URL (length: {len(favicon_url)})"
                 )
                 logger.info(f"🔍 Favicon URL being saved: {favicon_url}")
+
+                if created:
+                    logger.info("✅ Created new SchoolSettings record")
 
                 settings.favicon = favicon_url
                 # CRITICAL: Only update favicon field to avoid triggering NOT NULL constraints on other fields
