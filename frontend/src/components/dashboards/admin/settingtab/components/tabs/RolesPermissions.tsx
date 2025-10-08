@@ -169,7 +169,7 @@ const RolesPermissions = () => {
         console.error('Failed to load users:', response.status, response.statusText);
         // Fallback: try to load teachers only
         try {
-          const teachersResponse = await fetch(`${API_BASE_URL}/teachers/`, {
+          const teachersResponse = await fetch(`${API_BASE_URL}/teachers/teachers/`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
