@@ -223,7 +223,7 @@ const RolesPermissions = () => {
   const loadPermissions = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE_URL}/school-settings/permissions/`, {
+      const response = await fetch(`${API_BASE_URL}/api/school-settings/permissions/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
