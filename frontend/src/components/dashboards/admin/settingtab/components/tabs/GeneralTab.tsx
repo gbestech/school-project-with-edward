@@ -23,6 +23,17 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
     favicon: ''
   });
 
+  const formatAcademicYear = (year: string) => {
+  if (!year) return '';
+  // If already formatted with slash, return as is
+  if (year.includes('/')) return year;
+  // If it's 8 digits like "20252026", format it
+  if (year.length === 8 && /^\d+$/.test(year)) {
+    return `${year.slice(0, 4)}/${year.slice(4)}`;
+  }
+  return year;
+};
+
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
@@ -61,7 +72,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         timezone: initialSettings.timezone || 'UTC-5',
         dateFormat: initialSettings.dateFormat || 'dd/mm/yyyy',
         language: initialSettings.language || 'English',
-        academicYear: initialSettings.academicYear || '',
+        academicYear: formatAcademicYear(initialSettings.academicYear || ''),
         logo: logoUrl,
         favicon: faviconUrl
       });
@@ -439,9 +450,6 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         </h3>
         
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Academic Year
-          </label>
           <input
             type="text"
             value={formData.academicYear}
