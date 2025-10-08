@@ -142,7 +142,7 @@ const Nav: React.FC = () => {
                 <img 
                   src={getAbsoluteUrl(settings.logo)} 
                   alt={`${settings.school_name} logo`}
-                  className="w-14 h-14 object-cover"
+                  className="w-14 h-14"
                   onError={(e) => {
                     console.error('Navbar logo failed to load:', getAbsoluteUrl(settings.logo));
                     e.currentTarget.style.display = 'none';
@@ -155,7 +155,7 @@ const Nav: React.FC = () => {
                 <img 
                src={`${import.meta.env.BASE_URL}images/godstreasurelogo.png`}
                 alt='Gods Treasure Schools Logo'
-                className="w-14 h-14 text-white" />
+                className="w-14 h-14 text-blue-800" />
               )}
             </div>
             <span className="hidden md:block text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
