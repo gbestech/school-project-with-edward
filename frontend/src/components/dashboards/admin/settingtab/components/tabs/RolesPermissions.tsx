@@ -84,7 +84,7 @@ const RolesPermissions = () => {
   
   // Role management
   const [showCreateRole, setShowCreateRole] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  // const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({
     name: '',
     description: '',
@@ -482,28 +482,47 @@ const RolesPermissions = () => {
       console.log('Updating role permissions:', {
         roleId: editingRolePermissions.id,
         roleName: editingRolePermissions.name,
+        isSystem: editingRolePermissions.is_system,
+        selectedPermissions: selectedPermissions,
         permissionIds: permissionIds,
         permissionCount: permissionIds.length
       });
 
-      const payload = {
-        name: editingRolePermissions.name,
-        description: editingRolePermissions.description,
-        color: editingRolePermissions.color,
-        primary_section_access: editingRolePermissions.primary_section_access,
-        secondary_section_access: editingRolePermissions.secondary_section_access,
-        nursery_section_access: editingRolePermissions.nursery_section_access,
-        permissions: permissionIds
-      };
-
-      const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
-        method: 'PUT',
+      // Try the update-permissions endpoint first (if it exists)
+      let response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/update-permissions/`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          permissions: permissionIds
+        })
       });
+
+      // If that endpoint doesn't exist (404), try PUT on the main endpoint
+      if (!response.ok && response.status === 404) {
+        console.log('update-permissions endpoint not found, trying PUT...');
+        const payload = {
+          name: editingRolePermissions.name,
+          description: editingRolePermissions.description,
+          color: editingRolePermissions.color,
+          primary_section_access: editingRolePermissions.primary_section_access,
+          secondary_section_access: editingRolePermissions.secondary_section_access,
+          nursery_section_access: editingRolePermissions.nursery_section_access,
+          permissions: permissionIds,
+          is_active: editingRolePermissions.is_active
+        };
+
+        response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
 
       if (response.ok) {
         setSuccessMessage('Role permissions updated successfully!');
@@ -515,14 +534,38 @@ const RolesPermissions = () => {
         setSelectedPermissions({});
       } else {
         let errorMessage = 'Failed to update role permissions';
-        try {
-          const errorData = await response.json();
-          console.error('Server error response:', errorData);
-          errorMessage = errorData.error || errorData.detail || JSON.stringify(errorData);
-        } catch (e) {
-          const errorText = await response.text();
-          console.error('Server error text:', errorText);
-          errorMessage = errorText || errorMessage;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            console.error('Server error response:', errorData);
+            
+            // Handle different error formats
+            if (errorData.detail) {
+              errorMessage = errorData.detail;
+            } else if (errorData.error) {
+              errorMessage = errorData.error;
+            } else if (typeof errorData === 'object') {
+              // Handle validation errors
+              const errors = Object.entries(errorData)
+                .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                .join('; ');
+              errorMessage = errors || JSON.stringify(errorData);
+            } else {
+              errorMessage = String(errorData);
+            }
+          } catch (e) {
+            errorMessage = `Server error (${response.status})`;
+          }
+        } else {
+          try {
+            const errorText = await response.text();
+            console.error('Server error text:', errorText);
+            errorMessage = errorText || `Server error (${response.status})`;
+          } catch (textError) {
+            errorMessage = `Server error (${response.status})`;
+          }
         }
         setErrorMessage(errorMessage);
       }
