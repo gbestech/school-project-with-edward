@@ -404,7 +404,60 @@ const RolesPermissions = () => {
     setShowPermissionModal(true);
   };
 
-  const saveRolePermissions = async () => {
+  // const saveRolePermissions = async () => {
+  //   if (!editingRolePermissions) return;
+
+  //   try {
+  //     setSaving(true);
+  //     const token = localStorage.getItem('authToken');
+      
+  //     // Convert permissions_dict back to permission IDs
+  //     const permissionIds: number[] = [];
+  //     Object.entries(selectedPermissions).forEach(([module, perms]) => {
+  //       Object.entries(perms).forEach(([permType, granted]) => {
+  //         if (granted) {
+  //           const permission = permissions.find(p => 
+  //             p.module === module && p.permission_type === permType
+  //           );
+  //           if (permission) {
+  //             permissionIds.push(permission.id);
+  //           }
+  //         }
+  //       });
+  //     });
+
+  //     const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
+  //       method: 'PATCH',
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`,
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({
+  //         permissions: permissionIds
+  //       })
+  //     });
+
+  //     if (response.ok) {
+  //       setSuccessMessage('Role permissions updated successfully!');
+  //        await loadRoles();
+  //        // Close modal after reload completes
+  //       setShowPermissionModal(false);
+  //       setEditingRolePermissions(null);
+  //        setSelectedPermissions({});
+       
+  //     } else {
+  //       const errorData = await response.json();
+  //       setErrorMessage(errorData.error || 'Failed to update role permissions');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error saving role permissions:', error);
+  //     setErrorMessage('Failed to update role permissions');
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
+
+   const saveRolePermissions = async () => {
     if (!editingRolePermissions) return;
 
     try {
@@ -426,32 +479,56 @@ const RolesPermissions = () => {
         });
       });
 
+      console.log('Updating role permissions:', {
+        roleId: editingRolePermissions.id,
+        roleName: editingRolePermissions.name,
+        permissionIds: permissionIds,
+        permissionCount: permissionIds.length
+      });
+
+      const payload = {
+        name: editingRolePermissions.name,
+        description: editingRolePermissions.description,
+        color: editingRolePermissions.color,
+        primary_section_access: editingRolePermissions.primary_section_access,
+        secondary_section_access: editingRolePermissions.secondary_section_access,
+        nursery_section_access: editingRolePermissions.nursery_section_access,
+        permissions: permissionIds
+      };
+
       const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          permissions: permissionIds
-        })
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
         setSuccessMessage('Role permissions updated successfully!');
-         await loadRoles();
-         // Close modal after reload completes
+        // Reload roles to get fresh data from server
+        await loadRoles();
+        // Close modal after reload completes
         setShowPermissionModal(false);
         setEditingRolePermissions(null);
-         setSelectedPermissions({});
-       
+        setSelectedPermissions({});
       } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.error || 'Failed to update role permissions');
+        let errorMessage = 'Failed to update role permissions';
+        try {
+          const errorData = await response.json();
+          console.error('Server error response:', errorData);
+          errorMessage = errorData.error || errorData.detail || JSON.stringify(errorData);
+        } catch (e) {
+          const errorText = await response.text();
+          console.error('Server error text:', errorText);
+          errorMessage = errorText || errorMessage;
+        }
+        setErrorMessage(errorMessage);
       }
     } catch (error) {
       console.error('Error saving role permissions:', error);
-      setErrorMessage('Failed to update role permissions');
+      setErrorMessage(`Failed to update role permissions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
