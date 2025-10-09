@@ -38,25 +38,7 @@ type TeacherFormData = {
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-type PrimaryAssignment = {
-  id: string;
-  classroom_id: string | number;
-  subject_id: string;
-  is_primary_teacher: boolean;
-  periods_per_week: number;
-};
 
-type SecondaryAssignment = {
-  id: string;
-  grade_level_id: string | number;
-  section_id: string;
-  subject_ids: string[];
-  sectionOptions: Array<{ id: string; name: string }>;
-};
-
-
-
-type Assignment = PrimaryAssignment | SecondaryAssignment;
 
 // Function to create fallback classroom options
 const createFallbackClassrooms = (level: string) => {
@@ -109,8 +91,13 @@ const AddTeacherForm: React.FC = () => {
           const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
           const [gradeLevelOptions, setGradeLevelOptions] = useState<Array<{ id: string | number; name: string; education_level: string }>>([]);
           const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string; grade_level_id: string | number }>>([]);
-          const [currentAssignments, setCurrentAssignments] = useState<Assignment[]>([]);
-           
+          const [currentAssignments, setCurrentAssignments] = useState<Array<{
+            id: string;
+            classroom_id: string | number;
+            subject_id: string;
+            is_primary_teacher: boolean;
+            periods_per_week: number;
+          }>>([]);
 
     const API_BASE_URL = import.meta.env.VITE_API_URL
   // Load subjects when staff type and level change
