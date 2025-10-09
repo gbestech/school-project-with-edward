@@ -375,6 +375,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL
        }
 
       const token = localStorage.getItem('authToken');
+
+      // ✅ Ensure academic_session is sent as a number
+    const payload = {
+      ...termForm,
+      academic_session: Number(termForm.academic_session),
+    };
       
       console.log('Sending term data:', termForm);
       
@@ -384,7 +390,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(termForm)
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
