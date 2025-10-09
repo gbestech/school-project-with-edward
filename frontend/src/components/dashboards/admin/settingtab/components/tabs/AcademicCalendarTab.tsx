@@ -65,7 +65,7 @@ interface CreateTermData {
 const AcademicCalendarTab: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>('sessions');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);]
+  const [saving, setSaving] = useState(false);
 
   // Data state
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
