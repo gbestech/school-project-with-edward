@@ -466,14 +466,40 @@ const RolesPermissions = () => {
       
       // Convert permissions_dict back to permission IDs
       const permissionIds: number[] = [];
+      
+      // Create a map of all permissions for faster lookup
+      const permissionMap = new Map();
+      permissions.forEach(p => {
+        // Create multiple keys for flexible matching
+        const keys = [
+          `${p.module}:${p.permission_type}`,
+          `${p.module_display}:${p.permission_type}`,
+          `${p.module}:${p.permission_type_display}`,
+          `${p.module_display}:${p.permission_type_display}`,
+          // Also try lowercase versions
+          `${p.module.toLowerCase()}:${p.permission_type.toLowerCase()}`,
+          `${p.module_display.toLowerCase()}:${p.permission_type.toLowerCase()}`,
+        ];
+        keys.forEach(key => permissionMap.set(key, p));
+      });
+      
       Object.entries(selectedPermissions).forEach(([module, perms]) => {
         Object.entries(perms).forEach(([permType, granted]) => {
           if (granted) {
-            // Try to match by module display name or module code
-            const permission = permissions.find(p => 
-              (p.module === module || p.module_display === module) && 
-              (p.permission_type === permType || p.permission_type_display === permType)
-            );
+            // Try different key combinations
+            const possibleKeys = [
+              `${module}:${permType}`,
+              `${module.toLowerCase()}:${permType.toLowerCase()}`,
+            ];
+            
+            let permission = null;
+            for (const key of possibleKeys) {
+              if (permissionMap.has(key)) {
+                permission = permissionMap.get(key);
+                break;
+              }
+            }
+            
             if (permission) {
               permissionIds.push(permission.id);
             } else {
