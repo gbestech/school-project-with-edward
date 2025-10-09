@@ -57,11 +57,6 @@ from subject.serializers import (
     SubjectEducationLevelSerializer,
 )
 
-# Import the separated viewsets
-# from .subjectviewset import SubjectViewSet
-# from .analyticalviewset import SubjectAnalyticsViewSet
-# from .subjectmanagementviewset import SubjectManagementViewSet
-
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
@@ -118,28 +113,28 @@ class GradeLevelViewSet(viewsets.ModelViewSet):
     def nursery_grades(self, request):
         """Get nursery grade levels"""
         grades = GradeLevel.objects.filter(education_level="NURSERY")
-        serializer = SubjectSerializer(grades, many=True)
+        serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def primary_grades(self, request):
         """Get primary grade levels"""
         grades = GradeLevel.objects.filter(education_level="PRIMARY")
-        serializer = SubjectSerializer(grades, many=True)
+        serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def junior_secondary_grades(self, request):
         """Get junior secondary grade levels"""
         grades = GradeLevel.objects.filter(education_level="JUNIOR_SECONDARY")
-        serializer = SubjectSerializer(grades, many=True)
+        serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def senior_secondary_grades(self, request):
         """Get senior secondary grade levels"""
         grades = GradeLevel.objects.filter(education_level="SENIOR_SECONDARY")
-        serializer = SubjectSerializer(grades, many=True)
+        serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
 
@@ -161,88 +156,16 @@ class SectionViewSet(viewsets.ModelViewSet):
         return Section.objects.select_related("grade_level").all()
 
 
-# class AcademicYearViewSet(viewsets.ModelViewSet):
-#     """ViewSet for AcademicSession model"""
-
-#     permission_classes = [IsAuthenticated]
-#     serializer_class = AcademicSessionSerializer
-#     filter_backends = [
-#         DjangoFilterBackend,
-#         filters.SearchFilter,
-#         filters.OrderingFilter,
-#     ]
-#     filterset_fields = ["is_active", "is_current"]
-#     search_fields = ["name"]
-#     ordering_fields = ["start_date", "name"]
-
-#     def get_queryset(self):
-#         return AcademicSession.objects.all()
-
-#     @action(detail=False, methods=["get"])
-#     def current(self, request):
-#         """Get current academic year"""
-#         current_year = AcademicSession.objects.filter(is_current=True).first()
-#         if current_year:
-#             serializer = AcademicSessionSerializer(current_year)
-#             return Response(serializer.data)
-#         return Response({"message": "No current academic year set"})
-
-#     @action(detail=True, methods=["get"])
-#     def terms(self, request, pk=None):
-#         """Get terms for a specific academic year"""
-#         academic_year = self.get_object()
-#         terms = academic_year.terms.all()
-#         serializer = TermSerializer(terms, many=True)
-#         return Response(serializer.data)
-
-#     @action(detail=True, methods=["get"])
-#     def statistics(self, request, pk=None):
-#         """Get statistics for a specific academic year"""
-#         academic_year = self.get_object()
-#         classroom_count = academic_year.classrooms.count()
-#         term_count = academic_year.terms.count()
-
-#         return Response(
-#             {
-#                 "classroom_count": classroom_count,
-#                 "term_count": term_count,
-#                 "is_current": academic_year.is_current,
-#             }
-#         )
-
-
-# class TermViewSet(viewsets.ModelViewSet):
-#     """ViewSet for Term model"""
-
-#     permission_classes = [IsAuthenticated]
-#     serializer_class = TermSerializer
-#     filter_backends = [
-#         DjangoFilterBackend,
-#         filters.SearchFilter,
-#         filters.OrderingFilter,
-#     ]
-#     filterset_fields = ["academic_year", "is_active", "is_current"]
-#     search_fields = ["name", "academic_year__name"]
-#     ordering_fields = ["name", "start_date"]
-
-#     def get_queryset(self):
-#         return Term.objects.select_related("academic_year").all()
-
-#     @action(detail=False, methods=["get"])
-#     def current(self, request):
-#         """Get current term"""
-#         current_term = Term.objects.filter(is_current=True).first()
-#         if current_term:
-#             serializer = TermSerializer(current_term)
-#             return Response(serializer.data)
-#         return Response({"message": "No current term set"})
-
-#     @action(detail=True, methods=["get"])
-#     def subjects(self, request, pk=None):
-#         """Get subjects for a specific term"""
-#         term = self.get_object()
-#         # This would need to be implemented based on your subject-term relationship
-#         return Response({"message": "Subjects endpoint not implemented yet"})
+# ==============================================================================
+# NOTE: AcademicSessionViewSet and TermViewSet are now in academics app
+# Import them from academics.views instead of defining them here
+#
+# Usage in urls.py:
+# from academics.views import AcademicSessionViewSet, TermViewSet
+#
+# router.register(r'academic-sessions', AcademicSessionViewSet, basename='academic-session')
+# router.register(r'terms', TermViewSet, basename='term')
+# ==============================================================================
 
 
 class StreamViewSet(viewsets.ModelViewSet):
@@ -490,17 +413,19 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
+    # ✅ FIXED: Changed academic_year to academic_session
     filterset_fields = [
         "section__grade_level__education_level",
         "is_active",
-        "academic_year",
+        "academic_session",  # Changed from academic_year
     ]
     search_fields = ["name", "section__name", "section__grade_level__name"]
     ordering_fields = ["name", "created_at", "current_enrollment"]
 
     def get_queryset(self):
+        # ✅ FIXED: Changed academic_year to academic_session
         queryset = Classroom.objects.select_related(
-            "section__grade_level", "academic_year", "term", "class_teacher__user"
+            "section__grade_level", "academic_session", "term", "class_teacher__user"
         ).prefetch_related("students", "subject_teachers", "schedules")
 
         # Apply section-based filtering for authenticated users
@@ -790,6 +715,172 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+# ✅ FIXED: ClassroomTeacherAssignmentViewSet
+class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
+    """ViewSet for ClassroomTeacherAssignment model"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ClassroomTeacherAssignmentSerializer
+
+    def get_queryset(self):
+        return ClassroomTeacherAssignment.objects.select_related(
+            "classroom", "teacher__user", "subject"
+        ).filter(is_active=True)
+
+    def create(self, request, *args, **kwargs):
+        """Override create to add debugging"""
+        print("🔍 Received data:", request.data)
+        print("🔍 Data keys:", list(request.data.keys()))
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"])
+    def by_academic_year(self, request):
+        """Get assignments by academic session"""
+        # ✅ FIXED: Changed parameter name to academic_session_id
+        academic_session_id = request.query_params.get("academic_session_id")
+        if not academic_session_id:
+            return Response(
+                {"error": "academic_session_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ✅ FIXED: Changed field reference to academic_session
+        assignments = self.get_queryset().filter(
+            classroom__academic_session_id=academic_session_id
+        )
+        serializer = self.get_serializer(assignments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_subject(self, request):
+        """Get assignments by subject"""
+        subject_id = request.query_params.get("subject_id")
+        if not subject_id:
+            return Response(
+                {"error": "subject_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        assignments = self.get_queryset().filter(subject_id=subject_id)
+        serializer = self.get_serializer(assignments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def workload_analysis(self, request):
+        """Get workload analysis"""
+        # Get teacher workload statistics
+        teacher_workload = (
+            self.get_queryset()
+            .values("teacher__user__first_name", "teacher__user__last_name")
+            .annotate(
+                total_assignments=Count("id"),
+                total_classrooms=Count("classroom", distinct=True),
+                total_subjects=Count("subject", distinct=True),
+            )
+        )
+
+        return Response(
+            {
+                "teacher_workload": teacher_workload,
+                "total_assignments": self.get_queryset().count(),
+                "total_teachers": self.get_queryset()
+                .values("teacher")
+                .distinct()
+                .count(),
+                "total_classrooms": self.get_queryset()
+                .values("classroom")
+                .distinct()
+                .count(),
+                "total_subjects": self.get_queryset()
+                .values("subject")
+                .distinct()
+                .count(),
+            }
+        )
+
+
+# ✅ FIXED: StudentEnrollmentViewSet
+class StudentEnrollmentViewSet(viewsets.ModelViewSet):
+    """ViewSet for StudentEnrollment model"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = StudentEnrollmentSerializer
+
+    def get_queryset(self):
+        return StudentEnrollment.objects.select_related(
+            "student__user", "classroom"
+        ).filter(is_active=True)
+
+    @action(detail=False, methods=["get"])
+    def by_academic_year(self, request):
+        """Get enrollments by academic session"""
+        # ✅ FIXED: Changed parameter name to academic_session_id
+        academic_session_id = request.query_params.get("academic_session_id")
+        if not academic_session_id:
+            return Response(
+                {"error": "academic_session_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ✅ FIXED: Changed field reference to academic_session
+        enrollments = self.get_queryset().filter(
+            classroom__academic_session_id=academic_session_id
+        )
+        serializer = self.get_serializer(enrollments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_grade(self, request):
+        """Get enrollments by grade"""
+        grade_level_id = request.query_params.get("grade_level_id")
+        if not grade_level_id:
+            return Response(
+                {"error": "grade_level_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        enrollments = self.get_queryset().filter(
+            classroom__section__grade_level_id=grade_level_id
+        )
+        serializer = self.get_serializer(enrollments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def statistics(self, request):
+        """Get enrollment statistics"""
+        total_enrollments = self.get_queryset().count()
+        active_students = self.get_queryset().filter(student__is_active=True).count()
+
+        # By education level
+        nursery_enrollments = (
+            self.get_queryset()
+            .filter(classroom__section__grade_level__education_level="NURSERY")
+            .count()
+        )
+        primary_enrollments = (
+            self.get_queryset()
+            .filter(classroom__section__grade_level__education_level="PRIMARY")
+            .count()
+        )
+        secondary_enrollments = (
+            self.get_queryset()
+            .filter(classroom__section__grade_level__education_level="SECONDARY")
+            .count()
+        )
+
+        return Response(
+            {
+                "total_enrollments": total_enrollments,
+                "active_students": active_students,
+                "by_education_level": {
+                    "nursery": nursery_enrollments,
+                    "primary": primary_enrollments,
+                    "secondary": secondary_enrollments,
+                },
+            }
+        )
 
 
 class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
@@ -1612,122 +1703,3 @@ def system_info(request):
             },
             status=500,
         )
-
-
-# ==============================================================================
-# EXPORTED COMPONENTS
-# ==============================================================================
-__all__ = [
-    # Main viewsets
-    "SubjectViewSet",
-    "SubjectAnalyticsViewSet",
-    "SubjectManagementViewSet",
-    # Additional views
-    "SubjectByEducationLevelView",
-    "SubjectQuickSearchView",
-    "SubjectComparisonView",
-    # API endpoints
-    "health_check",
-    "clear_caches_endpoint",
-    "system_info",
-    # Utility functions
-    "clear_subject_caches",
-]
-
-
-# ==============================================================================
-# VIEWSET CONFIGURATION DOCUMENTATION
-# ==============================================================================
-"""
-Enhanced Nigerian Education Subjects API - Views Configuration
-
-This file serves as the main entry point for all subject-related viewsets and views,
-specifically designed for the Nigerian education system structure.
-
-=== VIEWSET ORGANIZATION ===
-
-1. SubjectViewSet (from subjectviewset.py):
-   - Core CRUD operations for subjects
-   - Nigerian education level filtering (NURSERY, PRIMARY, JUNIOR_SECONDARY, SENIOR_SECONDARY)
-   - Nursery sub-level filtering (PRE_NURSERY, NURSERY_1, NURSERY_2)
-   - Senior Secondary subject type filtering (cross_cutting, core_science, core_art, etc.)
-   - Grade-level integration
-   - Subject availability checks
-   - Prerequisites management
-   - Enhanced filtering and searching
-
-2. SubjectAnalyticsViewSet (from analyticalviewset.py):
-   - Read-only analytics and reporting
-   - Education level statistics
-   - Category-based analytics
-   - Performance metrics
-   - Workload analysis
-   - Cached analytical data
-   - Cross-cutting subject analysis
-
-3. SubjectManagementViewSet (from subjectmanagementviewset.py):
-   - Admin-only operations
-   - Bulk operations (update, delete, activate)
-   - Advanced subject management
-   - Audit logging and monitoring
-   - Data export/import functions
-   - Subject lifecycle management
-
-=== ADDITIONAL VIEWS ===
-
-4. SubjectByEducationLevelView:
-   - Detailed education level filtering
-   - Nursery and SS breakdown
-   - Comprehensive metadata
-
-5. SubjectQuickSearchView:
-   - Lightweight autocomplete search
-   - Minimal data transfer
-   - Fast response times
-
-6. SubjectComparisonView:
-   - Side-by-side subject comparison
-   - Comprehensive subject details
-   - Academic requirement analysis
-
-=== URL CONFIGURATION ===
-
-Recommended URL patterns:
-- /api/v1/subjects/ -> SubjectViewSet
-- /api/v1/analytics/subjects/ -> SubjectAnalyticsViewSet  
-- /api/v1/management/subjects/ -> SubjectManagementViewSet
-- /api/v1/subjects/by-level/ -> SubjectByEducationLevelView
-- /api/v1/subjects/quick-search/ -> SubjectQuickSearchView
-- /api/v1/subjects/compare/ -> SubjectComparisonView
-- /api/v1/health/ -> health_check
-- /api/v1/system-info/ -> system_info
-- /api/v1/clear-caches/ -> clear_caches_endpoint
-
-=== FEATURES SUPPORTED ===
-
-✅ Nigerian Education System Structure
-✅ Nursery Level Management (Pre-Nursery, Nursery 1, Nursery 2)
-✅ Primary Education Support
-✅ Junior Secondary Education
-✅ Senior Secondary with subject type classification
-✅ Cross-cutting subjects for SS
-✅ Activity-based subjects for nursery
-✅ Practical/laboratory requirements
-✅ Specialist teacher requirements
-✅ Prerequisites and dependencies
-✅ Comprehensive caching
-✅ Advanced analytics
-✅ Bulk operations
-✅ API health monitoring
-✅ Performance optimization
-
-=== CACHING STRATEGY ===
-
-The system uses multi-level caching:
-- View-level caching (15 minutes for lists, 10 minutes for specific queries)
-- Object-level caching (30 minutes for categories, 20 minutes for education levels)
-- Statistics caching (10 minutes for dynamic stats)
-- Search result caching (5 minutes for quick searches)
-
-Cache keys are versioned and can be cleared via the admin endpoint.
-"""
