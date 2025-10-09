@@ -427,27 +427,30 @@ const RolesPermissions = () => {
       });
 
       const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ...editingRolePermissions,
           permissions: permissionIds
         })
       });
 
       if (response.ok) {
         setSuccessMessage('Role permissions updated successfully!');
+         await loadRoles();
+         // Close modal after reload completes
         setShowPermissionModal(false);
         setEditingRolePermissions(null);
-        loadRoles();
+         setSelectedPermissions({});
+       
       } else {
         const errorData = await response.json();
         setErrorMessage(errorData.error || 'Failed to update role permissions');
       }
     } catch (error) {
+      console.error('Error saving role permissions:', error);
       setErrorMessage('Failed to update role permissions');
     } finally {
       setSaving(false);
