@@ -100,25 +100,27 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Override to handle current session logic"""
         # If this session is being set as current, deactivate others
-        if serializer.validated_data.get('is_current', False):
+        if serializer.validated_data.get("is_current", False):
             AcademicSession.objects.update(is_current=False, is_active=False)
-        
+
         session = serializer.save()
-        
+
         # If this is the first session, make it current by default
         if AcademicSession.objects.count() == 1:
             session.is_current = True
             session.is_active = True
             session.save()
-        
-        return session
+
+        # return session
 
     def perform_update(self, serializer):
         """Override to handle current session logic"""
         # If this session is being set as current, deactivate others
-        if serializer.validated_data.get('is_current', False):
-            AcademicSession.objects.exclude(id=serializer.instance.id).update(is_current=False, is_active=False)
-        
+        if serializer.validated_data.get("is_current", False):
+            AcademicSession.objects.exclude(id=serializer.instance.id).update(
+                is_current=False, is_active=False
+            )
+
         return serializer.save()
 
 
@@ -141,7 +143,7 @@ class TermViewSet(viewsets.ModelViewSet):
             queryset = self.get_queryset().filter(academic_session_id=session_id)
         else:
             queryset = self.get_queryset()
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -150,48 +152,50 @@ class TermViewSet(viewsets.ModelViewSet):
         """Set a term as the current active term"""
         try:
             term = self.get_object()
-            
+
             # Deactivate all other terms
             Term.objects.update(is_current=False, is_active=False)
-            
+
             # Activate the selected term
             term.is_current = True
             term.is_active = True
             term.save()
-            
+
             serializer = self.get_serializer(term)
-            return Response({
-                "message": f"Term '{term.name}' is now the current active term",
-                "term": serializer.data
-            })
+            return Response(
+                {
+                    "message": f"Term '{term.name}' is now the current active term",
+                    "term": serializer.data,
+                }
+            )
         except Exception as e:
-            return Response({
-                "error": "Failed to set term as current",
-                "details": str(e)
-            }, status=400)
+            return Response(
+                {"error": "Failed to set term as current", "details": str(e)},
+                status=400,
+            )
 
     def perform_create(self, serializer):
         """Override to handle current term logic"""
         try:
             # If this term is being set as current, deactivate others
-            if serializer.validated_data.get('is_current', False):
+            if serializer.validated_data.get("is_current", False):
                 Term.objects.update(is_current=False, is_active=False)
-            
+
             term = serializer.save()
-            
+
             # If this is the first term, make it current by default
             if Term.objects.count() == 1:
                 term.is_current = True
                 term.is_active = True
                 term.save()
-            
+
             return term
         except ValidationError as e:
             # Provide more specific error messages
-            error_message = ', '.join(e.messages)
-            if 'Term dates must be within academic session dates' in error_message:
+            error_message = ", ".join(e.messages)
+            if "Term dates must be within academic session dates" in error_message:
                 # Get the academic session details for better error message
-                academic_session = serializer.validated_data.get('academic_session')
+                academic_session = serializer.validated_data.get("academic_session")
                 if academic_session:
                     error_message = f"Term dates must be within the academic session '{academic_session.name}' ({academic_session.start_date} to {academic_session.end_date})"
             raise ValidationError(f"Term validation failed: {error_message}")
@@ -201,9 +205,11 @@ class TermViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Override to handle current term logic"""
         # If this term is being set as current, deactivate others
-        if serializer.validated_data.get('is_current', False):
-            Term.objects.exclude(id=serializer.instance.id).update(is_current=False, is_active=False)
-        
+        if serializer.validated_data.get("is_current", False):
+            Term.objects.exclude(id=serializer.instance.id).update(
+                is_current=False, is_active=False
+            )
+
         return serializer.save()
 
 
