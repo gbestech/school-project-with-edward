@@ -189,7 +189,7 @@ class TermViewSet(viewsets.ModelViewSet):
                 term.is_active = True
                 term.save()
 
-            return term
+            # return term
         except ValidationError as e:
             # Provide more specific error messages
             error_message = ", ".join(e.messages)
