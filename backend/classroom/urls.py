@@ -1,11 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
+# Import from academics app
+from academics.views import AcademicSessionViewSet, TermViewSet
+
+# Import from classroom app
 from .views import (
     # Academic Structure ViewSets
     GradeLevelViewSet,
     SectionViewSet,
-    AcademicYearViewSet,
-    TermViewSet,
     StreamViewSet,
     # People Management ViewSets
     TeacherViewSet,
@@ -36,7 +39,10 @@ router = DefaultRouter()
 # ============================================================================
 # ACADEMIC STRUCTURE ROUTES
 # ============================================================================
-router.register(r"academic-years", AcademicYearViewSet, basename="academicyear")
+# ✅ Using AcademicSessionViewSet and TermViewSet from academics app
+router.register(
+    r"academic-sessions", AcademicSessionViewSet, basename="academicsession"
+)
 router.register(r"terms", TermViewSet, basename="term")
 router.register(r"grades", GradeLevelViewSet, basename="gradelevel")
 router.register(r"sections", SectionViewSet, basename="section")
@@ -251,27 +257,42 @@ urlpatterns = [
     # ========================================================================
     # ACADEMIC STRUCTURE ENDPOINTS
     # ========================================================================
-    # Academic year endpoints
+    # ✅ Academic Session endpoints (from academics app)
     path(
-        "academic-years/current/",
-        AcademicYearViewSet.as_view({"get": "current"}),
-        name="current-academic-year",
+        "academic-sessions/current/",
+        AcademicSessionViewSet.as_view({"get": "current"}),
+        name="current-academic-session",
     ),
     path(
-        "academic-years/<int:pk>/terms/",
-        AcademicYearViewSet.as_view({"get": "terms"}),
-        name="academic-year-terms",
+        "academic-sessions/<int:pk>/set-current/",
+        AcademicSessionViewSet.as_view({"post": "set_current"}),
+        name="set-current-academic-session",
     ),
     path(
-        "academic-years/<int:pk>/statistics/",
-        AcademicYearViewSet.as_view({"get": "statistics"}),
-        name="academic-year-statistics",
+        "academic-sessions/<int:pk>/terms/",
+        AcademicSessionViewSet.as_view({"get": "terms"}),
+        name="academic-session-terms",
     ),
-    # Term endpoints
+    path(
+        "academic-sessions/<int:pk>/statistics/",
+        AcademicSessionViewSet.as_view({"get": "statistics"}),
+        name="academic-session-statistics",
+    ),
+    # ✅ Term endpoints (from academics app)
     path(
         "terms/current/",
         TermViewSet.as_view({"get": "current"}),
         name="current-term",
+    ),
+    path(
+        "terms/by-session/",
+        TermViewSet.as_view({"get": "by_session"}),
+        name="terms-by-session",
+    ),
+    path(
+        "terms/<int:pk>/set-current/",
+        TermViewSet.as_view({"post": "set_current"}),
+        name="set-current-term",
     ),
     path(
         "terms/<int:pk>/subjects/",
@@ -295,6 +316,11 @@ urlpatterns = [
         name="grade-classrooms",
     ),
     path(
+        "grades/<int:pk>/sections/",
+        GradeLevelViewSet.as_view({"get": "sections"}),
+        name="grade-sections",
+    ),
+    path(
         "grades/nursery/",
         GradeLevelViewSet.as_view({"get": "nursery_grades"}),
         name="nursery-grades",
@@ -313,6 +339,12 @@ urlpatterns = [
         "grades/senior-secondary/",
         GradeLevelViewSet.as_view({"get": "senior_secondary_grades"}),
         name="senior-secondary-grades",
+    ),
+    # Stream endpoints
+    path(
+        "streams/by-type/",
+        StreamViewSet.as_view({"get": "by_type"}),
+        name="streams-by-type",
     ),
     # ========================================================================
     # ENROLLMENT & ASSIGNMENT ENDPOINTS

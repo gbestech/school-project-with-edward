@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated
 
 from .models import (
     AcademicSession,
@@ -27,24 +28,38 @@ from .serializers import (
 
 
 class AcademicSessionViewSet(viewsets.ModelViewSet):
-    """ViewSet for Academic Sessions"""
+    """Comprehensive ViewSet for Academic Sessions"""
 
     queryset = AcademicSession.objects.all().order_by("-start_date")
     serializer_class = AcademicSessionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["is_current", "is_active"]
     search_fields = ["name"]
-    ordering_fields = ["start_date", "end_date", "created_at"]
+    ordering_fields = ["start_date", "end_date", "name", "created_at"]
     ordering = ["-start_date"]
 
+    # ✅ Get current session
+    @action(detail=False, methods=["get"])
+    def current(self, request):
+        """Get the currently active academic session"""
+        current_session = AcademicSession.objects.filter(is_current=True).first()
+        if current_session:
+            serializer = self.get_serializer(current_session)
+            return Response(serializer.data)
+        return Response(
+            {"message": "No current academic session set"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # ✅ Set current session
     @action(detail=True, methods=["post"])
-    def set_active(self, request, pk=None):
+    def set_current(self, request, pk=None):
         """Set this session as the current active session"""
         session = self.get_object()
 
         # Deactivate all other sessions
-        AcademicSession.objects.all().update(is_current=False)
+        AcademicSession.objects.exclude(id=session.id).update(is_current=False)
 
         # Activate this session
         session.is_current = True
@@ -54,47 +69,56 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(session)
         return Response(
             {
-                "message": f'Academic session "{session.name}" is now the current active session',
-                "active_session": serializer.data,
+                "message": f'Academic session "{session.name}" is now current',
+                "session": serializer.data,
             }
         )
 
-    @action(detail=False, methods=["get"])
-    def active(self, request):
-        """Get the currently active academic session"""
-        active_session = AcademicSession.objects.filter(is_current=True).first()
+    # ✅ Get terms for a session
+    @action(detail=True, methods=["get"])
+    def terms(self, request, pk=None):
+        """Get all terms for this academic session"""
+        session = self.get_object()
+        terms = session.terms.all().order_by("start_date")
+        serializer = TermSerializer(terms, many=True)
+        return Response(serializer.data)
 
-        if active_session:
-            serializer = self.get_serializer(active_session)
-            return Response(serializer.data)
+    # ✅ Get statistics
+    @action(detail=True, methods=["get"])
+    def statistics(self, request, pk=None):
+        """Get statistics for this academic session"""
+        session = self.get_object()
 
-        return Response(
-            {"message": "No active academic session found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        stats = {
+            "classrooms": session.classrooms.count(),
+            "terms": session.terms.count(),
+            "students": session.student_fees.values("student").distinct().count(),
+            "is_current": session.is_current,
+            "is_active": session.is_active,
+        }
+        return Response(stats)
 
+    # ✅ Auto-set first session as current
     def perform_create(self, serializer):
-        """Override to handle current session logic"""
-        # If this session is being set as current, deactivate others
+        """Handle creation with current session logic"""
         if serializer.validated_data.get("is_current", False):
             AcademicSession.objects.update(is_current=False)
 
         session = serializer.save()
 
-        # If this is the first session, make it current by default
+        # If this is the first session, make it current
         if AcademicSession.objects.count() == 1:
             session.is_current = True
             session.is_active = True
             session.save()
 
+    # ✅ Ensure only one current session
     def perform_update(self, serializer):
-        """Override to handle current session logic"""
-        # If this session is being set as current, deactivate others
+        """Handle updates with current session logic"""
         if serializer.validated_data.get("is_current", False):
             AcademicSession.objects.exclude(id=serializer.instance.id).update(
                 is_current=False
             )
-
         serializer.save()
 
 
@@ -161,6 +185,38 @@ class TermViewSet(viewsets.ModelViewSet):
 
         return Response(
             {"message": "No current term found"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    @action(detail=True, methods=["get"])
+    def subjects(self, request, pk=None):
+        """Get all subjects allocated for this term"""
+        term = self.get_object()
+
+        # Get subject allocations for this term's academic session
+        # You can filter by classrooms if needed
+        allocations = SubjectAllocation.objects.filter(
+            academic_session=term.academic_session, is_active=True
+        ).select_related("subject", "teacher", "teacher__user")
+
+        # Get unique subjects
+        subjects = Subject.objects.filter(
+            id__in=allocations.values_list("subject_id", flat=True)
+        ).distinct()
+
+        # Serialize the subjects
+        subject_serializer = SubjectSerializer(subjects, many=True)
+
+        # Optionally include allocation details
+        allocation_serializer = SubjectAllocationSerializer(allocations, many=True)
+
+        return Response(
+            {
+                "term": self.get_serializer(term).data,
+                "subjects": subject_serializer.data,
+                "allocations": allocation_serializer.data,
+                "total_subjects": subjects.count(),
+                "total_allocations": allocations.count(),
+            }
         )
 
     def perform_create(self, serializer):

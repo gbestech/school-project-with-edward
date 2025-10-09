@@ -2,14 +2,11 @@ from django.contrib import admin
 from .models import (
     GradeLevel,
     Section,
-    AcademicYear,
-    Term,
-    Student,
-    Subject,
     Classroom,
     ClassroomTeacherAssignment,
     StudentEnrollment,
     ClassSchedule,
+    Student,
 )
 
 from django.utils.html import format_html
@@ -32,27 +29,6 @@ class SectionAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
-@admin.register(AcademicYear)
-class AcademicYearAdmin(admin.ModelAdmin):
-    list_display = ("name", "start_date", "end_date", "is_current", "is_active")
-    list_filter = ("is_current", "is_active")
-    search_fields = ("name",)
-
-
-@admin.register(Term)
-class TermAdmin(admin.ModelAdmin):
-    list_display = (
-        "name",
-        "academic_year",
-        "start_date",
-        "end_date",
-        "is_current",
-        "is_active",
-    )
-    list_filter = ("academic_year", "name", "is_current", "is_active")
-    search_fields = ("academic_year__name",)
-
-
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     list_display = (
@@ -65,14 +41,6 @@ class StudentAdmin(admin.ModelAdmin):
     list_filter = ("gender", "is_active", "admission_date")
     search_fields = ("admission_number", "first_name", "last_name", "guardian_name")
     readonly_fields = ("age",)
-
-
-@admin.register(Subject)
-class SubjectAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "is_core", "is_active")
-    list_filter = ("is_core", "is_active")
-    search_fields = ("name", "code")
-    filter_horizontal = ("grade_levels",)
 
 
 # For Classroom Admin - Removed problematic field
@@ -132,7 +100,7 @@ class ClassroomTeacherAssignmentAdmin(admin.ModelAdmin):
 @admin.register(StudentEnrollment)
 class StudentEnrollmentAdmin(admin.ModelAdmin):
     list_display = ("student", "classroom", "enrollment_date", "is_active")
-    list_filter = ("enrollment_date", "is_active", "classroom__academic_year")
+    list_filter = ("enrollment_date", "is_active", "classroom__academic_session")
     search_fields = ("student__first_name", "student__last_name", "classroom__name")
 
 
@@ -146,7 +114,7 @@ class ClassScheduleAdmin(admin.ModelAdmin):
         "start_time",
         "end_time",
     )
-    list_filter = ("day_of_week", "classroom__academic_year", "is_active")
+    list_filter = ("day_of_week", "classroom__academic_session", "is_active")
     search_fields = (
         "classroom__name",
         "subject__name",

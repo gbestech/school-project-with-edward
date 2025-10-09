@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from academics.models import AcademicSession, Term
 
 
 def get_current_date():
@@ -79,56 +80,6 @@ class Stream(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_stream_type_display()})"
-
-
-class AcademicYear(models.Model):
-    """Academic year management"""
-
-    name = models.CharField(max_length=50, unique=True)  # e.g., "2024-2025"
-    start_date = models.DateField()
-    end_date = models.DateField()
-    is_current = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-start_date"]
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        # Ensure only one academic year is current
-        if self.is_current:
-            AcademicYear.objects.filter(is_current=True).update(is_current=False)
-        super().save(*args, **kwargs)
-
-
-class Term(models.Model):
-    """Academic terms/quarters within an academic year"""
-
-    TERM_CHOICES = [
-        ("FIRST", "First Term"),
-        ("SECOND", "Second Term"),
-        ("THIRD", "Third Term"),
-    ]
-
-    name = models.CharField(max_length=20, choices=TERM_CHOICES)
-    academic_year = models.ForeignKey(
-        AcademicYear, on_delete=models.CASCADE, related_name="terms"
-    )
-    start_date = models.DateField()
-    end_date = models.DateField()
-    is_current = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ["academic_year", "name"]
-        ordering = ["academic_year", "name"]
-
-    def __str__(self):
-        return f"{self.academic_year.name} - {self.get_name_display()}"
 
 
 class Student(models.Model):
@@ -211,19 +162,19 @@ class Classroom(models.Model):
     section = models.ForeignKey(
         Section, on_delete=models.CASCADE, related_name="classrooms"
     )
-    academic_year = models.ForeignKey(
-        AcademicYear, on_delete=models.CASCADE, related_name="classrooms"
+    academic_session = models.ForeignKey(
+        AcademicSession, on_delete=models.CASCADE, related_name="classrooms"
     )
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="classrooms")
-    
+
     # Stream support for Senior Secondary
     stream = models.ForeignKey(
-        Stream, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        Stream,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name="classrooms",
-        help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)"
+        help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)",
     )
 
     # Teacher assignments - Now using teacher.Teacher model
@@ -258,17 +209,16 @@ class Classroom(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ["section", "academic_year", "term"]
-        ordering = ["section__grade_level", "section__name", "academic_year"]
+        unique_together = ["section", "academic_session", "term"]
+        ordering = ["section__grade_level", "section__name", "academic_session"]
 
     def __str__(self):
-        return f"{self.section} - {self.academic_year.name} ({self.term.get_name_display()})"
+        return f"{self.section} - {self.academic_session.name} ({self.term.get_name_display()})"
 
     @property
     def current_enrollment(self):
         return self.studentenrollment_set.filter(
-            is_active=True,
-            student__is_active=True
+            is_active=True, student__is_active=True
         ).count()
 
     @property
@@ -288,15 +238,14 @@ class ClassroomTeacherAssignment(models.Model):
         "teacher.Teacher", on_delete=models.CASCADE
     )  # Reference to teacher app's Teacher model
     subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
-    
+
     # Enhanced assignment details
     is_primary_teacher = models.BooleanField(
         default=False,
-        help_text="Whether this teacher is the primary teacher for this subject in this classroom"
+        help_text="Whether this teacher is the primary teacher for this subject in this classroom",
     )
     periods_per_week = models.PositiveIntegerField(
-        default=1,
-        help_text="Number of periods per week for this subject"
+        default=1, help_text="Number of periods per week for this subject"
     )
     assigned_date = models.DateField(default=get_current_date)
     is_active = models.BooleanField(default=True)

@@ -91,6 +91,27 @@ export interface Classroom {
   old_teacher_assignments?: TeacherAssignment[];
 }
 
+export interface AcademicSession {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  is_active: boolean;
+  description?: string;
+}
+
+export interface Term {
+  id: number;
+  name: string;
+  academic_session: number;
+  academic_session_name?: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  is_active: boolean;
+}
+
 export interface ClassroomStats {
   total_classrooms: number;
   active_classrooms: number;
@@ -254,7 +275,7 @@ class ClassroomService {
 
   // Get all teachers (for assignment dropdowns)
   async getAllTeachers() {
-          const response = await api.get('/api/teachers/teachers/');
+    const response = await api.get('/api/teachers/teachers/');
     return response;
   }
 
@@ -294,23 +315,79 @@ class ClassroomService {
     return response;
   }
 
-  // Get academic years
+  // ✅ UPDATED: Get academic sessions (previously academic years)
   async getAcademicYears() {
-    const response = await api.get('/api/classrooms/academic-years/');
+    const response = await api.get('/api/classrooms/academic-sessions/');
     return response;
   }
 
-  // Get terms for an academic year
-  async getTerms(academicYearId: number) {
-    const response = await api.get(`/api/classrooms/academic-years/${academicYearId}/terms/`);
+  // ✅ NEW: Get current academic session
+  async getCurrentAcademicSession() {
+    const response = await api.get('/api/classrooms/academic-sessions/current/');
     return response;
   }
 
+  // ✅ NEW: Set current academic session
+  async setCurrentAcademicSession(sessionId: number) {
+    const response = await api.post(`/api/classrooms/academic-sessions/${sessionId}/set-current/`, {});
+    return response;
+  }
 
+  // ✅ NEW: Get academic session statistics
+  async getAcademicSessionStats(sessionId: number) {
+    const response = await api.get(`/api/classrooms/academic-sessions/${sessionId}/statistics/`);
+    return response;
+  }
+
+  // ✅ UPDATED: Get terms for an academic session (with enhanced filtering)
+  async getTerms(academicSessionId?: number) {
+    if (academicSessionId) {
+      // Use the specific endpoint that returns terms for a session
+      const response = await api.get(`/api/classrooms/academic-sessions/${academicSessionId}/terms/`);
+      return response;
+    } else {
+      // Get all terms with optional filtering
+      const response = await api.get('/api/classrooms/terms/');
+      return response;
+    }
+  }
+
+  // ✅ NEW: Get terms by session using query parameter
+  async getTermsBySession(sessionId: number) {
+    const response = await api.get('/api/classrooms/terms/by-session/', {
+      params: { session_id: sessionId }
+    });
+    return response;
+  }
+
+  // ✅ NEW: Get current term
+  async getCurrentTerm() {
+    const response = await api.get('/api/classrooms/terms/current/');
+    return response;
+  }
+
+  // ✅ NEW: Set current term
+  async setCurrentTerm(termId: number) {
+    const response = await api.post(`/api/classrooms/terms/${termId}/set-current/`, {});
+    return response;
+  }
+
+  // ✅ NEW: Get subjects for a specific term
+  async getTermSubjects(termId: number) {
+    const response = await api.get(`/api/classrooms/terms/${termId}/subjects/`);
+    return response;
+  }
 
   // Get streams for Senior Secondary
   async getStreams() {
     const response = await api.get('/api/classrooms/streams/');
+    return response;
+  }
+
+  // Get streams by type
+  async getStreamsByType(streamType?: string) {
+    const params = streamType ? { stream_type: streamType } : {};
+    const response = await api.get('/api/classrooms/streams/by-type/', { params });
     return response;
   }
 
@@ -322,4 +399,4 @@ class ClassroomService {
 }
 
 export const classroomService = new ClassroomService();
-export default classroomService; 
+export default classroomService;
