@@ -469,11 +469,15 @@ const RolesPermissions = () => {
       Object.entries(selectedPermissions).forEach(([module, perms]) => {
         Object.entries(perms).forEach(([permType, granted]) => {
           if (granted) {
+            // Try to match by module display name or module code
             const permission = permissions.find(p => 
-              p.module === module && p.permission_type === permType
+              (p.module === module || p.module_display === module) && 
+              (p.permission_type === permType || p.permission_type_display === permType)
             );
             if (permission) {
               permissionIds.push(permission.id);
+            } else {
+              console.warn(`Permission not found for module: ${module}, type: ${permType}`);
             }
           }
         });
