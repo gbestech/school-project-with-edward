@@ -128,10 +128,12 @@ const AcademicCalendarTab: React.FC = () => {
     }
   };
 
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+
   const fetchSessions = async (): Promise<AcademicSession[]> => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/fee/academic-sessions/', {
+      const response = await fetch(`${API_BASE_URL}/api/fee/academic-sessions/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -151,7 +153,7 @@ const AcademicCalendarTab: React.FC = () => {
   const fetchTerms = async (): Promise<Term[]> => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/fee/terms/', {
+      const response = await fetch(`${API_BASE_URL}/api/fee/terms/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -190,7 +192,7 @@ const AcademicCalendarTab: React.FC = () => {
 
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch('/api/fee/academic-sessions/', {
+      const response = await fetch(`${API_BASE_URL}/api/fee/academic-sessions/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -243,7 +245,7 @@ const AcademicCalendarTab: React.FC = () => {
 
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/fee/academic-sessions/${sessionId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/fee/academic-sessions/${sessionId}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -285,7 +287,7 @@ const AcademicCalendarTab: React.FC = () => {
       setSaving(true);
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/fee/academic-sessions/${sessionId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/fee/academic-sessions/${sessionId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -311,7 +313,7 @@ const AcademicCalendarTab: React.FC = () => {
       setSaving(true);
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/fee/academic-sessions/${sessionId}/set_active/`, {
+      const response = await fetch(`${API_BASE_URL}/api/fee/academic-sessions/${sessionId}/set_active/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -376,7 +378,7 @@ const AcademicCalendarTab: React.FC = () => {
       
       console.log('Sending term data:', termForm);
       
-      const response = await fetch('/api/fee/terms/', {
+      const response = await fetch(`${API_BASE_URL}/api/fee/terms/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -442,7 +444,7 @@ const AcademicCalendarTab: React.FC = () => {
 
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/fee/terms/${termId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/fee/terms/${termId}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -484,7 +486,7 @@ const AcademicCalendarTab: React.FC = () => {
       setSaving(true);
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/fee/terms/${termId}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/fee/terms/${termId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -510,7 +512,7 @@ const AcademicCalendarTab: React.FC = () => {
       setSaving(true);
       const token = localStorage.getItem('authToken');
       
-      const response = await fetch(`/api/fee/terms/${termId}/set_current/`, {
+      const response = await fetch(`${API_BASE_URL}/api/fee/terms/${termId}/set_current/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
