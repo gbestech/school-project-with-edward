@@ -3,7 +3,7 @@ import { User, X } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 
@@ -38,6 +38,26 @@ type TeacherFormData = {
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
+type PrimaryAssignment = {
+  id: string;
+  classroom_id: string | number;
+  subject_id: string;
+  is_primary_teacher: boolean;
+  periods_per_week: number;
+};
+
+type SecondaryAssignment = {
+  id: string;
+  grade_level_id: string | number;
+  section_id: string;
+  subject_ids: string[];
+  sectionOptions: Array<{ id: string; name: string }>;
+};
+
+
+
+type Assignment = PrimaryAssignment | SecondaryAssignment;
+
 // Function to create fallback classroom options
 const createFallbackClassrooms = (level: string) => {
   const classroomMap: Record<string, string[]> = {
@@ -53,33 +73,6 @@ const createFallbackClassrooms = (level: string) => {
     name: name
   }));
 };
-
-// Backend values for education level and student class
-const educationLevels = [
-  { value: 'NURSERY', label: 'Nursery' },
-  { value: 'PRIMARY', label: 'Primary' },
-  { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
-  { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
-];
-const studentClasses = [
-  { value: 'PRE_NURSERY', label: 'Pre-nursery' },
-  { value: 'NURSERY_1', label: 'Nursery 1' },
-  { value: 'NURSERY_2', label: 'Nursery 2' },
-  { value: 'PRIMARY_1', label: 'Primary 1' },
-  { value: 'PRIMARY_2', label: 'Primary 2' },
-  { value: 'PRIMARY_3', label: 'Primary 3' },
-  { value: 'PRIMARY_4', label: 'Primary 4' },
-  { value: 'PRIMARY_5', label: 'Primary 5' },
-  { value: 'PRIMARY_6', label: 'Primary 6' },
-  { value: 'JSS_1', label: 'Junior Secondary 1 (JSS1)' },
-  { value: 'JSS_2', label: 'Junior Secondary 2 (JSS2)' },
-  { value: 'JSS_3', label: 'Junior Secondary 3 (JSS3)' },
-  { value: 'SS_1', label: 'Senior Secondary 1 (SS1)' },
-  { value: 'SS_2', label: 'Senior Secondary 2 (SS2)' },
-  { value: 'SS_3', label: 'Senior Secondary 3 (SS3)' },
-];
-
-
 
 // --- Teacher Form ---
 const AddTeacherForm: React.FC = () => {
@@ -116,13 +109,10 @@ const AddTeacherForm: React.FC = () => {
           const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
           const [gradeLevelOptions, setGradeLevelOptions] = useState<Array<{ id: string | number; name: string; education_level: string }>>([]);
           const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string; grade_level_id: string | number }>>([]);
-          const [currentAssignments, setCurrentAssignments] = useState<Array<{
-            id: string;
-            classroom_id: string | number;
-            subject_id: string;
-            is_primary_teacher: boolean;
-            periods_per_week: number;
-          }>>([]);
+          const [currentAssignments, setCurrentAssignments] = useState<Assignment[]>([]);
+           
+
+    const API_BASE_URL = import.meta.env.VITE_API_URL
   // Load subjects when staff type and level change
   useEffect(() => {
     if (formData.staffType === 'teaching' && formData.level) {
@@ -136,7 +126,7 @@ const AddTeacherForm: React.FC = () => {
       const educationLevel = levelMap[formData.level];
       if (educationLevel) {
         // Fetch subjects for the selected level
-        fetch(`/api/subjects/?education_level=${educationLevel}`)
+        fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`)
           .then(res => res.json())
           .then(data => {
             const subjects = Array.isArray(data) ? data : (data.results || []);
@@ -152,7 +142,7 @@ const AddTeacherForm: React.FC = () => {
           });
         
         // Fetch classrooms for the selected level
-        fetch(`/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`)
+        fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`)
           .then(res => {
             if (res.ok) {
               return res.json();
@@ -215,7 +205,7 @@ const AddTeacherForm: React.FC = () => {
       
       const educationLevel = levelMap[formData.level];
       if (educationLevel) {
-        fetch(`/api/classrooms/grades/?education_level=${educationLevel}`)
+        fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
           .then(res => {
             return res.json();
           })
@@ -270,7 +260,7 @@ const AddTeacherForm: React.FC = () => {
       return;
     }
     
-    fetch(`/api/classrooms/sections/?grade_level=${gradeLevelId}`)
+    fetch(`${API_BASE_URL}/api/classrooms/sections/?grade_level=${gradeLevelId}`)
       .then(res => {
         return res.json();
       })

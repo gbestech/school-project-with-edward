@@ -126,7 +126,7 @@ const RolesPermissions = () => {
     loadPermissions();
   }, []);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL // Adjust as needed
+  const API_BASE_URL = import.meta.env.VITE_API_URL 
 
   const loadRoles = async () => {
     try {
