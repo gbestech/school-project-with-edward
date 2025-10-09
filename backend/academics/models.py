@@ -1,7 +1,11 @@
+# academics/models.py
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import date
+
+# ✅ IMPORT Subject from the subject app instead of defining it here
+from subject.models import Subject
 
 
 class AcademicSession(models.Model):
@@ -122,87 +126,14 @@ class Term(models.Model):
         return self.start_date <= today <= self.end_date
 
 
-class Subject(models.Model):
-    """Subject model"""
-
-    SUBJECT_TYPES = [
-        ("CORE", "Core Subject"),
-        ("ELECTIVE", "Elective Subject"),
-        ("PRACTICAL", "Practical Subject"),
-        ("LANGUAGE", "Language Subject"),
-        ("VOCATIONAL", "Vocational Subject"),
-    ]
-
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, unique=True)
-    description = models.TextField(blank=True)
-    subject_type = models.CharField(
-        max_length=20, choices=SUBJECT_TYPES, default="CORE"
-    )
-
-    # Subject configuration
-    is_compulsory = models.BooleanField(default=True)
-    has_practical = models.BooleanField(default=False)
-    credit_units = models.PositiveIntegerField(default=1)
-
-    # Level configuration
-    education_levels = models.CharField(
-        max_length=200,
-        help_text="Comma-separated education levels (e.g., 'NURSERY,PRIMARY')",
-        blank=True,
-    )
-
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "academics_subject"
-        ordering = ["name"]
-        verbose_name = "Subject"
-        verbose_name_plural = "Subjects"
-
-    def __str__(self):
-        return f"{self.name} ({self.code})"
-
-    def save(self, *args, **kwargs):
-        # Auto-generate code if not provided
-        if not self.code:
-            self.code = self.generate_subject_code()
-
-        # Ensure code is uppercase
-        self.code = self.code.upper()
-        super().save(*args, **kwargs)
-
-    def generate_subject_code(self):
-        """Generate a unique subject code based on name"""
-        # Take first 3 characters of each word
-        words = self.name.split()
-        if len(words) == 1:
-            base_code = words[0][:4].upper()
-        else:
-            base_code = "".join(word[:2] for word in words[:3]).upper()
-
-        # Ensure uniqueness
-        counter = 1
-        code = base_code
-        while Subject.objects.filter(code=code).exists():
-            code = f"{base_code}{counter}"
-            counter += 1
-
-        return code
-
-    @property
-    def education_level_list(self):
-        """Return list of education levels this subject is available for"""
-        if self.education_levels:
-            return [level.strip() for level in self.education_levels.split(",")]
-        return []
+# ❌ REMOVED: Subject model (now imported from subject app)
+# Subject is imported from subject.models at the top of this file
 
 
 class SubjectAllocation(models.Model):
     """Subject allocation to teachers and classes"""
 
+    # ✅ This will now use the Subject from subject app
     subject = models.ForeignKey(
         Subject, on_delete=models.CASCADE, related_name="allocations"
     )
@@ -250,6 +181,7 @@ class Curriculum(models.Model):
     academic_session = models.ForeignKey(
         "academics.AcademicSession", on_delete=models.CASCADE, related_name="curricula"
     )
+    # ✅ This will now use the Subject from subject app
     subjects = models.ManyToManyField(
         Subject, through="CurriculumSubject", related_name="curricula"
     )
@@ -276,6 +208,7 @@ class CurriculumSubject(models.Model):
     curriculum = models.ForeignKey(
         Curriculum, on_delete=models.CASCADE, related_name="curriculum_subjects"
     )
+    # ✅ This will now use the Subject from subject app
     subject = models.ForeignKey(
         Subject, on_delete=models.CASCADE, related_name="curriculum_subjects"
     )

@@ -13,9 +13,9 @@ import json
 from decimal import Decimal
 from datetime import timedelta
 
+
 # Note: Student import is only needed for foreign key references in admin
 from .models import (
-    AcademicSession,
     FeeStructure,
     StudentFee,
     Payment,
@@ -854,16 +854,16 @@ class PaymentInstallmentAdmin(admin.ModelAdmin):
 
 
 # Keep existing admin classes for other models
-@admin.register(AcademicSession)
-class AcademicSessionAdmin(admin.ModelAdmin):
-    list_display = ("name", "start_date", "end_date", "is_active")
-    list_filter = ("is_active",)
-    search_fields = ("name",)
+# @admin.register(AcademicSession)
+# class AcademicSessionAdmin(admin.ModelAdmin):
+#     list_display = ("name", "start_date", "end_date", "is_active")
+#     list_filter = ("is_active",)
+#     search_fields = ("name",)
 
-    fieldsets = (
-        ("Session Details", {"fields": ("name", "start_date", "end_date")}),
-        ("Status", {"fields": ("is_active",)}),
-    )
+#     fieldsets = (
+#         ("Session Details", {"fields": ("name", "start_date", "end_date")}),
+#         ("Status", {"fields": ("is_active",)}),
+#     )
 
 
 @admin.register(FeeDiscount)
@@ -888,8 +888,6 @@ class FeeDiscountAdmin(admin.ModelAdmin):
         ),
         ("Validity", {"fields": ("valid_from", "valid_to", "is_active")}),
     )
-
-
 
 
 @admin.register(StudentDiscount)

@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from students.models import Student, EDUCATION_LEVEL_CHOICES, CLASS_CHOICES
 from decimal import Decimal
 import uuid
+from academics.models import AcademicSession
 from datetime import date, datetime
 import json
 
@@ -96,24 +97,24 @@ REMINDER_TYPE_CHOICES = (
 )
 
 
-class AcademicSession(models.Model):
-    """Academic session model"""
+# class AcademicSession(models.Model):
+#     """Academic session model"""
 
-    name = models.CharField(max_length=100)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    is_current = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+#     name = models.CharField(max_length=100)
+#     start_date = models.DateField()
+#     end_date = models.DateField()
+#     is_current = models.BooleanField(default=False)
+#     is_active = models.BooleanField(default=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        verbose_name = "Academic Session"
-        verbose_name_plural = "Academic Sessions"
-        ordering = ["-start_date"]
+#     class Meta:
+#         verbose_name = "Academic Session"
+#         verbose_name_plural = "Academic Sessions"
+#         ordering = ["-start_date"]
 
-    def __str__(self):
-        return self.name
+#     def __str__(self):
+#         return self.name
 
 
 class FeeStructure(models.Model):

@@ -4,7 +4,6 @@ from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
 from .models import (
-    AcademicSession,
     FeeStructure,
     StudentFee,
     Payment,
@@ -17,23 +16,8 @@ from .models import (
     StudentDiscount,
     PaymentReminder,
 )
-from academics.models import Term
+from academics.models import Term, AcademicSession
 from students.models import Student
-
-
-class AcademicSessionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AcademicSession
-        fields = "__all__"
-
-
-class TermSerializer(serializers.ModelSerializer):
-    academic_session_name = serializers.CharField(source='academic_session.name', read_only=True)
-    name_display = serializers.CharField(source='get_name_display', read_only=True)
-    
-    class Meta:
-        model = Term
-        fields = "__all__"
 
 
 class FeeStructureSerializer(serializers.ModelSerializer):
@@ -646,6 +630,7 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
     def get_upcoming_assignments(self, obj):
         from lesson.models import LessonAssessment
         from datetime import datetime
+
         now = datetime.now()
         # Get assignments for lessons in the student's classes, due in the future
         return [
@@ -658,13 +643,13 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
                 "assessment_type": a.assessment_type,
             }
             for a in LessonAssessment.objects.filter(
-                lesson__classroom__students=obj,
-                due_date__gte=now
+                lesson__classroom__students=obj, due_date__gte=now
             ).order_by("due_date")[:5]
         ]
 
     def get_recent_grades(self, obj):
         from result.models import StudentResult
+
         # Get the 5 most recent results for this student
         return [
             {
@@ -676,12 +661,15 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
                 "status": r.status,
                 "created_at": r.created_at,
             }
-            for r in StudentResult.objects.filter(student=obj).order_by("-created_at")[:5]
+            for r in StudentResult.objects.filter(student=obj).order_by("-created_at")[
+                :5
+            ]
         ]
 
     def get_today_schedule(self, obj):
         from lesson.models import Lesson
         from datetime import date
+
         today = date.today()
         # Lessons for today in the student's classes
         return [
@@ -694,14 +682,14 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
                 "teacher": str(l.teacher),
             }
             for l in Lesson.objects.filter(
-                classroom__students=obj,
-                date=today
+                classroom__students=obj, date=today
             ).order_by("start_time")
         ]
 
     def get_notifications(self, obj):
         from schoolSettings.models import SchoolAnnouncement
         from django.utils import timezone
+
         now = timezone.now()
         # Announcements targeted to students, active, and current
         return [
@@ -716,18 +704,16 @@ class StudentDashboardSerializer(serializers.ModelSerializer):
             for n in SchoolAnnouncement.objects.filter(
                 is_active=True,
                 start_date__lte=now,
-            ).filter(
-                end_date__isnull=True
-            ) | SchoolAnnouncement.objects.filter(
-                is_active=True,
-                start_date__lte=now,
-                end_date__gte=now
+            ).filter(end_date__isnull=True)
+            | SchoolAnnouncement.objects.filter(
+                is_active=True, start_date__lte=now, end_date__gte=now
             )
             if "student" in (n.target_audience or [])
         ][:5]
 
     def get_attendance_summary(self, obj):
         from attendance.models import Attendance
+
         total = Attendance.objects.filter(student=obj).count()
         present = Attendance.objects.filter(student=obj, status="P").count()
         absent = Attendance.objects.filter(student=obj, status="A").count()
