@@ -111,7 +111,7 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
             session.is_active = True
             session.save()
 
-        # return session
+        return session
 
     def perform_update(self, serializer):
         """Override to handle current session logic"""
@@ -189,7 +189,7 @@ class TermViewSet(viewsets.ModelViewSet):
                 term.is_active = True
                 term.save()
 
-            # return term
+            return term
         except ValidationError as e:
             # Provide more specific error messages
             error_message = ", ".join(e.messages)
