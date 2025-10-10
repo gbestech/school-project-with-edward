@@ -98,6 +98,9 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       const academicYears = Array.isArray(academicYearsRes) ? academicYearsRes : (academicYearsRes.results || []);
       const streams = Array.isArray(streamsRes) ? streamsRes : (streamsRes.results || []);
       
+      console.log('📚 Loaded Grade Levels:', gradeLevels);
+      console.log('📚 Loaded Academic Years:', academicYears);
+
       setClassrooms(classrooms);
       setFilteredClassrooms(classrooms);
       setTeachers(teachers);
