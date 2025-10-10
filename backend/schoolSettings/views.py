@@ -16,6 +16,7 @@ from django.core.cache import cache
 import cloudinary
 import cloudinary.uploader
 import logging
+from django.core.management import call_command
 
 from .models import (
     SchoolSettings,
@@ -1242,6 +1243,16 @@ class UserRoleViewSet(viewsets.ModelViewSet):
                 {"error": f"Failed to assign roles: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])  # Temporarily open access
+def force_migrate(request):
+    try:
+        call_command("migrate", interactive=False)
+        return Response({"status": "Migrations applied successfully"})
+    except Exception as e:
+        return Response({"error": str(e)})
 
 
 @api_view(["POST"])
