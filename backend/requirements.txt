@@ -67,4 +67,3 @@ yarl==1.22.0
 # trigger redeploy
 
 # redeploy 2025-10-10-b 
-"# force redeploy $(date)" 

@@ -10,6 +10,7 @@ from django.core.management import call_command  # ← Add this
 import json
 import io  # ← Add this
 import sys  # ← Add this
+import os
 
 User = get_user_model()
 
@@ -151,19 +152,17 @@ def check_database_schema(request):
 
 @csrf_exempt
 def force_migrate(request):
-    """Temporary endpoint to run migrations - REMOVE AFTER USE"""
+    # Optional: restrict access to only your secret key (for safety)
+    secret = request.GET.get("secret")
+    allowed_secret = os.getenv("FORCE_MIGRATE_SECRET", "mysecuretoken123")
 
-    secret = request.GET.get("secret", "")
-    if secret != "migrate_now_2025":
-        return JsonResponse({"error": "Unauthorized"}, status=403)
+    if secret != allowed_secret:
+        return JsonResponse({"error": "Unauthorized"}, status=401)
 
     try:
-        output = io.StringIO()
-        sys.stdout = output
-        call_command("migrate", verbosity=2)
-        sys.stdout = sys.__stdout__
-
-        return JsonResponse({"status": "success", "output": output.getvalue()})
+        call_command("migrate", interactive=False)
+        return JsonResponse(
+            {"status": "success", "message": "Migrations applied successfully"}
+        )
     except Exception as e:
-        sys.stdout = sys.__stdout__
-        return JsonResponse({"status": "error", "error": str(e)}, status=500)
+        return JsonResponse({"error": str(e)}, status=500)
