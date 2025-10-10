@@ -4,7 +4,10 @@ from rest_framework.decorators import (
     permission_classes,
     parser_classes,
     action,
+    authentication_classes,
 )
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
+from django.core.management import call_command
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -16,7 +19,7 @@ from django.core.cache import cache
 import cloudinary
 import cloudinary.uploader
 import logging
-from django.core.management import call_command
+
 
 from .models import (
     SchoolSettings,
@@ -1246,11 +1249,12 @@ class UserRoleViewSet(viewsets.ModelViewSet):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])  # Temporarily open access
+@authentication_classes([])  # Disable any default authentication
+@permission_classes([AllowAny])  # Public access
 def force_migrate(request):
     try:
         call_command("migrate", interactive=False)
-        return Response({"status": "Migrations applied successfully"})
+        return Response({"status": "Migrations applied successfully ✅"})
     except Exception as e:
         return Response({"error": str(e)})
 
