@@ -59,6 +59,7 @@ urlpatterns = [
     # ===== UTILITIES =====
     path("api/utils/", include("utils.urls")),
     path("admin/force-migrate/", force_migrate),
+    path("api/force-migrate/", force_migrate),
 ]
 
 # ===== STATIC/MEDIA FILES (Development) =====
