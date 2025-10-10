@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 from .views import api_root, debug_login_function
 from authentication.views import GoogleLogin
 from .health import health_check
+from .views import force_migrate
 
 urlpatterns = [
     path("health/", health_check, name="health"),
@@ -57,6 +58,7 @@ urlpatterns = [
     path("api/events/", include("events.urls")),
     # ===== UTILITIES =====
     path("api/utils/", include("utils.urls")),
+    path("admin/force-migrate/", force_migrate),
 ]
 
 # ===== STATIC/MEDIA FILES (Development) =====

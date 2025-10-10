@@ -6,7 +6,10 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from allauth.account.models import EmailAddress
+from django.core.management import call_command  # ← Add this
 import json
+import io  # ← Add this
+import sys  # ← Add this
 
 User = get_user_model()
 
@@ -99,25 +102,21 @@ def debug_login_function(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-def api_root(request):
-    return JsonResponse(
-        {
-            "message": "Welcome to the SchoolMS API 🚀",
-            "status": "ok",
-            "api_version": "v1",
-            "available_endpoints": [
-                "/api/auth/",
-                "/api/user-profiles/",
-                "/api/teachers/",
-                "/api/classrooms/",
-                "/api/subjects/",
-                "/api/timetable/",
-                "/api/attendance/",
-                "/api/exams/",
-                "/api/parents/",
-                "/api/students/",
-                "/api/messaging/",
-                "/api/utils/",
-            ],
-        }
-    )
+@csrf_exempt
+def force_migrate(request):
+    """Temporary endpoint to run migrations - REMOVE AFTER USE"""
+
+    secret = request.GET.get("secret", "")
+    if secret != "migrate_now_2025":
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        output = io.StringIO()
+        sys.stdout = output
+        call_command("migrate", verbosity=2)
+        sys.stdout = sys.__stdout__
+
+        return JsonResponse({"status": "success", "output": output.getvalue()})
+    except Exception as e:
+        sys.stdout = sys.__stdout__
+        return JsonResponse({"status": "error", "error": str(e)}, status=500)
