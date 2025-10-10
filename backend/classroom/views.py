@@ -28,8 +28,9 @@ from .models import (
     ClassSchedule,
     Section,
     Stream,
-    Student,
 )
+from students.models import Student
+
 from teacher.models import Teacher
 from subject.models import (
     SUBJECT_CATEGORY_CHOICES,
@@ -39,6 +40,7 @@ from subject.models import (
 )
 from subject.serializers import SubjectSerializer
 from academics.serializers import AcademicSessionSerializer, TermSerializer
+
 from .serializers import (
     ClassroomSerializer,
     ClassroomDetailSerializer,
@@ -48,7 +50,6 @@ from .serializers import (
     GradeLevelSerializer,
     SectionSerializer,
     TeacherSerializer,
-    StudentSerializer,
     StreamSerializer,
 )
 from subject.serializers import (
@@ -154,18 +155,6 @@ class SectionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Section.objects.select_related("grade_level").all()
-
-
-# ==============================================================================
-# NOTE: AcademicSessionViewSet and TermViewSet are now in academics app
-# Import them from academics.views instead of defining them here
-#
-# Usage in urls.py:
-# from academics.views import AcademicSessionViewSet, TermViewSet
-#
-# router.register(r'academic-sessions', AcademicSessionViewSet, basename='academic-session')
-# router.register(r'terms', TermViewSet, basename='term')
-# ==============================================================================
 
 
 class StreamViewSet(viewsets.ModelViewSet):
@@ -417,8 +406,10 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     filterset_fields = [
         "section__grade_level__education_level",
         "is_active",
-        "academic_session",  # Changed from academic_year
+        "academic_session",  # ✅ Correct
+        "term",  # Add term filtering
     ]
+
     search_fields = ["name", "section__name", "section__grade_level__name"]
     ordering_fields = ["name", "created_at", "current_enrollment"]
 
@@ -717,7 +708,6 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             )
 
 
-# ✅ FIXED: ClassroomTeacherAssignmentViewSet
 class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
     """ViewSet for ClassroomTeacherAssignment model"""
 
@@ -738,7 +728,7 @@ class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def by_academic_year(self, request):
         """Get assignments by academic session"""
-        # ✅ FIXED: Changed parameter name to academic_session_id
+        # ✅ Changed parameter name to academic_session_id
         academic_session_id = request.query_params.get("academic_session_id")
         if not academic_session_id:
             return Response(
@@ -746,172 +736,8 @@ class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ✅ FIXED: Changed field reference to academic_session
         assignments = self.get_queryset().filter(
             classroom__academic_session_id=academic_session_id
-        )
-        serializer = self.get_serializer(assignments, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def by_subject(self, request):
-        """Get assignments by subject"""
-        subject_id = request.query_params.get("subject_id")
-        if not subject_id:
-            return Response(
-                {"error": "subject_id parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        assignments = self.get_queryset().filter(subject_id=subject_id)
-        serializer = self.get_serializer(assignments, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def workload_analysis(self, request):
-        """Get workload analysis"""
-        # Get teacher workload statistics
-        teacher_workload = (
-            self.get_queryset()
-            .values("teacher__user__first_name", "teacher__user__last_name")
-            .annotate(
-                total_assignments=Count("id"),
-                total_classrooms=Count("classroom", distinct=True),
-                total_subjects=Count("subject", distinct=True),
-            )
-        )
-
-        return Response(
-            {
-                "teacher_workload": teacher_workload,
-                "total_assignments": self.get_queryset().count(),
-                "total_teachers": self.get_queryset()
-                .values("teacher")
-                .distinct()
-                .count(),
-                "total_classrooms": self.get_queryset()
-                .values("classroom")
-                .distinct()
-                .count(),
-                "total_subjects": self.get_queryset()
-                .values("subject")
-                .distinct()
-                .count(),
-            }
-        )
-
-
-# ✅ FIXED: StudentEnrollmentViewSet
-class StudentEnrollmentViewSet(viewsets.ModelViewSet):
-    """ViewSet for StudentEnrollment model"""
-
-    permission_classes = [IsAuthenticated]
-    serializer_class = StudentEnrollmentSerializer
-
-    def get_queryset(self):
-        return StudentEnrollment.objects.select_related(
-            "student__user", "classroom"
-        ).filter(is_active=True)
-
-    @action(detail=False, methods=["get"])
-    def by_academic_year(self, request):
-        """Get enrollments by academic session"""
-        # ✅ FIXED: Changed parameter name to academic_session_id
-        academic_session_id = request.query_params.get("academic_session_id")
-        if not academic_session_id:
-            return Response(
-                {"error": "academic_session_id parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ✅ FIXED: Changed field reference to academic_session
-        enrollments = self.get_queryset().filter(
-            classroom__academic_session_id=academic_session_id
-        )
-        serializer = self.get_serializer(enrollments, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def by_grade(self, request):
-        """Get enrollments by grade"""
-        grade_level_id = request.query_params.get("grade_level_id")
-        if not grade_level_id:
-            return Response(
-                {"error": "grade_level_id parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        enrollments = self.get_queryset().filter(
-            classroom__section__grade_level_id=grade_level_id
-        )
-        serializer = self.get_serializer(enrollments, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def statistics(self, request):
-        """Get enrollment statistics"""
-        total_enrollments = self.get_queryset().count()
-        active_students = self.get_queryset().filter(student__is_active=True).count()
-
-        # By education level
-        nursery_enrollments = (
-            self.get_queryset()
-            .filter(classroom__section__grade_level__education_level="NURSERY")
-            .count()
-        )
-        primary_enrollments = (
-            self.get_queryset()
-            .filter(classroom__section__grade_level__education_level="PRIMARY")
-            .count()
-        )
-        secondary_enrollments = (
-            self.get_queryset()
-            .filter(classroom__section__grade_level__education_level="SECONDARY")
-            .count()
-        )
-
-        return Response(
-            {
-                "total_enrollments": total_enrollments,
-                "active_students": active_students,
-                "by_education_level": {
-                    "nursery": nursery_enrollments,
-                    "primary": primary_enrollments,
-                    "secondary": secondary_enrollments,
-                },
-            }
-        )
-
-
-class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
-    """ViewSet for ClassroomTeacherAssignment model"""
-
-    permission_classes = [IsAuthenticated]
-    serializer_class = ClassroomTeacherAssignmentSerializer
-
-    def get_queryset(self):
-        return ClassroomTeacherAssignment.objects.select_related(
-            "classroom", "teacher__user", "subject"
-        ).filter(is_active=True)
-
-    def create(self, request, *args, **kwargs):
-        """Override create to add debugging"""
-        print("🔍 Received data:", request.data)
-        print("🔍 Data keys:", list(request.data.keys()))
-        return super().create(request, *args, **kwargs)
-
-    @action(detail=False, methods=["get"])
-    def by_academic_year(self, request):
-        """Get assignments by academic year"""
-        academic_year_id = request.query_params.get("academic_year_id")
-        if not academic_year_id:
-            return Response(
-                {"error": "academic_year_id parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        assignments = self.get_queryset().filter(
-            classroom__academic_year_id=academic_year_id
         )
         serializer = self.get_serializer(assignments, many=True)
         return Response(serializer.data)

@@ -6,7 +6,6 @@ from academics.models import AcademicSession, Term
 from .models import (
     GradeLevel,
     Section,
-    Student,
     Classroom,
     ClassroomTeacherAssignment,
     StudentEnrollment,
@@ -14,7 +13,7 @@ from .models import (
     Stream,
 )
 from subject.models import Subject
-
+from students.models import Student
 from teacher.models import Teacher
 
 
@@ -88,10 +87,10 @@ class SectionSerializer(serializers.ModelSerializer):
         return obj.classrooms.filter(is_active=True).count()
 
 
-class AcademicYearSerializer(serializers.ModelSerializer):
+class AcademicSessionSerializer(serializers.ModelSerializer):
     term_count = serializers.SerializerMethodField()
     classroom_count = serializers.SerializerMethodField()
-    is_current_year = serializers.BooleanField(source="is_current", read_only=True)
+    is_current_session = serializers.BooleanField(source="is_current", read_only=True)
 
     class Meta:
         model = AcademicSession
@@ -101,7 +100,7 @@ class AcademicYearSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "is_current",
-            "is_current_year",
+            "is_current_session",
             "is_active",
             "term_count",
             "classroom_count",
@@ -122,8 +121,8 @@ class AcademicYearSerializer(serializers.ModelSerializer):
 
 
 class TermSerializer(serializers.ModelSerializer):
-    academic_year_name = serializers.CharField(
-        source="academic_year.name", read_only=True
+    academic_session_name = serializers.CharField(
+        source="academic_session.name", read_only=True
     )
     name_display = serializers.CharField(source="get_name_display", read_only=True)
     classroom_count = serializers.SerializerMethodField()
@@ -134,8 +133,8 @@ class TermSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "name_display",
-            "academic_year",
-            "academic_year_name",
+            "academic_session",
+            "academic_session_name",
             "start_date",
             "end_date",
             "is_current",
@@ -244,39 +243,55 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 
 class StudentSerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
+    # User fields
+    user = UserSerializer(read_only=True)
+    full_name = serializers.CharField(source="user.full_name", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+
+    # Computed fields
     age = serializers.SerializerMethodField()
+    student_class_display = serializers.CharField(
+        source="get_student_class_display", read_only=True
+    )
+    education_level_display = serializers.CharField(
+        source="get_education_level_display", read_only=True
+    )
+    stream_name = serializers.CharField(source="stream.name", read_only=True)
     current_classroom = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
         fields = [
             "id",
-            "admission_number",
-            "first_name",
-            "middle_name",
-            "last_name",
+            "user",
             "full_name",
+            "email",
+            "registration_number",
+            "gender",
             "date_of_birth",
             "age",
-            "gender",
+            "student_class",
+            "student_class_display",
+            "education_level",
+            "education_level_display",
+            "admission_date",
+            "profile_picture",
+            "classroom",
+            "stream",
+            "stream_name",
+            "parent_contact",
+            "emergency_contact",
+            "medical_conditions",
+            "special_requirements",
+            "blood_group",
+            "place_of_birth",
             "address",
             "phone_number",
-            "email",
-            "guardian_name",
-            "guardian_phone",
-            "guardian_email",
-            "guardian_relationship",
-            "admission_date",
-            "current_classroom",
+            "payment_method",
             "is_active",
-            "created_at",
-            "updated_at",
+            "current_classroom",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
-
-    def get_full_name(self, obj):
-        return obj.full_name
+        read_only_fields = ["id", "admission_date"]
 
     def get_age(self, obj):
         return obj.age
@@ -294,13 +309,13 @@ class StudentSerializer(serializers.ModelSerializer):
             }
         return None
 
-    def validate_admission_number(self, value):
+    def validate_registration_number(self, value):
         if (
-            Student.objects.filter(admission_number=value)
+            Student.objects.filter(registration_number=value)
             .exclude(pk=self.instance.pk if self.instance else None)
             .exists()
         ):
-            raise serializers.ValidationError("Admission number must be unique.")
+            raise serializers.ValidationError("Registration number must be unique.")
         return value
 
 
@@ -355,83 +370,6 @@ class ClassroomTeacherAssignmentSerializer(serializers.ModelSerializer):
     teacher = serializers.PrimaryKeyRelatedField(read_only=True)
     subject = serializers.PrimaryKeyRelatedField(read_only=True)
 
-    def create(self, validated_data):
-        """Override create to handle field mapping"""
-        print("🔍 create method called!")
-        print("🔍 Validated data:", validated_data)
-
-        # Map _id fields to model instances
-        if "classroom_id" in validated_data:
-            classroom_id = validated_data.pop("classroom_id")
-            try:
-                classroom = Classroom.objects.get(id=classroom_id)
-                validated_data["classroom"] = classroom
-                print(
-                    f"🔍 Mapped classroom_id {classroom_id} to classroom: {classroom}"
-                )
-            except Classroom.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Classroom with id {classroom_id} does not exist"
-                )
-
-        if "teacher_id" in validated_data:
-            teacher_id = validated_data.pop("teacher_id")
-            try:
-                teacher = Teacher.objects.get(id=teacher_id)
-                validated_data["teacher"] = teacher
-                print(f"🔍 Mapped teacher_id {teacher_id} to teacher: {teacher}")
-            except Teacher.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Teacher with id {teacher_id} does not exist"
-                )
-
-        if "subject_id" in validated_data:
-            subject_id = validated_data.pop("subject_id")
-            print(f"🔍 Attempting to map subject_id: {subject_id}")
-            try:
-                subject = Subject.objects.get(id=subject_id)
-                validated_data["subject"] = subject
-                print(f"🔍 Mapped subject_id {subject_id} to subject: {subject}")
-            except Subject.DoesNotExist:
-                print(f"❌ Subject with id {subject_id} does not exist")
-                raise serializers.ValidationError(
-                    f"Subject with id {subject_id} does not exist"
-                )
-            except Exception as e:
-                print(f"❌ Error mapping subject_id {subject_id}: {e}")
-                raise serializers.ValidationError(f"Error mapping subject: {e}")
-
-        print("🔍 Final data for creation:", validated_data)
-
-        # Create the assignment
-        try:
-            assignment = ClassroomTeacherAssignment.objects.create(**validated_data)
-            print("🔍 Assignment created successfully:", assignment)
-            return assignment
-        except Exception as e:
-            print(f"❌ Error creating assignment: {e}")
-            print(f"❌ Validated data keys: {list(validated_data.keys())}")
-            print(f"❌ Validated data values: {validated_data}")
-            raise serializers.ValidationError(f"Error creating assignment: {e}")
-
-    def is_valid(self, raise_exception=False):
-        """Override is_valid to add debugging"""
-        print("🔍 is_valid called")
-        print("🔍 Initial data:", self.initial_data)
-        print(
-            "🔍 Initial data keys:",
-            list(self.initial_data.keys()) if self.initial_data else [],
-        )
-
-        is_valid = super().is_valid(raise_exception=raise_exception)
-        if not is_valid:
-            print("🔍 Validation errors:", self.errors)
-            print("🔍 Error details:", dict(self.errors))
-            print("🔍 Full error response:", self.errors)
-        else:
-            print("🔍 Validation successful")
-        return is_valid
-
     teacher_name = serializers.CharField(
         source="teacher.user.full_name", read_only=True
     )
@@ -475,10 +413,45 @@ class ClassroomTeacherAssignmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "classroom", "teacher", "subject"]
 
+    def create(self, validated_data):
+        """Override create to handle field mapping"""
+        # Map _id fields to model instances
+        if "classroom_id" in validated_data:
+            classroom_id = validated_data.pop("classroom_id")
+            try:
+                classroom = Classroom.objects.get(id=classroom_id)
+                validated_data["classroom"] = classroom
+            except Classroom.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Classroom with id {classroom_id} does not exist"
+                )
+
+        if "teacher_id" in validated_data:
+            teacher_id = validated_data.pop("teacher_id")
+            try:
+                teacher = Teacher.objects.get(id=teacher_id)
+                validated_data["teacher"] = teacher
+            except Teacher.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Teacher with id {teacher_id} does not exist"
+                )
+
+        if "subject_id" in validated_data:
+            subject_id = validated_data.pop("subject_id")
+            try:
+                subject = Subject.objects.get(id=subject_id)
+                validated_data["subject"] = subject
+            except Subject.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Subject with id {subject_id} does not exist"
+                )
+
+        return ClassroomTeacherAssignment.objects.create(**validated_data)
+
 
 class StudentEnrollmentSerializer(serializers.ModelSerializer):
     # Student details
-    id = serializers.IntegerField(source="student.id", read_only=True)
+    student_id = serializers.IntegerField(source="student.id", read_only=True)
     full_name = serializers.CharField(source="student.user.full_name", read_only=True)
     registration_number = serializers.CharField(
         source="student.registration_number", read_only=True
@@ -487,6 +460,9 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
         source="student.profile_picture", read_only=True
     )
     gender = serializers.CharField(source="student.gender", read_only=True)
+    student_class = serializers.CharField(
+        source="student.student_class", read_only=True
+    )
     age = serializers.SerializerMethodField()
 
     # Enrollment details
@@ -497,34 +473,23 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentEnrollment
         fields = [
-            "id",  # This is now student.id
+            "enrollment_id",
+            "student_id",
             "full_name",
             "registration_number",
             "profile_picture",
             "gender",
+            "student_class",
             "age",
-            "enrollment_id",
             "enrollment_date",
             "is_active",
             "created_at",
         ]
-        read_only_fields = ["id", "enrollment_id", "created_at"]
+        read_only_fields = ["enrollment_id", "created_at"]
 
     def get_age(self, obj):
         """Calculate student age from date of birth"""
-        from datetime import date
-
-        if obj.student.date_of_birth:
-            today = date.today()
-            return (
-                today.year
-                - obj.student.date_of_birth.year
-                - (
-                    (today.month, today.day)
-                    < (obj.student.date_of_birth.month, obj.student.date_of_birth.day)
-                )
-            )
-        return None
+        return obj.student.age if obj.student else None
 
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
@@ -578,8 +543,8 @@ class ClassroomSerializer(serializers.ModelSerializer):
     education_level = serializers.CharField(
         source="section.grade_level.education_level", read_only=True
     )
-    academic_year_name = serializers.CharField(
-        source="academic_year.name", read_only=True
+    academic_session_name = serializers.CharField(
+        source="academic_session.name", read_only=True
     )
     term_name = serializers.CharField(source="term.get_name_display", read_only=True)
     class_teacher_name = serializers.CharField(
@@ -609,8 +574,8 @@ class ClassroomSerializer(serializers.ModelSerializer):
             "section_name",
             "grade_level_name",
             "education_level",
-            "academic_year",
-            "academic_year_name",
+            "academic_session",
+            "academic_session_name",
             "term",
             "term_name",
             "stream",
@@ -701,9 +666,17 @@ class TeacherSimpleSerializer(serializers.ModelSerializer):
 
 
 class StudentSimpleSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source="user.full_name", read_only=True)
+
     class Meta:
         model = Student
-        fields = ["id", "admission_number", "first_name", "last_name", "full_name"]
+        fields = [
+            "id",
+            "registration_number",
+            "full_name",
+            "student_class",
+            "profile_picture",
+        ]
 
 
 class SubjectSimpleSerializer(serializers.ModelSerializer):

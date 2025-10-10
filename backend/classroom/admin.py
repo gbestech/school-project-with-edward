@@ -6,7 +6,6 @@ from .models import (
     ClassroomTeacherAssignment,
     StudentEnrollment,
     ClassSchedule,
-    Student,
 )
 
 from django.utils.html import format_html
@@ -27,20 +26,6 @@ class SectionAdmin(admin.ModelAdmin):
     list_display = ("name", "grade_level", "is_active")
     list_filter = ("grade_level", "is_active")
     search_fields = ("name",)
-
-
-@admin.register(Student)
-class StudentAdmin(admin.ModelAdmin):
-    list_display = (
-        "admission_number",
-        "first_name",
-        "last_name",
-        "gender",
-        "is_active",
-    )
-    list_filter = ("gender", "is_active", "admission_date")
-    search_fields = ("admission_number", "first_name", "last_name", "guardian_name")
-    readonly_fields = ("age",)
 
 
 # For Classroom Admin - Removed problematic field

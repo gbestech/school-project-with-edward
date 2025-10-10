@@ -82,79 +82,6 @@ class Stream(models.Model):
         return f"{self.name} ({self.get_stream_type_display()})"
 
 
-class Student(models.Model):
-    """Student profile"""
-
-    GENDER_CHOICES = [
-        ("M", "Male"),
-        ("F", "Female"),
-    ]
-
-    admission_number = models.CharField(max_length=20, unique=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    middle_name = models.CharField(max_length=50, blank=True)
-    date_of_birth = models.DateField()
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    address = models.TextField()
-    phone_number = models.CharField(max_length=15, blank=True)
-    email = models.EmailField(blank=True)
-
-    # Guardian information
-    guardian_name = models.CharField(max_length=100)
-    guardian_phone = models.CharField(max_length=15)
-    guardian_email = models.EmailField(blank=True)
-    guardian_relationship = models.CharField(max_length=50)
-
-    admission_date = models.DateField()
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["first_name", "last_name"]
-
-    def __str__(self):
-        return f"{self.first_name} {self.last_name} ({self.admission_number})"
-
-    @property
-    def full_name(self):
-        middle = f" {self.middle_name}" if self.middle_name else ""
-        return f"{self.first_name}{middle} {self.last_name}"
-
-    @property
-    def age(self):
-        today = timezone.now().date()
-        return (
-            today.year
-            - self.date_of_birth.year
-            - (
-                (today.month, today.day)
-                < (self.date_of_birth.month, self.date_of_birth.day)
-            )
-        )
-
-
-class Subject(models.Model):
-    """Subjects taught in school"""
-
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, unique=True)
-    description = models.TextField(blank=True)
-    grade_levels = models.ManyToManyField(GradeLevel, related_name="classroom_subjects")
-    is_core = models.BooleanField(
-        default=False, help_text="Core subject for all students"
-    )
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["name"]
-
-    def __str__(self):
-        return f"{self.name} ({self.code})"
-
-
 class Classroom(models.Model):
     """Main classroom model linking all components"""
 
@@ -163,9 +90,17 @@ class Classroom(models.Model):
         Section, on_delete=models.CASCADE, related_name="classrooms"
     )
     academic_session = models.ForeignKey(
-        AcademicSession, on_delete=models.CASCADE, related_name="classrooms"
+        AcademicSession,
+        on_delete=models.CASCADE,
+        related_name="classrooms",
+        help_text="Academic session this classroom belongs to",
     )
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="classrooms")
+    term = models.ForeignKey(
+        Term,
+        on_delete=models.CASCADE,
+        related_name="classrooms",
+        help_text="Term within the academic session",
+    )
 
     # Stream support for Senior Secondary
     stream = models.ForeignKey(
@@ -177,9 +112,9 @@ class Classroom(models.Model):
         help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)",
     )
 
-    # Teacher assignments - Now using teacher.Teacher model
+    # Teacher assignments
     class_teacher = models.ForeignKey(
-        "teacher.Teacher",  # Reference to teacher app's Teacher model
+        "teacher.Teacher",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -187,7 +122,7 @@ class Classroom(models.Model):
         help_text="Main class teacher",
     )
     subject_teachers = models.ManyToManyField(
-        "teacher.Teacher",  # Reference to teacher app's Teacher model
+        "teacher.Teacher",
         through="ClassroomTeacherAssignment",
         related_name="assigned_classes",
     )
@@ -234,9 +169,7 @@ class ClassroomTeacherAssignment(models.Model):
     """Teacher assignment to classroom for specific subjects"""
 
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
-    teacher = models.ForeignKey(
-        "teacher.Teacher", on_delete=models.CASCADE
-    )  # Reference to teacher app's Teacher model
+    teacher = models.ForeignKey("teacher.Teacher", on_delete=models.CASCADE)
     subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
 
     # Enhanced assignment details
@@ -270,7 +203,11 @@ class StudentEnrollment(models.Model):
 
     class Meta:
         unique_together = ["student", "classroom"]
-        ordering = ["classroom", "student__user__first_name"]
+        ordering = [
+            "classroom",
+            "student__user__first_name",
+            "student__user__last_name",
+        ]
 
     def __str__(self):
         return f"{self.student} enrolled in {self.classroom}"
@@ -292,9 +229,7 @@ class ClassSchedule(models.Model):
         Classroom, on_delete=models.CASCADE, related_name="schedules"
     )
     subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
-    teacher = models.ForeignKey(
-        "teacher.Teacher", on_delete=models.CASCADE
-    )  # Reference to teacher app's Teacher model
+    teacher = models.ForeignKey("teacher.Teacher", on_delete=models.CASCADE)
     day_of_week = models.CharField(max_length=10, choices=DAYS_OF_WEEK)
     start_time = models.TimeField()
     end_time = models.TimeField()
@@ -311,7 +246,7 @@ class ClassSchedule(models.Model):
     @property
     def duration(self):
         """Calculate class duration in minutes"""
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         start = datetime.combine(datetime.today(), self.start_time)
         end = datetime.combine(datetime.today(), self.end_time)
