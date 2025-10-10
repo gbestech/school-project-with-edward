@@ -105,7 +105,7 @@ const ClassroomViewModal: React.FC<ClassroomViewModalProps> = ({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Academic Year:</span>
-                    <span className="font-medium">{classroom.academic_year_name}</span>
+                    <span className="font-medium">{classroom.academic_session_name}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-gray-600">Term:</span>
