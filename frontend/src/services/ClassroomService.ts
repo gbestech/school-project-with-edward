@@ -65,7 +65,7 @@ export interface Classroom {
   grade_level_name: string;
   education_level: string;
   academic_session: number;
-  academic_year_name: string;
+  academic_session_name: string;
   term: number;
   term_name: string;
   class_teacher: number | null;
