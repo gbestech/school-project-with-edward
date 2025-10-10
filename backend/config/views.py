@@ -103,6 +103,53 @@ def debug_login_function(request):
 
 
 @csrf_exempt
+def check_database_schema(request):
+    """Check database schema - REMOVE AFTER USE"""
+
+    secret = request.GET.get("secret", "")
+    if secret != "migrate_now_2025":
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        from django.db import connection
+
+        with connection.cursor() as cursor:
+            # Check if column exists
+            cursor.execute(
+                """
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name='classroom_classroom' 
+                AND column_name='academic_session_id';
+            """
+            )
+            result = cursor.fetchone()
+
+            # Get all columns in classroom_classroom
+            cursor.execute(
+                """
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name='classroom_classroom'
+                ORDER BY ordinal_position;
+            """
+            )
+            all_columns = cursor.fetchall()
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "academic_session_id_exists": result is not None,
+                "all_columns": [
+                    {"name": col[0], "type": col[1]} for col in all_columns
+                ],
+            }
+        )
+    except Exception as e:
+        return JsonResponse({"status": "error", "error": str(e)}, status=500)
+
+
+@csrf_exempt
 def force_migrate(request):
     """Temporary endpoint to run migrations - REMOVE AFTER USE"""
 

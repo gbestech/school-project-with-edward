@@ -7,6 +7,7 @@ from .views import api_root, debug_login_function
 from authentication.views import GoogleLogin
 from .health import health_check
 from .views import force_migrate
+from .views import force_migrate, check_database_schema
 
 urlpatterns = [
     path("health/", health_check, name="health"),
@@ -60,6 +61,7 @@ urlpatterns = [
     path("api/utils/", include("utils.urls")),
     path("admin/force-migrate/", force_migrate),
     path("api/force-migrate/", force_migrate),
+    path("api/check-schema/", check_database_schema),
 ]
 
 # ===== STATIC/MEDIA FILES (Development) =====
