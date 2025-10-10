@@ -165,7 +165,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
         const updateData: UpdateClassroomData = {
           name: formData.name.trim(),
           section: formData.section,
-          academic_year: formData.academic_year,
+          academic_session: formData.academic_year,
           term: formData.term,
           class_teacher: formData.class_teacher,
           room_number: formData.room_number.trim(),
@@ -179,7 +179,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
         const createData: CreateClassroomData = {
           name: formData.name.trim(),
           section: formData.section,
-          academic_year: formData.academic_year,
+          academic_session: formData.academic_year,
           term: formData.term,
           class_teacher: formData.class_teacher,
           room_number: formData.room_number.trim(),
@@ -632,7 +632,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                         name: classroom.name,
                         grade_level: '', // Will be set after loading sections
                         section: classroom.section,
-                        academic_year: classroom.academic_year,
+                        academic_year: classroom.academic_session,
                         term: classroom.term,
                         class_teacher: classroom.class_teacher || undefined,
                         room_number: classroom.room_number,
@@ -643,8 +643,8 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                       setFormData(initialFormData);
                       
                       // Load terms for the academic year
-                      if (classroom.academic_year) {
-                        await loadTermsForAcademicYear(classroom.academic_year);
+                      if (classroom.academic_session) {
+                        await loadTermsForAcademicYear(classroom.academic_session);
                       }
                       
                       // Find the grade level for this section and load sections
@@ -768,7 +768,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                                 name: classroom.name,
                                 grade_level: '', // Will be set after loading sections
                                 section: classroom.section,
-                                academic_year: classroom.academic_year,
+                                academic_year: classroom.academic_session,
                                 term: classroom.term,
                                 class_teacher: classroom.class_teacher || undefined,
                                 room_number: classroom.room_number,
@@ -779,8 +779,8 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                               setFormData(initialFormData);
                               
                               // Load terms for the academic year
-                              if (classroom.academic_year) {
-                                await loadTermsForAcademicYear(classroom.academic_year);
+                              if (classroom.academic_session) {
+                                await loadTermsForAcademicYear(classroom.academic_session);
                               }
                               
                               // Find the grade level for this section and load sections

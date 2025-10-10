@@ -64,7 +64,7 @@ export interface Classroom {
   section_name: string;
   grade_level_name: string;
   education_level: string;
-  academic_year: number;
+  academic_session: number;
   academic_year_name: string;
   term: number;
   term_name: string;
@@ -127,7 +127,7 @@ export interface ClassroomStats {
 export interface CreateClassroomData {
   name: string;
   section: number;
-  academic_year: number;
+  academic_session: number;
   term: number;
   class_teacher?: number;
   room_number?: string;
@@ -172,7 +172,7 @@ class ClassroomService {
     search?: string;
     education_level?: string;
     is_active?: boolean;
-    academic_year?: number;
+    academic_session?: number;
     ordering?: string;
     page?: number;
     page_size?: number;
@@ -189,12 +189,14 @@ class ClassroomService {
 
   // Create a new classroom
   async createClassroom(data: CreateClassroomData) {
+    console.log("📤 Creating classroom with data:", data);
     const response = await api.post('/api/classrooms/classrooms/', data);
     return response;
   }
 
   // Update a classroom
   async updateClassroom(id: number, data: UpdateClassroomData) {
+    console.log("📤 Creating classroom with data:", data);
     const response = await api.patch(`/api/classrooms/classrooms/${id}/`, data);
     return response;
   }
