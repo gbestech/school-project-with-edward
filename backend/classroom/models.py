@@ -31,6 +31,7 @@ class GradeLevel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = "classroom_gradelevely"  # ADD THIS LINE to match existing table
         ordering = ["education_level", "order"]
         unique_together = ["education_level", "order"]
 
