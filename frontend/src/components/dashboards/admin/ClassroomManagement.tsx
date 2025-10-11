@@ -33,7 +33,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     name: '',
     grade_level: '', // Keep as string for form handling
     section: 0,
-    academic_year: 0,
+    academic_session: 0,
     term: 0,
     class_teacher: undefined as number | undefined,
     room_number: '',
@@ -168,7 +168,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       return;
     }
     
-    if (!formData.section || !formData.academic_year || !formData.term) {
+    if (!formData.section || !formData.academic_session || !formData.term) {
       toast.error('Please select all required fields');
       return;
     }
@@ -179,7 +179,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
         const updateData: UpdateClassroomData = {
           name: formData.name.trim(),
           section: formData.section,
-          academic_session: formData.academic_year,
+          academic_session: formData.academic_session,
           term: formData.term,
           class_teacher: formData.class_teacher,
           room_number: formData.room_number.trim(),
@@ -193,7 +193,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
         const createData: CreateClassroomData = {
           name: formData.name.trim(),
           section: formData.section,
-          academic_session: formData.academic_year,
+          academic_session: formData.academic_session,
           term: formData.term,
           class_teacher: formData.class_teacher,
           room_number: formData.room_number.trim(),
@@ -343,7 +343,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       name: '',
       grade_level: '',
       section: 0,
-      academic_year: 0,
+      academic_session: 0,
       term: 0,
       class_teacher: undefined,
       room_number: '',
@@ -646,7 +646,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                         name: classroom.name,
                         grade_level: '', // Will be set after loading sections
                         section: classroom.section,
-                        academic_year: classroom.academic_session,
+                        academic_session: classroom.academic_session,
                         term: classroom.term,
                         class_teacher: classroom.class_teacher || undefined,
                         room_number: classroom.room_number,
@@ -782,7 +782,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                                 name: classroom.name,
                                 grade_level: '', // Will be set after loading sections
                                 section: classroom.section,
-                                academic_year: classroom.academic_session,
+                                academic_session: classroom.academic_session,
                                 term: classroom.term,
                                 class_teacher: classroom.class_teacher || undefined,
                                 room_number: classroom.room_number,
@@ -890,10 +890,10 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                     Academic Year *
                   </label>
                   <select
-                    value={formData.academic_year}
+                    value={formData.academic_session}
                     onChange={(e) => {
                       const academicYearId = parseInt(e.target.value) || 0;
-                      setFormData({...formData, academic_year: academicYearId, term: 0});
+                      setFormData({...formData, academic_session: academicYearId, term: 0});
                       // Load terms for selected academic year
                       if (academicYearId) {
                         loadTermsForAcademicYear(academicYearId);
@@ -921,7 +921,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                     onChange={(e) => setFormData({...formData, term: parseInt(e.target.value) || 0})}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${themeClasses.borderPrimary} ${themeClasses.textPrimary} bg-white`}
                     required
-                    disabled={!formData.academic_year || terms.length === 0}
+                    disabled={!formData.academic_session || terms.length === 0}
                   >
                     <option value="">Select Term</option>
                     {terms.map(term => (

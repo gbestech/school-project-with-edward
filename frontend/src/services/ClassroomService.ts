@@ -250,7 +250,6 @@ async getClassrooms(params?: {
     const response = await api.get(`/api/classrooms/classrooms/${id}/`);
     return response;
   }
-
   // Create a new classroom
   async createClassroom(data: CreateClassroomData) {
   try {
