@@ -231,10 +231,15 @@ const AddTeacherForm: React.FC = () => {
       const educationLevel = levelMap[formData.level];
       if (!educationLevel) return;
 
+       console.log('🔄 Loading grade levels for education level:', educationLevel);
+
       fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
         .then(res => res.json())
         .then(data => {
+
+          console.log('📊 Grade levels response:', data);
           const gradeLevels = Array.isArray(data) ? data : (data.results || []);
+          console.log('📊 Parsed grade levels:', gradeLevels);
           
           if (gradeLevels && gradeLevels.length > 0) {
             setGradeLevelOptions(gradeLevels.map((gl: any) => ({
@@ -242,6 +247,8 @@ const AddTeacherForm: React.FC = () => {
               name: gl.name,
               education_level: gl.education_level
             })));
+            // console.log('✅ Setting grade level options:', mappedLevels);
+            //  setGradeLevelOptions(mappedLevels);
           } else {
             setGradeLevelOptions([]);
           }
@@ -251,7 +258,7 @@ const AddTeacherForm: React.FC = () => {
           setGradeLevelOptions([]);
         });
     }
-  }, [formData.staffType, formData.level]);
+  }, [formData.staffType, formData.level, API_BASE_URL]);
 
   // Photo Upload Handler
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
