@@ -90,17 +90,31 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
         classroomService.getStreams()
       ]);
       
+
+
+      console.log('🔍 Raw API Response:', classroomsRes);
+    console.log('🔍 Response type:', typeof classroomsRes);
+    console.log('🔍 Is Array?:', Array.isArray(classroomsRes));
+    console.log('🔍 Has results?:', classroomsRes?.results);
+    
+    
+    
+    
+
+
       // Robust response handling
       const classrooms = Array.isArray(classroomsRes) ? classroomsRes : (classroomsRes.results || []);
+      
+      console.log('🔍 Parsed classrooms:', classrooms);
+    console.log('🔍 Classrooms count:', classrooms.length);
+      
       const teachers = Array.isArray(teachersRes) ? teachersRes : (teachersRes.results || []);
       const subjects = Array.isArray(subjectsRes) ? subjectsRes : (subjectsRes.results || []);
       const gradeLevels = Array.isArray(gradeLevelsRes) ? gradeLevelsRes : (gradeLevelsRes.results || []);
       const academicYears = Array.isArray(academicYearsRes) ? academicYearsRes : (academicYearsRes.results || []);
       const streams = Array.isArray(streamsRes) ? streamsRes : (streamsRes.results || []);
       
-      console.log('📚 Loaded Grade Levels:', gradeLevels);
-      console.log('📚 Loaded Academic Years:', academicYears);
-
+      
       setClassrooms(classrooms);
       setFilteredClassrooms(classrooms);
       setTeachers(teachers);

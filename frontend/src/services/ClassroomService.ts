@@ -168,18 +168,82 @@ export interface UpdateTeacherAssignmentData {
 
 class ClassroomService {
   // Get all classrooms with optional filters
-  async getClassrooms(params?: {
-    search?: string;
-    education_level?: string;
-    is_active?: boolean;
-    academic_session?: number;
-    ordering?: string;
-    page?: number;
-    page_size?: number;
-  }) {
+
+
+// ===========================jjj========================
+async getClassrooms(params?: {
+  search?: string;
+  education_level?: string;
+  is_active?: boolean;
+  academic_session?: number;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+}) {
+  try {
+    console.log('📡 Fetching classrooms with params:', params);
+    
     const response = await api.get('/api/classrooms/classrooms/', { params });
+    
+    
+    // 🔍 DEBUG: Log the raw response
+    console.log('📡 Raw API Response:', {
+      type: typeof response,
+      isArray: Array.isArray(response),
+      keys: Object.keys(response || {}),
+      data: response
+    });
+    
+    
+    // Check different response structures
+    if (Array.isArray(response)) {
+      console.log('✅ Response is array, length:', response.length);
+      return response;
+    } else if (response?.data) {
+      console.log('✅ Response has .data property');
+      if (Array.isArray(response.data)) {
+        console.log('✅ Response.data is array, length:', response.data.length);
+        return response.data;
+      } else if (response.data?.results) {
+        console.log('✅ Response.data.results exists, length:', response.data.results.length);
+        return response.data;
+      }
+      return response.data;
+    } else if (response?.results) {
+      console.log('✅ Response has .results property, length:', response.results.length);
+      return response;
+    }
+    
+    console.warn('⚠️ Unexpected response structure:', response);
     return response;
+    
+  } catch (error: any) {
+    console.error('❌ Error fetching classrooms:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      url: error.config?.url
+    });
+    throw error;
   }
+}
+
+
+// ================================pppp================
+
+
+  // async getClassrooms(params?: {
+  //   search?: string;
+  //   education_level?: string;
+  //   is_active?: boolean;
+  //   academic_session?: number;
+  //   ordering?: string;
+  //   page?: number;
+  //   page_size?: number;
+  // }) {
+  //   const response = await api.get('/api/classrooms/classrooms/', { params });
+  //   return response;
+  // }
 
   // Get a single classroom by ID
   async getClassroom(id: number) {
@@ -189,10 +253,20 @@ class ClassroomService {
 
   // Create a new classroom
   async createClassroom(data: CreateClassroomData) {
-    console.log("📤 Creating classroom with data:", data);
+  try {
+    console.log("📤 Creating classroom with data:", JSON.stringify(data, null, 2));
     const response = await api.post('/api/classrooms/classrooms/', data);
+    console.log("✅ Classroom created successfully:", response);
     return response;
+  } catch (error: any) {
+    console.error("❌ Failed to create classroom:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    throw error;
   }
+}
 
   // Update a classroom
   async updateClassroom(id: number, data: UpdateClassroomData) {
