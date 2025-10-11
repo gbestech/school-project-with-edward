@@ -17,7 +17,7 @@ type TeacherFormData = {
   bloodGroup: string;
   dateOfBirth: string;
   placeOfBirth: string;
-  academicYear: string;
+  academicSession: string;
   employeeId: string;
   address: string;
   email: string;
@@ -68,7 +68,7 @@ const AddTeacherForm: React.FC = () => {
     bloodGroup: '',
     dateOfBirth: '',
     placeOfBirth: '',
-    academicYear: '',
+    academicSession: '',
     employeeId: '',
     address: '',
     email: '',
@@ -501,7 +501,7 @@ const AddTeacherForm: React.FC = () => {
         blood_group: formData.bloodGroup,
         date_of_birth: formData.dateOfBirth,
         place_of_birth: formData.placeOfBirth,
-        academic_year: formData.academicYear,
+        academic_session: formData.academicSession,
         employee_id: formData.employeeId,
         address: formData.address,
         phone_number: formData.phoneNumber,
@@ -555,7 +555,7 @@ const AddTeacherForm: React.FC = () => {
           bloodGroup: '',
           dateOfBirth: '',
           placeOfBirth: '',
-          academicYear: '',
+          academicSession: '',
           employeeId: '',
           address: '',
           email: '',
@@ -616,7 +616,7 @@ const AddTeacherForm: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div><label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth*</label><input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-2">Place of Birth*</label><input type="text" name="placeOfBirth" value={formData.placeOfBirth} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="Lagos, Nigeria" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Academic Year*</label><input type="text" name="academicYear" value={formData.academicYear} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="2024/2025" /></div>
+          <div><label className="block text-sm font-medium text-gray-700 mb-2">Academic Year*</label><input type="text" name="academicYear" value={formData.academicSession} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="2024/2025" /></div>
           </div>
         {/* Hire Date */}
         <div className="mb-4">

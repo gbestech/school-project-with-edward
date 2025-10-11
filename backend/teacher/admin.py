@@ -47,18 +47,3 @@ class TeacherAdmin(admin.ModelAdmin):
 
     get_email.short_description = "Email"
     get_email.admin_order_field = "user__email"
-
-
-# Note: TeacherAssignment model has been deprecated in favor of ClassroomTeacherAssignment
-# which provides proper teacher-subject-classroom mapping
-# @admin.register(TeacherAssignment)
-# class TeacherAssignmentAdmin(admin.ModelAdmin):
-#     list_display = ("teacher", "subject", "grade_level", "section")
-#     list_filter = ("grade_level", "section", "subject")
-#     search_fields = (
-#         "teacher__user__first_name",
-#         "teacher__user__last_name",
-#         "teacher__employee_id",
-#         "subject__name",
-#     )
-#     autocomplete_fields = ("teacher",)  # Requires search_fields in TeacherAdmin
