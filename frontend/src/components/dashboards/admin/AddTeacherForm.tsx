@@ -274,6 +274,39 @@ const AddTeacherForm: React.FC = () => {
   //   }
   // }, [formData.staffType, formData.level, API_BASE_URL]);
 // Replace the grade levels useEffect with this fixed version:
+// Add this useEffect ONCE when component mounts (for debugging only)
+useEffect(() => {
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  
+  console.log('🔧 DEBUG: Testing API endpoints...');
+  
+  // Test PRIMARY level
+  fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=PRIMARY`)
+    .then(res => {
+      console.log('📊 PRIMARY Response Status:', res.status);
+      return res.json();
+    })
+    .then(data => {
+      console.log('✅ FULL API RESPONSE FOR PRIMARY:', JSON.stringify(data, null, 2));
+    })
+    .catch(err => {
+      console.error('❌ Error fetching PRIMARY:', err);
+    });
+
+  // Test NURSERY level
+  fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=NURSERY`)
+    .then(res => {
+      console.log('📊 NURSERY Response Status:', res.status);
+      return res.json();
+    })
+    .then(data => {
+      console.log('✅ FULL API RESPONSE FOR NURSERY:', JSON.stringify(data, null, 2));
+    })
+    .catch(err => {
+      console.error('❌ Error fetching NURSERY:', err);
+    });
+
+}, []); // Empty dependency array = runs only once on mount
 
 useEffect(() => {
   if (formData.staffType === 'teaching' && formData.level) {
