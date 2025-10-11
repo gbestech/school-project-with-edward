@@ -903,6 +903,7 @@ const AddTeacherForm: React.FC = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Grade Level Dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level*</label>
                     <select
@@ -913,7 +914,7 @@ const AddTeacherForm: React.FC = () => {
                             id: Date.now().toString(),
                             grade_level_id: e.target.value,
                             section_id: '',
-                            subject_ids: [],
+                            subject_ids: formData.subjects,
                             sectionOptions: []
                           };
                           setCurrentAssignments([newAssignment]);
@@ -926,14 +927,24 @@ const AddTeacherForm: React.FC = () => {
                       required
                     >
                       <option value="">Select Grade Level</option>
-                      {gradeLevelOptions.map(gl => (
-                        <option key={gl.id} value={gl.id}>
-                          {gl.name}
-                        </option>
-                      ))}
+                      {gradeLevelOptions.length === 0 ? (
+                        <option disabled>Loading grade levels...</option>
+                      ) : (
+                        gradeLevelOptions.map(gl => (
+                          <option key={gl.id} value={gl.id}>
+                            {gl.name}
+                          </option>
+                        ))
+                      )}
                     </select>
+                    {gradeLevelOptions.length === 0 && (
+                      <p className="text-xs text-red-500 mt-1">
+                        No grade levels found. Please create grade levels first.
+                      </p>
+                    )}
                   </div>
 
+                  {/* Section Dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Section*</label>
                     <select
@@ -948,14 +959,40 @@ const AddTeacherForm: React.FC = () => {
                       required
                     >
                       <option value="">Select Section</option>
-                      {(currentAssignments[0]?.sectionOptions || []).map(section => (
-                        <option key={section.id} value={section.id}>
-                          {section.name}
-                        </option>
-                      ))}
+                      {!currentAssignments[0]?.grade_level_id ? (
+                        <option disabled>Select grade level first</option>
+                      ) : (currentAssignments[0]?.sectionOptions || []).length === 0 ? (
+                        <option disabled>Loading sections...</option>
+                      ) : (
+                        (currentAssignments[0]?.sectionOptions || []).map(section => (
+                          <option key={section.id} value={section.id}>
+                            {section.name}
+                          </option>
+                        ))
+                      )}
                     </select>
+                    {currentAssignments[0]?.grade_level_id && (currentAssignments[0]?.sectionOptions || []).length === 0 && (
+                      <p className="text-xs text-red-500 mt-1">
+                        No sections found for this grade level.
+                      </p>
+                    )}
                   </div>
                 </div>
+
+                {/* Assignment Preview */}
+                {currentAssignments[0]?.grade_level_id && currentAssignments[0]?.section_id && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700">
+                      <strong>Assignment Preview:</strong> This teacher will teach{' '}
+                      <strong>{formData.subjects.length} subject(s)</strong> in{' '}
+                      <strong>
+                        {gradeLevelOptions.find(gl => gl.id == currentAssignments[0].grade_level_id)?.name}
+                        {' - Section '}
+                        {(currentAssignments[0]?.sectionOptions || []).find(s => s.id == currentAssignments[0].section_id)?.name}
+                      </strong>
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               // SECONDARY: Multiple classroom-subject assignments
