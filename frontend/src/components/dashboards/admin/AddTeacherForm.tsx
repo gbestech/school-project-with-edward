@@ -3,13 +3,11 @@ import { User, X } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-
-// --- Teacher Form Types ---
+// --- Type Definitions ---
 type TeacherFormData = {
-  photo: string | null; // Now stores Cloudinary URL
+  photo: string | null;
   firstName: string;
   middleName: string;
   lastName: string;
@@ -29,26 +27,60 @@ type TeacherFormData = {
   qualification: string;
   specialization: string;
   assignments: Array<{
-    grade_level_id: string | number;
-    section_id: string;
-    subject_ids: string[]; // Changed from subject_id to subject_ids array
+    grade_level_id?: string | number;
+    section_id?: string;
+    subject_ids?: string[];
+    classroom_id?: string | number;
+    subject_id?: string;
   }>;
 };
 
+type Section = {
+  id: string | number;
+  name: string;
+  grade_level_id: string | number;
+};
+
+type GradeLevel = {
+  id: string | number;
+  name: string;
+  education_level: string;
+};
+
+type Subject = {
+  id: string | number;
+  name: string;
+  code?: string;
+  education_levels?: string[];
+};
+
+type Classroom = {
+  id: string | number;
+  name: string;
+};
+
+type Assignment = {
+  id: string;
+  grade_level_id?: string | number;
+  section_id?: string;
+  subject_ids?: string[];
+  classroom_id?: string | number;
+  subject_id?: string;
+  is_primary_teacher?: boolean;
+  periods_per_week?: number;
+  sectionOptions?: Section[];
+};
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-
-
-// Function to create fallback classroom options
-const createFallbackClassrooms = (level: string) => {
+const createFallbackClassrooms = (level: string): Classroom[] => {
   const classroomMap: Record<string, string[]> = {
-    nursery: ['Pre-Nursery A', 'Pre-Nursery B', 'Pre-Nursery C', 'Nursery 1 A', 'Nursery 1 B', 'Nursery 1 C', 'Nursery 2 A', 'Nursery 2 B', 'Nursery 2 C'],
-    primary: ['Primary 1 A', 'Primary 1 B', 'Primary 1 C', 'Primary 2 A', 'Primary 2 B', 'Primary 2 C', 'Primary 3 A', 'Primary 3 B', 'Primary 3 C', 'Primary 4 A', 'Primary 4 B', 'Primary 4 C', 'Primary 5 A', 'Primary 5 B', 'Primary 5 C', 'Primary 6 A', 'Primary 6 B', 'Primary 6 C'],
-    junior_secondary: ['JSS 1 A', 'JSS 1 B', 'JSS 1 C', 'JSS 2 A', 'JSS 2 B', 'JSS 2 C', 'JSS 3 A', 'JSS 3 B', 'JSS 3 C'],
-    senior_secondary: ['SS 1 A', 'SS 1 B', 'SS 1 C', 'SS 2 A', 'SS 2 B', 'SS 2 C', 'SS 3 A', 'SS 3 B', 'SS 3 C']
+    nursery: ['Pre-Nursery A', 'Pre-Nursery B', 'Nursery 1 A', 'Nursery 1 B', 'Nursery 2 A', 'Nursery 2 B'],
+    primary: ['Primary 1 A', 'Primary 1 B', 'Primary 2 A', 'Primary 2 B', 'Primary 3 A', 'Primary 3 B'],
+    junior_secondary: ['JSS 1 A', 'JSS 1 B', 'JSS 2 A', 'JSS 2 B', 'JSS 3 A', 'JSS 3 B'],
+    senior_secondary: ['SS 1 A', 'SS 1 B', 'SS 2 A', 'SS 2 B', 'SS 3 A', 'SS 3 B']
   };
-  
+
   const classrooms = classroomMap[level] || [];
   return classrooms.map((name, index) => ({
     id: `${level}-${index + 1}`,
@@ -56,9 +88,11 @@ const createFallbackClassrooms = (level: string) => {
   }));
 };
 
-// --- Teacher Form ---
+// --- Teacher Form Component ---
 const AddTeacherForm: React.FC = () => {
-  // State for form data and options
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+  // Form Data State
   const [formData, setFormData] = useState<TeacherFormData>({
     photo: null,
     firstName: '',
@@ -81,145 +115,29 @@ const AddTeacherForm: React.FC = () => {
     specialization: '',
     assignments: [],
   });
-    const [loading, setLoading] = useState(false);
-      const [error, setError] = useState<string | null>(null);
-      const [success, setSuccess] = useState<string | null>(null);
-            const [teacherUsername, setTeacherUsername] = useState<string | null>(null);
-          const [teacherPassword, setTeacherPassword] = useState<string | null>(null);
-          const [showPasswordModal, setShowPasswordModal] = useState(false);
-          const [subjectOptions, setSubjectOptions] = useState<Array<{ id: string; name: string; education_levels?: string[] }>>([]);
-          const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
-          const [gradeLevelOptions, setGradeLevelOptions] = useState<Array<{ id: string | number; name: string; education_level: string }>>([]);
-          const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string; grade_level_id: string | number }>>([]);
-          const [currentAssignments, setCurrentAssignments] = useState<Array<{
-            id: string;
-            classroom_id: string | number;
-            subject_id: string;
-            is_primary_teacher: boolean;
-            periods_per_week: number;
-          }>>([]);
 
-    const API_BASE_URL = import.meta.env.VITE_API_URL
-  // Load subjects when staff type and level change
-  useEffect(() => {
-    if (formData.staffType === 'teaching' && formData.level) {
-      const levelMap: Record<string, string> = { 
-        nursery: 'NURSERY', 
-        primary: 'PRIMARY', 
-        junior_secondary: 'JUNIOR_SECONDARY',
-        senior_secondary: 'SENIOR_SECONDARY'
-      };
-      
-      const educationLevel = levelMap[formData.level];
-      if (educationLevel) {
-        // Fetch subjects for the selected level
-        fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`)
-          .then(res => res.json())
-          .then(data => {
-            const subjects = Array.isArray(data) ? data : (data.results || []);
-            setSubjectOptions(subjects.map((s: any) => ({ id: s.id, name: s.name, education_levels: s.education_levels })));
-            // For nursery/primary, auto-select all
-            if (formData.level === 'nursery' || formData.level === 'primary') {
-              setFormData(prev => ({ ...prev, subjects: subjects.map((s: any) => s.id) }));
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching subjects:', error);
-            setSubjectOptions([]);
-          });
-        
-        // Fetch classrooms for the selected level
-        fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`)
-          .then(res => {
-            if (res.ok) {
-              return res.json();
-            } else {
-              throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-            }
-          })
-          .then(data => {
-            const classrooms = Array.isArray(data) ? data : (data.results || []);
-            
-            if (classrooms && classrooms.length > 0) {
-              // Use existing classrooms with better display names and remove duplicates
-              const uniqueClassrooms = new Map();
-              classrooms.forEach((c: any) => {
-                const displayName = c.grade_level_name && c.section_name ? 
-                  `${c.grade_level_name} ${c.section_name}` : 
-                  c.name || 'Unnamed Classroom';
-                
-                // Use display name as key to prevent duplicates
-                if (!uniqueClassrooms.has(displayName)) {
-                  uniqueClassrooms.set(displayName, {
-                    id: c.id,
-                    name: displayName
-                  });
-                }
-              });
-              
-              setClassroomOptions(Array.from(uniqueClassrooms.values()));
-            } else {
-              // Create fallback classroom options based on the level
-              const fallbackClassrooms = createFallbackClassrooms(formData.level);
-              setClassroomOptions(fallbackClassrooms);
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching classrooms:', error);
-            // Create fallback classroom options
-            const fallbackClassrooms = createFallbackClassrooms(formData.level);
-            setClassroomOptions(fallbackClassrooms);
-          });
-      } else {
-        setClassroomOptions([]);
-      }
-    } else {
-      setSubjectOptions([]);
-      setClassroomOptions([]);
-      setFormData(prev => ({ ...prev, subjects: [] }));
-    }
-  }, [formData.staffType, formData.level]);
+  // UI State
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [teacherUsername, setTeacherUsername] = useState<string | null>(null);
+  const [teacherPassword, setTeacherPassword] = useState<string | null>(null);
 
-  // Load grade levels for assignment selection - filtered by selected level
-  useEffect(() => {
-    if (formData.staffType === 'teaching' && formData.level) {
-      const levelMap: Record<string, string> = { 
-        nursery: 'NURSERY', 
-        primary: 'PRIMARY', 
-        junior_secondary: 'JUNIOR_SECONDARY',
-        senior_secondary: 'SENIOR_SECONDARY'
-      };
-      
-      const educationLevel = levelMap[formData.level];
-      if (educationLevel) {
-        fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
-          .then(res => {
-            return res.json();
-          })
-          .then(data => {
-            const gradeLevels = Array.isArray(data) ? data : (data.results || []);
-            
-            if (gradeLevels && gradeLevels.length > 0) {
-              setGradeLevelOptions(gradeLevels.map((gl: any) => ({ 
-                id: gl.id, 
-                name: gl.name, 
-                education_level: gl.education_level 
-              })));
-            } else {
-              setGradeLevelOptions([]);
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching grade levels:', error);
-            setGradeLevelOptions([]);
-          });
-      }
-    }
-  }, [formData.staffType, formData.level]);
+  // Options State
+  const [subjectOptions, setSubjectOptions] = useState<Subject[]>([]);
+  const [classroomOptions, setClassroomOptions] = useState<Classroom[]>([]);
+  const [gradeLevelOptions, setGradeLevelOptions] = useState<GradeLevel[]>([]);
+  const [sectionOptions, setSectionOptions] = useState<Section[]>([]);
 
-  // Check if current level is secondary (allows multiple assignments)
-  const isSecondaryLevel = formData.level === 'junior_secondary' || formData.level === 'senior_secondary';
+  // Assignments State
+  const [currentAssignments, setCurrentAssignments] = useState<Assignment[]>([]);
+
+  // Check if level is primary/nursery or secondary
   const isPrimaryLevel = formData.level === 'nursery' || formData.level === 'primary';
+  const isSecondaryLevel = formData.level === 'junior_secondary' || formData.level === 'senior_secondary';
 
   // Auto-create assignment for primary/nursery levels
   useEffect(() => {
@@ -228,221 +146,128 @@ const AddTeacherForm: React.FC = () => {
     }
   }, [isPrimaryLevel, currentAssignments.length]);
 
-  // Load sections when grade level changes
-  const loadSectionsForGradeLevel = (gradeLevelId: string | number, assignmentId?: string) => {
-    if (!gradeLevelId) {
-      if (assignmentId) {
-        // Update specific assignment's sections
-        setCurrentAssignments(prev => 
-          prev.map(assignment => 
-            assignment.id === assignmentId 
-              ? { ...assignment, sectionOptions: [] }
-              : assignment
-          )
-        );
-      } else {
-        // Update global sections (for primary/nursery)
-        setSectionOptions([]);
-      }
-      return;
-    }
-    
-    fetch(`${API_BASE_URL}/api/classrooms/sections/?grade_level=${gradeLevelId}`)
-      .then(res => {
-        return res.json();
-      })
-      .then(data => {
-        const sections = Array.isArray(data.results) ? data.results : data;
-        
-        if (sections && sections.length > 0) {
-          const mappedSections = sections.map((s: any) => ({ 
-            id: s.id, 
-            name: s.name, 
-            grade_level_id: typeof s.grade_level === 'object' ? s.grade_level.id : s.grade_level
-          }));
-          
-          if (assignmentId) {
-            // Update specific assignment's sections
-            setCurrentAssignments(prev => 
-              prev.map(assignment => 
-                assignment.id === assignmentId 
-                  ? { ...assignment, sectionOptions: mappedSections }
-                  : assignment
-              )
-            );
-          } else {
-            // Update global sections (for primary/nursery)
-            setSectionOptions(mappedSections);
-          }
-        } else {
-          if (assignmentId) {
-            setCurrentAssignments(prev => 
-              prev.map(assignment => 
-                assignment.id === assignmentId 
-                  ? { ...assignment, sectionOptions: [] }
-                  : assignment
-              )
-            );
-          } else {
-            setSectionOptions([]);
-          }
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching sections:', error);
-        if (assignmentId) {
-          setCurrentAssignments(prev => 
-            prev.map(assignment => 
-              assignment.id === assignmentId 
-                ? { ...assignment, sectionOptions: [] }
-                : assignment
-            )
-          );
-        } else {
-          setSectionOptions([]);
-        }
-      });
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubjectChange = (subjectId: string, checked: boolean) => {
-    setFormData(prev => {
-      const newSubjects = checked 
-        ? [...prev.subjects, subjectId]
-        : prev.subjects.filter(id => id !== subjectId);
-      
-      return {
-        ...prev,
-        subjects: newSubjects
+  // Load subjects and classrooms when level changes
+  useEffect(() => {
+    if (formData.staffType === 'teaching' && formData.level) {
+      const levelMap: Record<string, string> = {
+        nursery: 'NURSERY',
+        primary: 'PRIMARY',
+        junior_secondary: 'JUNIOR_SECONDARY',
+        senior_secondary: 'SENIOR_SECONDARY'
       };
-    });
-  };
 
-  // Assignment management functions
-  const addAssignment = () => {
-    const newAssignment = {
-      id: Date.now().toString(),
-      classroom_id: '',
-      subject_id: '',
-      is_primary_teacher: false,
-      periods_per_week: 1,
-    };
-    setCurrentAssignments(prev => {
-      const updated = [...prev, newAssignment];
-      return updated;
-    });
-  };
+      const educationLevel = levelMap[formData.level];
+      if (!educationLevel) return;
 
-  // Add multiple assignments for secondary teachers
-  const addMultipleAssignments = (gradeLevelIds: (string | number)[]) => {
-    const newAssignments = gradeLevelIds.map(gradeLevelId => ({
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      grade_level_id: gradeLevelId,
-      section_id: '',
-      subject_ids: [],
-      sectionOptions: [], // Initialize empty sections
-    }));
-    
-    setCurrentAssignments(prev => {
-      const updated = [...prev, ...newAssignments];
-      return updated;
-    });
-
-    // Load sections for each new assignment
-    newAssignments.forEach(assignment => {
-      loadSectionsForGradeLevel(assignment.grade_level_id, assignment.id);
-    });
-  };
-
-  const removeAssignment = (assignmentId: string) => {
-    setCurrentAssignments(prev => prev.filter(a => a.id !== assignmentId));
-  };
-
-  const updateAssignment = (assignmentId: string, field: string, value: string | string[] | number) => {
-    setCurrentAssignments(prev => 
-      prev.map(assignment => {
-        if (assignment.id === assignmentId) {
-          const updatedAssignment = { ...assignment, [field]: value };
+      // Fetch subjects
+      fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`)
+        .then(res => res.json())
+        .then(data => {
+          const subjects = Array.isArray(data) ? data : (data.results || []);
+          setSubjectOptions(subjects.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            code: s.code,
+            education_levels: s.education_levels
+          })));
           
-          // If grade level changed, reset section and load new sections
-          if (field === 'grade_level_id') {
-            updatedAssignment.section_id = '';
-            updatedAssignment.subject_ids = [];
-            // Load sections for the new grade level - pass assignmentId for secondary
-            if (isSecondaryLevel) {
-              loadSectionsForGradeLevel(value as string | number, assignmentId);
-            } else {
-              loadSectionsForGradeLevel(value as string | number);
-            }
+          if (isPrimaryLevel) {
+            setFormData(prev => ({ ...prev, subjects: subjects.map((s: any) => s.id) }));
           }
-          
-          // If section changed, reset subjects
-          if (field === 'section_id') {
-            updatedAssignment.subject_ids = [];
-          }
-          
-          return updatedAssignment;
-        }
-        return assignment;
-      })
-    );
-  };
+        })
+        .catch(error => {
+          console.error('Error fetching subjects:', error);
+          setSubjectOptions([]);
+        });
 
-  // Handle subject selection in assignments
-  const handleAssignmentSubjectChange = (assignmentId: string, subjectId: string, checked: boolean) => {
-    setCurrentAssignments(prev => 
-      prev.map(assignment => {
-        if (assignment.id === assignmentId) {
-          const newSubjectIds = [...assignment.subject_ids];
-          if (checked) {
-            newSubjectIds.push(subjectId);
+      // Fetch classrooms
+      fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`)
+        .then(res => res.json())
+        .then(data => {
+          const classrooms = Array.isArray(data) ? data : (data.results || []);
+          
+          if (classrooms && classrooms.length > 0) {
+            const uniqueClassrooms = new Map<string, Classroom>();
+            classrooms.forEach((c: any) => {
+              const displayName = c.grade_level_name && c.section_name
+                ? `${c.grade_level_name} ${c.section_name}`
+                : c.name || 'Unnamed Classroom';
+
+              if (!uniqueClassrooms.has(displayName)) {
+                uniqueClassrooms.set(displayName, {
+                  id: c.id,
+                  name: displayName
+                });
+              }
+            });
+            setClassroomOptions(Array.from(uniqueClassrooms.values()));
           } else {
-            newSubjectIds.splice(newSubjectIds.indexOf(subjectId), 1);
+            const fallbackClassrooms = createFallbackClassrooms(formData.level);
+            setClassroomOptions(fallbackClassrooms);
           }
-          return { ...assignment, subject_ids: newSubjectIds };
-        }
-        return assignment;
-      })
-    );
-  };
+        })
+        .catch(error => {
+          console.error('Error fetching classrooms:', error);
+          const fallbackClassrooms = createFallbackClassrooms(formData.level);
+          setClassroomOptions(fallbackClassrooms);
+        });
+    } else {
+      setSubjectOptions([]);
+      setClassroomOptions([]);
+      setFormData(prev => ({ ...prev, subjects: [] }));
+    }
+  }, [formData.staffType, formData.level]);
 
-  // Get subjects for a specific grade level
-  const getSubjectOptionsForGradeLevel = (gradeLevelId: string) => {
-    if (!gradeLevelId) return [];
-    
-    const gradeLevel = gradeLevelOptions.find(gl => gl.id === gradeLevelId);
-    if (!gradeLevel) return [];
-    
-    // Filter subjects based on the grade level's education level
-    return subjectOptions.filter(subject => {
-      // For now, return all subjects since we're already filtering by level
-      // In the future, you might want to add subject-grade level relationships
-      return true;
-    });
-  };
+  // Load grade levels when level changes
+  useEffect(() => {
+    if (formData.staffType === 'teaching' && formData.level) {
+      const levelMap: Record<string, string> = {
+        nursery: 'NURSERY',
+        primary: 'PRIMARY',
+        junior_secondary: 'JUNIOR_SECONDARY',
+        senior_secondary: 'SENIOR_SECONDARY'
+      };
 
-  const [uploading, setUploading] = useState(false); // For Cloudinary upload status
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+      const educationLevel = levelMap[formData.level];
+      if (!educationLevel) return;
 
+      fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
+        .then(res => res.json())
+        .then(data => {
+          const gradeLevels = Array.isArray(data) ? data : (data.results || []);
+          
+          if (gradeLevels && gradeLevels.length > 0) {
+            setGradeLevelOptions(gradeLevels.map((gl: any) => ({
+              id: gl.id,
+              name: gl.name,
+              education_level: gl.education_level
+            })));
+          } else {
+            setGradeLevelOptions([]);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching grade levels:', error);
+          setGradeLevelOptions([]);
+        });
+    }
+  }, [formData.staffType, formData.level]);
+
+  // Photo Upload Handler
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files && e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       setUploading(true);
       try {
-        // Upload to Cloudinary
         const cloudinaryData = new FormData();
         cloudinaryData.append('file', file);
         cloudinaryData.append('upload_preset', 'profile_upload');
-        
+
         const res = await axios.post('https://api.cloudinary.com/v1_1/djbz7wunu/image/upload', cloudinaryData);
         const imageUrl = res.data.secure_url;
-        
-        setFormData(prev => ({ ...prev, photo: imageUrl })); // Store Cloudinary URL
-        setPhotoPreview(imageUrl); // Use Cloudinary URL for preview after upload
+
+        setFormData(prev => ({ ...prev, photo: imageUrl }));
+        setPhotoPreview(imageUrl);
       } catch (error) {
         console.error('Error uploading to Cloudinary:', error);
         toast.error('Failed to upload image');
@@ -457,32 +282,193 @@ const AddTeacherForm: React.FC = () => {
     setPhotoPreview(null);
   };
 
+  // Form Input Handler
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Subject Toggle Handler
+  const handleSubjectChange = (subjectId: string | number, checked: boolean) => {
+    setFormData(prev => {
+      const subjectIdStr = String(subjectId);
+      const newSubjects = checked
+        ? [...prev.subjects, subjectIdStr]
+        : prev.subjects.filter(id => id !== subjectIdStr);
+      return { ...prev, subjects: newSubjects };
+    });
+  };
+
+  // Assignment Management
+  const addAssignment = () => {
+    const newAssignment: Assignment = {
+      id: Date.now().toString(),
+      grade_level_id: '',
+      section_id: '',
+      subject_ids: [],
+      sectionOptions: [],
+    };
+    setCurrentAssignments(prev => [...prev, newAssignment]);
+  };
+
+  const addMultipleAssignments = (gradeLevelIds: (string | number)[]) => {
+    const newAssignments: Assignment[] = gradeLevelIds.map(gradeLevelId => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      grade_level_id: gradeLevelId,
+      section_id: '',
+      subject_ids: [],
+      sectionOptions: [],
+    }));
+
+    setCurrentAssignments(prev => [...prev, ...newAssignments]);
+
+    newAssignments.forEach(assignment => {
+      loadSectionsForGradeLevel(assignment.grade_level_id, assignment.id);
+    });
+  };
+
+  const removeAssignment = (assignmentId: string) => {
+    setCurrentAssignments(prev => prev.filter(a => a.id !== assignmentId));
+  };
+
+  const updateAssignment = (assignmentId: string, field: string, value: any) => {
+    setCurrentAssignments(prev =>
+      prev.map(assignment => {
+        if (assignment.id === assignmentId) {
+          const updated: Assignment = { ...assignment, [field]: value };
+
+          if (field === 'grade_level_id') {
+            updated.section_id = '';
+            updated.subject_ids = [];
+            if (isSecondaryLevel) {
+              loadSectionsForGradeLevel(value, assignmentId);
+            } else {
+              loadSectionsForGradeLevel(value);
+            }
+          }
+
+          if (field === 'section_id') {
+            updated.subject_ids = [];
+          }
+
+          return updated;
+        }
+        return assignment;
+      })
+    );
+  };
+
+  const handleAssignmentSubjectChange = (assignmentId: string, subjectId: string, checked: boolean) => {
+    setCurrentAssignments(prev =>
+      prev.map(assignment => {
+        if (assignment.id === assignmentId) {
+          const newSubjectIds = assignment.subject_ids ? [...assignment.subject_ids] : [];
+          if (checked) {
+            newSubjectIds.push(subjectId);
+          } else {
+            newSubjectIds.splice(newSubjectIds.indexOf(subjectId), 1);
+          }
+          return { ...assignment, subject_ids: newSubjectIds };
+        }
+        return assignment;
+      })
+    );
+  };
+
+  const loadSectionsForGradeLevel = (gradeLevelId: string | number | undefined, assignmentId?: string) => {
+    if (!gradeLevelId) {
+      if (assignmentId) {
+        setCurrentAssignments(prev =>
+          prev.map(assignment =>
+            assignment.id === assignmentId
+              ? { ...assignment, sectionOptions: [] }
+              : assignment
+          )
+        );
+      } else {
+        setSectionOptions([]);
+      }
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/api/classrooms/grades/${gradeLevelId}/sections/`)
+      .then(res => res.json())
+      .then(data => {
+        const sections = Array.isArray(data) ? data : (data.results || []);
+
+        if (sections && sections.length > 0) {
+          const mappedSections: Section[] = sections.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            grade_level_id: typeof s.grade_level === 'object' ? s.grade_level.id : s.grade_level
+          }));
+
+          if (assignmentId) {
+            setCurrentAssignments(prev =>
+              prev.map(assignment =>
+                assignment.id === assignmentId
+                  ? { ...assignment, sectionOptions: mappedSections }
+                  : assignment
+              )
+            );
+          } else {
+            setSectionOptions(mappedSections);
+          }
+        } else {
+          if (assignmentId) {
+            setCurrentAssignments(prev =>
+              prev.map(assignment =>
+                assignment.id === assignmentId
+                  ? { ...assignment, sectionOptions: [] }
+                  : assignment
+              )
+            );
+          } else {
+            setSectionOptions([]);
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching sections:', error);
+        if (assignmentId) {
+          setCurrentAssignments(prev =>
+            prev.map(assignment =>
+              assignment.id === assignmentId
+                ? { ...assignment, sectionOptions: [] }
+                : assignment
+            )
+          );
+        } else {
+          setSectionOptions([]);
+        }
+      });
+  };
+
+  // Save Handler
   const handleSave = async () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
     try {
-      // Prepare assignments data based on educational level
-      let assignments = [];
-      
+      let assignments: any[] = [];
+
       if (isPrimaryLevel) {
-        // For primary/nursery: Ensure there's one assignment with classroom selected
-        if (currentAssignments.length > 0 && currentAssignments[0]?.grade_level_id && currentAssignments[0]?.section_id) {
+        const firstAssignment = currentAssignments[0];
+        if (firstAssignment?.grade_level_id && firstAssignment?.section_id) {
           assignments = [{
-            grade_level_id: currentAssignments[0].grade_level_id,
-            section_id: currentAssignments[0].section_id,
-            subject_ids: formData.subjects // All selected subjects for the classroom
+            grade_level_id: firstAssignment.grade_level_id,
+            section_id: firstAssignment.section_id,
+            subject_ids: formData.subjects
           }];
         } else {
-          // No classroom selected for primary/nursery
           toast.error('Please select a classroom for this teacher');
           setLoading(false);
           return;
         }
       } else {
-        // For secondary: Use specific assignments
         assignments = currentAssignments
-          .filter(a => a.classroom_id && a.subject_id) // Filter out assignments without classroom or subject
+          .filter(a => a.classroom_id && a.subject_id)
           .map(a => ({
             classroom_id: a.classroom_id,
             subject_id: a.subject_id,
@@ -491,7 +477,6 @@ const AddTeacherForm: React.FC = () => {
           }));
       }
 
-      // Map formData to backend expected fields
       const payload: any = {
         user_email: formData.email,
         user_first_name: formData.firstName,
@@ -514,36 +499,19 @@ const AddTeacherForm: React.FC = () => {
         specialization: formData.specialization,
         assignments: assignments,
       };
+
       const response = await api.post('/api/teachers/teachers/', payload);
-      console.log('🔍 Teacher creation response:', response);
+      console.log('Teacher creation response:', response);
+
       setSuccess('Teacher created successfully!');
       toast.success('Teacher added successfully');
-      
-      // Show popup with credentials if available
-      if (response) {
-        // Extract credentials from the response structure
-        const username = response.user_username;
-        const password = response.user_password;
-        
-        console.log('🔍 Extracted credentials:', { username, password });
-        
-        if (username && password) {
-          console.log('✅ Setting credentials and showing modal');
-          setTeacherUsername(username);
-          setTeacherPassword(password);
-          setShowPasswordModal(true);
-        } else {
-          console.log('❌ No credentials found in response');
-          // Show success message even without credentials
-          toast.info('Teacher created successfully! Check admin panel for credentials.');
-        }
-        
-        // Check for assigned subjects in the response
-        if (response.assigned_subjects) {
-          // The assigned_subjects are now part of the assignments array, so we don't need a separate state for them here.
-          // The assignments state itself contains the subject_ids.
-        }
+
+      if (response?.user_username && response?.user_password) {
+        setTeacherUsername(response.user_username);
+        setTeacherPassword(response.user_password);
+        setShowPasswordModal(true);
       }
+
       setTimeout(() => {
         setLoading(false);
         setFormData({
@@ -569,9 +537,11 @@ const AddTeacherForm: React.FC = () => {
           assignments: [],
         });
         setCurrentAssignments([]);
+        setPhotoPreview(null);
       }, 1200);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create teacher');
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to create teacher';
+      setError(errorMsg);
       toast.error('Cannot add teacher');
       setLoading(false);
     }
@@ -582,60 +552,210 @@ const AddTeacherForm: React.FC = () => {
       <div className="p-6 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-800">Add New Teacher</h2>
       </div>
-      <div className="p-6">
+
+      <div className="p-6 space-y-6">
         {/* Photo Upload */}
-        <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Photo*</label>
-                <div className="flex flex-col items-center">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Photo*</label>
+          <div className="flex flex-col items-center">
             <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-3 bg-gray-50">
-                          {photoPreview ? (
-              <div className="relative">
-                <img src={photoPreview} alt="Teacher" className="w-20 h-20 object-cover rounded" />
-                  <button onClick={removePhoto} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"><X size={12} /></button>
+              {photoPreview ? (
+                <div className="relative">
+                  <img src={photoPreview} alt="Teacher" className="w-20 h-20 object-cover rounded" />
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
-              ) : (<User size={32} className="text-gray-400" />)}
+              ) : (
+                <User size={32} className="text-gray-400" />
+              )}
             </div>
-            <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" id="teacher-photo" disabled={uploading} />
-            <label htmlFor="teacher-photo" className={`px-4 py-2 rounded text-sm cursor-pointer transition-colors ${uploading ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+              id="teacher-photo"
+              disabled={uploading}
+            />
+            <label
+              htmlFor="teacher-photo"
+              className={`px-4 py-2 rounded text-sm cursor-pointer transition-colors ${
+                uploading
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
               {uploading ? 'Uploading...' : 'Choose File'}
             </label>
-            <button onClick={removePhoto} className="text-red-500 text-sm mt-2 hover:text-red-700">Remove</button>
+            <button
+              type="button"
+              onClick={removePhoto}
+              className="text-red-500 text-sm mt-2 hover:text-red-700"
+            >
+              Remove
+            </button>
           </div>
         </div>
+
         {/* Name Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">First Name*</label><input type="text" name="firstName" value={formData.firstName} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="First name" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Middle Name</label><input type="text" name="middleName" value={formData.middleName} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="Middle name" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Last Name*</label><input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="Last name" /></div>
-            </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Employee ID*</label><input type="text" name="employeeId" value={formData.employeeId} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="EMP001" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Gender*</label><select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg"><option value="">Select Gender</option><option value="M">Male</option><option value="F">Female</option></select></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Blood Group</label><select name="bloodGroup" value={formData.bloodGroup} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg"><option value="">Select Blood Group</option>{bloodGroups.map(group => (<option key={group} value={group}>{group}</option>))}</select></div>
-            </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth*</label><input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Place of Birth*</label><input type="text" name="placeOfBirth" value={formData.placeOfBirth} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="Lagos, Nigeria" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-2">Academic Year*</label><input type="text" name="academicYear" value={formData.academicSession} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" placeholder="2024/2025" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">First Name*</label>
+            <input
+              type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="First name"
+            />
           </div>
-        {/* Hire Date */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Hire Date*</label>
-          <input type="date" name="hireDate" value={formData.hireDate} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg" required />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Middle Name</label>
+            <input
+              type="text"
+              name="middleName"
+              value={formData.middleName}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="Middle name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Last Name*</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="Last name"
+            />
+          </div>
         </div>
+
+        {/* Employee & Personal Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID*</label>
+            <input
+              type="text"
+              name="employeeId"
+              value={formData.employeeId}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="EMP001"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Gender*</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select Gender</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Blood Group</label>
+            <select
+              name="bloodGroup"
+              value={formData.bloodGroup}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            >
+              <option value="">Select Blood Group</option>
+              {bloodGroups.map(group => (
+                <option key={group} value={group}>
+                  {group}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Dates & Location */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth*</label>
+            <input
+              type="date"
+              name="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Place of Birth*</label>
+            <input
+              type="text"
+              name="placeOfBirth"
+              value={formData.placeOfBirth}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="Lagos, Nigeria"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Academic Year*</label>
+            <input
+              type="text"
+              name="academicSession"
+              value={formData.academicSession}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="2024/2025"
+            />
+          </div>
+        </div>
+
+        {/* Hire Date */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Hire Date*</label>
+          <input
+            type="date"
+            name="hireDate"
+            value={formData.hireDate}
+            onChange={handleInputChange}
+            className="w-full p-3 border border-gray-300 rounded-lg"
+            required
+          />
+        </div>
+
         {/* Staff Type */}
-        <div className="mb-4">
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Staff Type*</label>
-          <select name="staffType" value={formData.staffType} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg">
+          <select
+            name="staffType"
+            value={formData.staffType}
+            onChange={handleInputChange}
+            className="w-full p-3 border border-gray-300 rounded-lg"
+          >
             <option value="teaching">Teaching</option>
             <option value="non-teaching">Non-Teaching</option>
           </select>
         </div>
-        {/* Level (only for teaching) */}
+
+        {/* Level (for teaching staff) */}
         {formData.staffType === 'teaching' && (
-          <div className="mb-4">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Level*</label>
-            <select name="level" value={formData.level} onChange={handleInputChange} className="w-full p-3 border border-gray-300 rounded-lg">
+            <select
+              name="level"
+              value={formData.level}
+              onChange={handleInputChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            >
               <option value="">Select Level</option>
               <option value="nursery">Nursery</option>
               <option value="primary">Primary</option>
@@ -644,41 +764,35 @@ const AddTeacherForm: React.FC = () => {
             </select>
           </div>
         )}
-        {/* Subjects (only for teaching) */}
+
+        {/* Subjects */}
         {formData.staffType === 'teaching' && formData.level && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="flex items-center justify-between mb-3">
               <label className="block text-sm font-medium text-gray-700">Available Subjects*</label>
               {subjectOptions.length > 0 && (
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      const allSubjectIds = subjectOptions.map(s => s.id);
-                      setFormData(prev => ({
-                        ...prev,
-                        subjects: allSubjectIds,
-                      }));
+                      const allSubjectIds = subjectOptions.map(s => String(s.id));
+                      setFormData(prev => ({ ...prev, subjects: allSubjectIds }));
                     }}
-                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                   >
                     Select All
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setFormData(prev => ({
-                        ...prev,
-                        subjects: [],
-                      }));
-                    }}
-                    className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                    onClick={() => setFormData(prev => ({ ...prev, subjects: [] }))}
+                    className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                   >
                     Clear All
                   </button>
                 </div>
               )}
             </div>
+
             {subjectOptions.length === 0 ? (
               <div className="bg-gray-50 p-3 rounded border">
                 <span className="text-gray-500">No subjects found for this level.</span>
@@ -687,22 +801,26 @@ const AddTeacherForm: React.FC = () => {
               <div className="bg-gray-50 p-4 rounded border border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {subjectOptions
-                    // Filter: Only show subjects that include the selected education level
                     .filter(subj => {
-                      const levelMap: Record<string, string> = { nursery: 'NURSERY', primary: 'PRIMARY', junior_secondary: 'JUNIOR_SECONDARY', senior_secondary: 'SENIOR_SECONDARY' };
-                      const levelKey = formData.level as keyof typeof levelMap;
-                      const educationLevel = levelMap[levelKey] || formData.level;
-                      return subj.education_levels && subj.education_levels.includes(educationLevel);
+                      const levelMap: Record<string, string> = {
+                        nursery: 'NURSERY',
+                        primary: 'PRIMARY',
+                        junior_secondary: 'JUNIOR_SECONDARY',
+                        senior_secondary: 'SENIOR_SECONDARY'
+                      };
+                      const educationLevel = levelMap[formData.level] || '';
+                      return subj.education_levels?.includes(educationLevel);
                     })
-                    // Remove duplicates by name+education_levels
                     .filter((subj, idx, arr) =>
-                      arr.findIndex(s => s.name === subj.name && JSON.stringify(s.education_levels) === JSON.stringify(subj.education_levels)) === idx
+                      arr.findIndex(
+                        s => s.name === subj.name && JSON.stringify(s.education_levels) === JSON.stringify(subj.education_levels)
+                      ) === idx
                     )
                     .map(subj => (
-                      <label key={subj.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-100 p-3 rounded-lg transition-colors">
+                      <label key={subj.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-100 p-3 rounded-lg">
                         <input
                           type="checkbox"
-                          checked={formData.subjects.includes(subj.id)}
+                          checked={formData.subjects.includes(String(subj.id))}
                           onChange={(e) => handleSubjectChange(subj.id, e.target.checked)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
                         />

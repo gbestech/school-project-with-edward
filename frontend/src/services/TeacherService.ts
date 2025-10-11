@@ -33,7 +33,7 @@ export interface Teacher {
     section_name: string;
     grade_level_name: string;
     education_level: string;
-    academic_year: string;
+    academic_session: string;
     term: string;
     subject_name: string;
     subject_code: string;
@@ -98,7 +98,7 @@ export interface TeacherSchedule {
   classroom_name: string;
   room_number: string;
   is_active: boolean;
-  academic_year: string;
+  academic_session: string;
   term: string;
   created_at: string;
   updated_at: string;
@@ -177,7 +177,7 @@ export interface CreateScheduleData {
   subject: number;
   classroom: number;
   room_number?: string;
-  academic_year?: string;
+  academic_session?: string;
   term?: string;
 }
 
@@ -380,7 +380,7 @@ class TeacherService {
   // Teacher Schedule Management
   async getTeacherSchedules(params?: {
     teacher_id?: number;
-    academic_year?: string;
+    academic_session?: string;
     term?: string;
     day_of_week?: string;
   }): Promise<TeacherSchedule[]> {
