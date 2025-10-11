@@ -220,60 +220,124 @@ const AddTeacherForm: React.FC = () => {
   }, [formData.staffType, formData.level, API_BASE_URL]);
 
   // Load grade levels when level changes (for primary/nursery)
-  useEffect(() => {
-    if (formData.staffType === 'teaching' && formData.level) {
-      const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
+  // useEffect(() => {
+  //   if (formData.staffType === 'teaching' && formData.level) {
+  //     const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
       
-      if (!isPrimary) {
-        setGradeLevelOptions([]);
-        return;
-      }
+  //     if (!isPrimary) {
+  //       setGradeLevelOptions([]);
+  //       return;
+  //     }
 
-      const levelMap: Record<string, string> = {
-        nursery: 'NURSERY',
-        primary: 'PRIMARY',
-        junior_secondary: 'JUNIOR_SECONDARY',
-        senior_secondary: 'SENIOR_SECONDARY'
-      };
+  //     const levelMap: Record<string, string> = {
+  //       nursery: 'NURSERY',
+  //       primary: 'PRIMARY',
+  //       junior_secondary: 'JUNIOR_SECONDARY',
+  //       senior_secondary: 'SENIOR_SECONDARY'
+  //     };
 
-      const educationLevel = levelMap[formData.level];
-      if (!educationLevel) return;
+  //     const educationLevel = levelMap[formData.level];
+  //     if (!educationLevel) return;
 
-      console.log('🔍 Fetching grade levels for:', educationLevel);
-      console.log('🔍 API URL:', `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`);
+  //     console.log('🔍 Fetching grade levels for:', educationLevel);
+  //     console.log('🔍 API URL:', `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`);
 
-      fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
-        .then(res => {
-          console.log('🔍 Grade levels response status:', res.status);
-          return res.json();
-        })
-        .then(data => {
-          console.log('🔍 Grade levels data received:', data);
-          const gradeLevels = Array.isArray(data) ? data : (data.results || []);
-          console.log('🔍 Parsed grade levels:', gradeLevels);
+  //     fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
+  //       .then(res => {
+  //         console.log('🔍 Grade levels response status:', res.status);
+  //         return res.json();
+  //       })
+  //       .then(data => {
+  //         console.log('🔍 Grade levels data received:', data);
+  //         const gradeLevels = Array.isArray(data) ? data : (data.results || []);
+  //         console.log('🔍 Parsed grade levels:', gradeLevels);
           
-          if (gradeLevels && gradeLevels.length > 0) {
-            const mappedLevels = gradeLevels.map((gl: any) => ({
-              id: gl.id,
-              name: gl.name,
-              education_level: gl.education_level
-            }));
-            console.log('✅ Setting grade level options:', mappedLevels);
-            setGradeLevelOptions(mappedLevels);
-          } else {
-            console.warn('⚠️ No grade levels found in response');
-            setGradeLevelOptions([]);
-          }
-        })
-        .catch(error => {
-          console.error('❌ Error fetching grade levels:', error);
-          setGradeLevelOptions([]);
-        });
-    } else {
-      setGradeLevelOptions([]);
-    }
-  }, [formData.staffType, formData.level, API_BASE_URL]);
+  //         if (gradeLevels && gradeLevels.length > 0) {
+  //           const mappedLevels = gradeLevels.map((gl: any) => ({
+  //             id: gl.id,
+  //             name: gl.name,
+  //             education_level: gl.education_level
+  //           }));
+  //           console.log('✅ Setting grade level options:', mappedLevels);
+  //           setGradeLevelOptions(mappedLevels);
+  //         } else {
+  //           console.warn('⚠️ No grade levels found in response');
+  //           setGradeLevelOptions([]);
+  //         }
+  //       })
+  //       .catch(error => {
+  //         console.error('❌ Error fetching grade levels:', error);
+  //         setGradeLevelOptions([]);
+  //       });
+  //   } else {
+  //     setGradeLevelOptions([]);
+  //   }
+  // }, [formData.staffType, formData.level, API_BASE_URL]);
+// Replace the grade levels useEffect with this fixed version:
 
+useEffect(() => {
+  if (formData.staffType === 'teaching' && formData.level) {
+    const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
+    
+    if (!isPrimary) {
+      setGradeLevelOptions([]);
+      return;
+    }
+
+    const levelMap: Record<string, string> = {
+      nursery: 'NURSERY',
+      primary: 'PRIMARY',
+      junior_secondary: 'JUNIOR_SECONDARY',
+      senior_secondary: 'SENIOR_SECONDARY'
+    };
+
+    const educationLevel = levelMap[formData.level];
+    if (!educationLevel) return;
+
+    console.log('🔍 Fetching grade levels for:', educationLevel);
+    const url = `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`;
+    console.log('🔍 API URL:', url);
+
+    fetch(url)
+      .then(res => {
+        console.log('🔍 Grade levels response status:', res.status);
+        if (!res.ok) {
+          throw new Error(`API returned ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('🔍 Grade levels data received:', data);
+        
+        // Handle both array and paginated responses
+        let gradeLevels = Array.isArray(data) ? data : (data.results || data.data || []);
+        
+        console.log('🔍 Parsed grade levels:', gradeLevels);
+        
+        if (gradeLevels && gradeLevels.length > 0) {
+          const mappedLevels = gradeLevels.map((gl: any) => ({
+            id: gl.id,
+            name: gl.name,
+            education_level: gl.education_level
+          }));
+          console.log('✅ Setting grade level options:', mappedLevels);
+          setGradeLevelOptions(mappedLevels);
+        } else {
+          console.warn('⚠️ No grade levels found in response. Full response:', data);
+          setGradeLevelOptions([]);
+          toast.error('No grade levels found. Please create grade levels in the system first.');
+        }
+      })
+      .catch(error => {
+        console.error('❌ Error fetching grade levels:', error);
+        console.error('Full error:', error.message);
+        setGradeLevelOptions([]);
+        toast.error(`Failed to load grade levels: ${error.message}`);
+      });
+  } else {
+    setGradeLevelOptions([]);
+  }
+}, [formData.staffType, formData.level, API_BASE_URL]);
   // Photo Upload Handler
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
