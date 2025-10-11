@@ -19,10 +19,31 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = TeacherSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        """
+        Allow unauthenticated access to create endpoint (like StudentViewSet)
+        but keep other endpoints authenticated
+        """
+        if self.action == "create":
+            permission_classes = [permissions.AllowAny]
+        else:
+            permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
     def create(self, request, *args, **kwargs):
         """Override create to include generated credentials in response"""
+        print(f"🔍 TeacherViewSet.create called")
+        print(f"🔍 User: {request.user}")
+        print(f"🔍 Is authenticated: {request.user.is_authenticated}")
+        print(f"🔍 Request data keys: {list(request.data.keys())}")
+
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            print(f"❌ Serializer validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        print(f"✅ Serializer valid, saving teacher...")
         teacher = serializer.save()
 
         # Get the response data
@@ -33,6 +54,10 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         if hasattr(serializer, "context") and "user_password" in serializer.context:
             response_data["user_password"] = serializer.context["user_password"]
             response_data["user_username"] = serializer.context["user_username"]
+            print(f"✅ Credentials added to response")
+            print(f"✅ Username: {serializer.context['user_username']}")
+        else:
+            print(f"⚠️ No credentials found in serializer context")
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
