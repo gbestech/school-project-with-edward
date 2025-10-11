@@ -137,7 +137,6 @@ const AddTeacherForm: React.FC = () => {
   const [subjectOptions, setSubjectOptions] = useState<Subject[]>([]);
   const [classroomOptions, setClassroomOptions] = useState<Classroom[]>([]);
   const [gradeLevelOptions, setGradeLevelOptions] = useState<GradeLevel[]>([]);
-  const [sectionOptions, setSectionOptions] = useState<Section[]>([]);
 
   // Assignments State
   const [currentAssignments, setCurrentAssignments] = useState<Assignment[]>([]);
@@ -367,8 +366,6 @@ const AddTeacherForm: React.FC = () => {
               : assignment
           )
         );
-      } else {
-        setSectionOptions([]);
       }
       return;
     }
@@ -393,13 +390,30 @@ const AddTeacherForm: React.FC = () => {
                   : assignment
               )
             );
-          } else {
-            setSectionOptions(mappedSections);
+          }
+        } else {
+          if (assignmentId) {
+            setCurrentAssignments(prev =>
+              prev.map(assignment =>
+                assignment.id === assignmentId
+                  ? { ...assignment, sectionOptions: [] }
+                  : assignment
+              )
+            );
           }
         }
       })
       .catch(error => {
         console.error('Error fetching sections:', error);
+        if (assignmentId) {
+          setCurrentAssignments(prev =>
+            prev.map(assignment =>
+              assignment.id === assignmentId
+                ? { ...assignment, sectionOptions: [] }
+                : assignment
+            )
+          );
+        }
       });
   };
 
@@ -854,11 +868,18 @@ const AddTeacherForm: React.FC = () => {
 
         {/* Assignments Section */}
         {formData.staffType === 'teaching' && formData.level && (
-          <div className="border-t pt-6">
+          <div className="border-t pt-6 mt-6">
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-medium text-gray-700">
-                {isPrimaryLevel ? 'Classroom Assignment*' : 'Subject Assignments*'}
-              </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  {isPrimaryLevel ? 'Classroom Assignment*' : 'Subject Assignments*'}
+                </label>
+                {isPrimaryLevel && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select the classroom where this teacher will teach all selected subjects
+                  </p>
+                )}
+              </div>
               {isSecondaryLevel && (
                 <button
                   type="button"
