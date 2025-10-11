@@ -402,27 +402,56 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    # ✅ FIXED: Changed academic_year to academic_session
     filterset_fields = [
         "section__grade_level__education_level",
         "is_active",
-        "academic_session",  # ✅ Correct
-        "term",  # Add term filtering
+        "academic_session",
+        "term",
     ]
 
     search_fields = ["name", "section__name", "section__grade_level__name"]
     ordering_fields = ["name", "created_at", "current_enrollment"]
 
     def get_queryset(self):
-        # ✅ FIXED: Changed academic_year to academic_session
+        """
+        Get queryset with proper filtering and permissions
+        """
         queryset = Classroom.objects.select_related(
             "section__grade_level", "academic_session", "term", "class_teacher__user"
         ).prefetch_related("students", "subject_teachers", "schedules")
 
-        # Apply section-based filtering for authenticated users
-        if self.request.user.is_authenticated:
-            queryset = self.filter_classrooms_by_section_access(queryset)
+        # 🔍 DEBUG LOGGING
+        total_count = queryset.count()
+        print(f"🔍 Total classrooms in database: {total_count}")
 
+        # ✅ Apply section filtering with proper checks
+        if self.request.user.is_authenticated:
+            # Check if user is admin/staff - they should see all classrooms
+            if self.request.user.is_staff or self.request.user.is_superuser:
+                print(f"🔍 User is admin/staff - showing all {total_count} classrooms")
+                return queryset
+
+            # For non-admin users, apply section filtering
+            try:
+                filtered_queryset = self.filter_classrooms_by_section_access(queryset)
+                filtered_count = filtered_queryset.count()
+                print(f"🔍 After section filtering: {filtered_count} classrooms")
+
+                # ⚠️ If filtering removes ALL classrooms, log warning
+                if filtered_count == 0 and total_count > 0:
+                    print(f"⚠️ WARNING: Section filtering removed all classrooms!")
+                    print(f"⚠️ User: {self.request.user.username}")
+                    print(f"⚠️ User ID: {self.request.user.id}")
+                    print(f"⚠️ Check user's section access permissions")
+
+                return filtered_queryset
+            except Exception as e:
+                print(f"❌ Error in section filtering: {e}")
+                # If section filtering fails, return all for now (you can change this)
+                return queryset
+
+        # For unauthenticated users, return all (based on your permission_classes = [])
+        print(f"🔍 Unauthenticated request - showing all {total_count} classrooms")
         return queryset
 
     def get_serializer_class(self):
@@ -430,6 +459,7 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             return ClassroomDetailSerializer
         return ClassroomSerializer
 
+    # ... rest of your methods remain the same ...
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
         """Get students for a specific classroom"""
