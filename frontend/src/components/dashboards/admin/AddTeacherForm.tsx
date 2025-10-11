@@ -473,14 +473,23 @@ const AddTeacherForm: React.FC = () => {
 
       console.log('📤 Submitting teacher data:', payload);
 
-      // Get auth token if available
+      // Get auth token from localStorage
       const token = localStorage.getItem('access_token');
+      console.log('🔑 Token found:', token ? '✓ Yes' : '✗ No');
+      
+      if (!token) {
+        toast.error('Authentication token not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
       const headers: any = {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+
+      console.log('📍 API Endpoint:', `${API_BASE_URL}/api/teachers/`);
+      console.log('🔐 Headers:', { 'Authorization': `Bearer ${token.substring(0, 20)}...` });
 
       // Call actual API
       const response = await fetch(`${API_BASE_URL}/api/teachers/`, {
