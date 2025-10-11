@@ -221,7 +221,14 @@ const AddTeacherForm: React.FC = () => {
 
   // Load grade levels when level changes (for primary/nursery)
   useEffect(() => {
-    if (formData.staffType === 'teaching' && formData.level && isPrimaryLevel) {
+    if (formData.staffType === 'teaching' && formData.level) {
+      const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
+      
+      if (!isPrimary) {
+        setGradeLevelOptions([]);
+        return;
+      }
+
       const levelMap: Record<string, string> = {
         nursery: 'NURSERY',
         primary: 'PRIMARY',
@@ -232,27 +239,40 @@ const AddTeacherForm: React.FC = () => {
       const educationLevel = levelMap[formData.level];
       if (!educationLevel) return;
 
+      console.log('🔍 Fetching grade levels for:', educationLevel);
+      console.log('🔍 API URL:', `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`);
+
       fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
-        .then(res => res.json())
+        .then(res => {
+          console.log('🔍 Grade levels response status:', res.status);
+          return res.json();
+        })
         .then(data => {
+          console.log('🔍 Grade levels data received:', data);
           const gradeLevels = Array.isArray(data) ? data : (data.results || []);
+          console.log('🔍 Parsed grade levels:', gradeLevels);
           
           if (gradeLevels && gradeLevels.length > 0) {
-            setGradeLevelOptions(gradeLevels.map((gl: any) => ({
+            const mappedLevels = gradeLevels.map((gl: any) => ({
               id: gl.id,
               name: gl.name,
               education_level: gl.education_level
-            })));
+            }));
+            console.log('✅ Setting grade level options:', mappedLevels);
+            setGradeLevelOptions(mappedLevels);
           } else {
+            console.warn('⚠️ No grade levels found in response');
             setGradeLevelOptions([]);
           }
         })
         .catch(error => {
-          console.error('Error fetching grade levels:', error);
+          console.error('❌ Error fetching grade levels:', error);
           setGradeLevelOptions([]);
         });
+    } else {
+      setGradeLevelOptions([]);
     }
-  }, [formData.staffType, formData.level, isPrimaryLevel, API_BASE_URL]);
+  }, [formData.staffType, formData.level, API_BASE_URL]);
 
   // Photo Upload Handler
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
