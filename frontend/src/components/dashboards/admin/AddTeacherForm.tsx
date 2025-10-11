@@ -97,11 +97,9 @@ const createFallbackClassrooms = (level: string): Classroom[] => {
   }));
 };
 
-// --- Teacher Form Component ---
 const AddTeacherForm: React.FC = () => {
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  // Form Data State
   const [formData, setFormData] = useState<TeacherFormData>({
     photo: null,
     firstName: '',
@@ -125,7 +123,6 @@ const AddTeacherForm: React.FC = () => {
     assignments: [],
   });
 
-  // UI State
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -133,26 +130,20 @@ const AddTeacherForm: React.FC = () => {
   const [teacherUsername, setTeacherUsername] = useState<string | null>(null);
   const [teacherPassword, setTeacherPassword] = useState<string | null>(null);
 
-  // Options State
   const [subjectOptions, setSubjectOptions] = useState<Subject[]>([]);
   const [classroomOptions, setClassroomOptions] = useState<Classroom[]>([]);
   const [gradeLevelOptions, setGradeLevelOptions] = useState<GradeLevel[]>([]);
-
-  // Assignments State
   const [currentAssignments, setCurrentAssignments] = useState<Assignment[]>([]);
 
-  // Check if level is primary/nursery or secondary
   const isPrimaryLevel = formData.level === 'nursery' || formData.level === 'primary';
   const isSecondaryLevel = formData.level === 'junior_secondary' || formData.level === 'senior_secondary';
 
-  // Auto-create assignment for primary/nursery levels
   useEffect(() => {
     if (isPrimaryLevel && currentAssignments.length === 0) {
       addAssignment();
     }
   }, [isPrimaryLevel]);
 
-  // Load subjects and classrooms when level changes
   useEffect(() => {
     if (formData.staffType === 'teaching' && formData.level) {
       const levelMap: Record<string, string> = {
@@ -165,7 +156,6 @@ const AddTeacherForm: React.FC = () => {
       const educationLevel = levelMap[formData.level];
       if (!educationLevel) return;
 
-      // Fetch subjects
       fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`)
         .then(res => res.json())
         .then(data => {
@@ -186,7 +176,6 @@ const AddTeacherForm: React.FC = () => {
           setSubjectOptions([]);
         });
 
-      // Fetch classrooms
       fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`)
         .then(res => res.json())
         .then(data => {
@@ -219,159 +208,57 @@ const AddTeacherForm: React.FC = () => {
     }
   }, [formData.staffType, formData.level, API_BASE_URL]);
 
-  // Load grade levels when level changes (for primary/nursery)
-  // useEffect(() => {
-  //   if (formData.staffType === 'teaching' && formData.level) {
-  //     const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
+  useEffect(() => {
+    if (formData.staffType === 'teaching' && formData.level) {
+      const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
       
-  //     if (!isPrimary) {
-  //       setGradeLevelOptions([]);
-  //       return;
-  //     }
-
-  //     const levelMap: Record<string, string> = {
-  //       nursery: 'NURSERY',
-  //       primary: 'PRIMARY',
-  //       junior_secondary: 'JUNIOR_SECONDARY',
-  //       senior_secondary: 'SENIOR_SECONDARY'
-  //     };
-
-  //     const educationLevel = levelMap[formData.level];
-  //     if (!educationLevel) return;
-
-  //     console.log('🔍 Fetching grade levels for:', educationLevel);
-  //     console.log('🔍 API URL:', `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`);
-
-  //     fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`)
-  //       .then(res => {
-  //         console.log('🔍 Grade levels response status:', res.status);
-  //         return res.json();
-  //       })
-  //       .then(data => {
-  //         console.log('🔍 Grade levels data received:', data);
-  //         const gradeLevels = Array.isArray(data) ? data : (data.results || []);
-  //         console.log('🔍 Parsed grade levels:', gradeLevels);
-          
-  //         if (gradeLevels && gradeLevels.length > 0) {
-  //           const mappedLevels = gradeLevels.map((gl: any) => ({
-  //             id: gl.id,
-  //             name: gl.name,
-  //             education_level: gl.education_level
-  //           }));
-  //           console.log('✅ Setting grade level options:', mappedLevels);
-  //           setGradeLevelOptions(mappedLevels);
-  //         } else {
-  //           console.warn('⚠️ No grade levels found in response');
-  //           setGradeLevelOptions([]);
-  //         }
-  //       })
-  //       .catch(error => {
-  //         console.error('❌ Error fetching grade levels:', error);
-  //         setGradeLevelOptions([]);
-  //       });
-  //   } else {
-  //     setGradeLevelOptions([]);
-  //   }
-  // }, [formData.staffType, formData.level, API_BASE_URL]);
-// Replace the grade levels useEffect with this fixed version:
-// Add this useEffect ONCE when component mounts (for debugging only)
-useEffect(() => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  
-  console.log('🔧 DEBUG: Testing API endpoints...');
-  
-  // Test PRIMARY level
-  fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=PRIMARY`)
-    .then(res => {
-      console.log('📊 PRIMARY Response Status:', res.status);
-      return res.json();
-    })
-    .then(data => {
-      console.log('✅ FULL API RESPONSE FOR PRIMARY:', JSON.stringify(data, null, 2));
-    })
-    .catch(err => {
-      console.error('❌ Error fetching PRIMARY:', err);
-    });
-
-  // Test NURSERY level
-  fetch(`${API_BASE_URL}/api/classrooms/grades/?education_level=NURSERY`)
-    .then(res => {
-      console.log('📊 NURSERY Response Status:', res.status);
-      return res.json();
-    })
-    .then(data => {
-      console.log('✅ FULL API RESPONSE FOR NURSERY:', JSON.stringify(data, null, 2));
-    })
-    .catch(err => {
-      console.error('❌ Error fetching NURSERY:', err);
-    });
-
-}, []); // Empty dependency array = runs only once on mount
-
-useEffect(() => {
-  if (formData.staffType === 'teaching' && formData.level) {
-    const isPrimary = formData.level === 'nursery' || formData.level === 'primary';
-    
-    if (!isPrimary) {
-      setGradeLevelOptions([]);
-      return;
-    }
-
-    const levelMap: Record<string, string> = {
-      nursery: 'NURSERY',
-      primary: 'PRIMARY',
-      junior_secondary: 'JUNIOR_SECONDARY',
-      senior_secondary: 'SENIOR_SECONDARY'
-    };
-
-    const educationLevel = levelMap[formData.level];
-    if (!educationLevel) return;
-
-    console.log('🔍 Fetching grade levels for:', educationLevel);
-    const url = `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`;
-    console.log('🔍 API URL:', url);
-
-    fetch(url)
-      .then(res => {
-        console.log('🔍 Grade levels response status:', res.status);
-        if (!res.ok) {
-          throw new Error(`API returned ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log('🔍 Grade levels data received:', data);
-        
-        // Handle both array and paginated responses
-        let gradeLevels = Array.isArray(data) ? data : (data.results || data.data || []);
-        
-        console.log('🔍 Parsed grade levels:', gradeLevels);
-        
-        if (gradeLevels && gradeLevels.length > 0) {
-          const mappedLevels = gradeLevels.map((gl: any) => ({
-            id: gl.id,
-            name: gl.name,
-            education_level: gl.education_level
-          }));
-          console.log('✅ Setting grade level options:', mappedLevels);
-          setGradeLevelOptions(mappedLevels);
-        } else {
-          console.warn('⚠️ No grade levels found in response. Full response:', data);
-          setGradeLevelOptions([]);
-          toast.error('No grade levels found. Please create grade levels in the system first.');
-        }
-      })
-      .catch(error => {
-        console.error('❌ Error fetching grade levels:', error);
-        console.error('Full error:', error.message);
+      if (!isPrimary) {
         setGradeLevelOptions([]);
-        toast.error(`Failed to load grade levels: ${error.message}`);
-      });
-  } else {
-    setGradeLevelOptions([]);
-  }
-}, [formData.staffType, formData.level, API_BASE_URL]);
-  // Photo Upload Handler
+        return;
+      }
+
+      const levelMap: Record<string, string> = {
+        nursery: 'NURSERY',
+        primary: 'PRIMARY',
+        junior_secondary: 'JUNIOR_SECONDARY',
+        senior_secondary: 'SENIOR_SECONDARY'
+      };
+
+      const educationLevel = levelMap[formData.level];
+      if (!educationLevel) return;
+
+      const url = `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`;
+
+      fetch(url)
+        .then(res => {
+          if (!res.ok) throw new Error(`API returned ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          let gradeLevels = Array.isArray(data) ? data : (data.results || data.data || []);
+          
+          if (gradeLevels && gradeLevels.length > 0) {
+            const mappedLevels = gradeLevels.map((gl: any) => ({
+              id: gl.id,
+              name: gl.name,
+              education_level: gl.education_level
+            }));
+            setGradeLevelOptions(mappedLevels);
+          } else {
+            setGradeLevelOptions([]);
+            toast.error('No grade levels found. Please create grade levels in the system first.');
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching grade levels:', error);
+          setGradeLevelOptions([]);
+          toast.error(`Failed to load grade levels: ${error.message}`);
+        });
+    } else {
+      setGradeLevelOptions([]);
+    }
+  }, [formData.staffType, formData.level, API_BASE_URL]);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -401,13 +288,11 @@ useEffect(() => {
     setPhotoPreview(null);
   };
 
-  // Form Input Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Subject Toggle Handler
   const handleSubjectChange = (subjectId: string | number, checked: boolean) => {
     setFormData(prev => {
       const subjectIdStr = String(subjectId);
@@ -418,7 +303,6 @@ useEffect(() => {
     });
   };
 
-  // Assignment Management
   const addAssignment = () => {
     const newAssignment: Assignment = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -441,16 +325,12 @@ useEffect(() => {
         if (assignment.id === assignmentId) {
           const updated: Assignment = { ...assignment, [field]: value };
 
-          // When classroom changes for secondary, fetch sections for that classroom
           if (field === 'classroom_id' && isSecondaryLevel) {
             updated.section_id = '';
             updated.subject_id = '';
             
-            // Get sections for this classroom
             const selectedClassroom = classroomOptions.find(c => c.id === Number(value));
             if (selectedClassroom) {
-              // For now, create section based on classroom info
-              // In a real scenario, you'd fetch sections from API
               updated.availableSections = [{
                 id: selectedClassroom.section,
                 name: selectedClassroom.section_name,
@@ -459,7 +339,6 @@ useEffect(() => {
             }
           }
 
-          // For primary/nursery: when grade level changes, load sections
           if (field === 'grade_level_id' && isPrimaryLevel) {
             updated.section_id = '';
             updated.subject_ids = [];
@@ -534,9 +413,7 @@ useEffect(() => {
       });
   };
 
-  // Save Handler
   const handleSave = async () => {
-    // Validation
     if (!formData.firstName || !formData.lastName || !formData.email) {
       toast.error('Please fill in all required fields');
       return;
@@ -594,18 +471,44 @@ useEffect(() => {
         assignments: assignments,
       };
 
-      // Mock API call - replace with actual API
-      console.log('Submitting teacher data:', payload);
-      
-      // Simulate API response
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      console.log('📤 Submitting teacher data:', payload);
+
+      // Get auth token if available
+      const token = localStorage.getItem('access_token');
+      const headers: any = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Call actual API
+      const response = await fetch(`${API_BASE_URL}/api/teachers/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ API Error:', errorData);
+        throw new Error(errorData.detail || `API error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('✅ API Response:', responseData);
+
       toast.success('Teacher added successfully');
-      setTeacherUsername('teacher_' + formData.employeeId);
-      setTeacherPassword('temp_pass_123');
+
+      // Use credentials from backend response
+      const username = responseData.user_username || responseData.generated_username || responseData.username;
+      const password = responseData.user_password || responseData.generated_password || responseData.password;
+
+      setTeacherUsername(username);
+      setTeacherPassword(password);
       setShowPasswordModal(true);
 
-      // Reset form
+      // Reset form after successful submission
       setTimeout(() => {
         setFormData({
           photo: null,
@@ -633,8 +536,8 @@ useEffect(() => {
         setPhotoPreview(null);
       }, 1000);
     } catch (err: any) {
-      console.error('Error creating teacher:', err);
-      toast.error('Failed to create teacher');
+      console.error('❌ Error creating teacher:', err);
+      toast.error(err.message || 'Failed to create teacher');
     } finally {
       setLoading(false);
     }
@@ -1010,7 +913,6 @@ useEffect(() => {
             </div>
 
             {isPrimaryLevel ? (
-              // PRIMARY/NURSERY: Single classroom assignment
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <div className="mb-4">
                   <p className="text-sm text-blue-700 font-medium mb-2">Primary/Nursery Assignment</p>
@@ -1020,7 +922,6 @@ useEffect(() => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Grade Level Dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level*</label>
                     <select
@@ -1061,7 +962,6 @@ useEffect(() => {
                     )}
                   </div>
 
-                  {/* Section Dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Section*</label>
                     <select
@@ -1096,7 +996,6 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Assignment Preview */}
                 {currentAssignments[0]?.grade_level_id && currentAssignments[0]?.section_id && (
                   <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm text-green-700">
@@ -1112,7 +1011,6 @@ useEffect(() => {
                 )}
               </div>
             ) : (
-              // SECONDARY: Multiple classroom-subject assignments
               <>
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-700 font-medium mb-2">Secondary Teacher Assignments</p>
@@ -1158,7 +1056,6 @@ useEffect(() => {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Classroom Selection */}
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-2">
                                 Classroom* 
@@ -1184,7 +1081,6 @@ useEffect(() => {
                               )}
                             </div>
 
-                            {/* Subject Selection */}
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-2">Subject*</label>
                               <select
@@ -1205,7 +1101,6 @@ useEffect(() => {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            {/* Periods per Week */}
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-2">
                                 Periods per Week
@@ -1220,7 +1115,6 @@ useEffect(() => {
                               />
                             </div>
 
-                            {/* Primary Teacher Checkbox */}
                             <div className="flex items-center pt-6">
                               <input
                                 type="checkbox"
@@ -1241,7 +1135,6 @@ useEffect(() => {
                       );
                     })}
 
-                    {/* Summary */}
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                       <p className="text-sm text-green-700 font-medium">
                         Total Assignments: {currentAssignments.length}
@@ -1318,7 +1211,7 @@ useEffect(() => {
               <div className="mb-3">
                 <label className="text-sm font-medium text-gray-600">Username:</label>
                 <div className="flex items-center gap-2 mt-1">
-                  <code className="flex-1 p-2 bg-white border border-gray-300 rounded text-sm">
+                  <code className="flex-1 p-2 bg-white border border-gray-300 rounded text-sm font-mono break-all">
                     {teacherUsername}
                   </code>
                   <button
@@ -1326,7 +1219,7 @@ useEffect(() => {
                       navigator.clipboard.writeText(teacherUsername!);
                       toast.success('Username copied!');
                     }}
-                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
                   >
                     Copy
                   </button>
@@ -1336,7 +1229,7 @@ useEffect(() => {
               <div>
                 <label className="text-sm font-medium text-gray-600">Password:</label>
                 <div className="flex items-center gap-2 mt-1">
-                  <code className="flex-1 p-2 bg-white border border-gray-300 rounded text-sm">
+                  <code className="flex-1 p-2 bg-white border border-gray-300 rounded text-sm font-mono break-all">
                     {teacherPassword}
                   </code>
                   <button
@@ -1344,7 +1237,7 @@ useEffect(() => {
                       navigator.clipboard.writeText(teacherPassword!);
                       toast.success('Password copied!');
                     }}
-                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
                   >
                     Copy
                   </button>
