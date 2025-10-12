@@ -7,53 +7,76 @@ BASE_URL = "https://school-management-project-qpox.onrender.com"
 # AUTHENTICATION CREDENTIALS
 # Replace these with actual admin credentials
 # ============================================
-ADMIN_USERNAME = "your_admin_username"  # Change this
-ADMIN_PASSWORD = "your_admin_password"  # Change this
+ADMIN_USERNAME = "ADM/GTS/OCT/25/003"  # Change this
+ADMIN_PASSWORD = "3u#97ypUGt37"  # Change this
 
 
 def get_auth_token():
     """Login and get authentication token"""
     print("Attempting to login...")
 
-    login_data = {
-        "username": ADMIN_USERNAME,
-        "password": ADMIN_PASSWORD,
-    }
+    # Try different login endpoints
+    endpoints = [
+        "/api/auth/login/",
+        "/api/login/",
+        "/api/token/",
+        "/api/auth/token/",
+    ]
 
-    # Try token-based authentication endpoint
-    response = requests.post(
-        f"{BASE_URL}/api/auth/login/",  # Adjust endpoint if different
-        json=login_data,
-        headers={"Content-Type": "application/json"},
-    )
+    for endpoint in endpoints:
+        print(f"Trying endpoint: {endpoint}")
 
-    if response.status_code == 200:
-        result = response.json()
-        token = result.get("token") or result.get("key") or result.get("auth_token")
-        if token:
-            print(f"✅ Login successful! Token obtained.")
-            return token
+        login_data = {
+            "username": ADMIN_USERNAME,
+            "password": ADMIN_PASSWORD,
+        }
+
+        response = requests.post(
+            f"{BASE_URL}{endpoint}",
+            json=login_data,
+            headers={"Content-Type": "application/json"},
+        )
+
+        print(f"  Status: {response.status_code}")
+
+        if response.status_code == 200:
+            try:
+                result = response.json()
+                token = (
+                    result.get("token")
+                    or result.get("key")
+                    or result.get("auth_token")
+                    or result.get("access")
+                )
+                if token:
+                    print(f"✅ Login successful! Token obtained from {endpoint}")
+                    return token
+                else:
+                    print(f"⚠️ Login successful but no token found")
+                    print(f"Response keys: {list(result.keys())}")
+            except Exception as e:
+                print(f"  Error parsing response: {e}")
+        elif response.status_code == 404:
+            print(f"  Endpoint not found, trying next...")
+            continue
         else:
-            print(f"⚠️ Login successful but no token found in response")
-            print(f"Response: {json.dumps(result, indent=2)}")
-            return None
-    else:
-        print(f"❌ Login failed with status {response.status_code}")
-        try:
-            print(f"Error: {response.json()}")
-        except:
-            print(f"Error: {response.text}")
-        return None
+            try:
+                print(f"  Error: {response.json()}")
+            except:
+                print(f"  Error: {response.text[:200]}")
+
+    print("\n❌ Could not login with any endpoint")
+    return None
 
 
 def create_teacher(token=None):
     """Test creating a teacher via API"""
 
     teacher_data = {
-        "user_email": "newteachersunday@example.com",
+        "user_email": "newteacher006508@example.com",
         "user_first_name": "Python",
         "user_last_name": "Request",
-        "employee_id": "EMP0098792",
+        "employee_id": "EMP0098708",
         "staff_type": "teaching",
         "level": "junior_secondary",
         "qualification": "B.A Education",
@@ -176,9 +199,24 @@ def test_unauthenticated_access():
 
 
 if __name__ == "__main__":
+    import sys
+
     print("=" * 60)
     print("TEACHER API TEST WITH AUTHENTICATION")
     print("=" * 60)
+
+    # Check if credentials are set
+    if (
+        ADMIN_USERNAME == "your_admin_username"
+        or ADMIN_PASSWORD == "your_admin_password"
+    ):
+        print("\n⚠️  WARNING: You need to update the credentials in the script!")
+        print("Please edit the script and set:")
+        print("  ADMIN_USERNAME = 'your_actual_username'")
+        print("  ADMIN_PASSWORD = 'your_actual_password'")
+        print("\nTo create a superuser, run:")
+        print("  python manage.py createsuperuser")
+        sys.exit(1)
 
     # Step 1: Login and get token
     print("\n" + "=" * 60)

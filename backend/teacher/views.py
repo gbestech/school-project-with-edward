@@ -12,41 +12,68 @@ from .serializers import (
 from classroom.models import GradeLevel, Section
 from subject.models import Subject
 from utils.section_filtering import SectionFilterMixin
-
-from schoolSettings.permissions import (
-    HasTeachersPermission,
-    HasTeachersPermissionOrReadOnly,
-)
-
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+
+
+class TeacherModulePermission(permissions.BasePermission):
+    """
+    Custom permission to check if user has teachers module permission
+    """
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        if not request.user.is_active:
+            return False
+
+        # Super admins have full access
+        if request.user.is_superuser and request.user.is_staff:
+            return True
+
+        # Determine permission type based on HTTP method
+        method_to_permission = {
+            "GET": "read",
+            "POST": "write",
+            "PUT": "write",
+            "PATCH": "write",
+            "DELETE": "delete",
+        }
+        permission_type = method_to_permission.get(request.method, "read")
+
+        # Check if user has the required permission
+        from schoolSettings.models import UserRole
+
+        user_roles = UserRole.objects.filter(
+            user=request.user, is_active=True
+        ).prefetch_related("role", "custom_permissions")
+
+        for user_role in user_roles:
+            # Skip expired assignments
+            if user_role.is_expired():
+                continue
+
+            # Check custom permissions first
+            custom_perm = user_role.custom_permissions.filter(
+                module="teachers", permission_type=permission_type, granted=True
+            ).first()
+
+            if custom_perm:
+                return True
+
+            # Check role permissions
+            if user_role.role.has_permission("teachers", permission_type):
+                return True
+
+        return False
 
 
 class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     queryset = Teacher.objects.select_related("user").all()
     serializer_class = TeacherSerializer
     authentication_classes = [TokenAuthentication, SessionAuthentication]
-
-    def get_permissions(self):
-        """
-        Set permissions based on action using the role-based permission system:
-        - create/delete: Requires 'write'/'delete' permission on teachers module
-        - update: Requires 'write' permission on teachers module
-        - list/retrieve: Requires 'read' permission on teachers module
-        """
-        if self.action == "create":
-            # Requires write permission to create teachers
-            permission_classes = [HasTeachersPermission("write")]
-        elif self.action == "destroy":
-            # Requires delete permission to delete teachers
-            permission_classes = [HasTeachersPermission("delete")]
-        elif self.action in ["update", "partial_update"]:
-            # Requires write permission to update teachers
-            permission_classes = [HasTeachersPermission("write")]
-        else:  # list, retrieve
-            # Requires read permission to view teachers
-            permission_classes = [HasTeachersPermission("read")]
-
-        return [permission() for permission in permission_classes]
+    # Use ONLY the custom permission class - remove get_permissions() method
+    permission_classes = [TeacherModulePermission]
 
     def create(self, request, *args, **kwargs):
         """Override create to include generated credentials in response"""
@@ -186,6 +213,7 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return queryset
 
 
+# Keep your other ViewSets as they are...
 class AssignmentRequestViewSet(viewsets.ModelViewSet):
     queryset = AssignmentRequest.objects.all()
     serializer_class = AssignmentRequestSerializer
@@ -223,10 +251,6 @@ class AssignmentRequestViewSet(viewsets.ModelViewSet):
         assignment_request.reviewed_at = timezone.now()
         assignment_request.reviewed_by = request.user
         assignment_request.save()
-
-        # Here you could add logic to automatically create assignments
-        # based on the approved request
-
         return Response({"status": "Request approved"})
 
     @action(detail=True, methods=["post"])
@@ -237,7 +261,6 @@ class AssignmentRequestViewSet(viewsets.ModelViewSet):
         assignment_request.reviewed_by = request.user
         assignment_request.admin_notes = request.data.get("admin_notes", "")
         assignment_request.save()
-
         return Response({"status": "Request rejected"})
 
     @action(detail=True, methods=["post"])
@@ -245,7 +268,6 @@ class AssignmentRequestViewSet(viewsets.ModelViewSet):
         assignment_request = self.get_object()
         assignment_request.status = "cancelled"
         assignment_request.save()
-
         return Response({"status": "Request cancelled"})
 
 
@@ -256,41 +278,28 @@ class TeacherScheduleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = TeacherSchedule.objects.all()
-
-        # Filter by teacher
         teacher_id = self.request.query_params.get("teacher_id", None)
         if teacher_id:
             queryset = queryset.filter(teacher_id=teacher_id)
-
-        # Filter by academic session
         academic_session = self.request.query_params.get("academic_session", None)
         if academic_session:
             queryset = queryset.filter(academic_session=academic_session)
-
-        # Filter by term
         term = self.request.query_params.get("term", None)
         if term:
             queryset = queryset.filter(term=term)
-
-        # Filter by day of week
         day_of_week = self.request.query_params.get("day_of_week", None)
         if day_of_week:
             queryset = queryset.filter(day_of_week=day_of_week)
-
         return queryset
 
     @action(detail=False, methods=["get"])
     def weekly_schedule(self, request):
-        """Get weekly schedule for a teacher"""
         teacher_id = request.query_params.get("teacher_id")
         if not teacher_id:
             return Response(
                 {"error": "teacher_id is required"}, status=status.HTTP_400_BAD_REQUEST
             )
-
         schedules = self.get_queryset().filter(teacher_id=teacher_id, is_active=True)
-
-        # Group by day of week
         weekly_schedule = {}
         days = [
             "monday",
@@ -301,12 +310,10 @@ class TeacherScheduleViewSet(viewsets.ModelViewSet):
             "saturday",
             "sunday",
         ]
-
         for day in days:
             weekly_schedule[day] = schedules.filter(day_of_week=day).order_by(
                 "start_time"
             )
-
         serializer = self.get_serializer(schedules, many=True)
         return Response(
             {"weekly_schedule": weekly_schedule, "schedules": serializer.data}
@@ -314,16 +321,13 @@ class TeacherScheduleViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def bulk_create(self, request):
-        """Create multiple schedule entries at once"""
         teacher_id = request.data.get("teacher_id")
         schedules_data = request.data.get("schedules", [])
-
         if not teacher_id or not schedules_data:
             return Response(
                 {"error": "teacher_id and schedules are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         created_schedules = []
         for schedule_data in schedules_data:
             schedule_data["teacher"] = teacher_id
@@ -333,7 +337,6 @@ class TeacherScheduleViewSet(viewsets.ModelViewSet):
                 created_schedules.append(schedule)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         return Response(
             {
                 "message": f"Created {len(created_schedules)} schedule entries",
@@ -342,13 +345,11 @@ class TeacherScheduleViewSet(viewsets.ModelViewSet):
         )
 
 
-# Additional utility views for assignment management
 class AssignmentManagementViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     @action(detail=False, methods=["get"])
     def available_subjects(self, request):
-        """Get all available subjects"""
         subjects = Subject.objects.filter(is_active=True)
         return Response(
             {
@@ -361,7 +362,6 @@ class AssignmentManagementViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"])
     def available_grade_levels(self, request):
-        """Get all available grade levels"""
         grade_levels = GradeLevel.objects.filter(is_active=True)
         return Response(
             {
@@ -378,7 +378,6 @@ class AssignmentManagementViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"])
     def available_sections(self, request):
-        """Get all available sections"""
         sections = Section.objects.filter(is_active=True)
         return Response(
             {
@@ -395,16 +394,12 @@ class AssignmentManagementViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"])
     def teacher_assignments_summary(self, request):
-        """Get summary of teacher assignments"""
         teacher_id = request.query_params.get("teacher_id")
         if not teacher_id:
             return Response(
                 {"error": "teacher_id is required"}, status=status.HTTP_400_BAD_REQUEST
             )
-
         teacher = get_object_or_404(Teacher, id=teacher_id)
-
-        # Get assignment counts
         subject_assignments = (
             teacher.teacher_assignments.values("subject").distinct().count()
         )
@@ -413,19 +408,14 @@ class AssignmentManagementViewSet(viewsets.ViewSet):
             .distinct()
             .count()
         )
-        total_students = (
-            0  # This would need to be calculated based on actual student enrollment
-        )
-
-        # Get pending requests
+        total_students = 0
         pending_requests = teacher.assignment_requests.filter(status="pending").count()
-
         return Response(
             {
                 "total_subjects": subject_assignments,
                 "total_classes": class_assignments,
                 "total_students": total_students,
                 "pending_requests": pending_requests,
-                "teaching_hours": 25,  # This would need to be calculated from schedule
+                "teaching_hours": 25,
             }
         )
