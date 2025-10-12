@@ -13,6 +13,7 @@ from classroom.models import GradeLevel, Section
 from subject.models import Subject
 from utils.section_filtering import SectionFilterMixin
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class TeacherModulePermission(permissions.BasePermission):
@@ -71,7 +72,12 @@ class TeacherModulePermission(permissions.BasePermission):
 class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     queryset = Teacher.objects.select_related("user").all()
     serializer_class = TeacherSerializer
-    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    # Add JWT authentication support
+    authentication_classes = [
+        JWTAuthentication,
+        TokenAuthentication,
+        SessionAuthentication,
+    ]
     # Use ONLY the custom permission class - remove get_permissions() method
     permission_classes = [TeacherModulePermission]
 

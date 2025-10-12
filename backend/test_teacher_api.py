@@ -73,10 +73,10 @@ def create_teacher(token=None):
     """Test creating a teacher via API"""
 
     teacher_data = {
-        "user_email": "newteacher006508@example.com",
+        "user_email": "newteacher006501@example.com",
         "user_first_name": "Python",
         "user_last_name": "Request",
-        "employee_id": "EMP0098708",
+        "employee_id": "EMP0098703",
         "staff_type": "teaching",
         "level": "junior_secondary",
         "qualification": "B.A Education",
