@@ -18,6 +18,8 @@ class TeacherAssignmentSerializer(serializers.ModelSerializer):
         source="classroom.section.grade_level.education_level", read_only=True
     )
     classroom_name = serializers.CharField(source="classroom.name", read_only=True)
+    # Explicitly define assigned_date to avoid datetime/date coercion issues
+    assigned_date = serializers.SerializerMethodField()
 
     class Meta:
         model = ClassroomTeacherAssignment
@@ -36,6 +38,16 @@ class TeacherAssignmentSerializer(serializers.ModelSerializer):
             "assigned_date",
             "is_active",
         ]
+
+    def get_assigned_date(self, obj):
+        """Ensure assigned_date is returned as a date string"""
+        if obj.assigned_date:
+            # If it's a datetime, convert to date first
+            if hasattr(obj.assigned_date, "date"):
+                return obj.assigned_date.date().isoformat()
+            # If it's already a date, just convert to ISO format
+            return obj.assigned_date.isoformat()
+        return None
 
 
 class AssignmentRequestSerializer(serializers.ModelSerializer):
