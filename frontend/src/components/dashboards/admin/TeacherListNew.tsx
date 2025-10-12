@@ -70,7 +70,7 @@ interface Teacher {
     section_name: string;
     grade_level_name: string;
     education_level: string;
-    academic_year: string;
+    academic_session: string;
     term: string;
     subject_name: string;
     subject_code: string;
@@ -987,7 +987,7 @@ const TeacherList = () => {
                               </div>
                               <div>
                                 <span className="font-medium text-gray-700">Academic Year:</span>
-                                <span className="ml-1 text-gray-600">{assignment.academic_year} - {assignment.term}</span>
+                                <span className="ml-1 text-gray-600">{assignment.academic_session} - {assignment.term}</span>
                               </div>
                               <div>
                                 <span className="font-medium text-gray-700">Students:</span>
@@ -1114,14 +1114,10 @@ interface EditTeacherFormProps {
   isDark: boolean;
 }
 
+// Replace the entire EditTeacherForm component with this fixed version
+
 const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses, isDark }) => {
   console.log('🔍 EditTeacherForm received teacher:', teacher);
-  console.log('🔍 Teacher first_name:', teacher?.first_name);
-  console.log('🔍 Teacher last_name:', teacher?.last_name);
-  console.log('🔍 Teacher assigned_subjects:', teacher?.assigned_subjects);
-  console.log('🔍 Teacher user object:', teacher?.user);
-  console.log('🔍 All teacher keys:', Object.keys(teacher || {}));
-  console.log('🔍 Teacher full object:', JSON.stringify(teacher, null, 2));
   
   const [formData, setFormData] = useState({
     first_name: teacher?.user?.first_name || teacher?.first_name || '',
@@ -1140,20 +1136,18 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(teacher?.photo || null);
   const [uploading, setUploading] = useState(false);
-  const [subjectOptions, setSubjectOptions] = useState<{id: string, name: string}[]>([]);
+  const [subjectOptions, setSubjectOptions] = useState<{id: string | number, name: string}[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  
-  // New assignment management state
-  const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string | number; name: string }>>([]);
   const [currentAssignments, setCurrentAssignments] = useState<Array<{
     id: string;
     classroom_id: string | number;
-    subject_id: string;
+    subject_id: string | number;
     is_primary_teacher: boolean;
     periods_per_week: number;
   }>>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Helper function to get initials from name
   const getInitials = (firstName: string, lastName: string) => {
     const first = firstName?.charAt(0) || '';
     const last = lastName?.charAt(0) || '';
@@ -1162,100 +1156,98 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
 
   // Load subjects and classrooms when level changes
   useEffect(() => {
-    if (formData.staff_type === 'teaching' && formData.level) {
-      let educationLevels: string[] = [];
-      
-      if (formData.level === 'nursery') {
-        educationLevels = ['NURSERY'];
-      } else if (formData.level === 'primary') {
-        educationLevels = ['PRIMARY'];
-      } else if (formData.level === 'junior_secondary') {
-        educationLevels = ['JUNIOR_SECONDARY'];
-      } else if (formData.level === 'senior_secondary') {
-        educationLevels = ['SENIOR_SECONDARY'];
-      } else if (formData.level === 'secondary') {
-        educationLevels = ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
-      }
-      
-      // Fetch subjects for each education level and combine them
-      const fetchSubjects = async () => {
-        try {
-          const allSubjects = new Map();
-          
-          for (const level of educationLevels) {
-            const response = await fetch(`/api/subjects/?education_level=${level}`);
-            const data = await response.json();
-            const subjects = Array.isArray(data.results) ? data.results : data;
-            
-            subjects.forEach((subject: any) => {
-              if (!allSubjects.has(subject.id)) {
-                allSubjects.set(subject.id, { id: subject.id, name: subject.name });
-              }
-            });
-          }
-          
-          setSubjectOptions(Array.from(allSubjects.values()));
-        } catch (error) {
-          console.error('Error fetching subjects:', error);
-          setSubjectOptions([]);
-        }
-      };
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        if (formData.staff_type === 'teaching' && formData.level) {
+          const levelMap: Record<string, string> = {
+            nursery: 'NURSERY',
+            primary: 'PRIMARY',
+            junior_secondary: 'JUNIOR_SECONDARY',
+            senior_secondary: 'SENIOR_SECONDARY',
+            secondary: 'SECONDARY'
+          };
 
-      // Fetch classrooms for the selected level
-      const fetchClassrooms = async () => {
-        try {
-          const allClassrooms = new Map();
+          const educationLevel = levelMap[formData.level];
           
-          for (const level of educationLevels) {
-            const response = await fetch(`/api/classrooms/classrooms/?section__grade_level__education_level=${level}`);
-            if (response.ok) {
-              const data = await response.json();
-              const classrooms = Array.isArray(data.results) ? data.results : data;
-              
-              classrooms.forEach((classroom: any) => {
-                const displayName = classroom.grade_level_name && classroom.section_name ? 
-                  `${classroom.grade_level_name} ${classroom.section_name}` : 
-                  classroom.name || 'Unnamed Classroom';
-                
-                // Use display name as key to prevent duplicates
-                if (!allClassrooms.has(displayName)) {
-                  allClassrooms.set(displayName, { 
-                    id: classroom.id, 
-                    name: displayName
-                  });
-                }
-              });
-            }
+          if (!educationLevel) {
+            setLoading(false);
+            return;
           }
-          
-          setClassroomOptions(Array.from(allClassrooms.values()));
-        } catch (error) {
-          console.error('Error fetching classrooms:', error);
+
+          // Fetch subjects
+          try {
+            const subjectResponse = await fetch(`/api/subjects/?education_level=${educationLevel}`);
+            const subjectData = await subjectResponse.json();
+            const subjects = Array.isArray(subjectData) ? subjectData : (subjectData.results || []);
+            console.log('Loaded subjects:', subjects);
+            setSubjectOptions(subjects.map((s: any) => ({
+              id: s.id,
+              name: s.name
+            })));
+          } catch (error) {
+            console.error('Error fetching subjects:', error);
+            setSubjectOptions([]);
+          }
+
+          // Fetch classrooms
+          try {
+            const classroomResponse = await fetch(`/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`);
+            const classroomData = await classroomResponse.json();
+            const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
+            console.log('Loaded classrooms:', classrooms);
+            setClassroomOptions(classrooms.map((c: any) => ({
+              id: c.id,
+              name: c.name || `${c.grade_level_name} ${c.section_name}`
+            })));
+          } catch (error) {
+            console.error('Error fetching classrooms:', error);
+            setClassroomOptions([]);
+          }
+        } else {
+          setSubjectOptions([]);
           setClassroomOptions([]);
         }
-      };
-      
-      fetchSubjects();
-      fetchClassrooms();
-    } else {
-      setSubjectOptions([]);
-      setClassroomOptions([]);
-    }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [formData.staff_type, formData.level]);
 
-  // Load current teacher's subjects
+  // Load teacher's assigned subjects AFTER subjects are loaded
   useEffect(() => {
-    console.log('🔍 Teacher assigned subjects effect triggered:', teacher?.assigned_subjects);
-    if (teacher?.assigned_subjects && Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.length > 0) {
-      console.log('✅ Loading teacher assigned subjects:', teacher.assigned_subjects);
-      const subjectIds = teacher.assigned_subjects.map(s => s.id.toString());
-      console.log('✅ Setting selected subjects:', subjectIds);
+    console.log('Loading assigned subjects. Teacher assigned_subjects:', teacher?.assigned_subjects);
+    console.log('Available subject options:', subjectOptions);
+    
+    if (teacher?.assigned_subjects && Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.length > 0 && subjectOptions.length > 0) {
+      const subjectIds = teacher.assigned_subjects.map(s => String(s.id));
+      console.log('Setting selected subjects:', subjectIds);
       setSelectedSubjects(subjectIds);
-    } else {
-      console.log('❌ No assigned subjects found for teacher');
-      setSelectedSubjects([]);
     }
-  }, [teacher?.assigned_subjects]);
+  }, [teacher?.assigned_subjects, subjectOptions]);
+
+  // Load teacher's classroom assignments AFTER classrooms are loaded
+  useEffect(() => {
+    console.log('Loading classroom assignments. Teacher assignments:', teacher?.classroom_assignments);
+    console.log('Available classrooms:', classroomOptions);
+    
+    if (teacher?.classroom_assignments && Array.isArray(teacher.classroom_assignments) && teacher.classroom_assignments.length > 0) {
+      const assignments = teacher.classroom_assignments.map((assignment: any, index: number) => {
+        console.log(`Assignment ${index}:`, assignment);
+        return {
+          id: `existing-${assignment.id || index}`,
+          classroom_id: assignment.classroom_id,
+          subject_id: assignment.subject_id || '', // May not be available in response
+          is_primary_teacher: assignment.is_primary_teacher,
+          periods_per_week: assignment.periods_per_week,
+        };
+      });
+      console.log('Setting current assignments:', assignments);
+      setCurrentAssignments(assignments);
+    }
+  }, [teacher?.classroom_assignments, classroomOptions]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -1270,7 +1262,6 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     if (file) {
       setUploading(true);
       try {
-        // Upload to Cloudinary
         const cloudinaryData = new FormData();
         cloudinaryData.append('file', file);
         cloudinaryData.append('upload_preset', 'profile_upload');
@@ -1301,24 +1292,16 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     setPhotoPreview(null);
   };
 
-  const handleSubjectChange = (subjectId: string, checked: boolean) => {
+  const handleSubjectChange = (subjectId: string | number, checked: boolean) => {
     console.log('Subject change:', subjectId, checked);
+    const subjectIdStr = String(subjectId);
     if (checked) {
-      setSelectedSubjects(prev => {
-        const newSubjects = [...prev, subjectId];
-        console.log('Added subject, new list:', newSubjects);
-        return newSubjects;
-      });
+      setSelectedSubjects(prev => [...prev, subjectIdStr]);
     } else {
-      setSelectedSubjects(prev => {
-        const newSubjects = prev.filter(id => id !== subjectId);
-        console.log('Removed subject, new list:', newSubjects);
-        return newSubjects;
-      });
+      setSelectedSubjects(prev => prev.filter(id => id !== subjectIdStr));
     }
   };
 
-  // Assignment management functions
   const addAssignment = () => {
     const newAssignment = {
       id: Date.now().toString(),
@@ -1327,10 +1310,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
       is_primary_teacher: false,
       periods_per_week: 1,
     };
-    setCurrentAssignments(prev => {
-      const updated = [...prev, newAssignment];
-      return updated;
-    });
+    setCurrentAssignments(prev => [...prev, newAssignment]);
   };
 
   const removeAssignment = (assignmentId: string) => {
@@ -1348,47 +1328,29 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     );
   };
 
-  // Load current teacher's assignments
-  useEffect(() => {
-    if (teacher.classroom_assignments && Array.isArray(teacher.classroom_assignments) && teacher.classroom_assignments.length > 0) {
-      const assignments = teacher.classroom_assignments.map((assignment, index) => ({
-        id: `existing-${index}`,
-        classroom_id: assignment.classroom_id.toString(),
-        subject_id: '', // We'll need to get this from the assignment
-        is_primary_teacher: assignment.is_primary_teacher,
-        periods_per_week: assignment.periods_per_week,
-      }));
-      setCurrentAssignments(assignments);
-    }
-  }, [teacher.classroom_assignments]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🔍 Form submission - selectedSubjects:', selectedSubjects);
-    console.log('🔍 Form submission - formData:', formData);
+    console.log('Form submission - selectedSubjects:', selectedSubjects);
+    console.log('Form submission - currentAssignments:', currentAssignments);
     
-    // Prepare data for backend
     const updateData: UpdateTeacherData = {
       ...formData,
-      level: formData.level, // Don't convert to 'secondary', keep the original value
-      subjects: selectedSubjects,
-      // Map frontend fields to backend expected fields
+      subjects: selectedSubjects.map(s => Number(s)),
       user: {
         first_name: formData.first_name,
         last_name: formData.last_name,
         email: formData.email
       },
-      // Include new assignment structure
       assignments: currentAssignments.map(assignment => ({
-        classroom_id: parseInt(assignment.classroom_id.toString()),
-        subject_id: parseInt(assignment.subject_id),
+        classroom_id: Number(assignment.classroom_id),
+        subject_id: Number(assignment.subject_id),
         is_primary_teacher: assignment.is_primary_teacher,
         periods_per_week: assignment.periods_per_week,
       }))
     };
     
-    console.log('🔍 Final updateData being sent:', updateData);
+    console.log('Final updateData being sent:', updateData);
     onSave(updateData);
   };
 
@@ -1438,23 +1400,12 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           >
             {uploading ? 'Uploading...' : 'Choose New Photo'}
           </label>
-          {photoPreview && (
-            <button 
-              type="button"
-              onClick={removePhoto} 
-              className="text-red-500 text-sm mt-2 hover:text-red-700"
-            >
-              Remove Photo
-            </button>
-          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            First Name *
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>First Name *</label>
           <input
             type="text"
             name="first_name"
@@ -1466,9 +1417,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Last Name *
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Last Name *</label>
           <input
             type="text"
             name="last_name"
@@ -1480,9 +1429,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Email *
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Email *</label>
           <input
             type="email"
             name="email"
@@ -1494,9 +1441,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Employee ID
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Employee ID</label>
           <input
             type="text"
             name="employee_id"
@@ -1508,9 +1453,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Phone Number
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Phone Number</label>
           <input
             type="tel"
             name="phone_number"
@@ -1521,9 +1464,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div className="md:col-span-2">
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Address
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Address</label>
           <input
             type="text"
             name="address"
@@ -1534,9 +1475,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Staff Type
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Staff Type</label>
           <select
             name="staff_type"
             value={formData.staff_type}
@@ -1549,12 +1488,10 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Level
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Level</label>
           <select
             name="level"
-            value={formData.level}
+            value={formData.level || ''}
             onChange={handleInputChange}
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
           >
@@ -1563,14 +1500,11 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
             <option value="primary">Primary</option>
             <option value="junior_secondary">Junior Secondary</option>
             <option value="senior_secondary">Senior Secondary</option>
-            <option value="secondary">Secondary (Legacy)</option>
           </select>
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Qualification
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Qualification</label>
           <input
             type="text"
             name="qualification"
@@ -1581,9 +1515,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
 
         <div>
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Specialization
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Specialization</label>
           <input
             type="text"
             name="specialization"
@@ -1602,63 +1534,55 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
               onChange={handleInputChange}
               className="mr-2"
             />
-            <span className={`text-sm font-medium ${themeClasses.textSecondary}`}>
-              Active Status
-            </span>
+            <span className={`text-sm font-medium ${themeClasses.textSecondary}`}>Active Status</span>
           </label>
         </div>
       </div>
 
-      {/* Subject Selection (only for teaching staff) */}
+      {/* Subject Selection */}
       {formData.staff_type === 'teaching' && formData.level && (
         <div className="mb-4">
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-            Assigned Subjects
-          </label>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Assigned Subjects</label>
           
-          {/* Show currently selected subjects */}
           {selectedSubjects.length > 0 && (
-            <div className="mb-3">
-              <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
-                Currently Selected ({selectedSubjects.length})
-              </label>
-              <div className="bg-blue-50 p-3 rounded border">
-                <div className="flex flex-wrap gap-2">
-                  {selectedSubjects.map(subjectId => {
-                    const subject = subjectOptions.find(s => s.id === subjectId);
-                    return subject ? (
-                      <span key={subjectId} className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
-                        {subject.name}
-                        <button
-                          type="button"
-                          onClick={() => handleSubjectChange(subjectId, false)}
-                          className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ) : null;
-                  })}
-                </div>
+            <div className="mb-3 p-3 bg-blue-50 rounded border">
+              <p className="text-sm font-medium mb-2">Currently Selected ({selectedSubjects.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedSubjects.map(subjectId => {
+                  const subject = subjectOptions.find(s => String(s.id) === subjectId);
+                  return subject ? (
+                    <span key={subjectId} className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                      {subject.name}
+                      <button
+                        type="button"
+                        onClick={() => handleSubjectChange(subjectId, false)}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : null;
+                })}
               </div>
             </div>
           )}
           
-          {/* Available subjects */}
-          {subjectOptions.length === 0 ? (
-            <div className="bg-gray-50 p-3 rounded border">
-              <span className="text-gray-500">No subjects found for this level.</span>
+          {loading ? (
+            <div className="text-center p-4 text-gray-500">Loading subjects...</div>
+          ) : subjectOptions.length === 0 ? (
+            <div className="bg-gray-50 p-3 rounded border text-sm text-gray-500">
+              No subjects found for this level.
             </div>
           ) : (
             <div className="bg-gray-50 p-3 rounded border max-h-40 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {subjectOptions.map(subj => (
-                  <label key={subj.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded">
+                  <label key={subj.id} className="flex items-center space-x-2 cursor-pointer hover:bg-white p-2 rounded">
                     <input
                       type="checkbox"
-                      checked={selectedSubjects.includes(subj.id)}
+                      checked={selectedSubjects.includes(String(subj.id))}
                       onChange={(e) => handleSubjectChange(subj.id, e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded"
                     />
                     <span className="text-sm text-gray-700">{subj.name}</span>
                   </label>
@@ -1669,27 +1593,23 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         </div>
       )}
 
-      {/* Classroom Assignments (only for teaching staff) */}
+      {/* Classroom Assignments */}
       {formData.staff_type === 'teaching' && formData.level && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-3">
-            <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>
-              Classroom Assignments
-            </label>
+            <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>Classroom Assignments</label>
             <button
               type="button"
               onClick={addAssignment}
-              className={`px-3 py-1 text-sm rounded-lg font-medium transition-colors duration-200 ${themeClasses.btnPrimary}`}
+              className="px-3 py-1 text-sm rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700"
             >
               Add Assignment
             </button>
           </div>
 
           {currentAssignments.length === 0 ? (
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <p className="text-gray-500 text-sm text-center">
-                No classroom assignments added yet. Click "Add Assignment" to assign this teacher to specific classrooms and subjects.
-              </p>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center text-gray-500 text-sm">
+              No classroom assignments added yet.
             </div>
           ) : (
             <div className="space-y-4">
@@ -1707,7 +1627,6 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* Classroom Selection */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Classroom</label>
                       <select
@@ -1724,7 +1643,6 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
                       </select>
                     </div>
 
-                    {/* Subject Selection */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
                       <select
@@ -1741,9 +1659,8 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
                       </select>
                     </div>
 
-                    {/* Periods per Week */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Periods per Week</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Periods/Week</label>
                       <input
                         type="number"
                         min="1"
@@ -1754,16 +1671,15 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
                       />
                     </div>
 
-                    {/* Primary Teacher Checkbox */}
-                    <div className="flex items-center">
+                    <div className="flex items-center pt-6">
                       <input
                         type="checkbox"
                         id={`primary-${assignment.id}`}
                         checked={assignment.is_primary_teacher}
                         onChange={(e) => updateAssignment(assignment.id, 'is_primary_teacher', e.target.checked)}
-                        className="rounded border-gray-300 mr-2"
+                        className="rounded mr-2"
                       />
-                      <label htmlFor={`primary-${assignment.id}`} className="text-xs font-medium text-gray-600 cursor-pointer">
+                      <label htmlFor={`primary-${assignment.id}`} className="text-xs font-medium text-gray-600">
                         Primary Teacher
                       </label>
                     </div>
@@ -1779,13 +1695,13 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         <button
           type="button"
           onClick={onCancel}
-          className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors duration-200 ${themeClasses.btnSecondary}`}
+          className="flex-1 px-4 py-2 border rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${themeClasses.btnPrimary}`}
+          className="flex-1 px-4 py-2 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white"
         >
           Save Changes
         </button>
