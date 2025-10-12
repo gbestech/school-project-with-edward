@@ -11,7 +11,7 @@ def create_teacher():
         "user_email": "newteacher123@example.com",  # Also change this
         "user_first_name": "Python",
         "user_last_name": "Request",
-        "employee_id": "EMP0099",  # Change this to a unique ID
+        "employee_id": "EMP009909",  # Change this to a unique ID
         "staff_type": "teaching",
         "level": "junior_secondary",
         "qualification": "B.A Education",
