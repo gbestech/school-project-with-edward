@@ -414,144 +414,142 @@ const AddTeacherForm: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.firstName || !formData.lastName || !formData.email) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  if (!formData.firstName || !formData.lastName || !formData.email) {
+    toast.error('Please fill in all required fields');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      let assignments: any[] = [];
+  try {
+    let assignments: any[] = [];
 
-      if (isPrimaryLevel) {
-        const firstAssignment = currentAssignments[0];
-        if (firstAssignment?.grade_level_id && firstAssignment?.section_id) {
-          assignments = [{
-            grade_level_id: firstAssignment.grade_level_id,
-            section_id: firstAssignment.section_id,
-            subject_ids: formData.subjects
-          }];
-        } else {
-          toast.error('Please select a classroom for this teacher');
-          setLoading(false);
-          return;
-        }
-      } else if (isSecondaryLevel) {
-        assignments = currentAssignments
-          .filter(a => a.classroom_id && a.subject_id)
-          .map(a => ({
-            classroom_id: a.classroom_id,
-            subject_id: a.subject_id,
-            is_primary_teacher: a.is_primary_teacher || false,
-            periods_per_week: a.periods_per_week || 1
-          }));
-      }
-
-      const payload: any = {
-        user_email: formData.email,
-        user_first_name: formData.firstName,
-        user_middle_name: formData.middleName,
-        user_last_name: formData.lastName,
-        gender: formData.gender,
-        blood_group: formData.bloodGroup,
-        date_of_birth: formData.dateOfBirth,
-        place_of_birth: formData.placeOfBirth,
-        academic_session: formData.academicSession,
-        employee_id: formData.employeeId,
-        address: formData.address,
-        phone_number: formData.phoneNumber,
-        photo: formData.photo,
-        staff_type: formData.staffType,
-        level: formData.level,
-        subjects: formData.subjects,
-        hire_date: formData.hireDate,
-        qualification: formData.qualification,
-        specialization: formData.specialization,
-        assignments: assignments,
-      };
-
-      console.log('📤 Submitting teacher data:', payload);
-
-      // Get auth token from localStorage
-      const token = localStorage.getItem('access_token');
-      console.log('🔑 Token found:', token ? '✓ Yes' : '✗ No');
-      
-      if (!token) {
-        toast.error('Authentication token not found. Please log in again.');
+    if (isPrimaryLevel) {
+      const firstAssignment = currentAssignments[0];
+      if (firstAssignment?.grade_level_id && firstAssignment?.section_id) {
+        assignments = [{
+          grade_level_id: firstAssignment.grade_level_id,
+          section_id: firstAssignment.section_id,
+          subject_ids: formData.subjects
+        }];
+      } else {
+        toast.error('Please select a classroom for this teacher');
         setLoading(false);
         return;
       }
-
-      const headers: any = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      };
-
-      console.log('📍 API Endpoint:', `${API_BASE_URL}/api/teachers/`);
-      console.log('🔐 Headers:', { 'Authorization': `Bearer ${token.substring(0, 20)}...` });
-
-      // Call actual API
-      const response = await fetch(`${API_BASE_URL}/api/teachers/`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ API Error:', errorData);
-        throw new Error(errorData.detail || `API error: ${response.status}`);
-      }
-
-      const responseData = await response.json();
-      console.log('✅ API Response:', responseData);
-
-      toast.success('Teacher added successfully');
-
-      // Use credentials from backend response
-      const username = responseData.user_username || responseData.generated_username || responseData.username;
-      const password = responseData.user_password || responseData.generated_password || responseData.password;
-
-      setTeacherUsername(username);
-      setTeacherPassword(password);
-      setShowPasswordModal(true);
-
-      // Reset form after successful submission
-      setTimeout(() => {
-        setFormData({
-          photo: null,
-          firstName: '',
-          middleName: '',
-          lastName: '',
-          gender: '',
-          bloodGroup: '',
-          dateOfBirth: '',
-          placeOfBirth: '',
-          academicSession: '',
-          employeeId: '',
-          address: '',
-          email: '',
-          phoneNumber: '',
-          staffType: 'teaching',
-          level: '',
-          subjects: [],
-          hireDate: '',
-          qualification: '',
-          specialization: '',
-          assignments: [],
-        });
-        setCurrentAssignments([]);
-        setPhotoPreview(null);
-      }, 1000);
-    } catch (err: any) {
-      console.error('❌ Error creating teacher:', err);
-      toast.error(err.message || 'Failed to create teacher');
-    } finally {
-      setLoading(false);
+    } else if (isSecondaryLevel) {
+      assignments = currentAssignments
+        .filter(a => a.classroom_id && a.subject_id)
+        .map(a => ({
+          classroom_id: a.classroom_id,
+          subject_id: a.subject_id,
+          is_primary_teacher: a.is_primary_teacher || false,
+          periods_per_week: a.periods_per_week || 1
+        }));
     }
-  };
 
+    // Build payload with ONLY fields that the Teacher model accepts
+    const payload: any = {
+      user_email: formData.email,
+      user_first_name: formData.firstName,
+      user_middle_name: formData.middleName,
+      user_last_name: formData.lastName,
+      employee_id: formData.employeeId,
+      address: formData.address,
+      phone_number: formData.phoneNumber,
+      photo: formData.photo,
+      staff_type: formData.staffType,
+      level: formData.level,
+      subjects: formData.subjects.map(s => Number(s)), // Convert to numbers
+      hire_date: formData.hireDate,
+      qualification: formData.qualification,
+      specialization: formData.specialization,
+      assignments: assignments,
+      // Remove these fields - they're not part of the Teacher model:
+      // gender, blood_group, place_of_birth, academic_session, date_of_birth
+    };
+
+    console.log('📤 Submitting teacher data:', payload);
+
+    // Get auth token from localStorage
+    const token = localStorage.getItem('access_token');
+    console.log('🔑 Token found:', token ? '✓ Yes' : '✗ No');
+    
+    if (!token) {
+      toast.error('Authentication token not found. Please log in again.');
+      setLoading(false);
+      return;
+    }
+
+    const headers: any = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+
+    // FIXED: Use correct endpoint URL - /api/teachers/teachers/
+    const endpoint = `${API_BASE_URL}/api/teachers/teachers/`;
+    console.log('📍 API Endpoint:', endpoint);
+    console.log('🔐 Headers:', { 'Authorization': `Bearer ${token.substring(0, 20)}...` });
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ API Error:', errorData);
+      throw new Error(errorData.detail || JSON.stringify(errorData) || `API error: ${response.status}`);
+    }
+
+    const responseData = await response.json();
+    console.log('✅ API Response:', responseData);
+
+    toast.success('Teacher added successfully');
+
+    // Use credentials from backend response
+    const username = responseData.user_username || responseData.generated_username || responseData.username;
+    const password = responseData.user_password || responseData.generated_password || responseData.password;
+
+    setTeacherUsername(username);
+    setTeacherPassword(password);
+    setShowPasswordModal(true);
+
+    // Reset form after successful submission
+    setTimeout(() => {
+      setFormData({
+        photo: null,
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        gender: '',
+        bloodGroup: '',
+        dateOfBirth: '',
+        placeOfBirth: '',
+        academicSession: '',
+        employeeId: '',
+        address: '',
+        email: '',
+        phoneNumber: '',
+        staffType: 'teaching',
+        level: '',
+        subjects: [],
+        hireDate: '',
+        qualification: '',
+        specialization: '',
+        assignments: [],
+      });
+      setCurrentAssignments([]);
+      setPhotoPreview(null);
+    }, 1000);
+  } catch (err: any) {
+    console.error('❌ Error creating teacher:', err);
+    toast.error(err.message || 'Failed to create teacher');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200">
