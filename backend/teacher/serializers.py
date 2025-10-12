@@ -312,13 +312,16 @@ class TeacherSerializer(serializers.ModelSerializer):
 
     def get_classroom_assignments(self, obj):
         """Returns the classroom assignments for this teacher in the format expected by the frontend."""
+        from classroom.models import ClassroomTeacherAssignment
+
+        # Fix: Use correct field names - academic_session not academic_year
         assignments = ClassroomTeacherAssignment.objects.filter(
             teacher=obj, is_active=True
         ).select_related(
             "classroom",
             "classroom__section",
             "classroom__section__grade_level",
-            "classroom__academic_year",
+            "classroom__academic_session",  # Changed from academic_year
             "classroom__term",
             "subject",
         )
@@ -340,8 +343,16 @@ class TeacherSerializer(serializers.ModelSerializer):
                 "grade_level_id": grade_level.id,
                 "grade_level_name": grade_level.name,
                 "education_level": grade_level.education_level,
-                "academic_session": classroom.academic_session.name,
-                "term": classroom.term.get_name_display(),
+                "academic_session": (
+                    classroom.academic_session.name
+                    if classroom.academic_session
+                    else "N/A"
+                ),
+                "term": (
+                    classroom.term.get_name_display()
+                    if hasattr(classroom.term, "get_name_display")
+                    else str(classroom.term)
+                ),
                 "subject_id": assignment.subject.id,
                 "subject_name": assignment.subject.name,
                 "subject_code": assignment.subject.code,
@@ -357,6 +368,7 @@ class TeacherSerializer(serializers.ModelSerializer):
                 "periods_per_week": assignment.periods_per_week,
             }
 
+            # Add stream information if available (for Senior Secondary)
             if hasattr(classroom, "stream") and classroom.stream:
                 assignment_data["stream_name"] = classroom.stream.name
                 assignment_data["stream_type"] = (
@@ -367,130 +379,152 @@ class TeacherSerializer(serializers.ModelSerializer):
 
         return classroom_assignments
 
-    def create(self, validated_data):
-        print(f"TeacherSerializer.create called")
-        print(f"Validated data keys: {list(validated_data.keys())}")
+    # In teachers/serializers.py - Updated create() method
 
-        # Extract user creation data
-        first_name = validated_data.pop("first_name", None) or validated_data.pop(
-            "user_first_name", None
+
+def create(self, validated_data):
+    print(f"TeacherSerializer.create called")
+    print(f"Validated data keys: {list(validated_data.keys())}")
+
+    # Extract user creation data
+    first_name = validated_data.pop("first_name", None) or validated_data.pop(
+        "user_first_name", None
+    )
+    last_name = validated_data.pop("last_name", None) or validated_data.pop(
+        "user_last_name", None
+    )
+    email = validated_data.pop("user_email", None) or validated_data.pop("email", None)
+    password = validated_data.pop("password", None)
+    middle_name = validated_data.pop("user_middle_name", None)
+
+    # Extract profile data
+    bio = validated_data.pop("bio", None)
+    profile_date_of_birth = validated_data.pop("profile_date_of_birth", None)
+
+    # Extract assignment data
+    assignments = validated_data.pop("assignments", None)
+    subjects = validated_data.pop("subjects", [])
+
+    # Validate required fields
+    if not email:
+        raise serializers.ValidationError(
+            "Email is required to create a teacher user account"
         )
-        last_name = validated_data.pop("last_name", None) or validated_data.pop(
-            "user_last_name", None
+
+    if not first_name or not last_name:
+        raise serializers.ValidationError("First name and last name are required")
+
+    # Create user
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+
+    # Generate password if not provided
+    if not password:
+        import secrets
+        import string
+
+        password = "".join(
+            secrets.choice(string.ascii_letters + string.digits) for _ in range(12)
         )
-        email = validated_data.pop("user_email", None) or validated_data.pop(
-            "email", None
-        )
-        password = validated_data.pop("password", None)
-        middle_name = validated_data.pop("user_middle_name", None)
 
-        # Extract profile data
-        bio = validated_data.pop("bio", None)
-        profile_date_of_birth = validated_data.pop("profile_date_of_birth", None)
+    try:
+        from datetime import datetime
 
-        # Extract assignment data
-        assignments = validated_data.pop("assignments", None)
-        subjects = validated_data.pop("subjects", [])
+        current_date = datetime.now()
+        month = current_date.strftime("%b").upper()
+        year = str(current_date.year)[-2:]
 
-        # Validate required fields
-        if not email:
+        employee_id = validated_data.get("employee_id", "EMP001")
+        username = f"TCH/GTS/{month}/{year}/{employee_id}"
+
+        counter = 1
+        original_username = username
+        while User.objects.filter(username=username).exists():
+            username = f"{original_username}_{counter}"
+            counter += 1
+
+        if User.objects.filter(email=email).exists():
             raise serializers.ValidationError(
-                "Email is required to create a teacher user account"
+                f"A user with email {email} already exists"
             )
 
-        if not first_name or not last_name:
-            raise serializers.ValidationError("First name and last name are required")
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name or "",
+            last_name=last_name or "",
+            role="teacher",
+            is_active=True,
+        )
+        print(f"Created user: {user.username} with ID: {user.id}")
 
-        # Create user
-        from django.contrib.auth import get_user_model
+        # Create user profile if needed
+        if bio or profile_date_of_birth:
+            try:
+                from userprofile.models import UserProfile
 
-        User = get_user_model()
+                user_profile, created = UserProfile.objects.get_or_create(user=user)
+                if bio:
+                    user_profile.bio = bio
+                if profile_date_of_birth:
+                    user_profile.date_of_birth = profile_date_of_birth
+                user_profile.save()
+                print(f"Created user profile")
+            except Exception as e:
+                print(f"Warning: Could not create user profile: {e}")
 
-        # Generate password if not provided
-        if not password:
-            import secrets
-            import string
+        # Store credentials in context for response
+        self.context["user_password"] = password
+        self.context["user_username"] = username
 
-            password = "".join(
-                secrets.choice(string.ascii_letters + string.digits) for _ in range(12)
-            )
+    except serializers.ValidationError:
+        raise
+    except Exception as e:
+        print(f"Error creating user: {e}")
+        import traceback
 
-        try:
-            from datetime import datetime
+        print(traceback.format_exc())
+        raise serializers.ValidationError(f"Error creating user: {str(e)}")
 
-            current_date = datetime.now()
-            month = current_date.strftime("%b").upper()
-            year = str(current_date.year)[-2:]
+    try:
+        # Create teacher - THIS MUST CALL .save() implicitly through create()
+        teacher = Teacher.objects.create(
+            user=user,
+            is_active=True,
+            **validated_data,
+        )
+        print(f"Created teacher object with ID: {teacher.id}")
+        print(f"Teacher is_active: {teacher.is_active}")
+        print(f"Teacher user: {teacher.user}")
 
-            employee_id = validated_data.get("employee_id", "EMP001")
-            username = f"TCH/GTS/{month}/{year}/{employee_id}"
+        # Verify it was actually saved
+        verify = Teacher.objects.filter(id=teacher.id).first()
+        print(f"Verification query: {verify}")
+        assert verify is not None, "Teacher not found after creation!"
+        assert verify.user_id == user.id, "User ID mismatch!"
 
-            counter = 1
-            original_username = username
-            while User.objects.filter(username=username).exists():
-                username = f"{original_username}_{counter}"
-                counter += 1
+        print(f"Teacher verification successful - ID {teacher.id} exists in database")
 
-            if User.objects.filter(email=email).exists():
-                raise serializers.ValidationError(
-                    f"A user with email {email} already exists"
-                )
+        # Create assignments if provided
+        if assignments or subjects:
+            self._create_classroom_assignments(teacher, assignments, subjects)
 
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                first_name=first_name or "",
-                last_name=last_name or "",
-                role="teacher",
-                is_active=True,
-            )
-            print(f"Created user: {user.username}")
+        return teacher
 
-            # Create user profile if needed
-            if bio or profile_date_of_birth:
-                try:
-                    from userprofile.models import UserProfile
+    except Exception as e:
+        print(f"Error creating teacher: {e}")
+        import traceback
 
-                    user_profile, created = UserProfile.objects.get_or_create(user=user)
-                    if bio:
-                        user_profile.bio = bio
-                    if profile_date_of_birth:
-                        user_profile.date_of_birth = profile_date_of_birth
-                    user_profile.save()
-                    print(f"Created user profile")
-                except Exception as e:
-                    print(f"Warning: Could not create user profile: {e}")
+        print(traceback.format_exc())
 
-            self.context["user_password"] = password
-            self.context["user_username"] = username
+        # Clean up user if teacher creation failed
+        if user:
+            print(f"Cleaning up user {user.id} due to teacher creation failure")
+            user.delete()
 
-        except serializers.ValidationError:
-            raise
-        except Exception as e:
-            print(f"Error creating user: {e}")
-            import traceback
-
-            print(traceback.format_exc())
-            raise serializers.ValidationError(f"Error creating user: {str(e)}")
-
-        try:
-            teacher = Teacher.objects.create(
-                user=user,
-                is_active=True,
-                **validated_data,
-            )
-            print(f"Created teacher: {teacher.id}")
-
-            if assignments or subjects:
-                self._create_classroom_assignments(teacher, assignments, subjects)
-
-            return teacher
-        except Exception as e:
-            print(f"Error creating teacher: {e}")
-            if user:
-                user.delete()
-            raise serializers.ValidationError(f"Error creating teacher: {str(e)}")
+        raise serializers.ValidationError(f"Error creating teacher: {str(e)}")
 
     def update(self, instance, validated_data):
         print(f"TeacherSerializer.update called for teacher {instance.id}")
