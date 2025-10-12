@@ -14,21 +14,19 @@ from subject.models import Subject
 from utils.section_filtering import SectionFilterMixin
 
 
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+
+
 class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
-    queryset = Teacher.objects.all()
+    queryset = Teacher.objects.select_related("user").all()
     serializer_class = TeacherSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
 
     def get_permissions(self):
-        """
-        Allow unauthenticated access to create endpoint (like StudentViewSet)
-        but keep other endpoints authenticated
-        """
+        """Allow unauthenticated access to create endpoint"""
         if self.action == "create":
-            permission_classes = [permissions.AllowAny]
-        else:
-            permission_classes = [permissions.IsAuthenticated]
-        return [permission() for permission in permission_classes]
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
         """Override create to include generated credentials in response"""
@@ -36,9 +34,7 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         print(f"🔍 User: {request.user}")
         print(f"🔍 Is authenticated: {request.user.is_authenticated}")
         print(f"🔍 Request data keys: {list(request.data.keys())}")
-        print(f"🔍 Full request data: {request.data}")
 
-        # Validate required fields before serialization
         required_fields = [
             "user_email",
             "user_first_name",
@@ -74,18 +70,15 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             teacher = serializer.save()
             print(f"✅ Teacher saved successfully with ID: {teacher.id}")
 
-            # Get the response data
             response_serializer = self.get_serializer(teacher)
             response_data = response_serializer.data
 
-            # Add generated credentials if available
             if hasattr(serializer, "context") and "user_password" in serializer.context:
                 response_data["user_password"] = serializer.context["user_password"]
                 response_data["user_username"] = serializer.context.get(
                     "user_username", ""
                 )
                 print(f"✅ Credentials added to response")
-                print(f"✅ Username: {serializer.context['user_username']}")
             else:
                 print(f"⚠️ No credentials found in serializer context")
 
@@ -101,34 +94,12 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    def destroy(self, request, *args, **kwargs):
-        """Override destroy to return a proper JSON response"""
-        teacher = self.get_object()
-        teacher_name = (
-            f"{teacher.user.first_name} {teacher.user.last_name}"
-            if teacher.user
-            else teacher.employee_id
-        )
-
-        # Delete the teacher
-        teacher.delete()
-
-        return Response(
-            {
-                "message": f"Teacher {teacher_name} has been successfully deleted",
-                "status": "success",
-            },
-            status=status.HTTP_200_OK,
-        )
-
     def get_queryset(self):
-        queryset = Teacher.objects.all()
+        queryset = Teacher.objects.select_related("user").all()
 
-        # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             queryset = self.filter_teachers_by_section_access(queryset)
 
-        # Filter by search term
         search = self.request.query_params.get("search", None)
         if search:
             queryset = (
@@ -137,12 +108,10 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 | queryset.filter(employee_id__icontains=search)
             )
 
-        # Filter by level
         level = self.request.query_params.get("level", None)
         if level:
             queryset = queryset.filter(level=level)
 
-        # Filter by status
         status_filter = self.request.query_params.get("status", None)
         if status_filter == "active":
             queryset = queryset.filter(is_active=True)
@@ -150,33 +119,6 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(is_active=False)
 
         return queryset
-
-    @action(detail=True, methods=["post"])
-    def activate(self, request, pk=None):
-        teacher = self.get_object()
-        teacher.is_active = True
-        teacher.save()
-        return Response({"status": "Teacher activated"})
-
-    @action(detail=True, methods=["post"])
-    def deactivate(self, request, pk=None):
-        teacher = self.get_object()
-        teacher.is_active = False
-        teacher.save()
-        return Response({"status": "Teacher deactivated"})
-
-    @action(detail=False, methods=["get"], url_path="by-user/(?P<user_id>[^/.]+)")
-    def by_user(self, request, user_id=None):
-        """Get teacher by user ID"""
-        try:
-            teacher = Teacher.objects.get(user_id=user_id)
-            serializer = self.get_serializer(teacher)
-            return Response(serializer.data)
-        except Teacher.DoesNotExist:
-            return Response(
-                {"error": "Teacher not found for this user"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
 
 
 class AssignmentRequestViewSet(viewsets.ModelViewSet):
