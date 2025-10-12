@@ -99,7 +99,7 @@ class AssignmentRequestSerializer(serializers.ModelSerializer):
 
 class TeacherScheduleSerializer(serializers.ModelSerializer):
     subject_name = serializers.CharField(source="subject.name", read_only=True)
-    classroom_name = serializers.CharField(source="classroom.name", read_only=True)
+    # classroom_name = serializers.CharField(source="classroom.name", read_only=True)
 
     class Meta:
         model = TeacherSchedule
@@ -548,54 +548,36 @@ class TeacherSerializer(serializers.ModelSerializer):
             for assignment_data in assignments:
                 try:
                     classroom_id = assignment_data.get("classroom_id")
-                    grade_level_id = assignment_data.get("grade_level_id")
-                    section_id = assignment_data.get("section_id")
-                    subject_ids = assignment_data.get("subject_ids", [])
+                    subject_id = assignment_data.get("subject_id")
                     is_primary = assignment_data.get("is_primary_teacher", False)
                     periods_per_week = assignment_data.get("periods_per_week", 1)
 
-                    if classroom_id:
-                        try:
-                            classroom = Classroom.objects.get(id=classroom_id)
-                        except Classroom.DoesNotExist:
-                            continue
-                    elif grade_level_id and section_id:
-                        try:
-                            section = Section.objects.get(id=section_id)
-                            classroom = Classroom.objects.get(section=section)
-                        except (Section.DoesNotExist, Classroom.DoesNotExist):
-                            continue
-                    else:
+                    if not classroom_id or not subject_id:
+                        print(
+                            f"⚠️ Skipping assignment - missing classroom_id or subject_id"
+                        )
                         continue
 
-                    subject_ids = assignment_data.get("subject_ids", [])
-                    subject_id = assignment_data.get("subject_id")
+                    try:
+                        classroom = Classroom.objects.get(id=classroom_id)
+                        subject = Subject.objects.get(id=subject_id)
 
-                    if subject_ids:
-                        for subj_id in subject_ids:
-                            try:
-                                subject = Subject.objects.get(id=subj_id)
-                                ClassroomTeacherAssignment.objects.create(
-                                    teacher=teacher,
-                                    classroom=classroom,
-                                    subject=subject,
-                                    is_primary_teacher=is_primary,
-                                    periods_per_week=periods_per_week,
-                                )
-                            except Subject.DoesNotExist:
-                                continue
-                    elif subject_id:
-                        try:
-                            subject = Subject.objects.get(id=subject_id)
-                            ClassroomTeacherAssignment.objects.create(
-                                teacher=teacher,
-                                classroom=classroom,
-                                subject=subject,
-                                is_primary_teacher=is_primary,
-                                periods_per_week=periods_per_week,
-                            )
-                        except Subject.DoesNotExist:
-                            continue
+                        ClassroomTeacherAssignment.objects.create(
+                            teacher=teacher,
+                            classroom=classroom,
+                            subject=subject,
+                            is_primary_teacher=is_primary,
+                            periods_per_week=periods_per_week,
+                        )
+                        print(
+                            f"✅ Created assignment: {teacher} - {subject} - {classroom}"
+                        )
+                    except (Classroom.DoesNotExist, Subject.DoesNotExist) as e:
+                        print(f"⚠️ Skipping assignment - object not found: {e}")
+                        continue
 
                 except Exception as e:
                     print(f"❌ Error processing assignment: {e}")
+                    import traceback
+
+                    print(traceback.format_exc())

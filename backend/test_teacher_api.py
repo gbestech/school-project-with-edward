@@ -1,9 +1,7 @@
 import requests
 import json
 
-BASE_URL = (
-    "https://school-management-project-qpox.onrender.com"  # Remove /api from here
-)
+BASE_URL = "https://school-management-project-qpox.onrender.com"
 
 
 def create_teacher():
@@ -17,6 +15,7 @@ def create_teacher():
         "staff_type": "teaching",
         "level": "junior_secondary",
         "qualification": "B.A Education",
+        # Remove any date/datetime fields
     }
 
     response = requests.post(
@@ -33,29 +32,33 @@ def create_teacher():
         result = response.json()
         print(f"Teacher ID: {result['id']}")
         print(f"Username: {result['user']['username']}")
-        print(f"Generated Password: {result['user_password']}")
+        print(f"Generated Password: {result.get('user_password', 'N/A')}")
     else:
         print("\n❌ Failed to create teacher")
-        print(f"Errors: {response.json()}")
 
 
-def list_teachers(token=None):
-    """List all teachers (requires authentication)"""
-    headers = {"Content-Type": "application/json"}
-    if token:
-        headers["Authorization"] = f"Token {token}"
-    response = requests.get(f"{BASE_URL}/api/teachers/teachers/", headers=headers)
+def list_teachers():
+    """List all teachers"""
+
+    response = requests.get(
+        f"{BASE_URL}/api/teachers/teachers/",
+        headers={"Content-Type": "application/json"},
+    )
 
     print(f"Status Code: {response.status_code}")
 
     if response.status_code == 200:
-        teachers = response.json()
-        if isinstance(teachers, list):
-            print(f"Found {len(teachers)} teachers:")
-            for teacher in teachers:
-                print(f"  - {teacher['full_name']} ({teacher['employee_id']})")
+        data = response.json()
+        if isinstance(data, list):
+            print(f"Found {len(data)} teachers:")
+            for teacher in data[:5]:  # Show first 5
+                print(
+                    f"  - {teacher.get('full_name', 'N/A')} ({teacher.get('employee_id', 'N/A')})"
+                )
         else:
-            print(f"Response: {json.dumps(teachers, indent=2)}")
+            print(json.dumps(data, indent=2))
+    elif response.status_code == 401:
+        print("⚠️ Authentication required to list teachers")
     else:
         print(f"Error: {response.json()}")
 
