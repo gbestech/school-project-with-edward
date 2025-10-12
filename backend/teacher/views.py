@@ -30,11 +30,12 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """Override create to include generated credentials in response"""
-        print(f"🔍 TeacherViewSet.create called")
-        print(f"🔍 User: {request.user}")
-        print(f"🔍 Is authenticated: {request.user.is_authenticated}")
-        print(f"🔍 Request data keys: {list(request.data.keys())}")
+        print(f"TeacherViewSet.create called")
+        print(f"User: {request.user}")
+        print(f"Is authenticated: {request.user.is_authenticated}")
+        print(f"Request data keys: {list(request.data.keys())}")
 
+        # Validate required fields before serialization
         required_fields = [
             "user_email",
             "user_first_name",
@@ -46,7 +47,7 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         ]
 
         if missing_fields:
-            print(f"❌ Missing required fields: {missing_fields}")
+            print(f"Missing required fields: {missing_fields}")
             return Response(
                 {
                     "error": "Missing required fields",
@@ -59,36 +60,73 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
 
         if not serializer.is_valid():
-            print(f"❌ Serializer validation errors: {serializer.errors}")
+            print(f"Serializer validation errors: {serializer.errors}")
             return Response(
                 {"error": "Validation failed", "details": serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            print(f"✅ Serializer valid, saving teacher...")
+            print(f"Serializer valid, saving teacher...")
             teacher = serializer.save()
-            print(f"✅ Teacher saved successfully with ID: {teacher.id}")
+            print(f"Teacher saved successfully with ID: {teacher.id}")
 
-            response_serializer = self.get_serializer(teacher)
-            response_data = response_serializer.data
+            # Build response manually to avoid datetime serialization issues
+            response_data = {
+                "id": teacher.id,
+                "employee_id": teacher.employee_id,
+                "staff_type": teacher.staff_type,
+                "level": teacher.level,
+                "phone_number": teacher.phone_number,
+                "address": teacher.address,
+                "date_of_birth": (
+                    teacher.date_of_birth.isoformat() if teacher.date_of_birth else None
+                ),
+                "hire_date": (
+                    teacher.hire_date.isoformat() if teacher.hire_date else None
+                ),
+                "qualification": teacher.qualification,
+                "specialization": teacher.specialization,
+                "photo": teacher.photo,
+                "is_active": teacher.is_active,
+                "created_at": teacher.created_at.isoformat(),
+                "updated_at": teacher.updated_at.isoformat(),
+                "full_name": f"{teacher.user.first_name} {teacher.user.last_name}",
+                "email_readonly": teacher.user.email,
+                "username": teacher.user.username,
+                "user": {
+                    "id": teacher.user.id,
+                    "first_name": teacher.user.first_name,
+                    "last_name": teacher.user.last_name,
+                    "email": teacher.user.email,
+                    "username": teacher.user.username,
+                    "date_joined": (
+                        teacher.user.date_joined.isoformat()
+                        if teacher.user.date_joined
+                        else None
+                    ),
+                    "is_active": teacher.user.is_active,
+                },
+            }
 
+            # Add generated credentials if available
             if hasattr(serializer, "context") and "user_password" in serializer.context:
                 response_data["user_password"] = serializer.context["user_password"]
                 response_data["user_username"] = serializer.context.get(
                     "user_username", ""
                 )
-                print(f"✅ Credentials added to response")
+                print(f"Credentials added to response")
+                print(f"Username: {serializer.context['user_username']}")
             else:
-                print(f"⚠️ No credentials found in serializer context")
+                print(f"No credentials found in serializer context")
 
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
-            print(f"❌ Error in create method: {e}")
+            print(f"Error in create method: {e}")
             import traceback
 
-            print(f"❌ Full traceback: {traceback.format_exc()}")
+            print(f"Full traceback: {traceback.format_exc()}")
             return Response(
                 {"error": "Failed to create teacher", "message": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
