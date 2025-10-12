@@ -185,38 +185,61 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    def get_queryset(self):
-        """
-        Filter queryset based on user permissions and section access
-        """
-        queryset = Teacher.objects.select_related("user").all()
+    # In teachers/views.py - Updated get_queryset() method
 
-        if self.request.user.is_authenticated:
-            # Apply section filtering based on user's role permissions
+
+def get_queryset(self):
+    """
+    Filter queryset based on user permissions and section access
+    """
+    print(f"TeacherViewSet.get_queryset called for user: {self.request.user}")
+
+    queryset = Teacher.objects.select_related("user").all()
+    print(f"Initial queryset count: {queryset.count()}")
+
+    if self.request.user.is_authenticated:
+        # Apply section filtering based on user's role permissions
+        # BUT: Don't filter if user is superuser or admin
+        if not (self.request.user.is_superuser or self.request.user.is_staff):
+            print(f"Applying section filtering for non-admin user")
             queryset = self.filter_teachers_by_section_access(queryset)
+        else:
+            print(f"Admin user - skipping section filtering")
+    else:
+        print(f"User not authenticated - returning empty queryset")
+        return Teacher.objects.none()
 
-        # Apply search filters
-        search = self.request.query_params.get("search", None)
-        if search:
-            queryset = (
-                queryset.filter(user__first_name__icontains=search)
-                | queryset.filter(user__last_name__icontains=search)
-                | queryset.filter(employee_id__icontains=search)
-            )
+    print(f"After section filtering count: {queryset.count()}")
 
-        # Apply level filter
-        level = self.request.query_params.get("level", None)
-        if level:
-            queryset = queryset.filter(level=level)
+    # Apply search filters
+    search = self.request.query_params.get("search", None)
+    if search:
+        print(f"Applying search filter: {search}")
+        queryset = (
+            queryset.filter(user__first_name__icontains=search)
+            | queryset.filter(user__last_name__icontains=search)
+            | queryset.filter(employee_id__icontains=search)
+        )
+        print(f"After search filter count: {queryset.count()}")
 
-        # Apply status filter
-        status_filter = self.request.query_params.get("status", None)
-        if status_filter == "active":
-            queryset = queryset.filter(is_active=True)
-        elif status_filter == "inactive":
-            queryset = queryset.filter(is_active=False)
+    # Apply level filter
+    level = self.request.query_params.get("level", None)
+    if level:
+        print(f"Applying level filter: {level}")
+        queryset = queryset.filter(level=level)
+        print(f"After level filter count: {queryset.count()}")
 
-        return queryset
+    # Apply status filter
+    status_filter = self.request.query_params.get("status", None)
+    if status_filter == "active":
+        print(f"Applying status filter: active")
+        queryset = queryset.filter(is_active=True)
+    elif status_filter == "inactive":
+        print(f"Applying status filter: inactive")
+        queryset = queryset.filter(is_active=False)
+
+    print(f"Final queryset count: {queryset.count()}")
+    return queryset
 
 
 # Keep your other ViewSets as they are...
