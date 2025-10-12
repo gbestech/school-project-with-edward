@@ -107,7 +107,7 @@ def create_teacher(token):
     return None
 
 
-def list_teachers(token):
+def list_teachers(token, verbose=False):
     """List all teachers"""
     print(f"\n📋 Listing teachers...")
 
@@ -120,34 +120,61 @@ def list_teachers(token):
 
     if response.status_code == 200:
         data = response.json()
+
+        # DEBUG: Show raw response structure
+        if verbose:
+            print("\n🔍 DEBUG - Raw Response:")
+            print(json.dumps(data, indent=2)[:500])
+
+        # Handle both list and paginated responses
         if isinstance(data, list):
-            print(f"✅ Found {len(data)} teacher(s)")
-            if len(data) > 0:
-                print("\n👥 Teachers:")
-                for i, teacher in enumerate(data[:10], 1):
-                    print(
-                        f"   {i}. {teacher.get('full_name', 'N/A')} ({teacher.get('employee_id', 'N/A')})"
-                    )
-                if len(data) > 10:
-                    print(f"   ... and {len(data) - 10} more")
+            teachers = data
+        elif isinstance(data, dict):
+            # Paginated response - could be {"results": [...]} or {"count": x, "results": [...]}
+            if "results" in data:
+                teachers = data["results"]
+                print(f"   (Showing {len(teachers)} of {data.get('count', '?')} total)")
             else:
-                print("   No teachers found in database")
+                print("❌ Unexpected response format!")
+                print(json.dumps(data, indent=2))
+                return
         else:
+            print("❌ Unexpected response format!")
             print(json.dumps(data, indent=2))
+            return
+
+        if teachers:
+            print(f"✅ Found {len(teachers)} teacher(s)")
+            print("\n👥 Teachers:")
+            for i, teacher in enumerate(teachers[:10], 1):
+                print(
+                    f"   {i}. {teacher.get('full_name', 'N/A')} ({teacher.get('employee_id', 'N/A')})"
+                )
+            if len(teachers) > 10:
+                print(f"   ... and {len(teachers) - 10} more")
+        else:
+            print("✅ No teachers found in database")
+
     elif response.status_code == 403:
         print("❌ Permission denied!")
         print("   Your user doesn't have 'read' permission on the 'teachers' module")
-    else:
-        print(f"❌ Failed to list teachers")
+    elif response.status_code == 401:
+        print("❌ Authentication failed!")
         try:
             print(f"   Error: {response.json()}")
         except:
             pass
+    else:
+        print(f"❌ Failed to list teachers (Status: {response.status_code})")
+        try:
+            print(f"   Error: {response.json()}")
+        except:
+            print(f"   Raw response: {response.text[:500]}")
 
 
 def main():
     print("=" * 70)
-    print("TEACHER CREATION TEST")
+    print("TEACHER MANAGEMENT TEST - DEBUGGED")
     print("=" * 70)
 
     # Step 1: Login
@@ -156,11 +183,11 @@ def main():
         print("\n❌ Cannot proceed without authentication")
         return
 
-    # Step 2: List existing teachers
+    # Step 2: List existing teachers (with verbose output)
     print("\n" + "=" * 70)
     print("BEFORE: Current Teachers")
     print("=" * 70)
-    list_teachers(token)
+    list_teachers(token, verbose=True)
 
     # Step 3: Create new teacher
     print("\n" + "=" * 70)
