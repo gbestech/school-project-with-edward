@@ -13,6 +13,10 @@ from classroom.models import GradeLevel, Section
 from subject.models import Subject
 from utils.section_filtering import SectionFilterMixin
 
+from schoolSettings.permissions import (
+    HasTeachersPermission,
+    HasTeachersPermissionOrReadOnly,
+)
 
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 
@@ -23,10 +27,26 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication, SessionAuthentication]
 
     def get_permissions(self):
-        """Allow unauthenticated access to create endpoint"""
+        """
+        Set permissions based on action using the role-based permission system:
+        - create/delete: Requires 'write'/'delete' permission on teachers module
+        - update: Requires 'write' permission on teachers module
+        - list/retrieve: Requires 'read' permission on teachers module
+        """
         if self.action == "create":
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+            # Requires write permission to create teachers
+            permission_classes = [HasTeachersPermission("write")]
+        elif self.action == "destroy":
+            # Requires delete permission to delete teachers
+            permission_classes = [HasTeachersPermission("delete")]
+        elif self.action in ["update", "partial_update"]:
+            # Requires write permission to update teachers
+            permission_classes = [HasTeachersPermission("write")]
+        else:  # list, retrieve
+            # Requires read permission to view teachers
+            permission_classes = [HasTeachersPermission("read")]
+
+        return [permission() for permission in permission_classes]
 
     def create(self, request, *args, **kwargs):
         """Override create to include generated credentials in response"""
@@ -133,11 +153,16 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             )
 
     def get_queryset(self):
+        """
+        Filter queryset based on user permissions and section access
+        """
         queryset = Teacher.objects.select_related("user").all()
 
         if self.request.user.is_authenticated:
+            # Apply section filtering based on user's role permissions
             queryset = self.filter_teachers_by_section_access(queryset)
 
+        # Apply search filters
         search = self.request.query_params.get("search", None)
         if search:
             queryset = (
@@ -146,10 +171,12 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 | queryset.filter(employee_id__icontains=search)
             )
 
+        # Apply level filter
         level = self.request.query_params.get("level", None)
         if level:
             queryset = queryset.filter(level=level)
 
+        # Apply status filter
         status_filter = self.request.query_params.get("status", None)
         if status_filter == "active":
             queryset = queryset.filter(is_active=True)

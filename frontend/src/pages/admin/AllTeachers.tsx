@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import TeacherList from '@/components/dashboards/admin/TeacherListNew'
 import AddTeacherForm from '@/components/dashboards/admin/AddTeacherForm'
 
