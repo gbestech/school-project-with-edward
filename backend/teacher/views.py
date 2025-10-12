@@ -36,30 +36,70 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         print(f"🔍 User: {request.user}")
         print(f"🔍 Is authenticated: {request.user.is_authenticated}")
         print(f"🔍 Request data keys: {list(request.data.keys())}")
+        print(f"🔍 Full request data: {request.data}")
+
+        # Validate required fields before serialization
+        required_fields = [
+            "user_email",
+            "user_first_name",
+            "user_last_name",
+            "employee_id",
+        ]
+        missing_fields = [
+            field for field in required_fields if not request.data.get(field)
+        ]
+
+        if missing_fields:
+            print(f"❌ Missing required fields: {missing_fields}")
+            return Response(
+                {
+                    "error": "Missing required fields",
+                    "missing_fields": missing_fields,
+                    "message": f"Please provide: {', '.join(missing_fields)}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = self.get_serializer(data=request.data)
 
         if not serializer.is_valid():
             print(f"❌ Serializer validation errors: {serializer.errors}")
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Validation failed", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        print(f"✅ Serializer valid, saving teacher...")
-        teacher = serializer.save()
+        try:
+            print(f"✅ Serializer valid, saving teacher...")
+            teacher = serializer.save()
+            print(f"✅ Teacher saved successfully with ID: {teacher.id}")
 
-        # Get the response data
-        response_serializer = self.get_serializer(teacher)
-        response_data = response_serializer.data
+            # Get the response data
+            response_serializer = self.get_serializer(teacher)
+            response_data = response_serializer.data
 
-        # Add generated credentials if available
-        if hasattr(serializer, "context") and "user_password" in serializer.context:
-            response_data["user_password"] = serializer.context["user_password"]
-            response_data["user_username"] = serializer.context["user_username"]
-            print(f"✅ Credentials added to response")
-            print(f"✅ Username: {serializer.context['user_username']}")
-        else:
-            print(f"⚠️ No credentials found in serializer context")
+            # Add generated credentials if available
+            if hasattr(serializer, "context") and "user_password" in serializer.context:
+                response_data["user_password"] = serializer.context["user_password"]
+                response_data["user_username"] = serializer.context.get(
+                    "user_username", ""
+                )
+                print(f"✅ Credentials added to response")
+                print(f"✅ Username: {serializer.context['user_username']}")
+            else:
+                print(f"⚠️ No credentials found in serializer context")
 
-        return Response(response_data, status=status.HTTP_201_CREATED)
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            print(f"❌ Error in create method: {e}")
+            import traceback
+
+            print(f"❌ Full traceback: {traceback.format_exc()}")
+            return Response(
+                {"error": "Failed to create teacher", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def destroy(self, request, *args, **kwargs):
         """Override destroy to return a proper JSON response"""

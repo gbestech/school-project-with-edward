@@ -361,121 +361,159 @@ class TeacherSerializer(serializers.ModelSerializer):
         print(f"🔍 TeacherSerializer.create called")
         print(f"🔍 Validated data keys: {list(validated_data.keys())}")
 
-        # Extract user creation data (handle both formats)
+        # Extract user creation data - FIXED: Handle both old and new field names
         first_name = validated_data.pop("first_name", None) or validated_data.pop(
             "user_first_name", None
         )
         last_name = validated_data.pop("last_name", None) or validated_data.pop(
             "user_last_name", None
         )
-        email = validated_data.pop("email", None) or validated_data.pop(
-            "user_email", None
+        # FIX: Use user_email, not email
+        email = validated_data.pop("user_email", None) or validated_data.pop(
+            "email", None
         )
         password = validated_data.pop("password", None)
-
-        # Remove user_middle_name from validated_data as it's not a Teacher model field
-        validated_data.pop("user_middle_name", None)
+        middle_name = validated_data.pop("user_middle_name", None)
 
         print(f"🔍 Extracted user data:")
         print(f"🔍 First name: {first_name}")
         print(f"🔍 Last name: {last_name}")
+        print(f"🔍 Middle name: {middle_name}")
         print(f"🔍 Email: {email}")
         print(f"🔍 Password: {'*' * len(password) if password else 'None'}")
+
+        # Extract profile data
+        bio = validated_data.pop("bio", None)
+        date_of_birth = validated_data.pop("date_of_birth", None)
 
         # Extract assignment data
         assignments = validated_data.pop("assignments", None)
         subjects = validated_data.pop("subjects", [])
 
-        # Create user if credentials provided
+        # Validate required fields
+        if not email:
+            raise serializers.ValidationError(
+                "Email is required to create a teacher user account"
+            )
+
+        if not first_name or not last_name:
+            raise serializers.ValidationError("First name and last name are required")
+
+        # Create user
         user = None
-        if email:
-            from django.contrib.auth import get_user_model
+        from django.contrib.auth import get_user_model
 
-            User = get_user_model()
+        User = get_user_model()
 
-            print(f"🔍 Creating user with email: {email}")
-            print(f"🔍 First name: {first_name}")
-            print(f"🔍 Last name: {last_name}")
+        print(f"🔍 Creating user with email: {email}")
 
-            # Generate a default password if none provided
-            if not password:
-                import secrets
-                import string
+        # Generate a default password if none provided
+        if not password:
+            import secrets
+            import string
 
-                password = "".join(
-                    secrets.choice(string.ascii_letters + string.digits)
-                    for _ in range(12)
+            password = "".join(
+                secrets.choice(string.ascii_letters + string.digits) for _ in range(12)
+            )
+            print(f"🔍 Generated password: {password}")
+
+        try:
+            # Generate unique username in format: TCH/GTS/AUG/25/EMP035
+            from datetime import datetime
+
+            current_date = datetime.now()
+            month = current_date.strftime("%b").upper()
+            year = str(current_date.year)[-2:]  # Last 2 digits of year
+
+            # Get employee_id from validated_data
+            employee_id = validated_data.get("employee_id", "EMP001")
+
+            # Generate username format: TCH/GTS/MONTH/YEAR/EMPLOYEE_ID
+            username = f"TCH/GTS/{month}/{year}/{employee_id}"
+
+            # Ensure username is unique
+            counter = 1
+            original_username = username
+            while User.objects.filter(username=username).exists():
+                username = f"{original_username}_{counter}"
+                counter += 1
+
+            print(f"🔍 Generated unique username: {username}")
+
+            # Check if email already exists
+            if User.objects.filter(email=email).exists():
+                raise serializers.ValidationError(
+                    f"A user with email {email} already exists"
                 )
-                print(f"🔍 Generated password: {password}")
 
-            try:
-                # Generate unique username in format: TCH/GTS/AUG/25/EMP035
-                from datetime import datetime
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name or "",
+                last_name=last_name or "",
+                role="teacher",
+                is_active=True,
+            )
+            print(f"✅ Created user for teacher: {user.email}")
+            print(f"✅ User ID: {user.id}")
+            print(f"✅ Username: {user.username}")
+            print(f"✅ User is_active: {user.is_active}")
 
-                current_date = datetime.now()
-                month = current_date.strftime("%b").upper()
-                year = str(current_date.year)[-2:]  # Last 2 digits of year
+            # Create user profile if bio or date_of_birth provided
+            if bio or date_of_birth:
+                try:
+                    from userprofile.models import UserProfile
 
-                # Get employee_id from validated_data
-                employee_id = validated_data.get("employee_id", "EMP001")
+                    user_profile, created = UserProfile.objects.get_or_create(user=user)
+                    if bio:
+                        user_profile.bio = bio
+                    if date_of_birth:
+                        user_profile.date_of_birth = date_of_birth
+                    user_profile.save()
+                    print(f"✅ Created user profile")
+                except Exception as e:
+                    print(f"⚠️ Warning: Could not create user profile: {e}")
 
-                # Generate username format: TCH/GTS/MONTH/YEAR/EMPLOYEE_ID
-                username = f"TCH/GTS/{month}/{year}/{employee_id}"
+            # Store the generated password and username in the response
+            self.context["user_password"] = password
+            self.context["user_username"] = username
 
-                # Ensure username is unique
-                counter = 1
-                original_username = username
-                while User.objects.filter(username=username).exists():
-                    username = f"{original_username}_{counter}"
-                    counter += 1
+        except serializers.ValidationError:
+            raise
+        except Exception as e:
+            print(f"❌ Error creating user: {e}")
+            print(f"❌ Error type: {type(e)}")
+            import traceback
 
-                print(f"🔍 Generated unique username: {username}")
-
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=password,
-                    first_name=first_name or "",
-                    last_name=last_name or "",
-                    role="teacher",
-                    is_active=True,  # Explicitly set user as active
-                )
-                print(f"✅ Created user for teacher: {user.email}")
-                print(f"✅ User ID: {user.id}")
-                print(f"✅ Username: {user.username}")
-                print(f"✅ User is_active: {user.is_active}")
-
-                # Store the generated password and username in the response
-                self.context["user_password"] = password
-                self.context["user_username"] = username
-
-            except Exception as e:
-                print(f"❌ Error creating user: {e}")
-                print(f"❌ Error type: {type(e)}")
-                import traceback
-
-                print(f"❌ Full traceback: {traceback.format_exc()}")
-                raise serializers.ValidationError(f"Error creating user: {e}")
-        else:
-            print(f"❌ No email provided for user creation")
+            print(f"❌ Full traceback: {traceback.format_exc()}")
+            raise serializers.ValidationError(f"Error creating user: {str(e)}")
 
         print(f"🔍 About to create teacher with user: {user}")
         print(f"🔍 Validated data keys: {list(validated_data.keys())}")
 
-        # Create teacher with explicit active status
-        teacher = Teacher.objects.create(
-            user=user,
-            is_active=True,  # Explicitly set teacher as active
-            **validated_data,
-        )
-        print(f"✅ Created teacher: {teacher}")
-        print(f"✅ Teacher is_active: {teacher.is_active}")
+        try:
+            # Create teacher with explicit active status
+            teacher = Teacher.objects.create(
+                user=user,
+                is_active=True,
+                **validated_data,
+            )
+            print(f"✅ Created teacher: {teacher}")
+            print(f"✅ Teacher is_active: {teacher.is_active}")
 
-        # Handle teacher assignments using the new ClassroomTeacherAssignment model
-        if assignments or subjects:
-            self._create_classroom_assignments(teacher, assignments, subjects)
+            # Handle teacher assignments using the new ClassroomTeacherAssignment model
+            if assignments or subjects:
+                self._create_classroom_assignments(teacher, assignments, subjects)
 
-        return teacher
+            return teacher
+        except Exception as e:
+            # If teacher creation fails, delete the user we just created
+            print(f"❌ Error creating teacher: {e}")
+            if user:
+                user.delete()
+                print(f"🧹 Cleaned up user after teacher creation failure")
+            raise serializers.ValidationError(f"Error creating teacher: {str(e)}")
 
     def _create_classroom_assignments(self, teacher, assignments, subjects):
         """Create classroom assignments using the new ClassroomTeacherAssignment model"""
