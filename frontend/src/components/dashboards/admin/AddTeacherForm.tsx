@@ -414,30 +414,6 @@ const AddTeacherForm: React.FC = () => {
   };
 
   const handleSave = async () => {
-
-    console.log('📋 All localStorage keys:', Object.keys(localStorage));
-  console.log('📋 localStorage contents:');
-
-  for (let key in localStorage) {
-    if (localStorage.hasOwnProperty(key)) {
-      const value = localStorage.getItem(key);
-      console.log(`  ${key}: ${value ? value.substring(0, 30) + '...' : 'null'}`);
-    }
-  }
-
-  const token = localStorage.getItem('access_token');
-  console.log('🔑 access_token found:', token ? 'Yes' : 'No');
-
-  if (!token) {
-    // Try alternative key names
-    const altToken = localStorage.getItem('token') || 
-                     localStorage.getItem('authToken') || 
-                     localStorage.getItem('jwt_token');
-    if (altToken) {
-      console.log('⚠️ Found token under alternative key');
-    }
-  }
-
   if (!formData.firstName || !formData.lastName || !formData.email) {
     toast.error('Please fill in all required fields');
     return;
@@ -495,9 +471,14 @@ const AddTeacherForm: React.FC = () => {
 
     console.log('📤 Submitting teacher data:', payload);
 
-    // Get auth token from localStorage
-    const token = localStorage.getItem('access_token');
+    // Get auth token from localStorage - try multiple possible key names
+    let token = localStorage.getItem('access_token') || 
+                localStorage.getItem('authToken') || 
+                localStorage.getItem('token') ||
+                localStorage.getItem('jwt_token');
+    
     console.log('🔑 Token found:', token ? '✓ Yes' : '✗ No');
+    console.log('📋 Token used from key:', token ? 'authToken or similar' : 'none');
     
     if (!token) {
       toast.error('Authentication token not found. Please log in again.');
