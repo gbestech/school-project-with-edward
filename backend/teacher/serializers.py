@@ -256,7 +256,9 @@ class TeacherSerializer(serializers.ModelSerializer):
                 "last_name": obj.user.last_name,
                 "email": obj.user.email,
                 "username": obj.user.username,
-                "date_joined": obj.user.date_joined,
+                "date_joined": (
+                    obj.user.date_joined.isoformat() if obj.user.date_joined else None
+                ),  # Convert to ISO string
                 "is_active": obj.user.is_active,
             }
 
@@ -264,7 +266,14 @@ class TeacherSerializer(serializers.ModelSerializer):
             try:
                 if hasattr(obj.user, "profile") and obj.user.profile:
                     user_data["bio"] = obj.user.profile.bio
-                    user_data["date_of_birth"] = obj.user.profile.date_of_birth
+                    # Ensure date_of_birth is a date, not datetime
+                    if obj.user.profile.date_of_birth:
+                        dob = obj.user.profile.date_of_birth
+                        user_data["date_of_birth"] = (
+                            dob.date() if hasattr(dob, "date") else dob
+                        )
+                    else:
+                        user_data["date_of_birth"] = None
             except Exception as e:
                 print(f"❌ Error getting user profile data: {e}")
 
