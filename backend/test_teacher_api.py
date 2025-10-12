@@ -8,14 +8,13 @@ def create_teacher():
     """Test creating a teacher via API"""
 
     teacher_data = {
-        "user_email": "pythontest@example.com",
+        "user_email": "newteacher123@example.com",  # Also change this
         "user_first_name": "Python",
         "user_last_name": "Request",
-        "employee_id": "EMP0034",
+        "employee_id": "EMP0099",  # Change this to a unique ID
         "staff_type": "teaching",
         "level": "junior_secondary",
         "qualification": "B.A Education",
-        # Remove any date/datetime fields
     }
 
     response = requests.post(
