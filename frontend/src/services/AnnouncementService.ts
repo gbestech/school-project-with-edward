@@ -32,7 +32,7 @@ export interface UpdateAnnouncementData extends Partial<CreateAnnouncementData> 
 }
 
 class AnnouncementService {
-  private baseUrl = '/school-settings/announcements/';
+  private baseUrl = '/api/school-settings/announcements/';
 
   async getAllAnnouncements(): Promise<Announcement[]> {
     try {
@@ -85,7 +85,7 @@ class AnnouncementService {
 
   async toggleActive(id: number): Promise<Announcement> {
     try {
-      const response = await api.post(`${this.baseUrl}${id}/toggle_active/`);
+      const response = await api.post(`${this.baseUrl}${id}/toggle_active/`, {});
       return response;
     } catch (error) {
       console.error('Error toggling announcement active status:', error);
@@ -95,7 +95,7 @@ class AnnouncementService {
 
   async togglePinned(id: number): Promise<Announcement> {
     try {
-      const response = await api.post(`${this.baseUrl}${id}/toggle_pinned/`);
+      const response = await api.post(`${this.baseUrl}${id}/toggle_pinned/`, {});
       return response;
     } catch (error) {
       console.error('Error toggling announcement pinned status:', error);
