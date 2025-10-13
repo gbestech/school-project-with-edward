@@ -26,65 +26,7 @@ import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import TeacherService, { Teacher, UpdateTeacherData } from '@/services/TeacherService';
 import { toast } from 'react-toastify';
 
-// interface Teacher {
-//   id: number;
-//   employee_id?: string;
-//   first_name: string;
-//   full_name: string;
-//   last_name: string;
-//   email: string;
-//   phone_number: string;
-//   address: string;
-//   staff_type: 'teaching' | 'non-teaching';
-//   level: 'nursery' | 'primary' | 'junior_secondary' | 'senior_secondary' | 'secondary' | '' | null;
-//   hire_date: string;
-//   qualification: string;
-//   specialization: string;
-//   is_active: boolean;
-//   created_at: string;
-//   updated_at: string;
-//   photo?: string | null; // Profile picture URL
-//   assigned_subjects: Array<{
-//     id: number;
-//     name: string;
-//   }>;
-//   subjects?: string[]; // For update operations
-//   user?: {
-//     first_name: string;
-//     last_name: string;
-//     email: string;
-//   }; // For update operations
-//   // Legacy field for backward compatibility (deprecated)
-//   teacher_assignments?: Array<{
-//     id: number;
-//     grade_level_name: string;
-//     section_name: string;
-//     subject_name: string;
-//     education_level: string;
-//   }>;
-  
-//   // New classroom assignments using ClassroomTeacherAssignment
-//   classroom_assignments?: Array<{
-//     id: number;
-//     classroom_name: string;
-//     classroom_id: number;
-//     section_name: string;
-//     grade_level_name: string;
-//     education_level: string;
-//     academic_session: string;
-//     term: string;
-//     subject_name: string;
-//     subject_code: string;
-//     assigned_date: string;
-//     room_number: string;
-//     student_count: number;
-//     max_capacity: number;
-//     is_primary_teacher: boolean;
-//     periods_per_week: number;
-//     stream_name?: string;
-//     stream_type?: string;
-//   }>;
-// }
+
 
  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const TeacherList = () => {
@@ -332,6 +274,7 @@ const TeacherList = () => {
 
   // Enhanced profile picture rendering with debugging
   const renderProfilePicture = (teacher: Teacher) => {
+    
     console.log(`🖼️ Rendering profile for ${teacher.first_name} ${teacher.last_name}:`, teacher.photo);
     
     if (teacher.photo) {

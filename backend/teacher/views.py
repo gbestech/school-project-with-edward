@@ -25,7 +25,7 @@ class TeacherModulePermission(permissions.BasePermission):
     """
     Custom permission to check if user has teachers module permission.
     - Superadmins: full access.
-    - Teachers: can read their own profile.
+    - Teachers: can read and edit their own profile.
     - Other users: must have role-based permission.
     """
 
@@ -39,10 +39,15 @@ class TeacherModulePermission(permissions.BasePermission):
         if user.is_superuser or user.is_staff:
             return True
 
-        # 🟦 Teachers can view their own profile (GET only)
-        if request.method in permissions.SAFE_METHODS and hasattr(user, "teacher"):
-            # Allow access to view their own profile, retrieve, or list self
-            return True
+        # 🟦 Teachers can view and edit their own profile
+        if hasattr(user, "teacher"):
+            # Allow access for safe methods (GET, HEAD, OPTIONS) and write methods (PUT, PATCH)
+            # Exclude DELETE to prevent teachers from deleting themselves
+            if request.method in permissions.SAFE_METHODS or request.method in [
+                "PUT",
+                "PATCH",
+            ]:
+                return True
 
         # 🟨 Check role-based permission for others
         method_to_permission = {
@@ -82,9 +87,16 @@ class TeacherModulePermission(permissions.BasePermission):
         if user.is_superuser or user.is_staff:
             return True
 
-        # Teachers can see or edit their own profile
+        # Teachers can view and edit their own profile (but not delete)
         if hasattr(user, "teacher") and obj.user == user:
-            return True
+            # Allow GET, PUT, PATCH but not DELETE
+            if request.method in permissions.SAFE_METHODS or request.method in [
+                "PUT",
+                "PATCH",
+            ]:
+                return True
+            # Deny DELETE
+            return False
 
         # Otherwise, defer to has_permission
         return self.has_permission(request, view)
