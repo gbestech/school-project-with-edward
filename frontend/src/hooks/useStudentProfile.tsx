@@ -232,7 +232,7 @@ interface UseStudentProfileReturn {
   refreshProfile: () => Promise<void>;
   updateProfile: (data: Partial<StudentProfile>) => Promise<void>;
 }
-
+const API_BASE_URL = import.meta.env.VITE_API_URL 
 export const useStudentProfile = (): UseStudentProfileReturn => {
   const { user, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -257,7 +257,7 @@ export const useStudentProfile = (): UseStudentProfileReturn => {
       console.log('🔑 Using token:', token ? 'Token present' : 'No token');
       console.log('👤 User info:', user);
 
-      const response = await fetch(url, {
+      const response = await fetch(`${API_BASE_URL}/api/students/students/profile/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -305,7 +305,7 @@ export const useStudentProfile = (): UseStudentProfileReturn => {
       console.log('📝 Updating profile at:', url);
       console.log('📝 Update data:', data);
 
-      const response = await fetch(url, {
+      const response = await fetch(`${API_BASE_URL}/api/students/students/${profile.id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
