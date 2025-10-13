@@ -17,23 +17,34 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db import models
 
 
+from rest_framework import permissions
+from schoolSettings.models import UserRole
+
+
 class TeacherModulePermission(permissions.BasePermission):
     """
-    Custom permission to check if user has teachers module permission
+    Custom permission to check if user has teachers module permission.
+    - Superadmins: full access.
+    - Teachers: can read their own profile.
+    - Other users: must have role-based permission.
     """
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        user = request.user
+
+        if not user or not user.is_authenticated or not user.is_active:
             return False
 
-        if not request.user.is_active:
-            return False
-
-        # Super admins have full access
-        if request.user.is_superuser and request.user.is_staff:
+        # 🟩 Super admins have full access
+        if user.is_superuser or user.is_staff:
             return True
 
-        # Determine permission type based on HTTP method
+        # 🟦 Teachers can view their own profile (GET only)
+        if request.method in permissions.SAFE_METHODS and hasattr(user, "teacher"):
+            # Allow access to view their own profile, retrieve, or list self
+            return True
+
+        # 🟨 Check role-based permission for others
         method_to_permission = {
             "GET": "read",
             "POST": "write",
@@ -43,31 +54,40 @@ class TeacherModulePermission(permissions.BasePermission):
         }
         permission_type = method_to_permission.get(request.method, "read")
 
-        # Check if user has the required permission
-        from schoolSettings.models import UserRole
-
         user_roles = UserRole.objects.filter(
-            user=request.user, is_active=True
+            user=user, is_active=True
         ).prefetch_related("role", "custom_permissions")
 
         for user_role in user_roles:
-            # Skip expired assignments
             if user_role.is_expired():
                 continue
 
             # Check custom permissions first
-            custom_perm = user_role.custom_permissions.filter(
+            if user_role.custom_permissions.filter(
                 module="teachers", permission_type=permission_type, granted=True
-            ).first()
-
-            if custom_perm:
+            ).exists():
                 return True
 
             # Check role permissions
             if user_role.role.has_permission("teachers", permission_type):
                 return True
 
+        # ❌ No match — deny
         return False
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        # Admins/staff full access
+        if user.is_superuser or user.is_staff:
+            return True
+
+        # Teachers can see or edit their own profile
+        if hasattr(user, "teacher") and obj.user == user:
+            return True
+
+        # Otherwise, defer to has_permission
+        return self.has_permission(request, view)
 
 
 class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
