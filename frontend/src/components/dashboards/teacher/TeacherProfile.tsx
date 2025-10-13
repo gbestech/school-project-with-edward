@@ -710,10 +710,10 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
     </div>
     <div className="md:col-span-2">
       <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Bio</label>
-      {profileData?.bio ? (
+      {profileData?.user?.bio ? (
         <div>
     <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-      {truncateBio(profileData.bio)}
+      {truncateBio(profileData.user?.bio)}
     </p>
     {profileData.bio.split(" ").length > 20 && (
       <button
