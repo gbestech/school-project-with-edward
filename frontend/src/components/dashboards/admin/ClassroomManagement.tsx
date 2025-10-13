@@ -44,7 +44,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   // Additional data for forms
   const [gradeLevels, setGradeLevels] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
-  const [academicYears, setAcademicYears] = useState<any[]>([]);
+  const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
   const [streams, setStreams] = useState<any[]>([]);
   
@@ -81,14 +81,14 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       setLoading(true);
       setError(null);
       
-      const [classroomsRes, teachersRes, subjectsRes, gradeLevelsRes, academicYearsRes, streamsRes] = await Promise.all([
-        classroomService.getClassrooms(),
-        classroomService.getAllTeachers(),
-        classroomService.getAllSubjects(),
-        classroomService.getGradeLevels(),
-        classroomService.getAcademicYears(),
-        classroomService.getStreams()
-      ]);
+      const [classroomsRes, teachersRes, subjectsRes, gradeLevelsRes, academicSessionsRes, streamsRes] = await Promise.all([
+  classroomService.getClassrooms(),
+  classroomService.getAllTeachers(),
+  classroomService.getAllSubjects(),
+  classroomService.getGradeLevels(),
+  classroomService.getAcademicYears(),
+  classroomService.getStreams()
+]);
       
 
       // Robust response handling
@@ -100,7 +100,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       const teachers = Array.isArray(teachersRes) ? teachersRes : (teachersRes.results || []);
       const subjects = Array.isArray(subjectsRes) ? subjectsRes : (subjectsRes.results || []);
       const gradeLevels = Array.isArray(gradeLevelsRes) ? gradeLevelsRes : (gradeLevelsRes.results || []);
-      const academicYears = Array.isArray(academicYearsRes) ? academicYearsRes : (academicYearsRes.results || []);
+      const academicSessions = Array.isArray(academicSessionsRes) ? academicSessionsRes : (academicSessionsRes.results || []);
       const streams = Array.isArray(streamsRes) ? streamsRes : (streamsRes.results || []);
       
       
@@ -109,7 +109,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       setTeachers(teachers);
       setSubjects(subjects);
       setGradeLevels(gradeLevels);
-      setAcademicYears(academicYears);
+      setAcademicSessions(academicSessions);
       setStreams(streams);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load data';
@@ -286,9 +286,9 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   };
 
   // Load terms for a specific academic year
-  const loadTermsForAcademicYear = async (academicYearId: number) => {
+  const loadTermsForAcademicSession = async (academicSessionId: number) => {
     try {
-      const termsRes = await classroomService.getTerms(academicYearId);
+      const termsRes = await classroomService.getTerms(academicSessionId);
       const terms = Array.isArray(termsRes) ? termsRes : (termsRes.results || []);
       setTerms(terms);
     } catch (err: any) {
@@ -647,7 +647,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                       
                       // Load terms for the academic year
                       if (classroom.academic_session) {
-                        await loadTermsForAcademicYear(classroom.academic_session);
+                        await loadTermsForAcademicSession(classroom.academic_session);
                       }
                       
                       // Find the grade level for this section and load sections
@@ -783,7 +783,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                               
                               // Load terms for the academic year
                               if (classroom.academic_session) {
-                                await loadTermsForAcademicYear(classroom.academic_session);
+                                await loadTermsForAcademicSession(classroom.academic_session);
                               }
                               
                               // Find the grade level for this section and load sections
@@ -885,7 +885,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                       setFormData({...formData, academic_session: academicYearId, term: 0});
                       // Load terms for selected academic year
                       if (academicYearId) {
-                        loadTermsForAcademicYear(academicYearId);
+                        loadTermsForAcademicSession(academicYearId);
                       } else {
                         setTerms([]);
                       }
@@ -894,7 +894,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                     required
                   >
                     <option value="">Select Academic Year</option>
-                    {academicYears.map(year => (
+                    {academicSessions.map(year => (
                       <option key={year.id} value={year.id}>
                         {year.name}
                       </option>

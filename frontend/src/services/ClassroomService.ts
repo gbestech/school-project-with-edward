@@ -231,20 +231,6 @@ async getClassrooms(params?: {
 
 // ================================pppp================
 
-
-  // async getClassrooms(params?: {
-  //   search?: string;
-  //   education_level?: string;
-  //   is_active?: boolean;
-  //   academic_session?: number;
-  //   ordering?: string;
-  //   page?: number;
-  //   page_size?: number;
-  // }) {
-  //   const response = await api.get('/api/classrooms/classrooms/', { params });
-  //   return response;
-  // }
-
   // Get a single classroom by ID
   async getClassroom(id: number) {
     const response = await api.get(`/api/classrooms/classrooms/${id}/`);
