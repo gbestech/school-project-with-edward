@@ -460,19 +460,30 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return ClassroomSerializer
 
     # ... rest of your methods remain the same ...
+    # @action(detail=True, methods=["get"])
+    # def students(self, request, pk=None):
+    #     """Get students for a specific classroom"""
+    #     # Support both router-generated `pk` and explicitly mapped `classroom_id`
+    #     classroom_pk = pk or self.kwargs.get("classroom_id")
+    #     if classroom_pk is None:
+    #         return Response({"detail": "Classroom ID not provided"}, status=404)
+    #     self.kwargs[self.lookup_field] = classroom_pk
+    #     classroom = self.get_object()
+    #     enrollments = classroom.studentenrollment_set.filter(
+    #         is_active=True
+    #     ).select_related("student")
+    #     serializer = StudentEnrollmentSerializer(enrollments, many=True)
+    #     return Response(serializer.data)
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
         """Get students for a specific classroom"""
-        # Support both router-generated `pk` and explicitly mapped `classroom_id`
-        classroom_pk = pk or self.kwargs.get("classroom_id")
-        if classroom_pk is None:
-            return Response({"detail": "Classroom ID not provided"}, status=404)
-        self.kwargs[self.lookup_field] = classroom_pk
         classroom = self.get_object()
-        enrollments = classroom.studentenrollment_set.filter(
-            is_active=True
-        ).select_related("student")
-        serializer = StudentEnrollmentSerializer(enrollments, many=True)
+        # Filter students by classroom name (not by StudentEnrollment)
+        students = Student.objects.filter(classroom=classroom.name, is_active=True)
+
+        from students.serializers import StudentSerializer
+
+        serializer = StudentSerializer(students, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["get"])
