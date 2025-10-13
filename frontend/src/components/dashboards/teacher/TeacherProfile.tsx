@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, Mail, Phone, MapPin, Calendar, Award, GraduationCap, BookOpen, Users, Clock, Edit, Camera, Save, X, Plus, Trash2, Star, CheckCircle, AlertCircle, Building, Briefcase, Heart, Globe, Linkedin, Twitter, Facebook, Instagram, Download, Upload, Eye, EyeOff, FileText, Share2 } from "lucide-react";
+import { User, Award, GraduationCap, Edit, Camera, Save, X, CheckCircle, AlertCircle, Briefcase, FileText, Share2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { TeacherUserData } from "@/types/types";
 import TeacherService from "@/services/TeacherService";
@@ -98,17 +98,17 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
       setProfileData(response);
       
       const responseData = response as any;
-      setFormData({
-        first_name: responseData.user?.first_name || responseData.first_name || "",
-        last_name: responseData.user?.last_name || responseData.last_name || "",
-        email: responseData.user?.email || responseData.email || "",
-        phone_number: responseData.phone_number || "",
-        address: responseData.address || "",
-        qualification: responseData.qualification || "",
-        specialization: responseData.specialization || "",
-        bio: responseData.bio || "",
-        date_of_birth: responseData.date_of_birth || ""
-      });
+  setFormData({
+    first_name: responseData.user?.first_name || responseData.first_name || "",
+    last_name: responseData.user?.last_name || responseData.last_name || "",
+    email: responseData.user?.email || responseData.email || "",
+    phone_number: responseData.phone_number || "",
+    address: responseData.address || "",
+    qualification: responseData.qualification || "",
+    specialization: responseData.specialization || "",
+    bio: responseData.bio || "", // FIX: Get from top level, not user.bio
+    date_of_birth: responseData.date_of_birth || "" // FIX: Already correct
+  });
     } catch (error) {
       console.error("Error loading profile data:", error);
       setError(error instanceof Error ? error.message : "Failed to load profile data");
@@ -183,26 +183,25 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
   };
 
   const handleCancel = () => {
-    setIsEditing(false);
-    setError(null);
-    setSuccessMessage(null);
-    
-    if (profileData) {
-      const profileDataAny = profileData as any;
-      setFormData({
-        first_name: profileDataAny.user?.first_name || profileDataAny.first_name || "",
-        last_name: profileDataAny.user?.last_name || profileDataAny.last_name || "",
-        email: profileDataAny.user?.email || profileDataAny.email || "",
-        phone_number: profileDataAny.phone_number || "",
-        address: profileDataAny.address || "",
-        qualification: profileDataAny.qualification || "",
-        specialization: profileDataAny.specialization || "",
-        bio: profileDataAny.bio || "",
-        date_of_birth: profileDataAny.date_of_birth || "",
-
-      });
-    }
-  };
+  setIsEditing(false);
+  setError(null);
+  setSuccessMessage(null);
+  
+  if (profileData) {
+    const profileDataAny = profileData as any;
+    setFormData({
+      first_name: profileDataAny.user?.first_name || profileDataAny.first_name || "",
+      last_name: profileDataAny.user?.last_name || profileDataAny.last_name || "",
+      email: profileDataAny.user?.email || profileDataAny.email || "",
+      phone_number: profileDataAny.phone_number || "",
+      address: profileDataAny.address || "",
+      qualification: profileDataAny.qualification || "",
+      specialization: profileDataAny.specialization || "",
+      bio: profileDataAny.bio || "", // FIX: Get from top level
+      date_of_birth: profileDataAny.date_of_birth || "",
+    });
+  }
+};
 
   const getProfilePicture = () => {
     return (profileData as any)?.photo || (teacherData as any)?.photo || null;
@@ -672,62 +671,64 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                         className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bio</label>
-                      <textarea
-                        value={formData.bio}
-                        onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                        rows={4}
-                        placeholder="Tell us about yourself, your teaching philosophy, and experience..."
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-                      />
-                    </div>
+                    <div className="md:col-span-2">
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Bio</label>
+      <textarea
+        value={formData.bio}
+        onChange={(e) => setFormData({...formData, bio: e.target.value})}
+        rows={4}
+        placeholder="Tell us about yourself, your teaching philosophy, and experience..."
+        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+      />
+    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Full Name</label>
-                      <p className="text-slate-900 dark:text-white">
-                        {profileData?.user?.first_name || user?.first_name} {profileData?.user?.last_name || user?.last_name}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Email</label>
-                      <p className="text-slate-900 dark:text-white">{profileData?.user?.email || user?.email}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Phone Number</label>
-                      <p className="text-slate-900 dark:text-white">{profileData?.phone_number || "Not provided"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Date of Birth</label>
-                      <p className="text-slate-900 dark:text-white">
-                        {profileData?.user?.date_of_birth ? new Date(profileData.date_of_birth).toLocaleDateString() : "Not provided"}
-                      </p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Address</label>
-                      <p className="text-slate-900 dark:text-white">{profileData?.address || "Not provided"}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Bio</label>
-                      {profileData?.user?.bio ? (
-                        <div>
-                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                            {truncateBio(profileData.user.bio)}
-                          </p>
-                          {profileData.user.bio.split(" ").length > 20 && (
-                            <button
-                              onClick={() => setShowBioModal(true)}
-                              className="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
-                            >
-                              View More
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-slate-500 dark:text-slate-400 italic">No bio provided</p>
-                      )}
+    <div>
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Full Name</label>
+      <p className="text-slate-900 dark:text-white">
+        {profileData?.user?.first_name || user?.first_name} {profileData?.user?.last_name || user?.last_name}
+      </p>
+    </div>
+    <div>
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Email</label>
+      <p className="text-slate-900 dark:text-white">{profileData?.user?.email || user?.email}</p>
+    </div>
+    <div>
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Phone Number</label>
+      <p className="text-slate-900 dark:text-white">{profileData?.phone_number || "Not provided"}</p>
+    </div>
+    <div>
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Date of Birth</label>
+      <p className="text-slate-900 dark:text-white">
+        {profileData?.date_of_birth ? new Date(profileData.date_of_birth).toLocaleDateString() : "Not provided"}
+      </p>
+    </div>
+    <div className="md:col-span-2">
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Address</label>
+      <p className="text-slate-900 dark:text-white">{profileData?.address || "Not provided"}</p>
+    </div>
+    <div className="md:col-span-2">
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Bio</label>
+      {profileData?.bio ? (
+        <div>
+    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+      {truncateBio(profileData.bio)}
+    </p>
+    {profileData.bio.split(" ").length > 20 && (
+      <button
+        onClick={() => setShowBioModal(true)}
+        className="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+      >
+        View More
+      </button>
+    )}
+  </div>
+      ) : (
+       <p className="text-slate-500 dark:text-slate-400 italic">
+    No bio provided. Click "Edit Profile" to add your bio.
+  </p>
+       )}
                     </div>
                   </div>
                 )}
@@ -878,7 +879,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                     About {profileData?.user?.first_name || user?.first_name} {profileData?.user?.last_name || user?.last_name}
                   </h3>
                   <div className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {profileData?.user?.bio}
+                    {profileData?.bio}
                   </div>
                 </div>
               </div>
