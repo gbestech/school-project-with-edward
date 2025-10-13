@@ -91,17 +91,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       ]);
       
 
-
-      console.log('🔍 Raw API Response:', classroomsRes);
-    console.log('🔍 Response type:', typeof classroomsRes);
-    console.log('🔍 Is Array?:', Array.isArray(classroomsRes));
-    console.log('🔍 Has results?:', classroomsRes?.results);
-    
-    
-    
-    
-
-
       // Robust response handling
       const classrooms = Array.isArray(classroomsRes) ? classroomsRes : (classroomsRes.results || []);
       
