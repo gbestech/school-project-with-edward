@@ -702,7 +702,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                     <div>
                       <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Date of Birth</label>
                       <p className="text-slate-900 dark:text-white">
-                        {profileData?.user?.date_of_birth ? new Date(profileData.user.date_of_birth).toLocaleDateString() : "Not provided"}
+                        {profileData?.user?.date_of_birth ? new Date(profileData.date_of_birth).toLocaleDateString() : "Not provided"}
                       </p>
                     </div>
                     <div className="md:col-span-2">
