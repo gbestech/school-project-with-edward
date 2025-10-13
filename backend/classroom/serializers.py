@@ -628,13 +628,21 @@ class ClassroomDetailSerializer(ClassroomSerializer):
     class_schedules = ClassScheduleSerializer(
         source="schedules", many=True, read_only=True
     )
+    current_enrollment = serializers.SerializerMethodField()
 
     class Meta(ClassroomSerializer.Meta):
         fields = ClassroomSerializer.Meta.fields + [
             "teacher_assignments",
             "student_enrollments",
             "class_schedules",
+            "current_enrollment",
         ]
+
+    def get_current_enrollment(self, obj):
+        """Calculate current enrollment from StudentEnrollment"""
+        return obj.studentenrollment_set.filter(
+            is_active=True, student__is_active=True
+        ).count()
 
     def get_teacher_assignments(self, obj):
         """Get only active teacher assignments"""
