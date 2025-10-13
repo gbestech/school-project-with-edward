@@ -14,6 +14,7 @@ from subject.models import Subject
 from utils.section_filtering import SectionFilterMixin
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.db import models
 
 
 class TeacherModulePermission(permissions.BasePermission):
@@ -187,59 +188,67 @@ class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     # In teachers/views.py - Updated get_queryset() method
 
+    def get_queryset(self):
+        """
+        Filter queryset based on user permissions and section access.
+        - Admins/staff see all teachers.
+        - Teachers see only their own profile.
+        - Other users (students/parents) see none.
+        """
+        user = self.request.user
+        print(f"[TeacherViewSet] get_queryset called for user: {user}")
 
-def get_queryset(self):
-    """
-    Filter queryset based on user permissions and section access
-    """
-    print(f"TeacherViewSet.get_queryset called for user: {self.request.user}")
+        if not user.is_authenticated:
+            print("User not authenticated — returning none.")
+            return Teacher.objects.none()
 
-    queryset = Teacher.objects.select_related("user").all()
-    print(f"Initial queryset count: {queryset.count()}")
+        # 🟩 Admin / staff — full access
+        if user.is_superuser or user.is_staff:
+            queryset = Teacher.objects.select_related("user").all()
+            print(f"Admin user — total teachers: {queryset.count()}")
 
-    if self.request.user.is_authenticated:
-        # Apply section filtering based on user's role permissions
-        # BUT: Don't filter if user is superuser or admin
-        if not (self.request.user.is_superuser or self.request.user.is_staff):
-            print(f"Applying section filtering for non-admin user")
-            queryset = self.filter_teachers_by_section_access(queryset)
+        # 🟦 Teacher — see only their own profile
+        elif hasattr(user, "teacher"):
+            queryset = Teacher.objects.select_related("user").filter(user=user)
+            print(f"Teacher user — restricted to self: {queryset.count()}")
+
+        # 🟥 Others — no access
         else:
-            print(f"Admin user - skipping section filtering")
-    else:
-        print(f"User not authenticated - returning empty queryset")
-        return Teacher.objects.none()
+            print("Non-teacher, non-admin user — returning none.")
+            return Teacher.objects.none()
 
-    print(f"After section filtering count: {queryset.count()}")
+        # Apply section filtering only for non-admins (optional)
+        if not (user.is_superuser or user.is_staff):
+            queryset = self.filter_teachers_by_section_access(queryset)
+            print(f"After section filtering count: {queryset.count()}")
 
-    # Apply search filters
-    search = self.request.query_params.get("search", None)
-    if search:
-        print(f"Applying search filter: {search}")
-        queryset = (
-            queryset.filter(user__first_name__icontains=search)
-            | queryset.filter(user__last_name__icontains=search)
-            | queryset.filter(employee_id__icontains=search)
-        )
-        print(f"After search filter count: {queryset.count()}")
+        # Apply search filter
+        search = self.request.query_params.get("search")
+        if search:
+            print(f"Applying search filter: {search}")
+            queryset = queryset.filter(
+                models.Q(user__first_name__icontains=search)
+                | models.Q(user__last_name__icontains=search)
+                | models.Q(employee_id__icontains=search)
+            ).distinct()
 
-    # Apply level filter
-    level = self.request.query_params.get("level", None)
-    if level:
-        print(f"Applying level filter: {level}")
-        queryset = queryset.filter(level=level)
-        print(f"After level filter count: {queryset.count()}")
+        # Apply level filter
+        level = self.request.query_params.get("level")
+        if level:
+            queryset = queryset.filter(level=level)
+            print(f"Filtered by level={level}, count={queryset.count()}")
 
-    # Apply status filter
-    status_filter = self.request.query_params.get("status", None)
-    if status_filter == "active":
-        print(f"Applying status filter: active")
-        queryset = queryset.filter(is_active=True)
-    elif status_filter == "inactive":
-        print(f"Applying status filter: inactive")
-        queryset = queryset.filter(is_active=False)
+        # Apply status filter
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            if status_filter == "active":
+                queryset = queryset.filter(is_active=True)
+            elif status_filter == "inactive":
+                queryset = queryset.filter(is_active=False)
+            print(f"Filtered by status={status_filter}, count={queryset.count()}")
 
-    print(f"Final queryset count: {queryset.count()}")
-    return queryset
+        print(f"Final queryset count: {queryset.count()}")
+        return queryset
 
 
 # Keep your other ViewSets as they are...
