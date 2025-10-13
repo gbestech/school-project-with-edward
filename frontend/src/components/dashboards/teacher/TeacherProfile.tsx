@@ -462,7 +462,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                       <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
                         {truncateBio(profileData.user.bio)}
                       </p>
-                      {profileData.user.bio.split(" ").length > 20 && (
+                      {profileData.user?.bio.split(" ").length > 20 && (
                         <button
                           onClick={() => setShowBioModal(true)}
                           className="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
@@ -715,7 +715,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
     <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
       {truncateBio(profileData.user?.bio)}
     </p>
-    {profileData.bio.split(" ").length > 20 && (
+    {profileData.user?.bio?.split(" ").length > 20 && (
       <button
         onClick={() => setShowBioModal(true)}
         className="mt-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors"
