@@ -836,14 +836,14 @@ const AdminLoginForm: React.FC<LoginProps> = ({
                   <span className="text-xs font-semibold text-indigo-200">Admin Portal</span>
                 </div>
                 
-                <h1 className="text-4xl lg:text-5xl font-black leading-tight">
+                <h1 className="text-2xl lg:text-3xl font-black leading-tight">
                   Your Journey to
                   <br />
                   <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     Academic Excellence
                   </span>
                 </h1>
-                <p className="text-base text-white/70 max-w-xl leading-relaxed">
+                <p className="text-sm text-white/70 max-w-xl leading-relaxed">
                   Unlock your potential with AI-powered learning, personalized study paths, and interactive experiences.
                 </p>
               </div>

@@ -172,8 +172,8 @@ const TeacherList = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(teacher => {
-        const teacherName = teacher.full_name || `${teacher.user?.first_name || teacher.first_name || ''} ${teacher.user?.last_name || teacher.last_name || ''}`;
-        const teacherEmail = teacher.user?.email || teacher.email || '';
+        const teacherName = teacher.full_name || `${teacher.first_name || ''} ${teacher.last_name || ''}`;
+        const teacherEmail = teacher.email || '';
         return teacherName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           teacherEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (teacher.assigned_subjects && Array.isArray(teacher.assigned_subjects) && teacher.assigned_subjects.some(subject => 
@@ -568,7 +568,7 @@ const TeacherList = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`text-lg font-bold ${themeClasses.textPrimary} leading-tight mb-1`}>
-                        {teacher.user?.first_name || teacher.first_name} {teacher.user?.last_name || teacher.last_name}
+                        {teacher.first_name} {teacher.last_name}
                       </h3>
                       <p className={`${themeClasses.iconPrimary} font-semibold text-sm mb-3 leading-tight`}>
                         {teacher.staff_type === 'teaching' ? 'Teaching Staff' : 'Non-Teaching Staff'}
@@ -598,7 +598,7 @@ const TeacherList = () => {
                     <div className={`flex items-center ${themeClasses.textSecondary}`}>
                       <Users size={16} className={`mr-3 flex-shrink-0 ${themeClasses.iconSecondary}`} />
                       <span className="text-sm break-all leading-relaxed">
-                      {teacher.user?.first_name || teacher.first_name} {teacher.user?.last_name || teacher.last_name}
+                      {teacher.first_name} {teacher.last_name}
                     </span>
                     </div>
                     
@@ -1118,13 +1118,13 @@ interface EditTeacherFormProps {
 
 // Replace the entire EditTeacherForm component with this fixed version
 
-const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses, isDark }) => {
+const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses }) => {
   console.log('🔍 EditTeacherForm received teacher:', teacher);
   
   const [formData, setFormData] = useState({
-    first_name: teacher?.user?.first_name || teacher?.first_name || '',
-    last_name: teacher?.user?.last_name || teacher?.last_name || '',
-    email: teacher?.user?.email || teacher?.email || '',
+    first_name: teacher?.first_name || '',
+    last_name: teacher?.last_name || '',
+    email: teacher?.email || '',
     employee_id: teacher?.employee_id || '',
     phone_number: teacher?.phone_number || '',
     address: teacher?.address || '',

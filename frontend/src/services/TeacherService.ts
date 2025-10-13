@@ -5,6 +5,7 @@ export interface Teacher {
   first_name: string;
   last_name: string;
   full_name?: string;
+  employee_id?: string;
   email: string;
   phone_number: string;
   address: string;
@@ -147,7 +148,7 @@ export interface UpdateTeacherData {
   hire_date?: string;
   qualification?: string;
   specialization?: string;
-  subjects?: string[];
+  subjects?: number[];
   // Updated to use new assignment structure
   assignments?: Array<{
     classroom_id: number;
@@ -270,7 +271,7 @@ class TeacherService {
     
     // Convert subjects from string array to number array if needed
     if (data.subjects && Array.isArray(data.subjects)) {
-      updateData.subjects = data.subjects.map(s => parseInt(s, 10));
+      updateData.subjects = data.subjects
     }
     
     // Ensure bio and date_of_birth are included if they exist

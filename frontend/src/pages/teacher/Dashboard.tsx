@@ -13,14 +13,8 @@ const TeacherDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  console.log('🔍 TeacherDashboard - Component mounted');
-  console.log('🔍 TeacherDashboard - Auth state:', { isAuthenticated, isLoading, hasUser: !!user });
-
-
-
+ 
   useEffect(() => {
-    console.log('🔍 TeacherDashboard - useEffect triggered');
-    console.log('🔍 TeacherDashboard - useEffect state:', { isLoading, isAuthenticated, hasUser: !!user, userRole: user?.role });
     
     if (!isLoading) {
       if (!isAuthenticated || !user) {
@@ -48,18 +42,11 @@ const TeacherDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Debug: Log the user data structure
-      console.log('🔍 Teacher Dashboard - User data:', user);
-      console.log('🔍 Teacher Dashboard - User role:', user?.role);
-      console.log('🔍 Teacher Dashboard - Teacher data:', (user as TeacherUserData)?.teacher_data);
-      console.log('🔍 Teacher Dashboard - User profile:', (user as any)?.profile);
-      
+            
       // Get teacher ID using the new method
       const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
       
-      console.log('🔍 Teacher Dashboard - Found teacher ID:', teacherId);
-      
+            
       if (!teacherId) {
         console.error('🔍 Teacher Dashboard - No teacher ID found!');
         throw new Error('Teacher ID not found. Please ensure your teacher profile is properly set up.');
