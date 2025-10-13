@@ -477,14 +477,25 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
         """Get students for a specific classroom"""
-        classroom = self.get_object()
-        # Filter students by classroom name (not by StudentEnrollment)
-        students = Student.objects.filter(classroom=classroom.name, is_active=True)
+        try:
+            classroom = self.get_object()
+            # Filter students by classroom name
+            students = Student.objects.filter(
+                classroom=classroom.name, is_active=True
+            ).order_by("user__first_name")
 
-        from students.serializers import StudentSerializer
+            from students.serializers import StudentListSerializer
 
-        serializer = StudentSerializer(students, many=True)
-        return Response(serializer.data)
+            serializer = StudentListSerializer(students, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error fetching classroom students: {str(e)}")
+            import traceback
+
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=["get"])
     def teachers(self, request, pk=None):
