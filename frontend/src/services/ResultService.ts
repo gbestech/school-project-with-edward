@@ -63,7 +63,7 @@ export interface TranscriptOptions {
 }
 
 class ResultService {
-  private baseURL = 'results'; // Updated: removed /api/ prefix since our api helper handles it
+  private baseURL = '/api/results'; // Updated: removed /api/ prefix since our api helper handles it
   private cache = new Map<string, {data: any; timestamp: number}>();
   private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
