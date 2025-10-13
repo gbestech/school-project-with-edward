@@ -479,9 +479,10 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         """Get students for a specific classroom"""
         try:
             classroom = self.get_object()
-            # Filter students by classroom name
+            # Filter students by classroom name with LIKE to handle section letters
+            # e.g., "Primary 1" matches "Primary 1 A", "Primary 1 B", etc.
             students = Student.objects.filter(
-                classroom=classroom.name, is_active=True
+                classroom__startswith=classroom.name, is_active=True
             ).order_by("user__first_name")
 
             from students.serializers import StudentListSerializer
