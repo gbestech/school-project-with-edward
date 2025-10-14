@@ -38,7 +38,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     class_teacher: undefined as number | undefined,
     room_number: '',
     max_capacity: 30,
-    stream: undefined as number | undefined
   });
 
   // Additional data for forms
@@ -46,7 +45,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   const [sections, setSections] = useState<any[]>([]);
   const [academicSessions, setAcademicSessions] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
-  const [streams, setStreams] = useState<any[]>([]);
   
   // Assignment form - Complete interface implementation
   const [assignmentData, setAssignmentData] = useState({
@@ -66,7 +64,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [streamFilter, setStreamFilter] = useState('all');
+  
   
   // View toggle
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -81,13 +79,12 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       setLoading(true);
       setError(null);
       
-      const [classroomsRes, teachersRes, subjectsRes, gradeLevelsRes, academicSessionsRes, streamsRes] = await Promise.all([
+      const [classroomsRes, teachersRes, subjectsRes, gradeLevelsRes, academicSessionsRes] = await Promise.all([
   classroomService.getClassrooms(),
   classroomService.getAllTeachers(),
   classroomService.getAllSubjects(),
   classroomService.getGradeLevels(),
   classroomService.getAcademicYears(),
-  classroomService.getStreams()
 ]);
       
 
@@ -101,7 +98,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       const subjects = Array.isArray(subjectsRes) ? subjectsRes : (subjectsRes.results || []);
       const gradeLevels = Array.isArray(gradeLevelsRes) ? gradeLevelsRes : (gradeLevelsRes.results || []);
       const academicSessions = Array.isArray(academicSessionsRes) ? academicSessionsRes : (academicSessionsRes.results || []);
-      const streams = Array.isArray(streamsRes) ? streamsRes : (streamsRes.results || []);
+      
       
       
       setClassrooms(classrooms);
@@ -110,7 +107,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       setSubjects(subjects);
       setGradeLevels(gradeLevels);
       setAcademicSessions(academicSessions);
-      setStreams(streams);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to load data';
       setError(errorMessage);
@@ -140,12 +136,9 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       filtered = filtered.filter(c => c.is_active === (statusFilter === 'active'));
     }
 
-    if (streamFilter !== 'all') {
-      filtered = filtered.filter(c => c.stream_name === streamFilter);
-    }
 
     setFilteredClassrooms(filtered);
-  }, [classrooms, searchTerm, levelFilter, statusFilter, streamFilter]);
+  }, [classrooms, searchTerm, levelFilter, statusFilter]);
 
   // Handle form submission with proper validation
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,7 +166,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
           class_teacher: formData.class_teacher,
           room_number: formData.room_number.trim(),
           max_capacity: formData.max_capacity,
-          stream: formData.stream
         };
         await classroomService.updateClassroom(selectedClassroom.id, updateData);
         toast.success('Classroom updated successfully');
@@ -187,7 +179,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
           class_teacher: formData.class_teacher,
           room_number: formData.room_number.trim(),
           max_capacity: formData.max_capacity,
-          stream: formData.stream
         };
         await classroomService.createClassroom(createData);
         toast.success('Classroom created successfully');
@@ -337,7 +328,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
       class_teacher: undefined,
       room_number: '',
       max_capacity: 30,
-      stream: undefined
     });
     setSections([]);
     setTerms([]);
@@ -375,12 +365,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
     return new Set(assignments.map(assignment => assignment.teacher)).size;
   };
 
-  // Check if grade level supports streams (Senior Secondary)
-  const isStreamRequired = () => {
-    if (!formData.grade_level) return false;
-    const gradeLevel = gradeLevels.find(gl => gl.id === parseInt(formData.grade_level));
-    return gradeLevel?.education_level?.includes('SENIOR_SECONDARY');
-  };
 
   // Theme classes
   const themeClasses = {
@@ -492,17 +476,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                 <option value="SENIOR_SECONDARY">Senior Secondary</option>
               </select>
               <select
-                value={streamFilter}
-                onChange={(e) => setStreamFilter(e.target.value)}
-                className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.borderPrimary} ${themeClasses.textPrimary} bg-white`}
-              >
-                <option value="all">All Streams</option>
-                <option value="Science">Science</option>
-                <option value="Arts">Arts</option>
-                <option value="Commercial">Commercial</option>
-                <option value="Technical">Technical</option>
-              </select>
-              <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.borderPrimary} ${themeClasses.textPrimary} bg-white`}
@@ -575,11 +548,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                   <p className={themeClasses.textSecondary}>
                     <strong>Section:</strong> {classroom.section_name}
                   </p>
-                  {classroom.stream_name && (
-                    <p className={themeClasses.textSecondary}>
-                      <strong>Stream:</strong> {classroom.stream_name}
-                    </p>
-                  )}
                   <p className={themeClasses.textSecondary}>
                     <strong>Room:</strong> {classroom.room_number || 'Not assigned'}
                   </p>
@@ -640,7 +608,7 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                         class_teacher: classroom.class_teacher || undefined,
                         room_number: classroom.room_number,
                         max_capacity: classroom.max_capacity,
-                        stream: classroom.stream || undefined
+                     
                       };
                       
                       setFormData(initialFormData);
@@ -715,9 +683,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                         {classroom.section_name}
                       </td>
                       <td className={`px-6 py-4 text-sm ${themeClasses.textSecondary}`}>
-                        {classroom.stream_name || '-'}
-                      </td>
-                      <td className={`px-6 py-4 text-sm ${themeClasses.textSecondary}`}>
                         {classroom.room_number || 'Not assigned'}
                       </td>
                       <td className={`px-6 py-4 text-sm ${themeClasses.textSecondary}`}>
@@ -776,7 +741,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                                 class_teacher: classroom.class_teacher || undefined,
                                 room_number: classroom.room_number,
                                 max_capacity: classroom.max_capacity,
-                                stream: classroom.stream || undefined
                               };
                               
                               setFormData(initialFormData);
@@ -967,25 +931,6 @@ const ClassroomManagement: React.FC<ClassroomManagementProps> = () => {
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${themeClasses.textPrimary}`}>
-                    Stream {isStreamRequired() ? '*' : '(Optional)'}
-                  </label>
-                  <select
-                    value={formData.stream || ''}
-                    onChange={(e) => setFormData({...formData, stream: e.target.value ? parseInt(e.target.value) : undefined})}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${themeClasses.borderPrimary} ${themeClasses.textPrimary} bg-white`}
-                    required={isStreamRequired()}
-                    disabled={!isStreamRequired()}
-                  >
-                    <option value="">
-                      {isStreamRequired() ? 'Select Stream' : 'Select Stream (Optional)'}
-                    </option>
-                    {streams.map(stream => (
-                      <option key={stream.id} value={stream.id}>
-                        {stream.name} ({stream.stream_type})
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${themeClasses.textPrimary}`}>

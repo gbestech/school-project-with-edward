@@ -299,7 +299,9 @@ class StudentDetailSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(required=False)
     parents = serializers.SerializerMethodField()
     emergency_contacts = serializers.SerializerMethodField()
-    profile_picture = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+    profile_picture = serializers.URLField(
+        required=False, allow_blank=True, allow_null=True
+    )
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     section_id = serializers.SerializerMethodField()
     stream = serializers.PrimaryKeyRelatedField(
@@ -539,6 +541,14 @@ class StudentDetailSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Parent contact is required for nursery students."
                 )
+        # Enforce stream for senior secondary students
+        education_level = data.get("education_level") or getattr(
+            self.instance, "education_level", None
+        )
+        if education_level == "SENIOR_SECONDARY" and not data.get("stream"):
+            raise serializers.ValidationError(
+                {"stream": "Stream is required for Senior Secondary students."}
+            )
 
         return data
 
@@ -546,7 +556,7 @@ class StudentDetailSerializer(serializers.ModelSerializer):
         """Add frontend-compatible fields dynamically"""
         data = super().to_representation(instance)
         # Add 'class' field for frontend compatibility (can't use 'class' as field name due to Python keyword)
-        data['class'] = instance.student_class
+        data["class"] = instance.student_class
         return data
 
 
@@ -566,7 +576,9 @@ class StudentListSerializer(serializers.ModelSerializer):
     )
     is_active = serializers.BooleanField()
     parent_count = serializers.SerializerMethodField()
-    profile_picture = serializers.URLField(required=False, allow_blank=True, allow_null=True)
+    profile_picture = serializers.URLField(
+        required=False, allow_blank=True, allow_null=True
+    )
     classroom = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     section_id = serializers.SerializerMethodField()
     user = serializers.SerializerMethodField()
@@ -699,7 +711,7 @@ class StudentListSerializer(serializers.ModelSerializer):
         """Add frontend-compatible fields dynamically"""
         data = super().to_representation(instance)
         # Add 'class' field for frontend compatibility (can't use 'class' as field name due to Python keyword)
-        data['class'] = instance.student_class
+        data["class"] = instance.student_class
         return data
 
 
@@ -966,6 +978,12 @@ class StudentCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     f"Student with registration number '{registration_number}' already exists."
                 )
+        # Enforce stream for senior secondary students
+        education_level = data.get("education_level")
+        if education_level == "SENIOR_SECONDARY" and not data.get("stream"):
+            raise serializers.ValidationError(
+                {"stream": "Stream is required for Senior Secondary students."}
+            )
 
         return data
 
@@ -1000,7 +1018,10 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Selected class is not valid for primary level."
             )
-        elif education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"] and value not in secondary_classes:
+        elif (
+            education_level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
+            and value not in secondary_classes
+        ):
             raise serializers.ValidationError(
                 "Selected class is not valid for secondary level."
             )

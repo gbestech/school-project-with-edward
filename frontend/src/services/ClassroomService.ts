@@ -81,10 +81,6 @@ export interface Classroom {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  // Stream information for Senior Secondary
-  stream?: number;
-  stream_name?: string;
-  stream_type?: string;
   // Updated to use new assignment model
   teacher_assignments?: ClassroomTeacherAssignment[];
   // Legacy field for backward compatibility
@@ -132,8 +128,8 @@ export interface CreateClassroomData {
   class_teacher?: number;
   room_number?: string;
   max_capacity: number;
-  stream?: number; // New field for Senior Secondary streams
 }
+
 
 export interface UpdateClassroomData extends Partial<CreateClassroomData> {
   is_active?: boolean;
@@ -168,9 +164,6 @@ export interface UpdateTeacherAssignmentData {
 
 class ClassroomService {
   // Get all classrooms with optional filters
-
-
-// ===========================jjj========================
 async getClassrooms(params?: {
   search?: string;
   education_level?: string;
@@ -187,49 +180,45 @@ async getClassrooms(params?: {
     
     
     // 🔍 DEBUG: Log the raw response
-    console.log('📡 Raw API Response:', {
-      type: typeof response,
-      isArray: Array.isArray(response),
-      keys: Object.keys(response || {}),
-      data: response
-    });
-    
+      console.log('📡 Raw API Response:', {
+        type: typeof response,
+        isArray: Array.isArray(response),
+        keys: Object.keys(response || {}),
+        data: response
+      });
     
     // Check different response structures
     if (Array.isArray(response)) {
-      console.log('✅ Response is array, length:', response.length);
-      return response;
-    } else if (response?.data) {
-      console.log('✅ Response has .data property');
-      if (Array.isArray(response.data)) {
-        console.log('✅ Response.data is array, length:', response.data.length);
+        console.log('✅ Response is array, length:', response.length);
+        return response;
+      } else if (response?.data) {
+        console.log('✅ Response has .data property');
+        if (Array.isArray(response.data)) {
+          console.log('✅ Response.data is array, length:', response.data.length);
+          return response.data;
+        } else if (response.data?.results) {
+          console.log('✅ Response.data.results exists, length:', response.data.results.length);
+          return response.data;
+        }
         return response.data;
-      } else if (response.data?.results) {
-        console.log('✅ Response.data.results exists, length:', response.data.results.length);
-        return response.data;
+      } else if (response?.results) {
+        console.log('✅ Response has .results property, length:', response.results.length);
+        return response;
       }
-      return response.data;
-    } else if (response?.results) {
-      console.log('✅ Response has .results property, length:', response.results.length);
+      
+      console.warn('⚠️ Unexpected response structure:', response);
       return response;
+    
+   } catch (error: any) {
+      console.error('❌ Error fetching classrooms:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: error.config?.url
+      });
+      throw error;
     }
-    
-    console.warn('⚠️ Unexpected response structure:', response);
-    return response;
-    
-  } catch (error: any) {
-    console.error('❌ Error fetching classrooms:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url
-    });
-    throw error;
   }
-}
-
-
-// ================================pppp================
 
   // Get a single classroom by ID
   async getClassroom(id: number) {
@@ -439,18 +428,18 @@ async getClassrooms(params?: {
     return response;
   }
 
-  // Get streams for Senior Secondary
-  async getStreams() {
-    const response = await api.get('/api/classrooms/streams/');
-    return response;
-  }
+  // // Get streams for Senior Secondary
+  // async getStreams() {
+  //   const response = await api.get('/api/classrooms/streams/');
+  //   return response;
+  // }
 
-  // Get streams by type
-  async getStreamsByType(streamType?: string) {
-    const params = streamType ? { stream_type: streamType } : {};
-    const response = await api.get('/api/classrooms/streams/by-type/', { params });
-    return response;
-  }
+  // // Get streams by type
+  // async getStreamsByType(streamType?: string) {
+  //   const params = streamType ? { stream_type: streamType } : {};
+  //   const response = await api.get('/api/classrooms/streams/by-type/', { params });
+  //   return response;
+  // }
 
   // Get detailed student information
   async getStudentDetails(studentId: number) {
