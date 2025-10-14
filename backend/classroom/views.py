@@ -493,7 +493,7 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     is_active=True,
                 )
                 .select_related("user")
-                .order_by("user__full_name")
+                .order_by("user__first_name", "user__last_name")
             )
 
             if not students_exact.exists():
@@ -505,7 +505,7 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     )
                     .distinct()
                     .select_related("user")
-                    .order_by("user__full_name")
+                    .order_by("user__first_name", "user__last_name")
                 )
 
             # Get all students and show their classroom values for this education level
