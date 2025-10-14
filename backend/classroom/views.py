@@ -465,22 +465,70 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         try:
             classroom = self.get_object()
 
-            # Normalize classroom name by removing spaces for comparison
-            # e.g., "SS 1 A" becomes "SS1 A" to match student records
-            normalized_classroom_name = classroom.name.replace(" ", "")
-
-            # Also try direct match in case some records have spaces
-            students = (
-                Student.objects.filter(
-                    Q(classroom__istartswith=classroom.name)  # Exact classroom name
-                    | Q(
-                        classroom__istartswith=normalized_classroom_name
-                    ),  # Without spaces
-                    is_active=True,
-                )
-                .order_by("user__first_name")
-                .distinct()
+            print(f"\n🔍 DEBUG: Fetching students for classroom ID {classroom.id}")
+            print(f"🔍 Classroom name: '{classroom.name}'")
+            print(f"🔍 Classroom section: {classroom.section}")
+            print(
+                f"🔍 Classroom education_level: {classroom.section.grade_level.education_level}"
             )
+
+            # Normalize classroom name by removing spaces for comparison
+            normalized_classroom_name = classroom.name.replace(" ", "")
+            print(f"🔍 Normalized classroom name: '{normalized_classroom_name}'")
+
+            # Check what students exist with classroom field
+            all_students_in_db = Student.objects.filter(is_active=True)
+            print(f"🔍 Total active students in database: {all_students_in_db.count()}")
+
+            # Show sample classroom values
+            sample_classrooms = all_students_in_db.values_list(
+                "classroom", flat=True
+            ).distinct()[:10]
+            print(f"🔍 Sample classroom values in DB: {list(sample_classrooms)}")
+
+            # Try exact match first
+            students_exact = Student.objects.filter(
+                classroom=classroom.name, is_active=True
+            )
+            print(
+                f"🔍 Students matching exact classroom name '{classroom.name}': {students_exact.count()}"
+            )
+
+            # Try normalized match
+            students_normalized = Student.objects.filter(
+                classroom=normalized_classroom_name, is_active=True
+            )
+            print(
+                f"🔍 Students matching normalized name '{normalized_classroom_name}': {students_normalized.count()}"
+            )
+
+            # Try startswith
+            from django.db.models import Q
+
+            students_startswith = Student.objects.filter(
+                Q(classroom__istartswith=classroom.name)
+                | Q(classroom__istartswith=normalized_classroom_name),
+                is_active=True,
+            ).distinct()
+            print(f"🔍 Students matching startswith: {students_startswith.count()}")
+
+            # Get all students and show their classroom values for this education level
+            all_students_this_level = Student.objects.filter(
+                education_level=classroom.section.grade_level.education_level,
+                is_active=True,
+            )
+            print(
+                f"🔍 Total students in {classroom.section.grade_level.education_level}: {all_students_this_level.count()}"
+            )
+            print(f"🔍 Their classroom assignments:")
+            for student in all_students_this_level[:5]:
+                print(f"   - {student.full_name}: classroom='{student.classroom}'")
+
+            # Use the best match
+            students = (
+                students_exact if students_exact.exists() else students_startswith
+            )
+            print(f"🔍 Final student count: {students.count()}\n")
 
             from students.serializers import StudentListSerializer
 
