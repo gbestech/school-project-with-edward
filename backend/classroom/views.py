@@ -486,8 +486,8 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             ).distinct()[:10]
             print(f"🔍 Sample classroom values in DB: {list(sample_classrooms)}")
 
-            # Try exact match first
-            students = (
+            # Try exact FK match first
+            students_exact = (
                 Student.objects.filter(
                     classroom=classroom,
                     is_active=True,
@@ -495,25 +495,18 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 .select_related("user")
                 .order_by("user__full_name")
             )
-            print(f"✅ Students found via FK match: {students.count()}")
 
-            # Try normalized match
-            students_normalized = Student.objects.filter(
-                classroom=normalized_classroom_name, is_active=True
-            )
-            print(
-                f"🔍 Students matching normalized name '{normalized_classroom_name}': {students_normalized.count()}"
-            )
-
-            # Try startswith
-            from django.db.models import Q
-
-            students_startswith = Student.objects.filter(
-                Q(classroom__istartswith=classroom.name)
-                | Q(classroom__istartswith=normalized_classroom_name),
-                is_active=True,
-            ).distinct()
-            print(f"🔍 Students matching startswith: {students_startswith.count()}")
+            if not students_exact.exists():
+                students_exact = (
+                    Student.objects.filter(
+                        Q(classroom__istartswith=classroom.name)
+                        | Q(classroom__istartswith=normalized_classroom_name),
+                        is_active=True,
+                    )
+                    .distinct()
+                    .select_related("user")
+                    .order_by("user__full_name")
+                )
 
             # Get all students and show their classroom values for this education level
             all_students_this_level = Student.objects.filter(
@@ -527,11 +520,8 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             for student in all_students_this_level[:5]:
                 print(f"   - {student.full_name}: classroom='{student.classroom}'")
 
-            # Use the best match
-            students = (
-                students_exact if students_exact.exists() else students_startswith
-            )
-            print(f"🔍 Final student count: {students.count()}\n")
+            students = students_exact
+            print(f"✅ Final student count: {students.count()}\n")
 
             from students.serializers import StudentListSerializer
 
