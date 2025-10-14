@@ -1,7 +1,9 @@
 import requests
 import json
 
-BASE_URL = "http://localhost:8000/api"  # Update if different
+BASE_URL = (
+    "https://school-management-project-qpox.onrender.com/api"  # Update if different
+)
 
 TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYwNDI1NDY0LCJpYXQiOjE3NjA0MjE4NjQsImp0aSI6IjBhNDAzMTBhODYwZTQ2NTg4ZjA0MDUxMmYzOGQyODUwIiwidXNlcl9pZCI6MjQsImlkIjoyNCwiZW1haWwiOiJyZWJlY2NhLmF3YW5hQGdvZHN0cmVhc3VyZXNjaG9vbHMuY29tIiwicm9sZSI6ImFkbWluIiwiaXNfc3RhZmYiOnRydWV9.I_RyE9KZqbqxJHesawBrAP-jFnew7ee3mZOQH10roT8"
 
