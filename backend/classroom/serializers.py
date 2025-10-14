@@ -154,10 +154,12 @@ class TermSerializer(serializers.ModelSerializer):
 
 
 class StreamSerializer(serializers.ModelSerializer):
+    """Serializer for Stream model — used for managing streams like Science, Arts, etc."""
+
     stream_type_display = serializers.CharField(
         source="get_stream_type_display", read_only=True
     )
-    classroom_count = serializers.SerializerMethodField()
+    student_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Stream
@@ -169,11 +171,23 @@ class StreamSerializer(serializers.ModelSerializer):
             "stream_type_display",
             "description",
             "is_active",
-            "classroom_count",
+            "student_count",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_student_count(self, obj):
+        """
+        Returns the number of active students assigned to this stream.
+        This replaces the old classroom_count since streams are now
+        directly linked to students, not classrooms.
+        """
+        return (
+            obj.students.filter(is_active=True).count()
+            if hasattr(obj, "students")
+            else 0
+        )
 
 
 class TeacherSerializer(serializers.ModelSerializer):
