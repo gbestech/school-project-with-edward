@@ -202,7 +202,7 @@ class Command(BaseCommand):
 
     def _analyze_stream_usage(self):
         """Analyze how streams are currently used"""
-        classrooms_with_stream = Classroom.objects.filter(stream__isnull=False).count()
+        classrooms_with_stream = 0
         classrooms_without_stream = Classroom.objects.filter(
             stream__isnull=True
         ).count()

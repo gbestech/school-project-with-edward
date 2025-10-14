@@ -453,6 +453,9 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
     # Student details
     student_id = serializers.IntegerField(source="student.id", read_only=True)
     full_name = serializers.CharField(source="student.user.full_name", read_only=True)
+    student_stream = serializers.CharField(
+        source="student.stream.name", read_only=True, allow_null=True
+    )
     registration_number = serializers.CharField(
         source="student.registration_number", read_only=True
     )
@@ -480,6 +483,7 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
             "profile_picture",
             "gender",
             "student_class",
+            "student_stream",
             "age",
             "enrollment_date",
             "is_active",
@@ -556,8 +560,6 @@ class ClassroomSerializer(serializers.ModelSerializer):
     class_teacher_employee_id = serializers.CharField(
         source="class_teacher.employee_id", read_only=True
     )
-    stream_name = serializers.CharField(source="stream.name", read_only=True)
-    stream_type = serializers.CharField(source="stream.stream_type", read_only=True)
 
     # Enrollment statistics
     current_enrollment = serializers.SerializerMethodField()
@@ -578,9 +580,6 @@ class ClassroomSerializer(serializers.ModelSerializer):
             "academic_session_name",
             "term",
             "term_name",
-            "stream",
-            "stream_name",
-            "stream_type",
             "class_teacher",
             "class_teacher_name",
             "class_teacher_phone",

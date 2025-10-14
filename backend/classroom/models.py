@@ -104,14 +104,14 @@ class Classroom(models.Model):
     )
 
     # Stream support for Senior Secondary
-    stream = models.ForeignKey(
-        Stream,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="classrooms",
-        help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)",
-    )
+    # stream = models.ForeignKey(
+    #     Stream,
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     blank=True,
+    #     related_name="classrooms",
+    #     help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)",
+    # )
 
     # Teacher assignments
     class_teacher = models.ForeignKey(
@@ -145,7 +145,7 @@ class Classroom(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ["section", "academic_session", "term"]
+        unique_together = [("section", "academic_session", "term", "name")]
         ordering = ["section__grade_level", "section__name", "academic_session"]
 
     def __str__(self):
