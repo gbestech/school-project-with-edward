@@ -756,6 +756,13 @@ class StudentCreateSerializer(serializers.ModelSerializer):
     is_primary_contact = serializers.BooleanField(write_only=True, required=False)
     classroom = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
+    stream = serializers.PrimaryKeyRelatedField(
+        queryset=Stream.objects.all(),
+        required=False,
+        allow_null=True,
+        help_text="Stream for Senior Secondary students",
+    )
+
     class Meta:
         model = Student
         fields = [
@@ -768,8 +775,9 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             "education_level",
             "student_class",
             "registration_number",
-            "profile_picture",  # ADD THIS
+            "profile_picture",
             "classroom",
+            "stream",
             "existing_parent_id",
             "parent_first_name",
             "parent_last_name",
