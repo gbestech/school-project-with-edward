@@ -459,74 +459,108 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             return ClassroomDetailSerializer
         return ClassroomSerializer
 
+    # @action(detail=True, methods=["get"])
+    # def students(self, request, pk=None):
+    #     """Get students for a specific classroom"""
+    #     try:
+    #         classroom = self.get_object()
+
+    #         print(
+    #             f"🔍 Classroom education_level: {classroom.section.grade_level.education_level}"
+    #         )
+    #         print(
+    #             f"🔍 Fetching students for classroom: {classroom.name} (ID: {classroom.id})"
+    #         )
+
+    #         # Normalize classroom name by removing spaces for comparison
+    #         normalized_classroom_name = classroom.name.replace(" ", "")
+    #         print(f"🔍 Normalized classroom name: '{normalized_classroom_name}'")
+
+    #         # Check what students exist with classroom field
+    #         all_students_in_db = Student.objects.filter(is_active=True)
+    #         print(f"🔍 Total active students in database: {all_students_in_db.count()}")
+
+    #         # Show sample classroom values
+    #         sample_classrooms = all_students_in_db.values_list(
+    #             "classroom", flat=True
+    #         ).distinct()[:10]
+    #         print(f"🔍 Sample classroom values in DB: {list(sample_classrooms)}")
+
+    #         # Try exact FK match first
+    #         students_exact = (
+    #             Student.objects.filter(
+    #                 classroom=classroom,
+    #                 is_active=True,
+    #             )
+    #             .select_related("user")
+    #             .order_by("user__first_name", "user__last_name")
+    #         )
+
+    #         if not students_exact.exists():
+    #             students_exact = (
+    #                 Student.objects.filter(
+    #                     Q(classroom__istartswith=classroom.name)
+    #                     | Q(classroom__istartswith=normalized_classroom_name),
+    #                     is_active=True,
+    #                 )
+    #                 .distinct()
+    #                 .select_related("user")
+    #                 .order_by("user__first_name", "user__last_name")
+    #             )
+
+    #         # Get all students and show their classroom values for this education level
+    #         all_students_this_level = Student.objects.filter(
+    #             education_level=classroom.section.grade_level.education_level,
+    #             is_active=True,
+    #         )
+    #         print(
+    #             f"🔍 Total students in {classroom.section.grade_level.education_level}: {all_students_this_level.count()}"
+    #         )
+    #         print(f"🔍 Their classroom assignments:")
+    #         for student in all_students_this_level[:5]:
+    #             print(f"   - {student.full_name}: classroom='{student.classroom}'")
+
+    #         students = students_exact
+    #         print(f"✅ Final student count: {students.count()}\n")
+
+    #         from students.serializers import StudentListSerializer
+
+    #         serializer = StudentListSerializer(students, many=True)
+    #         return Response(serializer.data)
+    #     except Exception as e:
+    #         logger.error(f"Error fetching classroom students: {str(e)}")
+    #         import traceback
+
+    #         traceback.print_exc()
+    #         return Response(
+    #             {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    #         )
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
         """Get students for a specific classroom"""
         try:
             classroom = self.get_object()
 
-            print(f"\n🔍 DEBUG: Fetching students for classroom ID {classroom.id}")
-            print(f"🔍 Classroom name: '{classroom.name}'")
-            print(f"🔍 Classroom section: {classroom.section}")
             print(
-                f"🔍 Classroom education_level: {classroom.section.grade_level.education_level}"
+                f"🔍 Fetching students for classroom: {classroom.name} (ID: {classroom.id})"
             )
 
-            # Normalize classroom name by removing spaces for comparison
-            normalized_classroom_name = classroom.name.replace(" ", "")
-            print(f"🔍 Normalized classroom name: '{normalized_classroom_name}'")
+            # ✅ CORRECT: Use StudentEnrollment to get related students
+            # This is the proper relationship defined in your models
+            enrollments = StudentEnrollment.objects.filter(
+                classroom=classroom, is_active=True
+            ).select_related("student__user")
 
-            # Check what students exist with classroom field
-            all_students_in_db = Student.objects.filter(is_active=True)
-            print(f"🔍 Total active students in database: {all_students_in_db.count()}")
+            # Extract students from enrollments
+            students = [enrollment.student for enrollment in enrollments]
 
-            # Show sample classroom values
-            sample_classrooms = all_students_in_db.values_list(
-                "classroom", flat=True
-            ).distinct()[:10]
-            print(f"🔍 Sample classroom values in DB: {list(sample_classrooms)}")
-
-            # Try exact FK match first
-            students_exact = (
-                Student.objects.filter(
-                    classroom=classroom,
-                    is_active=True,
-                )
-                .select_related("user")
-                .order_by("user__first_name", "user__last_name")
-            )
-
-            if not students_exact.exists():
-                students_exact = (
-                    Student.objects.filter(
-                        Q(classroom__istartswith=classroom.name)
-                        | Q(classroom__istartswith=normalized_classroom_name),
-                        is_active=True,
-                    )
-                    .distinct()
-                    .select_related("user")
-                    .order_by("user__first_name", "user__last_name")
-                )
-
-            # Get all students and show their classroom values for this education level
-            all_students_this_level = Student.objects.filter(
-                education_level=classroom.section.grade_level.education_level,
-                is_active=True,
-            )
-            print(
-                f"🔍 Total students in {classroom.section.grade_level.education_level}: {all_students_this_level.count()}"
-            )
-            print(f"🔍 Their classroom assignments:")
-            for student in all_students_this_level[:5]:
-                print(f"   - {student.full_name}: classroom='{student.classroom}'")
-
-            students = students_exact
-            print(f"✅ Final student count: {students.count()}\n")
+            print(f"✅ Found {len(students)} students via StudentEnrollment")
 
             from students.serializers import StudentListSerializer
 
             serializer = StudentListSerializer(students, many=True)
             return Response(serializer.data)
+
         except Exception as e:
             logger.error(f"Error fetching classroom students: {str(e)}")
             import traceback

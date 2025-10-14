@@ -8,21 +8,15 @@ import { toast } from 'react-toastify';
 import { 
   Users, 
   Search, 
-  Filter, 
   Eye, 
   Mail, 
   Phone, 
-  Calendar, 
-  MapPin, 
+  Calendar,  
   User,
   GraduationCap,
-  BookOpen,
-  Clock,
   ArrowLeft,
   RefreshCw,
   AlertCircle,
-  CheckCircle,
-  XCircle
 } from 'lucide-react';
 
 interface Student {
@@ -52,7 +46,7 @@ interface ClassData {
   subject_name: string;
   subject_code: string;
   room_number: string;
-  is_class_teacher: boolean;
+  is_class_teacher?: boolean;
 }
 
 const Students: React.FC = () => {
@@ -319,7 +313,7 @@ const Students: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {selectedClass.is_class_teacher ? 'Class Teacher' : 'Subject Teacher'}
+                {selectedClass?.is_class_teacher ? 'Class Teacher' : 'Subject Teacher'}
               </div>
               <div className="text-sm text-slate-500 dark:text-slate-400">Your Role</div>
             </div>

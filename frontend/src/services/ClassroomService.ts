@@ -428,19 +428,7 @@ async getClassrooms(params?: {
     return response;
   }
 
-  // // Get streams for Senior Secondary
-  // async getStreams() {
-  //   const response = await api.get('/api/classrooms/streams/');
-  //   return response;
-  // }
-
-  // // Get streams by type
-  // async getStreamsByType(streamType?: string) {
-  //   const params = streamType ? { stream_type: streamType } : {};
-  //   const response = await api.get('/api/classrooms/streams/by-type/', { params });
-  //   return response;
-  // }
-
+  
   // Get detailed student information
   async getStudentDetails(studentId: number) {
     const response = await api.get(`/api/students/students/${studentId}/`);
