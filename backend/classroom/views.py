@@ -459,31 +459,28 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             return ClassroomDetailSerializer
         return ClassroomSerializer
 
-    # ... rest of your methods remain the same ...
-    # @action(detail=True, methods=["get"])
-    # def students(self, request, pk=None):
-    #     """Get students for a specific classroom"""
-    #     # Support both router-generated `pk` and explicitly mapped `classroom_id`
-    #     classroom_pk = pk or self.kwargs.get("classroom_id")
-    #     if classroom_pk is None:
-    #         return Response({"detail": "Classroom ID not provided"}, status=404)
-    #     self.kwargs[self.lookup_field] = classroom_pk
-    #     classroom = self.get_object()
-    #     enrollments = classroom.studentenrollment_set.filter(
-    #         is_active=True
-    #     ).select_related("student")
-    #     serializer = StudentEnrollmentSerializer(enrollments, many=True)
-    #     return Response(serializer.data)
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
         """Get students for a specific classroom"""
         try:
             classroom = self.get_object()
-            # Filter students by classroom name with LIKE to handle section letters
-            # e.g., "Primary 1" matches "Primary 1 A", "Primary 1 B", etc.
-            students = Student.objects.filter(
-                classroom__startswith=classroom.name, is_active=True
-            ).order_by("user__first_name")
+
+            # Normalize classroom name by removing spaces for comparison
+            # e.g., "SS 1 A" becomes "SS1 A" to match student records
+            normalized_classroom_name = classroom.name.replace(" ", "")
+
+            # Also try direct match in case some records have spaces
+            students = (
+                Student.objects.filter(
+                    Q(classroom__istartswith=classroom.name)  # Exact classroom name
+                    | Q(
+                        classroom__istartswith=normalized_classroom_name
+                    ),  # Without spaces
+                    is_active=True,
+                )
+                .order_by("user__first_name")
+                .distinct()
+            )
 
             from students.serializers import StudentListSerializer
 
