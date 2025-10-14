@@ -487,12 +487,15 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             print(f"🔍 Sample classroom values in DB: {list(sample_classrooms)}")
 
             # Try exact match first
-            students_exact = Student.objects.filter(
-                classroom=classroom.name, is_active=True
+            students = (
+                Student.objects.filter(
+                    classroom=classroom,
+                    is_active=True,
+                )
+                .select_related("user")
+                .order_by("user__full_name")
             )
-            print(
-                f"🔍 Students matching exact classroom name '{classroom.name}': {students_exact.count()}"
-            )
+            print(f"✅ Students found via FK match: {students.count()}")
 
             # Try normalized match
             students_normalized = Student.objects.filter(

@@ -103,16 +103,6 @@ class Classroom(models.Model):
         help_text="Term within the academic session",
     )
 
-    # Stream support for Senior Secondary
-    # stream = models.ForeignKey(
-    #     Stream,
-    #     on_delete=models.SET_NULL,
-    #     null=True,
-    #     blank=True,
-    #     related_name="classrooms",
-    #     help_text="Stream for Senior Secondary classes (Science, Arts, Commercial, Technical)",
-    # )
-
     # Teacher assignments
     class_teacher = models.ForeignKey(
         "teacher.Teacher",
