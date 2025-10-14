@@ -1,146 +1,126 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Student
-from classroom.models import Classroom, StudentEnrollment
-from classroom.models import GradeLevel, Section
+from classroom.models import Classroom, StudentEnrollment, GradeLevel, Section
 from academics.models import AcademicSession, Term
 
 
 @receiver(post_save, sender=Student)
-def auto_enroll_student(sender, instance, created, **kwargs):
+def auto_enroll_or_update_student(sender, instance, created, **kwargs):
     """
-    Automatically enroll student in the appropriate classroom when created
+    Automatically enroll or update student's classroom enrollment
+    when a Student is created or their classroom changes.
     """
-    if created and instance.is_active:
-        try:
-            # Get the student's education level and class
-            education_level = instance.education_level
-            student_class = instance.student_class
+    try:
+        # Skip inactive students
+        if not instance.is_active:
+            return
 
-            # Map student class to grade level name
-            class_to_grade_mapping = {
-                "PRE_NURSERY": "Pre-Nursery",
-                "NURSERY_1": "Nursery 1",
-                "NURSERY_2": "Nursery 2",
-                "PRE_K": "Pre-K",
-                "KINDERGARTEN": "Kindergarten",
-                "PRIMARY_1": "Primary 1",
-                "PRIMARY_2": "Primary 2",
-                "PRIMARY_3": "Primary 3",
-                "PRIMARY_4": "Primary 4",
-                "PRIMARY_5": "Primary 5",
-                "PRIMARY_6": "Primary 6",
-                "JSS_1": "JSS 1",
-                "JSS_2": "JSS 2",
-                "JSS_3": "JSS 3",
-                "SS_1": "SS 1",
-                "SS_2": "SS 2",
-                "SS_3": "SS 3",
-                # Legacy mappings for backward compatibility
-                "GRADE_1": "Primary 1",
-                "GRADE_2": "Primary 2",
-                "GRADE_3": "Primary 3",
-                "GRADE_4": "Primary 4",
-                "GRADE_5": "Primary 5",
-                "GRADE_6": "Primary 6",
-                "GRADE_7": "JSS 1",
-                "GRADE_8": "JSS 2",
-                "GRADE_9": "JSS 3",
-                "GRADE_10": "SS 1",
-                "GRADE_11": "SS 2",
-                "GRADE_12": "SS 3",
-                "SS1": "SS 1",
-                "SS2": "SS 2",
-                "SS3": "SS 3",
-                "JSS1": "JSS 1",
-                "JSS2": "JSS 2",
-                "JSS3": "JSS 3",
-            }
+        education_level = instance.education_level
+        student_class = instance.student_class
+        classroom_name = instance.classroom  # e.g., "Primary 1 A"
 
-            grade_level_name = class_to_grade_mapping.get(student_class)
-            if grade_level_name:
-                # Find the appropriate grade level by name
-                grade_level = GradeLevel.objects.filter(name=grade_level_name).first()
-            else:
-                # Fallback: try to find by education level and partial name match
-                grade_level = GradeLevel.objects.filter(
-                    education_level=education_level,
-                    name__icontains=student_class.replace("GRADE_", "").replace(
-                        "_", " "
-                    ),
-                ).first()
+        # Class to grade mapping
+        class_to_grade_mapping = {
+            "PRE_NURSERY": "Pre-Nursery",
+            "NURSERY_1": "Nursery 1",
+            "NURSERY_2": "Nursery 2",
+            "PRE_K": "Pre-K",
+            "KINDERGARTEN": "Kindergarten",
+            "PRIMARY_1": "Primary 1",
+            "PRIMARY_2": "Primary 2",
+            "PRIMARY_3": "Primary 3",
+            "PRIMARY_4": "Primary 4",
+            "PRIMARY_5": "Primary 5",
+            "PRIMARY_6": "Primary 6",
+            "JSS_1": "JSS 1",
+            "JSS_2": "JSS 2",
+            "JSS_3": "JSS 3",
+            "SS_1": "SS 1",
+            "SS_2": "SS 2",
+            "SS_3": "SS 3",
+            "SS1": "SS 1",
+            "SS2": "SS 2",
+            "SS3": "SS 3",
+            "JSS1": "JSS 1",
+            "JSS2": "JSS 2",
+            "JSS3": "JSS 3",
+        }
 
-                if not grade_level:
-                    # Try to find by education level only
-                    grade_level = GradeLevel.objects.filter(
-                        education_level=education_level
-                    ).first()
-
-            if grade_level:
-                # Get the current academic year and term
-                current_academic_year = AcademicSession.objects.filter(
-                    is_current=True
-                ).first()
-                current_term = Term.objects.filter(is_current=True).first()
-
-                if current_academic_year and current_term:
-                    # Try to extract section from classroom field if provided
-                    section_name = "A"  # Default to section A
-                    if instance.classroom:
-                        # Extract section from classroom name (e.g., "Primary 2 B" -> "B")
-                        classroom_parts = instance.classroom.split()
-                        if len(classroom_parts) > 1:
-                            last_part = classroom_parts[-1]
-                            if last_part in ["A", "B", "C", "D"]:  # Valid section names
-                                section_name = last_part
-                                print(
-                                    f"🔍 Extracted section '{section_name}' from classroom '{instance.classroom}'"
-                                )
-
-                    # Find the appropriate section
-                    section = Section.objects.filter(
-                        grade_level=grade_level, name=section_name
-                    ).first()
-
-                    if section:
-                        # Find or create the classroom
-                        classroom, created = Classroom.objects.get_or_create(
-                            section=section,
-                            academic_year=current_academic_year,
-                            term=current_term,
-                            defaults={
-                                "name": f"{grade_level.name}",
-                                "room_number": "001",
-                                "max_capacity": 30,
-                                "is_active": True,
-                            },
-                        )
-
-                        # Check if student is already enrolled
-                        existing_enrollment = StudentEnrollment.objects.filter(
-                            student=instance, classroom=classroom, is_active=True
-                        ).first()
-
-                        if not existing_enrollment:
-                            # Create enrollment
-                            StudentEnrollment.objects.create(
-                                student=instance, classroom=classroom
-                            )
-                            print(
-                                f"✅ Auto-enrolled student {instance.user.full_name} in {classroom.name}"
-                            )
-                        else:
-                            print(
-                                f"ℹ️ Student {instance.user.full_name} already enrolled in {classroom.name}"
-                            )
-                    else:
-                        print(f"⚠️ No section found for {grade_level.name}")
-                else:
-                    print(f"⚠️ No current academic year or term found")
-            else:
-                print(f"⚠️ No grade level found for {education_level} - {student_class}")
-
-        except Exception as e:
-            print(
-                f"❌ Error auto-enrolling student {instance.user.full_name}: {str(e)}"
+        # Step 1: Determine grade level
+        grade_level_name = class_to_grade_mapping.get(student_class)
+        if not grade_level_name:
+            grade_level_name = student_class.replace("_", " ").replace(
+                "GRADE ", "Primary "
             )
+
+        grade_level = GradeLevel.objects.filter(name__iexact=grade_level_name).first()
+        if not grade_level:
+            print(f"⚠️ No grade level found for {education_level} - {student_class}")
+            return
+
+        # Step 2: Extract section name
+        section_name = "A"
+        if classroom_name:
+            parts = classroom_name.split()
+            if len(parts) > 1 and parts[-1].isalpha():
+                section_name = parts[-1].upper()
+                print(f"🔍 Extracted section '{section_name}' from '{classroom_name}'")
+
+        # Step 3: Get section
+        section = Section.objects.filter(
+            grade_level=grade_level, name=section_name
+        ).first()
+        if not section:
+            print(f"⚠️ No section '{section_name}' found for {grade_level.name}")
+            return
+
+        # Step 4: Get current session and term
+        academic_year = AcademicSession.objects.filter(is_current=True).first()
+        term = Term.objects.filter(is_current=True).first()
+        if not academic_year or not term:
+            print("⚠️ No current academic session or term found.")
+            return
+
+        # Step 5: Get or create classroom
+        classroom, _ = Classroom.objects.get_or_create(
+            section=section,
+            academic_year=academic_year,
+            term=term,
+            defaults={
+                "name": f"{grade_level.name} {section_name}",
+                "room_number": "001",
+                "max_capacity": 30,
+                "is_active": True,
+            },
+        )
+
+        # Step 6: Check if already enrolled
+        active_enrollment = StudentEnrollment.objects.filter(
+            student=instance, is_active=True
+        ).first()
+
+        if created:
+            # If student was just created, enroll fresh
+            if not active_enrollment:
+                StudentEnrollment.objects.create(student=instance, classroom=classroom)
+                print(f"✅ {instance.user.full_name} auto-enrolled in {classroom.name}")
+        else:
+            # If updated, move student if classroom changed
+            if active_enrollment and active_enrollment.classroom != classroom:
+                # Deactivate old enrollment
+                active_enrollment.is_active = False
+                active_enrollment.save()
+
+                # Create new enrollment
+                StudentEnrollment.objects.create(student=instance, classroom=classroom)
+                print(
+                    f"🔄 Updated {instance.user.full_name}'s classroom to {classroom.name}"
+                )
+            elif not active_enrollment:
+                # In case student had no enrollment before
+                StudentEnrollment.objects.create(student=instance, classroom=classroom)
+                print(f"✅ {instance.user.full_name} enrolled in {classroom.name}")
+
+    except Exception as e:
+        print(f"❌ Error enrolling/updating {instance.user.full_name}: {str(e)}")
