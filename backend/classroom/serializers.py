@@ -175,9 +175,6 @@ class StreamSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
-    def get_classroom_count(self, obj):
-        return obj.classrooms.filter(is_active=True).count()
-
 
 class TeacherSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
