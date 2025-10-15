@@ -633,6 +633,20 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def by_teacher(self, request):
+        """Get exams for the logged-in teacher"""
+        try:
+            teacher = request.user.teacher
+        except Teacher.DoesNotExist:
+            return Response(
+                {"error": "Logged-in user is not a teacher"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        exams = self.get_queryset().filter(teacher_id=teacher.id)
+        serializer = self.get_serializer(exams, many=True)
+        return Response(serializer.data)
+
+    def by_teacher(self, request):
         """Get exams created by the logged-in teacher"""
         try:
             teacher = request.user.teacher
