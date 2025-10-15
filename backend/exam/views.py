@@ -106,18 +106,20 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             queryset = queryset.annotate(
                 registered_students_count=Count("examregistration", distinct=True)
             )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter exams by grade level's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
-            queryset = queryset.filter(grade_level__education_level__in=education_levels)
-        
+
+            queryset = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+
         return queryset
 
     def perform_create(self, serializer):
@@ -126,20 +128,20 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
 
-
     @action(detail=False, methods=["post"])
     def bulk_create(self, request):
         """Bulk create results"""
         results_data = request.data.get("results", [])
-        
+
         if not results_data:
             return Response(
-                {"error": "Results data is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Results data is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         created_results = []
         errors = []
-        
+
         with transaction.atomic():
             for i, result_data in enumerate(results_data):
                 serializer = ResultCreateUpdateSerializer(data=result_data)
@@ -148,57 +150,67 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     created_results.append(result.id)
                 else:
                     errors.append({"index": i, "errors": serializer.errors})
-            
+
             if errors:
                 transaction.set_rollback(True)
                 return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({
-            "message": f"Created {len(created_results)} results",
-            "created_ids": created_results
-        }, status=status.HTTP_201_CREATED)
+
+        return Response(
+            {
+                "message": f"Created {len(created_results)} results",
+                "created_ids": created_results,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=False, methods=["post"])
     def bulk_update(self, request):
         """Bulk update results"""
         results_data = request.data.get("results", [])
-        
+
         if not results_data:
             return Response(
-                {"error": "Results data is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Results data is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         updated_count = 0
         errors = []
-        
+
         with transaction.atomic():
             for i, result_data in enumerate(results_data):
                 result_id = result_data.get("id")
                 if not result_id:
                     errors.append({"index": i, "error": "Result ID is required"})
                     continue
-                
+
                 try:
                     result = StudentResult.objects.get(id=result_id)
-                    serializer = ResultCreateUpdateSerializer(result, data=result_data, partial=True)
+                    serializer = ResultCreateUpdateSerializer(
+                        result, data=result_data, partial=True
+                    )
                     if serializer.is_valid():
                         serializer.save(updated_by=request.user)
                         updated_count += 1
                     else:
                         errors.append({"index": i, "errors": serializer.errors})
                 except StudentResult.DoesNotExist:
-                    errors.append({"index": i, "error": f"Result {result_id} not found"})
+                    errors.append(
+                        {"index": i, "error": f"Result {result_id} not found"}
+                    )
                 except Exception as e:
                     errors.append({"index": i, "error": str(e)})
-            
+
             if errors:
                 transaction.set_rollback(True)
                 return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response({
-            "message": f"Updated {updated_count} results",
-            "updated_count": updated_count
-        })
+
+        return Response(
+            {
+                "message": f"Updated {updated_count} results",
+                "updated_count": updated_count,
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def by_student(self, request, student_id=None):
@@ -256,7 +268,11 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 {"error": "Student ID is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        results = self.get_queryset().filter(student_id=student_id).order_by('exam__exam_date')
+        results = (
+            self.get_queryset()
+            .filter(student_id=student_id)
+            .order_by("exam__exam_date")
+        )
         serializer = self.get_serializer(results, many=True)
         return Response(serializer.data)
 
@@ -268,7 +284,11 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 {"error": "Exam ID is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        results = self.get_queryset().filter(exam_id=exam_id).order_by('student__user__first_name')
+        results = (
+            self.get_queryset()
+            .filter(exam_id=exam_id)
+            .order_by("student__user__first_name")
+        )
         serializer = self.get_serializer(results, many=True)
         return Response(serializer.data)
 
@@ -347,10 +367,10 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             exam.start_time = new_start_time
         if new_end_time:
             exam.end_time = new_end_time
-        
+
         exam.postponement_reason = reason
         exam.save()
-        
+
         return Response({"message": "Exam postponed successfully"})
 
     # Approval Workflow
@@ -358,84 +378,92 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         """Approve an exam"""
         exam = self.get_object()
-        
+
         if exam.status != "pending_approval":
             return Response(
-                {"error": "Only exams pending approval can be approved"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Only exams pending approval can be approved"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         # Get approver - try to get Teacher from User, or use None if not available
         approver = None
-        if hasattr(request, 'user') and request.user.is_authenticated:
+        if hasattr(request, "user") and request.user.is_authenticated:
             try:
                 from teacher.models import Teacher
+
                 approver = Teacher.objects.get(user=request.user)
             except Teacher.DoesNotExist:
                 # If user is not a teacher, we'll leave approver as None
                 pass
-        
+
         notes = request.data.get("notes", "")
-        
+
         exam.approve(approver, notes)
-        
-        return Response({
-            "message": "Exam approved successfully",
-            "status": exam.status,
-            "approved_at": exam.approved_at,
-            "approved_by": exam.approved_by.id if exam.approved_by else None
-        })
+
+        return Response(
+            {
+                "message": "Exam approved successfully",
+                "status": exam.status,
+                "approved_at": exam.approved_at,
+                "approved_by": exam.approved_by.id if exam.approved_by else None,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
         """Reject an exam"""
         exam = self.get_object()
-        
+
         if exam.status != "pending_approval":
             return Response(
-                {"error": "Only exams pending approval can be rejected"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Only exams pending approval can be rejected"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         # Get approver - try to get Teacher from User, or use None if not available
         approver = None
-        if hasattr(request, 'user') and request.user.is_authenticated:
+        if hasattr(request, "user") and request.user.is_authenticated:
             try:
                 from teacher.models import Teacher
+
                 approver = Teacher.objects.get(user=request.user)
             except Teacher.DoesNotExist:
                 # If user is not a teacher, we'll leave approver as None
                 pass
-        
+
         reason = request.data.get("reason", "")
-        
+
         exam.reject(approver, reason)
-        
-        return Response({
-            "message": "Exam rejected successfully",
-            "status": exam.status,
-            "rejected_at": exam.approved_at,
-            "rejected_by": exam.approved_by.id if exam.approved_by else None,
-            "rejection_reason": exam.rejection_reason
-        })
+
+        return Response(
+            {
+                "message": "Exam rejected successfully",
+                "status": exam.status,
+                "rejected_at": exam.approved_at,
+                "rejected_by": exam.approved_by.id if exam.approved_by else None,
+                "rejection_reason": exam.rejection_reason,
+            }
+        )
 
     @action(detail=True, methods=["post"])
     def submit_for_approval(self, request, pk=None):
         """Submit exam for approval"""
         exam = self.get_object()
-        
+
         if exam.status not in ["draft", "rejected"]:
             return Response(
-                {"error": "Only draft or rejected exams can be submitted for approval"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Only draft or rejected exams can be submitted for approval"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         exam.submit_for_approval()
-        
-        return Response({
-            "message": "Exam submitted for approval successfully",
-            "status": exam.status
-        })
+
+        return Response(
+            {
+                "message": "Exam submitted for approval successfully",
+                "status": exam.status,
+            }
+        )
 
     # Student Registration
     @action(detail=True, methods=["post"])
@@ -604,14 +632,17 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
-    def by_teacher(self, request, teacher_id=None):
-        """Get exams created by a specific teacher"""
-        if not teacher_id:
+    def by_teacher(self, request):
+        """Get exams created by the logged-in teacher"""
+        try:
+            teacher = request.user.teacher
+        except Teacher.DoesNotExist:
             return Response(
-                {"error": "Teacher ID is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Logged-in user is not a teacher"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        exams = self.get_queryset().filter(teacher_id=teacher_id)
+        exams = self.get_queryset().filter(teacher_id=teacher.id)
         serializer = self.get_serializer(exams, many=True)
         return Response(serializer.data)
 
@@ -658,14 +689,14 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         """Get exams in calendar format"""
         start_date = request.GET.get("start_date")
         end_date = request.GET.get("end_date")
-        
+
         queryset = self.get_queryset()
-        
+
         if start_date:
             queryset = queryset.filter(exam_date__gte=start_date)
         if end_date:
             queryset = queryset.filter(exam_date__lte=end_date)
-            
+
         exams = queryset.order_by("exam_date", "start_time")
         serializer = self.get_serializer(exams, many=True)
         return Response(serializer.data)
@@ -684,15 +715,15 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         """Bulk update exams"""
         exam_ids = request.data.get("exam_ids", [])
         update_data = request.data.get("update_data", {})
-        
+
         if not exam_ids:
             return Response(
                 {"error": "Exam IDs are required"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         updated_count = 0
         errors = []
-        
+
         with transaction.atomic():
             for exam_id in exam_ids:
                 try:
@@ -706,26 +737,28 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     errors.append(f"Exam {exam_id} not found")
                 except Exception as e:
                     errors.append(f"Exam {exam_id}: {str(e)}")
-        
-        return Response({
-            "message": f"Updated {updated_count} exams",
-            "updated_count": updated_count,
-            "errors": errors
-        })
+
+        return Response(
+            {
+                "message": f"Updated {updated_count} exams",
+                "updated_count": updated_count,
+                "errors": errors,
+            }
+        )
 
     @action(detail=False, methods=["post"])
     def bulk_delete(self, request):
         """Bulk delete exams"""
         exam_ids = request.data.get("exam_ids", [])
-        
+
         if not exam_ids:
             return Response(
                 {"error": "Exam IDs are required"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         deleted_count = 0
         errors = []
-        
+
         with transaction.atomic():
             for exam_id in exam_ids:
                 try:
@@ -736,12 +769,14 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     errors.append(f"Exam {exam_id} not found")
                 except Exception as e:
                     errors.append(f"Exam {exam_id}: {str(e)}")
-        
-        return Response({
-            "message": f"Deleted {deleted_count} exams",
-            "deleted_count": deleted_count,
-            "errors": errors
-        })
+
+        return Response(
+            {
+                "message": f"Deleted {deleted_count} exams",
+                "deleted_count": deleted_count,
+                "errors": errors,
+            }
+        )
 
     # Import/Export
     @action(detail=False, methods=["post"])
@@ -958,21 +993,21 @@ class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Apply section-based filtering for authenticated users"""
         queryset = super().get_queryset()
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter exam schedules by exams that belong to allowed education levels
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             # Filter schedules that have exams in allowed education levels
             queryset = queryset.filter(
                 exams__grade_level__education_level__in=education_levels
             ).distinct()
-        
+
         return queryset
 
     @action(detail=True, methods=["get"])
@@ -1025,10 +1060,10 @@ class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             # Filter exam registrations by exams that belong to allowed education levels
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             # Filter registrations for exams in allowed education levels
             queryset = queryset.filter(
                 exam__grade_level__education_level__in=education_levels
@@ -1116,24 +1151,25 @@ class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def mark_attendance(self, request):
         """Mark attendance for exam registrations"""
         attendance_data = request.data.get("attendance", [])
-        
+
         if not attendance_data:
             return Response(
-                {"error": "Attendance data is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Attendance data is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         updated_count = 0
         errors = []
-        
+
         with transaction.atomic():
             for item in attendance_data:
                 registration_id = item.get("registration_id")
                 is_present = item.get("is_present", False)
-                
+
                 if not registration_id:
                     errors.append("Registration ID is required")
                     continue
-                
+
                 try:
                     registration = ExamRegistration.objects.get(id=registration_id)
                     registration.is_present = is_present
@@ -1143,12 +1179,14 @@ class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     errors.append(f"Registration {registration_id} not found")
                 except Exception as e:
                     errors.append(f"Registration {registration_id}: {str(e)}")
-        
-        return Response({
-            "message": f"Updated attendance for {updated_count} registrations",
-            "updated_count": updated_count,
-            "errors": errors
-        })
+
+        return Response(
+            {
+                "message": f"Updated attendance for {updated_count} registrations",
+                "updated_count": updated_count,
+                "errors": errors,
+            }
+        )
 
 
 class ResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
@@ -1178,10 +1216,10 @@ class ResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
 
         return queryset
@@ -1222,10 +1260,10 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
             # Filter exam statistics by exams that belong to allowed education levels
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             # Filter statistics for exams in allowed education levels
             queryset = queryset.filter(
                 exam__grade_level__education_level__in=education_levels
