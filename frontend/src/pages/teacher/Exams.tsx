@@ -85,13 +85,15 @@ const loadTeacherData = async () => {
 
     // Get teacher ID
     const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
-    console.log('🔍 Teacher ID loaded:', teacherId);
+    console.log('🔍 STEP 1: Teacher ID loaded:', teacherId);
+    console.log('🔍 User object:', user);
     
     if (!teacherId) {
       throw new Error('Teacher ID not found');
     }
 
     // Get teacher assignments and exams
+    console.log('🔍 STEP 2: Fetching assignments and exams for teacher:', teacherId);
     const [assignmentsResponse, examsResponse] = await Promise.all([
       TeacherDashboardService.getTeacherClasses(teacherId),
       ExamService.getExamsByTeacher(teacherId)
@@ -100,22 +102,30 @@ const loadTeacherData = async () => {
     const assignments = assignmentsResponse || [];
     let examsData = examsResponse || [];
 
-    console.log('🔍 Raw exams from API:', examsData);
-    console.log('🔍 Number of exams:', examsData.length);
+    console.log('🔍 STEP 3: Raw data received');
+    console.log('   - Assignments:', assignments.length, 'items');
+    console.log('   - Exams by teacher:', examsData.length, 'items');
+    console.log('   - Raw exams data:', examsData);
 
-    // FIX: Fallback to get exams by subjects - but merge properly
-    try {
-      const subjectIds = Array.from(new Set(
-        (assignments || []).map((a: any) => a.subject_id).filter((id: any) => !!id)
-      ));
-      
-      if (subjectIds.length > 0) {
+    // Extract subject IDs for fallback
+    const subjectIds = Array.from(new Set(
+      (assignments || []).map((a: any) => a.subject_id).filter((id: any) => !!id)
+    ));
+    console.log('🔍 STEP 4: Subject IDs from assignments:', subjectIds);
+
+    // Fallback: Get exams by subjects
+    if (subjectIds.length > 0) {
+      try {
+        console.log('🔍 STEP 5: Fetching exams by subjects...');
         const bySubjectLists = await Promise.all(
           subjectIds.map((sid: number) => ExamService.getExamsBySubject(sid))
         );
         const bySubject = bySubjectLists.flat();
         
-        // Merge and deduplicate by ID
+        console.log('   - Exams by subjects:', bySubject.length, 'items');
+        console.log('   - Subject exams data:', bySubject);
+        
+        // Merge and deduplicate
         const examMap = new Map();
         [...examsData, ...bySubject].forEach((e: any) => {
           if (e && e.id) {
@@ -124,64 +134,79 @@ const loadTeacherData = async () => {
         });
         examsData = Array.from(examMap.values());
         
-        console.log('🔍 After merging with subject exams:', examsData.length);
+        console.log('🔍 STEP 6: After merging and deduplication:', examsData.length, 'exams');
+      } catch (e) {
+        console.warn('⚠️ Fallback by subject failed:', e);
       }
-    } catch (e) {
-      console.warn('⚠️ Fallback by subject failed:', e);
     }
 
-    // FIX: Validate and clean exam data
+    // Validate exam data
+    console.log('🔍 STEP 7: Validating exam data...');
     const validExamsData = examsData.filter((exam: any) => {
-      // Must have valid ID
       if (!exam || !exam.id || exam.id <= 0) {
-        console.warn('⚠️ Filtering out exam with invalid ID:', exam);
+        console.warn('   ⚠️ Filtering out exam with invalid ID:', exam);
         return false;
       }
       
-      // Must have basic required fields
       if (!exam.title || !exam.exam_type) {
-        console.warn('⚠️ Filtering out exam missing required fields:', exam);
+        console.warn('   ⚠️ Filtering out exam missing required fields:', exam);
         return false;
       }
       
+      console.log('   ✅ Valid exam:', exam.id, '-', exam.title);
       return true;
     });
 
-    console.log('🔍 Valid exams after filtering:', validExamsData.length);
+    console.log('🔍 STEP 8: Valid exams after filtering:', validExamsData.length);
     
-    // Transform exams to match TeacherExamData interface
-    const transformedExams: TeacherExamData[] = validExamsData.map((exam: any) => ({
-      id: exam.id,
-      title: exam.title,
-      code: exam.code || `EX-${exam.id}`,
-      subject_name: exam.subject_name || exam.subject?.name || 'Unknown Subject',
-      grade_level_name: exam.grade_level_name || exam.grade_level?.name || 'Unknown Class',
-      section_name: exam.section_name || exam.section?.name,
-      exam_type: exam.exam_type,
-      exam_type_display: exam.exam_type_display || exam.exam_type,
-      exam_date: exam.exam_date || '',
-      start_time: exam.start_time || '',
-      end_time: exam.end_time || '',
-      duration_minutes: exam.duration_minutes || 0,
-      total_marks: exam.total_marks || 0,
-      status: exam.status || 'scheduled',
-      status_display: exam.status_display || exam.status || 'Scheduled',
-      student_count: exam.student_count || 0,
-      created_at: exam.created_at,
-      updated_at: exam.updated_at || exam.created_at
-    }));
+    // Transform exams
+    const transformedExams: TeacherExamData[] = validExamsData.map((exam: any) => {
+      const transformed = {
+        id: exam.id,
+        title: exam.title,
+        code: exam.code || `EX-${exam.id}`,
+        subject_name: exam.subject_name || exam.subject?.name || 'Unknown Subject',
+        grade_level_name: exam.grade_level_name || exam.grade_level?.name || 'Unknown Class',
+        section_name: exam.section_name || exam.section?.name,
+        exam_type: exam.exam_type,
+        exam_type_display: exam.exam_type_display || exam.exam_type,
+        exam_date: exam.exam_date || '',
+        start_time: exam.start_time || '',
+        end_time: exam.end_time || '',
+        duration_minutes: exam.duration_minutes || 0,
+        total_marks: exam.total_marks || 0,
+        status: exam.status || 'scheduled',
+        status_display: exam.status_display || exam.status || 'Scheduled',
+        student_count: exam.student_count || 0,
+        created_at: exam.created_at,
+        updated_at: exam.updated_at || exam.created_at
+      };
+      console.log('   📋 Transformed exam:', transformed.id, '-', transformed.title);
+      return transformed;
+    });
 
-    console.log('✅ Final transformed exams:', transformedExams.map(e => ({ 
+    console.log('✅ STEP 9: Final transformed exams:', transformedExams.length);
+    console.log('✅ Exam details:', transformedExams.map(e => ({ 
       id: e.id, 
       title: e.title, 
       subject: e.subject_name,
-      grade: e.grade_level_name 
+      grade: e.grade_level_name,
+      type: e.exam_type
     })));
 
     setExams(transformedExams);
 
+    if (transformedExams.length === 0) {
+      console.warn('⚠️ NO EXAMS FOUND for this teacher!');
+      console.warn('⚠️ This could mean:');
+      console.warn('   1. No exams have been created yet');
+      console.warn('   2. Exams were created but teacher ID was not saved');
+      console.warn('   3. Exams exist but are for different subjects/teachers');
+    }
+
   } catch (error) {
-    console.error('❌ Error loading teacher data:', error);
+    console.error('❌ FATAL ERROR loading teacher data:', error);
+    console.error('❌ Error stack:', error);
     setError(error instanceof Error ? error.message : 'Failed to load teacher data');
     toast.error('Failed to load teacher data. Please try again.');
   } finally {
