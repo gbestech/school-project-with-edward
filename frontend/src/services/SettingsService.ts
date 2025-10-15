@@ -11,6 +11,7 @@ export interface SchoolSettings {
   logo: string;
   favicon: string;
   academicYear: string;
+  currentTerm?: string;
   motto: string;
   timezone: string;
   dateFormat: string;

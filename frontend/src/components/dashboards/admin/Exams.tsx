@@ -597,6 +597,16 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   // Handlers
   const handleCreateExam = useCallback(async () => {
     try {
+       // ✅ VALIDATION: Check for invalid IDs before sending
+    if (!newExam.subject || newExam.subject === 0) {
+      toast.error('Please select a subject');
+      return;
+    }
+    
+    if (!newExam.grade_level || newExam.grade_level === 0) {
+      toast.error('Please select a grade level');
+      return;
+    }
 
       
       // Prepare exam data with only the fields that should be sent to backend
@@ -698,65 +708,74 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   }, []);
 
   const handleEditExam = useCallback((exam: Exam) => {
-    try {
-      // Safely process exam data
-      const safeExam = safeExamData ? safeExamData(exam) : exam;
-      
-      // Extract IDs (handle both flat and nested structures)
-      const subjectId = safeExam.subject?.id || safeExam.subject;
-      const gradeLevelId = safeExam.grade_level?.id || safeExam.grade_level;
-      const sectionId = safeExam.section?.id || safeExam.section;
-      const teacherId = safeExam.teacher?.id || safeExam.teacher;
-      const scheduleId = safeExam.exam_schedule?.id || safeExam.exam_schedule;
-      
-      setNewExam({
-        title: safeExam.title || '',
-        subject: subjectId || 0,
-        grade_level: gradeLevelId || 0,
-        section: sectionId || 0,
-        stream: safeExam.stream,
-        teacher: teacherId,
-        exam_schedule: scheduleId,
-        exam_type: safeExam.exam_type || 'final_exam',
-        difficulty_level: safeExam.difficulty_level || 'medium',
-        exam_date: safeExam.exam_date || '',
-        start_time: safeExam.start_time || '',
-        end_time: safeExam.end_time || '',
-        duration_minutes: safeExam.duration_minutes || 45,
-        total_marks: safeExam.total_marks || 100,
-        pass_marks: safeExam.pass_marks,
-        venue: safeExam.venue || '',
-        max_students: safeExam.max_students,
-        instructions: safeExam.instructions || '',
-        materials_allowed: safeExam.materials_allowed || '',
-        materials_provided: safeExam.materials_provided || '',
-        status: safeExam.status || 'scheduled',
-        is_practical: safeExam.is_practical || false,
-        requires_computer: safeExam.requires_computer || false,
-        is_online: safeExam.is_online || false,
-      });
-      
-      // Load question data from exam with proper safety checks
-      const safeObjectiveQuestions = safeArrayFromResponse(safeExam.objective_questions);
-      const safeTheoryQuestions = safeArrayFromResponse(safeExam.theory_questions);
-      const safePracticalQuestions = safeArrayFromResponse(safeExam.practical_questions);
-      const safeCustomSectionsData = safeArrayFromResponse(safeExam.custom_sections);
-
-      setObjectiveQuestions(safeObjectiveQuestions);
-      setTheoryQuestions(safeTheoryQuestions);
-      setPracticalQuestions(safePracticalQuestions);
-      setCustomSections(safeCustomSectionsData);
-      setObjectiveInstructions(safeExam.objective_instructions || '');
-      setTheoryInstructions(safeExam.theory_instructions || '');
-      setPracticalInstructions(safeExam.practical_instructions || '');
-      
-      setEditingExam(safeExam);
-      setShowExamModal(true);
-    } catch (error) {
-      console.error('Error in handleEditExam:', error);
-      toast.error('Failed to load exam data for editing');
+  try {
+    // Safely process exam data
+    const safeExam = safeExamData ? safeExamData(exam) : exam;
+    
+    // Extract IDs (handle both flat and nested structures)
+    // ✅ FIX: Use null instead of 0 as fallback, and ensure we have valid IDs
+    const subjectId = safeExam.subject?.id || safeExam.subject || null;
+    const gradeLevelId = safeExam.grade_level?.id || safeExam.grade_level || null;
+    const sectionId = safeExam.section?.id || safeExam.section || null;
+    const teacherId = safeExam.teacher?.id || safeExam.teacher || null;
+    const scheduleId = safeExam.exam_schedule?.id || safeExam.exam_schedule || null;
+    
+    // ✅ VALIDATION: Ensure required fields are not 0
+    if (subjectId === 0) {
+      console.error('❌ Subject ID is 0, using null instead');
     }
-  }, []);
+    if (gradeLevelId === 0) {
+      console.error('❌ Grade Level ID is 0, using null instead');
+    }
+    
+    setNewExam({
+      title: safeExam.title || '',
+      subject: subjectId === 0 ? null : subjectId,  // ✅ Convert 0 to null
+      grade_level: gradeLevelId === 0 ? null : gradeLevelId,  // ✅ Convert 0 to null
+      section: sectionId === 0 ? null : sectionId,
+      stream: safeExam.stream,
+      teacher: teacherId,
+      exam_schedule: scheduleId,
+      exam_type: safeExam.exam_type || 'final_exam',
+      difficulty_level: safeExam.difficulty_level || 'medium',
+      exam_date: safeExam.exam_date || '',
+      start_time: safeExam.start_time || '',
+      end_time: safeExam.end_time || '',
+      duration_minutes: safeExam.duration_minutes || 45,
+      total_marks: safeExam.total_marks || 100,
+      pass_marks: safeExam.pass_marks,
+      venue: safeExam.venue || '',
+      max_students: safeExam.max_students,
+      instructions: safeExam.instructions || '',
+      materials_allowed: safeExam.materials_allowed || '',
+      materials_provided: safeExam.materials_provided || '',
+      status: safeExam.status || 'scheduled',
+      is_practical: safeExam.is_practical || false,
+      requires_computer: safeExam.requires_computer || false,
+      is_online: safeExam.is_online || false,
+    });
+    
+    // Load question data from exam with proper safety checks
+    const safeObjectiveQuestions = safeArrayFromResponse(safeExam.objective_questions);
+    const safeTheoryQuestions = safeArrayFromResponse(safeExam.theory_questions);
+    const safePracticalQuestions = safeArrayFromResponse(safeExam.practical_questions);
+    const safeCustomSectionsData = safeArrayFromResponse(safeExam.custom_sections);
+
+    setObjectiveQuestions(safeObjectiveQuestions);
+    setTheoryQuestions(safeTheoryQuestions);
+    setPracticalQuestions(safePracticalQuestions);
+    setCustomSections(safeCustomSectionsData);
+    setObjectiveInstructions(safeExam.objective_instructions || '');
+    setTheoryInstructions(safeExam.theory_instructions || '');
+    setPracticalInstructions(safeExam.practical_instructions || '');
+    
+    setEditingExam(safeExam);
+    setShowExamModal(true);
+  } catch (error) {
+    console.error('Error in handleEditExam:', error);
+    toast.error('Failed to load exam data for editing');
+  }
+}, []);
 
   const handleDeleteExam = useCallback(async (examId: number) => {
     if (window.confirm('Are you sure you want to delete this exam?')) {
@@ -886,8 +905,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     // Use dynamic school information from settings
     const schoolName = settings?.school_name || 'School Name';
     const schoolAddress = settings?.address || 'School Address';
-    const academicSession = settings?.academic_year || 'Academic Year';
-    const currentTerm = settings?.current_term || 'Current Term';
+    const academicSession = settings?.academicYear || 'Academic Year';
+    const currentTerm = settings?.currentTerm || 'Current Term';
     
     // Get grade level name (handle both flat and nested structures)
     const gradeLevelName = exam.grade_level_name || exam.grade_level?.name || 'Class';
@@ -1061,8 +1080,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     // Use dynamic school information from settings
     const schoolName = settings?.school_name || 'School Name';
     const schoolAddress = settings?.address || 'School Address';
-    const academicSession = settings?.academic_year || 'Academic Year';
-    const currentTerm = settings?.current_term || 'Current Term';
+    const academicSession = settings?.academicYear || 'Academic Year';
+    const currentTerm = settings?.currentTerm || 'Current Term';
     
     // Get grade level name (handle both flat and nested structures)
     const gradeLevelName = exam.grade_level_name || exam.grade_level?.name || 'Class';

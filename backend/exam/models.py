@@ -41,216 +41,6 @@ DIFFICULTY_CHOICES = [
 ]
 
 
-# class ExamSchedule(models.Model):
-#     """Exam schedule tied to academic structure"""
-
-#     name = models.CharField(max_length=150)
-#     description = models.TextField(blank=True)
-
-#     # Use academic app models
-#     academic_session = models.ForeignKey(AcademicSession, on_delete=models.CASCADE)
-#     term = models.ForeignKey(Term, on_delete=models.CASCADE)
-
-#     # Schedule dates
-#     start_date = models.DateField()
-#     end_date = models.DateField()
-
-#     # Registration periods
-#     registration_start = models.DateTimeField(null=True, blank=True)
-#     registration_end = models.DateTimeField(null=True, blank=True)
-#     results_publication_date = models.DateField(null=True, blank=True)
-
-#     # Settings
-#     is_active = models.BooleanField(default=True)
-#     allow_late_registration = models.BooleanField(default=False)
-
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     is_default = models.BooleanField(
-#         default=False, help_text="Mark this as the default exam schedule for new exams"
-#     )
-
-#     class Meta:
-#         db_table = "exams_schedule"
-#         ordering = ["-start_date"]
-#         unique_together = ["academic_session", "term", "name"]
-
-#     def __str__(self):
-#         return f"{self.name} - {self.term} ({self.academic_session})"
-
-#     @property
-#     def session_year(self):
-#         """Property to get session year for admin display"""
-#         return self.academic_session.name if self.academic_session else None
-
-#     @property
-#     def is_registration_open(self):
-#         """Check if registration is currently open"""
-#         now = timezone.now()
-#         if not self.registration_start or not self.registration_end:
-#             return False
-#         return self.registration_start <= now <= self.registration_end
-
-#     def clean(self):
-#         # Validate dates are within term dates
-#         if self.term:
-#             if (
-#                 self.start_date < self.term.start_date
-#                 or self.end_date > self.term.end_date
-#             ):
-#                 raise ValidationError("Exam dates must be within term dates")
-
-#         # Validate start_date is before end_date
-#         if self.start_date and self.end_date and self.start_date > self.end_date:
-#             raise ValidationError("Start date must be before end date")
-
-#         # Validate registration dates
-#         if self.registration_start and self.registration_end:
-#             if self.registration_start > self.registration_end:
-#                 raise ValidationError(
-#                     "Registration start must be before registration end"
-#                 )
-
-
-# class Exam(models.Model):
-#     """Streamlined exam model focused on logistics"""
-
-#     # Basic info
-#     title = models.CharField(max_length=200)
-#     code = models.CharField(max_length=20, unique=True, blank=True)
-#     description = models.TextField(blank=True)
-
-#     # Academic relationships (use academic app)
-#     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-#     grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE)
-#     section = models.ForeignKey(Section, on_delete=models.CASCADE)
-#     exam_schedule = models.ForeignKey(
-#         ExamSchedule,
-#         on_delete=models.CASCADE,
-#         related_name="exams",
-#         help_text="Exam schedule this exam belongs to",
-#     )
-
-#     # Staff assignment
-#     teacher = models.ForeignKey(
-#         Teacher, on_delete=models.SET_NULL, null=True, blank=True
-#     )
-#     invigilators = models.ManyToManyField(
-#         Teacher, blank=True, related_name="invigilated_exams"
-#     )
-
-#     # Exam configuration
-#     exam_type = models.CharField(
-#         max_length=25, choices=EXAM_TYPE_CHOICES, default="final_exam"
-#     )
-#     difficulty_level = models.CharField(
-#         max_length=10, choices=DIFFICULTY_CHOICES, default="medium"
-#     )
-
-#     # Scheduling
-#     exam_date = models.DateField()
-#     start_time = models.TimeField()
-#     end_time = models.TimeField()
-#     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
-
-#     # Exam settings
-#     total_marks = models.PositiveIntegerField(
-#         default=100, validators=[MinValueValidator(1)]
-#     )
-#     pass_marks = models.PositiveIntegerField(null=True, blank=True)
-
-#     # Venue and logistics
-#     venue = models.CharField(max_length=100, blank=True)
-#     max_students = models.PositiveIntegerField(null=True, blank=True)
-
-#     # Instructions
-#     instructions = models.TextField(blank=True)
-#     materials_allowed = models.TextField(blank=True)
-#     materials_provided = models.TextField(blank=True)
-
-#     # File uploads (optional)
-#     questions_file = models.FileField(
-#         upload_to="exam_questions/", blank=True, null=True
-#     )
-#     answer_key = models.FileField(upload_to="exam_answers/", blank=True, null=True)
-
-#     # Status and flags
-#     status = models.CharField(
-#         max_length=15, choices=EXAM_STATUS_CHOICES, default="scheduled"
-#     )
-#     is_practical = models.BooleanField(default=False)
-#     requires_computer = models.BooleanField(default=False)
-#     is_online = models.BooleanField(default=False)
-
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
-
-#     class Meta:
-#         db_table = "exams_exam"
-#         ordering = ["exam_date", "start_time"]
-#         unique_together = [
-#             ("subject", "grade_level", "section", "exam_type", "exam_schedule")
-#         ]
-
-#     def __str__(self):
-#         return f"{self.title} - {self.subject.name} ({self.exam_schedule.name})"
-
-#     @property
-#     def duration(self):
-#         """Property to display duration in admin"""
-#         if self.duration_minutes:
-#             hours = self.duration_minutes // 60
-#             minutes = self.duration_minutes % 60
-#             if hours > 0:
-#                 return f"{hours}h {minutes}m"
-#             return f"{minutes}m"
-#         return "Not set"
-
-#     def save(self, *args, **kwargs):
-#         # Auto-generate code
-#         if not self.code:
-#             self.code = self.generate_exam_code()
-
-#         # Calculate duration
-#         if not self.duration_minutes and self.start_time and self.end_time:
-#             start_datetime = datetime.combine(self.exam_date, self.start_time)
-#             end_datetime = datetime.combine(self.exam_date, self.end_time)
-#             duration = end_datetime - start_datetime
-#             self.duration_minutes = int(duration.total_seconds() / 60)
-
-#         super().save(*args, **kwargs)
-
-#     def generate_exam_code(self):
-#         """Generate unique exam code"""
-#         base_code = f"{self.subject.code}-{self.exam_date.strftime('%Y%m%d')}"
-#         counter = 1
-#         code = f"{base_code}-{counter:02d}"
-
-#         while Exam.objects.filter(code=code).exists():
-#             counter += 1
-#             code = f"{base_code}-{counter:02d}"
-
-#         return code
-
-#     def clean(self):
-#         # Validate exam date is within schedule dates
-#         if self.exam_schedule:
-#             if (
-#                 self.exam_date < self.exam_schedule.start_date
-#                 or self.exam_date > self.exam_schedule.end_date
-#             ):
-#                 raise ValidationError("Exam date must be within schedule period")
-
-#         # Validate start_time is before end_time
-#         if self.start_time and self.end_time and self.start_time >= self.end_time:
-#             raise ValidationError("Start time must be before end time")
-
-#         # Validate pass_marks is not greater than total_marks
-#         if self.pass_marks and self.total_marks and self.pass_marks > self.total_marks:
-#             raise ValidationError("Pass marks cannot be greater than total marks")
-
-
 def get_default_exam_schedule_id():
     """
     Get default exam schedule ID with proper fallback logic
@@ -394,15 +184,17 @@ class Exam(models.Model):
     # Academic relationships (use academic app)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
     grade_level = models.ForeignKey(GradeLevel, on_delete=models.CASCADE)
-    section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, blank=True)
+    section = models.ForeignKey(
+        Section, on_delete=models.SET_NULL, null=True, blank=True
+    )
     # Stream support for Senior Secondary
     stream = models.ForeignKey(
-        "classroom.Stream", 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        "classroom.Stream",
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name="exams",
-        help_text="Stream for Senior Secondary exams (Science, Arts, Commercial, Technical)"
+        help_text="Stream for Senior Secondary exams (Science, Arts, Commercial, Technical)",
     )
     exam_schedule = models.ForeignKey(
         ExamSchedule,
@@ -449,7 +241,7 @@ class Exam(models.Model):
     instructions = models.TextField(blank=True)
     materials_allowed = models.TextField(blank=True)
     materials_provided = models.TextField(blank=True)
-    
+
     # Question data (stored as JSON)
     objective_questions = models.JSONField(default=list, blank=True)
     theory_questions = models.JSONField(default=list, blank=True)
@@ -472,19 +264,21 @@ class Exam(models.Model):
     is_practical = models.BooleanField(default=False)
     requires_computer = models.BooleanField(default=False)
     is_online = models.BooleanField(default=False)
-    
+
     # Approval workflow
     approved_by = models.ForeignKey(
-        Teacher, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        Teacher,
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
         related_name="approved_exams",
-        help_text="Admin/Teacher who approved this exam"
+        help_text="Admin/Teacher who approved this exam",
     )
     approved_at = models.DateTimeField(null=True, blank=True)
     approval_notes = models.TextField(blank=True, help_text="Notes from the approver")
-    rejection_reason = models.TextField(blank=True, help_text="Reason for rejection if applicable")
+    rejection_reason = models.TextField(
+        blank=True, help_text="Reason for rejection if applicable"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -498,42 +292,44 @@ class Exam(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.subject.name} ({self.exam_schedule.name if self.exam_schedule else 'No Schedule'})"
-    
+
     def approve(self, approver, notes=""):
         """Approve the exam"""
         from django.utils import timezone
+
         self.status = "approved"
         self.approved_by = approver
         self.approved_at = timezone.now()
         self.approval_notes = notes
         self.rejection_reason = ""  # Clear any previous rejection reason
         self.save()
-    
+
     def reject(self, approver, reason=""):
         """Reject the exam"""
         from django.utils import timezone
+
         self.status = "rejected"
         self.approved_by = approver
         self.approved_at = timezone.now()
         self.rejection_reason = reason
         self.approval_notes = ""  # Clear any previous approval notes
         self.save()
-    
+
     def submit_for_approval(self):
         """Submit exam for approval"""
         self.status = "pending_approval"
         self.save()
-    
+
     @property
     def is_pending_approval(self):
         """Check if exam is pending approval"""
         return self.status == "pending_approval"
-    
+
     @property
     def is_approved(self):
         """Check if exam is approved"""
         return self.status == "approved"
-    
+
     @property
     def is_rejected(self):
         """Check if exam is rejected"""

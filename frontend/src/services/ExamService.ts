@@ -322,7 +322,7 @@ export class ExamService {
    */
   static async startExam(examId: number): Promise<void> {
     try {
-      await api.post(`${this.baseUrl}/exams/${examId}/start/`);
+      await api.post(`${this.baseUrl}/exams/${examId}/start/`, {});
     } catch (error) {
       console.error('Error starting exam:', error);
       throw error;
@@ -334,7 +334,7 @@ export class ExamService {
    */
   static async endExam(examId: number): Promise<void> {
     try {
-      await api.post(`${this.baseUrl}/exams/${examId}/end/`);
+      await api.post(`${this.baseUrl}/exams/${examId}/end/`, {});
     } catch (error) {
       console.error('Error ending exam:', error);
       throw error;
@@ -487,7 +487,7 @@ export class ExamService {
    */
   static async submitForApproval(examId: number): Promise<any> {
     try {
-      const response = await api.post(`${this.baseUrl}/exams/${examId}/submit_for_approval/`);
+      const response = await api.post(`${this.baseUrl}/exams/${examId}/submit_for_approval/`, {});
       return response;
     } catch (error) {
       console.error('Error submitting exam for approval:', error);

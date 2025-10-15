@@ -50,19 +50,6 @@ interface TeacherExamData {
   updated_at: string;
 }
 
-// interface TeacherAssignment {
-//   id: number;
-//   classroom_name: string;
-//   section_name: string;
-//   grade_level_name: string;
-//   education_level: string;
-//   subject_name: string;
-//   subject_code: string;
-//   subject_id: number;
-//   grade_level_id: number;
-//   section_id: number;
-// }
-
 const TeacherExams: React.FC = () => {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -90,101 +77,117 @@ const TeacherExams: React.FC = () => {
     }
   }, [user, isLoading]);
 
-  const loadTeacherData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  
+const loadTeacherData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
 
-      // Get teacher ID
-      const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
-      if (!teacherId) {
-        throw new Error('Teacher ID not found');
-      }
-
-      // Get teacher assignments and exams
-      const [assignmentsResponse, examsResponse] = await Promise.all([
-        TeacherDashboardService.getTeacherClasses(teacherId),
-        ExamService.getExamsByTeacher(teacherId)
-      ]);
-
-      const assignments = assignmentsResponse || [];
-      let examsData = examsResponse || [];
-
-      // Fallback: also load exams by subjects this teacher handles (covers older exams missing teacher field)
-      try {
-        const subjectIds = Array.from(new Set((assignments || []).map((a: any) => a.subject_id).filter((id: any) => !!id)));
-        if (subjectIds.length > 0) {
-          const bySubjectLists = await Promise.all(subjectIds.map((sid: number) => ExamService.getExamsBySubject(sid)));
-          const bySubject = bySubjectLists.flat();
-          const byId: Record<number, any> = {};
-          [...examsData, ...bySubject].forEach((e: any) => { if (e && e.id) byId[e.id] = e; });
-          examsData = Object.values(byId);
-        }
-      } catch (e) {
-        console.warn('Exams fallback by subject failed:', e);
-      }
-
-      // Transform assignments to match TeacherAssignment interface
-      // Build mapping while extracting subject ids for fallback
-      // no-op; subject ids are read directly from assignments
-
-      // Debug: Log the raw exam data to identify phantom exam ID 9
-      console.log('🔍 Raw exams data from API:', examsData);
-      console.log('🔍 Exam IDs found:', examsData.map((e: any) => e.id));
-      
-      // Filter out any phantom exams (like ID 9 that doesn't exist in database)
-      const validExamsData = examsData.filter((exam: any) => {
-        if (!exam || !exam.id) {
-          console.warn('🔍 Filtering out exam with missing ID:', exam);
-          return false;
-        }
-        // Specifically filter out exam ID 9 which doesn't exist in database
-        if (exam.id === 9) {
-          console.warn('🔍 Filtering out phantom exam ID 9:', exam);
-          return false;
-        }
-        return true;
-      });
-      
-      // Transform exams to match TeacherExamData interface
-      const transformedExams: TeacherExamData[] = validExamsData.map((exam: any) => ({
-        id: exam.id,
-        title: exam.title,
-        code: exam.code,
-        subject_name: exam.subject_name || exam.subject?.name || 'Unknown Subject',
-        grade_level_name: exam.grade_level_name || exam.grade_level?.name || 'Unknown Class',
-        section_name: exam.section_name || exam.section?.name,
-        exam_type: exam.exam_type,
-        exam_type_display: exam.exam_type_display,
-        exam_date: exam.exam_date,
-        start_time: exam.start_time,
-        end_time: exam.end_time,
-        duration_minutes: exam.duration_minutes,
-        total_marks: exam.total_marks,
-        status: exam.status,
-        status_display: exam.status_display,
-        student_count: exam.student_count,
-        created_at: exam.created_at,
-        updated_at: exam.updated_at || exam.created_at
-      }));
-
-      // setTeacherAssignments(transformedAssignments);
-      setExams(transformedExams);
-
-      console.log('🔍 Teacher assignments:', assignments);
-      console.log('🔍 Teacher exams:', examsData);
-      console.log('🔍 Teacher ID:', teacherId);
-      console.log('🔍 API endpoint called: /api/exams/by-teacher/' + teacherId + '/');
-      console.log('🔍 Transformed exams set in state:', transformedExams.map(e => ({ id: e.id, title: e.title })));
-
-    } catch (error) {
-      console.error('Error loading teacher data:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load teacher data');
-      toast.error('Failed to load teacher data. Please try again.');
-    } finally {
-      setLoading(false);
+    // Get teacher ID
+    const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
+    console.log('🔍 Teacher ID loaded:', teacherId);
+    
+    if (!teacherId) {
+      throw new Error('Teacher ID not found');
     }
-  };
+
+    // Get teacher assignments and exams
+    const [assignmentsResponse, examsResponse] = await Promise.all([
+      TeacherDashboardService.getTeacherClasses(teacherId),
+      ExamService.getExamsByTeacher(teacherId)
+    ]);
+
+    const assignments = assignmentsResponse || [];
+    let examsData = examsResponse || [];
+
+    console.log('🔍 Raw exams from API:', examsData);
+    console.log('🔍 Number of exams:', examsData.length);
+
+    // FIX: Fallback to get exams by subjects - but merge properly
+    try {
+      const subjectIds = Array.from(new Set(
+        (assignments || []).map((a: any) => a.subject_id).filter((id: any) => !!id)
+      ));
+      
+      if (subjectIds.length > 0) {
+        const bySubjectLists = await Promise.all(
+          subjectIds.map((sid: number) => ExamService.getExamsBySubject(sid))
+        );
+        const bySubject = bySubjectLists.flat();
+        
+        // Merge and deduplicate by ID
+        const examMap = new Map();
+        [...examsData, ...bySubject].forEach((e: any) => {
+          if (e && e.id) {
+            examMap.set(e.id, e);
+          }
+        });
+        examsData = Array.from(examMap.values());
+        
+        console.log('🔍 After merging with subject exams:', examsData.length);
+      }
+    } catch (e) {
+      console.warn('⚠️ Fallback by subject failed:', e);
+    }
+
+    // FIX: Validate and clean exam data
+    const validExamsData = examsData.filter((exam: any) => {
+      // Must have valid ID
+      if (!exam || !exam.id || exam.id <= 0) {
+        console.warn('⚠️ Filtering out exam with invalid ID:', exam);
+        return false;
+      }
+      
+      // Must have basic required fields
+      if (!exam.title || !exam.exam_type) {
+        console.warn('⚠️ Filtering out exam missing required fields:', exam);
+        return false;
+      }
+      
+      return true;
+    });
+
+    console.log('🔍 Valid exams after filtering:', validExamsData.length);
+    
+    // Transform exams to match TeacherExamData interface
+    const transformedExams: TeacherExamData[] = validExamsData.map((exam: any) => ({
+      id: exam.id,
+      title: exam.title,
+      code: exam.code || `EX-${exam.id}`,
+      subject_name: exam.subject_name || exam.subject?.name || 'Unknown Subject',
+      grade_level_name: exam.grade_level_name || exam.grade_level?.name || 'Unknown Class',
+      section_name: exam.section_name || exam.section?.name,
+      exam_type: exam.exam_type,
+      exam_type_display: exam.exam_type_display || exam.exam_type,
+      exam_date: exam.exam_date || '',
+      start_time: exam.start_time || '',
+      end_time: exam.end_time || '',
+      duration_minutes: exam.duration_minutes || 0,
+      total_marks: exam.total_marks || 0,
+      status: exam.status || 'scheduled',
+      status_display: exam.status_display || exam.status || 'Scheduled',
+      student_count: exam.student_count || 0,
+      created_at: exam.created_at,
+      updated_at: exam.updated_at || exam.created_at
+    }));
+
+    console.log('✅ Final transformed exams:', transformedExams.map(e => ({ 
+      id: e.id, 
+      title: e.title, 
+      subject: e.subject_name,
+      grade: e.grade_level_name 
+    })));
+
+    setExams(transformedExams);
+
+  } catch (error) {
+    console.error('❌ Error loading teacher data:', error);
+    setError(error instanceof Error ? error.message : 'Failed to load teacher data');
+    toast.error('Failed to load teacher data. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleRefresh = async () => {
     await loadTeacherData();
@@ -274,82 +277,76 @@ const TeacherExams: React.FC = () => {
   };
 
   const handleDeleteExam = async (examId: number) => {
-    console.log('🔍 Attempting to delete exam with ID:', examId);
-    console.log('🔍 Current exams in state:', exams.map(e => ({ id: e.id, title: e.title })));
+  console.log('🔍 Deleting exam:', examId);
+  
+  const examToDelete = exams.find(e => e.id === examId);
+  if (!examToDelete) {
+    console.warn('⚠️ Exam not found in state, skipping delete');
+    return;
+  }
+  
+  if (!window.confirm(`Are you sure you want to delete "${examToDelete.title}"?`)) {
+    return;
+  }
+  
+  try {
+    // Optimistically remove from UI
+    setExams(prevExams => prevExams.filter(e => e.id !== examId));
     
-    // Check if the exam actually exists in our current state
-    const examToDelete = exams.find(e => e.id === examId);
-    if (!examToDelete) {
-      console.warn('🔍 Exam ID', examId, 'not found in current state, removing from UI anyway');
-      // Remove from UI state immediately
-      setExams(prevExams => prevExams.filter(e => e.id !== examId));
-      toast.success('Exam removed from list!');
-      return;
-    }
+    // Delete from backend
+    await ExamService.deleteExam(examId);
+    console.log('✅ Exam deleted successfully');
+    toast.success('Exam deleted successfully!');
     
-    if (window.confirm(`Are you sure you want to delete "${examToDelete.title}"?`)) {
-      try {
-        // Optimistically remove from UI first
-        setExams(prevExams => prevExams.filter(e => e.id !== examId));
-        
-        // Then attempt to delete from backend
-        await ExamService.deleteExam(examId);
-        toast.success('Exam deleted successfully!');
-        
-        // Reload data to ensure consistency
-        await loadTeacherData();
-      } catch (error) {
-        console.error('Error deleting exam:', error);
-        
-        // Check if it's a 404 error (exam doesn't exist)
-        const is404Error = error instanceof Error && (
-          error.message.includes('404') || 
-          error.message.includes('Not Found') ||
-          error.message.includes('No Exam matches')
-        );
-        
-        if (is404Error) {
-          // Exam doesn't exist, which is fine - it's already deleted
-          toast.success('Exam deleted successfully!');
-          // Still reload to ensure UI is in sync
-          await loadTeacherData();
-        } else {
-          // Real error occurred, restore the exam and show error
-          await loadTeacherData();
-          toast.error('Failed to delete exam. Please try again.');
-        }
-      }
+    // Reload to ensure sync
+    await loadTeacherData();
+  } catch (error) {
+    console.error('❌ Error deleting exam:', error);
+    
+    const is404Error = error instanceof Error && (
+      error.message.includes('404') || 
+      error.message.includes('Not Found')
+    );
+    
+    if (is404Error) {
+      // Already deleted, just confirm and sync
+      toast.success('Exam removed successfully!');
+      await loadTeacherData();
+    } else {
+      // Real error - restore exam and show error
+      toast.error('Failed to delete exam. Please try again.');
+      await loadTeacherData();
     }
-  };
+  }
+};
 
   const handleViewExam = async (exam: TeacherExamData) => {
-    console.log('🔍 Attempting to view exam with ID:', exam.id);
-    console.log('🔍 Exam data:', exam);
+  console.log('🔍 Viewing exam:', exam.id, exam.title);
+  
+  try {
+    const full = await ExamService.getExam(exam.id);
+    console.log('✅ Loaded full exam details:', full);
+    setSelectedExam(exam);
+    setSelectedExamDetail(full);
+  } catch (e) {
+    console.error('❌ Error loading exam details:', e);
     
-    try {
-      const full = await ExamService.getExam(exam.id);
-      setSelectedExam(exam);
-      setSelectedExamDetail(full);
-    } catch (e) {
-      console.error('Error loading exam details:', e);
-      
-      // Check if it's a 404 error (exam doesn't exist)
-      const is404Error = e instanceof Error && (
-        e.message.includes('404') || 
-        e.message.includes('Not Found') ||
-        e.message.includes('No Exam matches')
-      );
-      
-      if (is404Error) {
-        toast.info('This exam no longer exists. Removing from list...');
-        // Remove the phantom exam from the UI and reload data
-        setExams(prevExams => prevExams.filter(e => e.id !== exam.id));
-        await loadTeacherData();
-      } else {
-        toast.error('Failed to load exam details');
-      }
+    const is404Error = e instanceof Error && (
+      e.message.includes('404') || 
+      e.message.includes('Not Found') ||
+      e.message.includes('No Exam matches')
+    );
+    
+    if (is404Error) {
+      toast.error('This exam no longer exists. Refreshing list...');
+      // Remove from state and reload
+      setExams(prevExams => prevExams.filter(e => e.id !== exam.id));
+      await loadTeacherData();
+    } else {
+      toast.error('Failed to load exam details. Please try again.');
     }
-  };
+  }
+};
 
   const closeExamModal = () => {
     setShowCreateModal(false);
