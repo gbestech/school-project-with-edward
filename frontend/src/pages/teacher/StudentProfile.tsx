@@ -14,13 +14,10 @@ import {
   Mail, 
   GraduationCap, 
   BookOpen,
-  Clock,
   Award,
   Users,
-  Home,
   Shield,
   FileText,
-  BarChart3,
   RefreshCw,
   AlertCircle
 } from 'lucide-react';
