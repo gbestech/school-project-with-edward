@@ -2825,9 +2825,16 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     }
   };
 
+  // const handleInputChange = (field: keyof ExamCreateData, value: any) => {
+  //   setFormData(prev => ({ ...prev, [field]: value }));
+  // };
+
   const handleInputChange = (field: keyof ExamCreateData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+ const numericFields: (keyof ExamCreateData)[] = ['total_marks', 'pass_marks'];
+ const parsedValue = numericFields.includes(field) ? Number(value) : value;
+
+ setFormData(prev => ({ ...prev, [field]: parsedValue }));
+  }
 
   const addObjectiveQuestion = () => {
     const newQuestion = {

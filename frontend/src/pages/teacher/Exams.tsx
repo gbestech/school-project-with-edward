@@ -102,11 +102,7 @@ const loadTeacherData = async () => {
     const assignments = assignmentsResponse || [];
     let examsData = examsResponse || [];
 
-    console.log('🔍 STEP 3: Raw data received');
-    console.log('   - Assignments:', assignments.length, 'items');
-    console.log('   - Exams by teacher:', examsData.length, 'items');
-    console.log('   - Raw exams data:', examsData);
-
+    
     // Extract subject IDs for fallback
     const subjectIds = Array.from(new Set(
       (assignments || []).map((a: any) => a.subject_id).filter((id: any) => !!id)
@@ -122,8 +118,6 @@ const loadTeacherData = async () => {
         );
         const bySubject = bySubjectLists.flat();
         
-        console.log('   - Exams by subjects:', bySubject.length, 'items');
-        console.log('   - Subject exams data:', bySubject);
         
         // Merge and deduplicate
         const examMap = new Map();
