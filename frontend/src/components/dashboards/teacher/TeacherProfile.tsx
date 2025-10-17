@@ -1838,7 +1838,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                 <button
                   onClick={async () => {
                     try {
-                      const url = `${window.location.origin}/teacher/bio/${profileData?.id}`;
+                      const url = `${window.location.origin}/api/teacher/bio/${profileData?.id}`;
                       await navigator.clipboard.writeText(url);
                       setSuccessMessage("Shared link copied to clipboard!");
                       setShowBioModal(false);
