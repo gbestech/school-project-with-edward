@@ -2948,19 +2948,19 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
   };
 
   const calculateTotalMarks = () => {
-    const objectiveMarks = objectiveQuestions.reduce((sum: number, q: any) => sum + (q.marks || 0), 0);
+    const objectiveMarks = objectiveQuestions.reduce((sum: number, q: any) => sum + (Number(q.marks) || 0), 0);
     const theoryMarks = theoryQuestions.reduce((sum: number, q: any) => {
-      const base = sum + (q.marks || 0);
+      const base = sum + (Number(q.marks) || 0);
       const subQ = (q.subQuestions || []).reduce((ss: number, sq: any) => {
-        const baseSq = ss + (sq.marks || 0);
-        const subSub = (sq.subSubQuestions || []).reduce((sss: number, s2: any) => sss + (s2.marks || 0), 0);
+      const baseSq = ss + (Number(sq.marks) || 0);
+        const subSub = (sq.subSubQuestions || []).reduce((sss: number, s2: any) => sss + (Number(s2.marks) || 0), 0);
         return baseSq + subSub;
       }, 0);
       return base + subQ;
     }, 0);
-    const practicalMarks = practicalQuestions.reduce((sum: number, q: any) => sum + (q.marks || 0), 0);
+    const practicalMarks = practicalQuestions.reduce((sum: number, q: any) => sum + (Number(q.marks) || 0), 0);
     const customMarks = customSections.reduce((sum: number, s: any) =>
-      sum + (s.questions || []).reduce((qSum: number, q: any) => qSum + (q.marks || 0), 0), 0
+      sum + (s.questions || []).reduce((qSum: number, q: any) => qSum + (Number(q.marks) || 0), 0), 0
     );
     return objectiveMarks + theoryMarks + practicalMarks + customMarks;
   };
