@@ -531,6 +531,7 @@ const TeacherSubjectDetail = lazy(() => import('./../pages/teacher/SubjectDetail
 const StudentList = lazy(() => import('./../pages/admin/AdminStudentList').catch(() => ({ default: () => <div>Error loading Student List</div> })));
 const ParentDashboard = lazy(() => import('./../pages/parent/Dashboard').catch(() => ({ default: () => <div>Error loading Parent Dashboard</div> })));
 const NotFound = lazy(() => import('./../pages/NotFound').catch(() => ({ default: () => <div>Page Not Found</div> })));
+const TeacherBio = lazy(() => import('./../components/dashboards/teacher/PublicTeacherBio').catch(() => ({ default: () => <div>Error loading Public Teacher Bio</div> })));
 // const AdminDashboardLayout = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Admin Layout</div> })));
 // const DashboardHome = lazy(() => import('./../pages/admin/DashboardHome').catch(() => ({ default: () => <div>Error loading Dashboard Home</div> })));
 // const DashboardMainContent = lazy(() => import('./../components/dashboards/admin/DashboardMainContent'));
@@ -768,6 +769,11 @@ export const router = createBrowserRouter([
           {
             path: 'profile',
             element: <TeacherProfile />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: "/teacher/bio/:teacherId",
+            element: <TeacherBio />,
             errorElement: <RouteErrorElement />
           },
           {
