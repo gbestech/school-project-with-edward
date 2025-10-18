@@ -25,19 +25,22 @@ const PublicTeacherBio: React.FC = () => {
 
     const response = await TeacherService.getTeacher(parseInt(teacherId));
     
-    // 👇 ADD THESE CONSOLE LOGS
+    // 👇 ADD THESE DEBUG LOGS
     console.log("=== PUBLIC BIO DEBUG ===");
-    console.log("Full response:", response);
-    console.log("response.user:", response.user);
-    console.log("response.user?.bio:", response.user?.bio);
-    console.log("Type of response:", typeof response);
-    console.log("Keys in response:", Object.keys(response));
-    if (response.user) {
-      console.log("Keys in response.user:", Object.keys(response.user));
-    }
+    console.log("1. Full response:", response);
+    console.log("2. response.user:", response.user);
+    console.log("3. response.user?.bio:", response.user?.bio);
+    console.log("4. Type of response.user:", typeof response.user);
+    console.log("5. response.user exists?", !!response.user);
+    console.log("6. Bio exists?", !!response.user?.bio);
+    console.log("7. Bio length:", response.user?.bio?.length);
     console.log("======================");
     
     setProfileData(response);
+    
+    // 👇 ADD THIS LOG AFTER STATE UPDATE
+    console.log("8. profileData set to:", response);
+    
   } catch (error) {
     console.error("Error loading teacher bio:", error);
     setError(error instanceof Error ? error.message : "Failed to load teacher bio");
