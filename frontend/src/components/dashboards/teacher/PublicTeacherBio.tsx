@@ -309,64 +309,99 @@ import { useParams, useNavigate } from "react-router-dom";
 import TeacherService from "@/services/TeacherService";
 
 const PublicTeacherBio: React.FC = () => {
+  // 🚨 FIRST DEBUG - Component Loading
+  console.log("🚀🚀🚀 PublicTeacherBio COMPONENT LOADED AT:", new Date().toISOString());
+  
   const { teacherId } = useParams<{ teacherId: string }>();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 🔥 RENDER DEBUG - Every time component renders
+  console.log("🔥 COMPONENT RENDER CHECK:", {
+    renderTime: new Date().toISOString(),
+    teacherId: teacherId,
+    hasProfileData: !!profileData,
+    hasUser: !!profileData?.user,
+    hasBio: !!profileData?.user?.bio,
+    bioLength: profileData?.user?.bio?.length,
+    profileDataKeys: profileData ? Object.keys(profileData) : [],
+    userKeys: profileData?.user ? Object.keys(profileData.user) : []
+  });
+
   useEffect(() => {
+    console.log("⚡ useEffect triggered - calling loadTeacherBio");
     loadTeacherBio();
   }, [teacherId]);
 
- const loadTeacherBio = async () => {
-  try {
-    setIsLoading(true);
-    setError(null);
-    
-    if (!teacherId) {
-      throw new Error("Teacher ID not found");
-    }
+  const loadTeacherBio = async () => {
+    try {
+      console.log("📡 Starting loadTeacherBio for teacherId:", teacherId);
+      setIsLoading(true);
+      setError(null);
+      
+      if (!teacherId) {
+        throw new Error("Teacher ID not found");
+      }
 
-    const response = await TeacherService.getTeacher(parseInt(teacherId));
-    
-    // 🔥 ADD THESE DEBUG LOGS
-    console.log("=== PUBLIC BIO DEBUG ===");
-    console.log("1. Full response:", response);
-    console.log("2. response.user:", response.user);
-    console.log("3. response.user?.bio:", response?.user?.bio);
-    console.log("4. Keys in response:", Object.keys(response));
-    console.log("5. Keys in response.user:", response.user ? Object.keys(response.user) : "NO USER");
-    console.log("6. Bio exists?", !!response?.user?.bio);
-    console.log("7. Bio length:", response?.user?.bio?.length);
-    console.log("8. First 100 chars:", response?.user?.bio?.substring(0, 100));
-    console.log("======================");
-    
-    setProfileData(response);
-    
-    // 🔥 LOG AFTER STATE UPDATE
-    console.log("✅ profileData state updated with:", response);
-    
-  } catch (error) {
-    console.error("❌ Error loading teacher bio:", error);
-    setError(error instanceof Error ? error.message : "Failed to load teacher bio");
-  } finally {
-    setIsLoading(false);
-  }
-};
+      const response = await TeacherService.getTeacher(parseInt(teacherId));
+      
+      // 🔥 DETAILED DEBUG LOGS
+      console.log("=== PUBLIC BIO DEBUG START ===");
+      console.log("1. Full response object:", response);
+      console.log("2. response.user object:", response.user);
+      console.log("3. response.user?.bio:", response?.user?.bio);
+      console.log("4. response.bio (if exists):", response?.bio);
+      console.log("5. Type of response:", typeof response);
+      console.log("6. Keys in response:", Object.keys(response));
+      console.log("7. Keys in response.user:", response.user ? Object.keys(response.user) : "NO USER OBJECT");
+      console.log("8. Bio exists in user?", !!response?.user?.bio);
+      console.log("9. Bio type:", typeof response?.user?.bio);
+      console.log("10. Bio length:", response?.user?.bio?.length || 0);
+      console.log("11. First 200 chars of bio:", response?.user?.bio?.substring(0, 200) || "NO BIO");
+      console.log("12. Is bio truthy?", response?.user?.bio ? "YES ✅" : "NO ❌");
+      console.log("=== PUBLIC BIO DEBUG END ===");
+      
+      setProfileData(response);
+      
+      // 🔥 VERIFY STATE UPDATE
+      console.log("✅ setProfileData called with:", response);
+      console.log("✅ State should now have bio:", !!response?.user?.bio);
+      
+    } catch (error) {
+      console.error("❌ ERROR in loadTeacherBio:", error);
+      setError(error instanceof Error ? error.message : "Failed to load teacher bio");
+    } finally {
+      setIsLoading(false);
+      console.log("🏁 loadTeacherBio finished, isLoading set to false");
+    }
+  };
+
+  // 🔍 ADD EFFECT TO MONITOR STATE CHANGES
+  useEffect(() => {
+    console.log("📊 profileData STATE CHANGED:", {
+      hasData: !!profileData,
+      hasUser: !!profileData?.user,
+      hasBio: !!profileData?.user?.bio,
+      bioPreview: profileData?.user?.bio?.substring(0, 100)
+    });
+  }, [profileData]);
 
   if (isLoading) {
+    console.log("⏳ Rendering LOADING state");
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading...</p>
+          <p className="text-slate-600">Loading teacher profile...</p>
         </div>
       </div>
     );
   }
 
   if (error || !profileData) {
+    console.log("❌ Rendering ERROR state:", error);
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md">
@@ -383,13 +418,17 @@ const PublicTeacherBio: React.FC = () => {
     );
   }
 
+  console.log("✅ Rendering MAIN CONTENT with profileData");
+  
   const firstName = profileData?.user?.first_name || profileData?.first_name || "Teacher";
   const lastName = profileData?.user?.last_name || profileData?.last_name || "";
   const bioText = profileData?.user?.bio || "";
 
+  console.log("📝 Display variables:", { firstName, lastName, bioLength: bioText.length });
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Simple Header */}
+      {/* Header */}
       <div className="bg-blue-600 text-white py-8">
         <div className="max-w-4xl mx-auto px-4">
           <button onClick={() => navigate(-1)} className="mb-4 flex items-center gap-2">
@@ -404,27 +443,86 @@ const PublicTeacherBio: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         
-        {/* DEBUG BOX - Remove this after testing */}
-        <div className="bg-yellow-100 border-2 border-yellow-400 p-4 mb-6 rounded">
-          <p className="font-bold">DEBUG INFO:</p>
-          <p>profileData exists: {profileData ? "YES" : "NO"}</p>
-          <p>user exists: {profileData?.user ? "YES" : "NO"}</p>
-          <p>bio exists: {profileData?.user?.bio ? "YES" : "NO"}</p>
-          <p>bio length: {profileData?.user?.bio?.length || 0}</p>
-          <p>bioText variable: {bioText ? "HAS VALUE" : "EMPTY"}</p>
-          <p>First 100 chars: {bioText.substring(0, 100)}</p>
+        {/* 🔍 MEGA DEBUG BOX - Shows everything */}
+        <div className="bg-gradient-to-r from-yellow-200 to-yellow-300 border-4 border-yellow-700 p-6 mb-6 rounded-xl shadow-2xl">
+          <h3 className="font-bold text-black text-2xl mb-4 flex items-center gap-2">
+            🔍 DEBUG INFORMATION PANEL
+          </h3>
+          
+          <div className="space-y-3 bg-white p-5 rounded-lg border-2 border-gray-300">
+            <div className="text-lg">
+              <strong className="text-blue-600">Component Status:</strong>
+              <p className="ml-4 text-green-600 font-bold">✅ Component Loaded Successfully</p>
+            </div>
+            
+            <div className="border-t-2 border-gray-200 pt-3 mt-3">
+              <strong className="text-blue-600 text-lg">Data Status:</strong>
+              <div className="ml-4 space-y-1 mt-2">
+                <p>profileData exists: <strong className={profileData ? "text-green-600" : "text-red-600"}>{profileData ? "✅ YES" : "❌ NO"}</strong></p>
+                <p>user object exists: <strong className={profileData?.user ? "text-green-600" : "text-red-600"}>{profileData?.user ? "✅ YES" : "❌ NO"}</strong></p>
+                <p>bio field exists: <strong className={profileData?.user?.bio ? "text-green-600" : "text-red-600"}>{profileData?.user?.bio ? "✅ YES" : "❌ NO"}</strong></p>
+                <p>bio type: <strong className="text-purple-600">{typeof profileData?.user?.bio}</strong></p>
+                <p>bio length: <strong className="text-purple-600">{profileData?.user?.bio?.length || 0} characters</strong></p>
+                <p>bioText variable: <strong className={bioText ? "text-green-600" : "text-red-600"}>{bioText ? "✅ HAS VALUE" : "❌ EMPTY"}</strong></p>
+              </div>
+            </div>
+            
+            <div className="border-t-2 border-gray-200 pt-3 mt-3">
+              <strong className="text-blue-600 text-lg">Object Keys:</strong>
+              <div className="ml-4 mt-2">
+                <p className="text-sm"><strong>profileData keys:</strong></p>
+                <p className="text-xs font-mono bg-gray-100 p-2 rounded mt-1">{profileData ? Object.keys(profileData).join(', ') : 'N/A'}</p>
+                <p className="text-sm mt-2"><strong>user keys:</strong></p>
+                <p className="text-xs font-mono bg-gray-100 p-2 rounded mt-1">{profileData?.user ? Object.keys(profileData.user).join(', ') : 'N/A'}</p>
+              </div>
+            </div>
+            
+            <div className="border-t-2 border-gray-200 pt-3 mt-3">
+              <strong className="text-blue-600 text-lg">Bio Preview (First 300 characters):</strong>
+              <div className="mt-2 p-4 bg-gray-50 rounded border border-gray-300 max-h-40 overflow-y-auto">
+                <p className="text-sm font-mono whitespace-pre-wrap break-words">
+                  {bioText ? bioText.substring(0, 300) + (bioText.length > 300 ? '...' : '') : "❌ NO BIO CONTENT - This is the problem!"}
+                </p>
+              </div>
+            </div>
+            
+            <div className="border-t-2 border-gray-200 pt-3 mt-3">
+              <strong className="text-blue-600 text-lg">Raw Data:</strong>
+              <div className="mt-2 p-3 bg-gray-800 text-green-400 rounded font-mono text-xs max-h-60 overflow-y-auto">
+                <pre>{JSON.stringify({ 
+                  user: profileData?.user,
+                  hasBio: !!profileData?.user?.bio,
+                  bioLength: profileData?.user?.bio?.length 
+                }, null, 2)}</pre>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-100 rounded border-2 border-blue-400">
+            <p className="text-sm text-blue-900">
+              <strong>📋 Instructions:</strong> Take a screenshot of this entire debug box and share it. 
+              It shows exactly what data the component is receiving.
+            </p>
+          </div>
         </div>
 
         {/* Bio Section */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
-  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4">
-    About {profileData?.user?.first_name || "Teacher"}
-  </h2>
-  
-  <div className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
-    {profileData?.user?.bio || "No bio available"}
-  </div>
-</div>
+        <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-4">
+            About {firstName}
+          </h2>
+          
+          <div className="text-slate-700 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
+            {bioText || "❌ No bio available - Check debug box above"}
+          </div>
+          
+          {/* Extra debug right in the bio section */}
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-300 rounded text-xs">
+            <p><strong>Bio Section Debug:</strong></p>
+            <p>bioText value: {bioText ? `"${bioText.substring(0, 50)}..."` : "EMPTY STRING"}</p>
+            <p>Conditional result: {bioText ? "Should show bio" : "Showing fallback message"}</p>
+          </div>
+        </div>
 
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
