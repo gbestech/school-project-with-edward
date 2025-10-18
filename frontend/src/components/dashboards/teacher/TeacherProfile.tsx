@@ -1335,7 +1335,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Mobile-Optimized Tabs */}
-        <div className="mb-6 sm:mb-8">
+        {/* <div className="mb-6 sm:mb-8">
           <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex overflow-x-auto gap-2 scrollbar-hide pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {tabs.map((tab) => {
@@ -1358,8 +1358,30 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
               })}
             </div>
           </div>
+        </div> */}
+ <div className="mb-6 sm:mb-8">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2.5 sm:px-4 rounded-xl font-medium text-xs sm:text-sm transition-all ${
+                      activeTab === tab.id
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="text-center leading-tight">{tab.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-
         {/* Tab Content */}
         <div className="space-y-4 sm:space-y-6">
           {activeTab === "overview" && (
