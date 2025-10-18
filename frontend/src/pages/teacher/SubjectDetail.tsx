@@ -18,7 +18,6 @@ import {
   UserCheck,
   FileText,
   Target,
-  CheckCircle,
   AlertCircle,
   Clock3,
   MapPin,

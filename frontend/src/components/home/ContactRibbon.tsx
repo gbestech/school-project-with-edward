@@ -43,11 +43,11 @@ const { settings } = useSettings();
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig>({
     backgroundColor: 'white',
     phoneNumbers: [
-      { number: settings?.school_phone ||'08106334006', label: 'Admin' },
+      { number: settings?.phone ||'08106334006', label: 'Admin' },
       { number: '07065636067', label: 'Support' }
       
     ],
-    email: settings?.school_email ||'info@company.com',
+    email: settings?.email ||'info@company.com',
     location: 'New York, USA',
     message: 'Committed to Excellence',
     socialLinks: [
