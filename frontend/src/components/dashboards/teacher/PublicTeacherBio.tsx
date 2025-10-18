@@ -406,15 +406,15 @@ const PublicTeacherBio: React.FC = () => {
         </div>
 
         {/* Bio Section */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">
-            About {firstName}
-          </h2>
-          
-          <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {bioText || "No bio available"}
-          </div>
-        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
+  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4">
+    About {profileData?.user?.first_name || "Teacher"}
+  </h2>
+  
+  <div className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
+    {profileData?.user?.bio || "No bio available"}
+  </div>
+</div>
 
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
