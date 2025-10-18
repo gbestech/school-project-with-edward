@@ -15,30 +15,62 @@ const PublicTeacherBio: React.FC = () => {
   }, [teacherId]);
 
   const loadTeacherBio = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      if (!teacherId) {
-        throw new Error("Teacher ID not found");
-      }
-
-      const response = await TeacherService.getTeacher(parseInt(teacherId));
-      setProfileData(response);
-    } catch (error) {
-      console.error("Error loading teacher bio:", error);
-      setError(error instanceof Error ? error.message : "Failed to load teacher bio");
-    } finally {
-      setIsLoading(false);
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    if (!teacherId) {
+      throw new Error("Teacher ID not found");
     }
-  };
+
+    const response = await TeacherService.getTeacher(parseInt(teacherId));
+    
+    // 👇 ADD THESE CONSOLE LOGS
+    console.log("=== PUBLIC BIO DEBUG ===");
+    console.log("Full response:", response);
+    console.log("response.user:", response.user);
+    console.log("response.user?.bio:", response.user?.bio);
+    console.log("response.bio:", response.bio);
+    console.log("Type of response:", typeof response);
+    console.log("Keys in response:", Object.keys(response));
+    if (response.user) {
+      console.log("Keys in response.user:", Object.keys(response.user));
+    }
+    console.log("======================");
+    
+    setProfileData(response);
+  } catch (error) {
+    console.error("Error loading teacher bio:", error);
+    setError(error instanceof Error ? error.message : "Failed to load teacher bio");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const getBio = () => {
-    return profileData?.user?.bio || profileData?.bio || "";
+    // Try multiple possible locations for the bio
+    const bio = profileData?.user?.bio || 
+                profileData?.bio || 
+                profileData?.user_data?.bio ||
+                profileData?.teacher_data?.bio ||
+                "";
+    
+    console.log("getBio - Final bio value:", bio);
+    console.log("getBio - profileData structure:", {
+      hasUser: !!profileData?.user,
+      hasBio: !!profileData?.bio,
+      hasUserData: !!profileData?.user_data,
+      hasTeacherData: !!profileData?.teacher_data
+    });
+    
+    return bio;
   };
 
   const getProfilePicture = () => {
-    return profileData?.photo || null;
+    return profileData?.photo || 
+           profileData?.user?.photo || 
+           profileData?.user?.profile_picture ||
+           null;
   };
 
   const getYearsOfService = () => {
@@ -81,6 +113,10 @@ const PublicTeacherBio: React.FC = () => {
     );
   }
 
+  const bioContent = getBio();
+  const firstName = profileData?.user?.first_name || profileData?.first_name || "Teacher";
+  const lastName = profileData?.user?.last_name || profileData?.last_name || "";
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
@@ -102,7 +138,7 @@ const PublicTeacherBio: React.FC = () => {
                   <img src={getProfilePicture()} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-3xl sm:text-4xl font-bold text-white">
-                    {profileData?.user?.first_name?.charAt(0)}{profileData?.user?.last_name?.charAt(0)}
+                    {firstName?.charAt(0)}{lastName?.charAt(0)}
                   </span>
                 )}
               </div>
@@ -111,7 +147,7 @@ const PublicTeacherBio: React.FC = () => {
             {/* Profile Info */}
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">
-                {profileData?.user?.first_name} {profileData?.user?.last_name}
+                {firstName} {lastName}
               </h1>
               <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base">
                 <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg font-medium">
@@ -129,16 +165,18 @@ const PublicTeacherBio: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Bio Section */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700 mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4">About {profileData?.user?.first_name}</h2>
-          {getBio() ? (
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-4">
+            About {firstName}
+          </h2>
+          {bioContent ? (
             <div className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
-              {getBio()}
+              {bioContent}
             </div>
           ) : (
             <div className="text-center py-8">
               <User className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <p className="text-slate-500 dark:text-slate-400 text-sm">
-                No bio available for this teacher.
+                Bio not available yet. The teacher hasn't added their bio information.
               </p>
             </div>
           )}
