@@ -319,31 +319,41 @@ const PublicTeacherBio: React.FC = () => {
     loadTeacherBio();
   }, [teacherId]);
 
-  const loadTeacherBio = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      if (!teacherId) {
-        throw new Error("Teacher ID not found");
-      }
-
-      const response = await TeacherService.getTeacher(parseInt(teacherId));
-      console.log("=== BIO CHECK ===");
-      console.log("Full response:", response);
-      console.log("Has user?", !!response?.user);
-      console.log("Has bio?", !!response?.user?.bio);
-      console.log("Bio content:", response?.user?.bio);
-      console.log("================");
-      
-      setProfileData(response);
-    } catch (error) {
-      console.error("Error loading teacher bio:", error);
-      setError(error instanceof Error ? error.message : "Failed to load teacher bio");
-    } finally {
-      setIsLoading(false);
+ const loadTeacherBio = async () => {
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    if (!teacherId) {
+      throw new Error("Teacher ID not found");
     }
-  };
+
+    const response = await TeacherService.getTeacher(parseInt(teacherId));
+    
+    // 🔥 ADD THESE DEBUG LOGS
+    console.log("=== PUBLIC BIO DEBUG ===");
+    console.log("1. Full response:", response);
+    console.log("2. response.user:", response.user);
+    console.log("3. response.user?.bio:", response?.user?.bio);
+    console.log("4. Keys in response:", Object.keys(response));
+    console.log("5. Keys in response.user:", response.user ? Object.keys(response.user) : "NO USER");
+    console.log("6. Bio exists?", !!response?.user?.bio);
+    console.log("7. Bio length:", response?.user?.bio?.length);
+    console.log("8. First 100 chars:", response?.user?.bio?.substring(0, 100));
+    console.log("======================");
+    
+    setProfileData(response);
+    
+    // 🔥 LOG AFTER STATE UPDATE
+    console.log("✅ profileData state updated with:", response);
+    
+  } catch (error) {
+    console.error("❌ Error loading teacher bio:", error);
+    setError(error instanceof Error ? error.message : "Failed to load teacher bio");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   if (isLoading) {
     return (
