@@ -62,7 +62,7 @@ const TeacherLoginPage = lazy(() => import('./../pages/TeacherLoginPage').catch(
 const ParentLoginPage = lazy(() => import('./../pages/ParentLoginPage').catch(() => ({ default: () => <div>Error loading Parent Login</div> })));
 const AdminLoginPage = lazy(() => import('./../pages/AdminLoginPage').catch(() => ({ default: () => <div>Error loading Admin Login</div> })));
 const HowToApplyPage = lazy(() => import('./../pages/HowToApplyPage').catch(() => ({ default: () => <div>Error loading How to Apply</div> })));
-const PublicTeacherBio = lazy(() => import('./../pages/PublicTeacherBio').catch(() => ({ default: () => <div>Error loading Teacher Bio</div> })));
+// const PublicTeacherBio = lazy(() => import('./../pages/PublicTeacherBio').catch(() => ({ default: () => <div>Error loading Teacher Bio</div> })));
 const ResultChecker = lazy(() => import('./../components/dashboards/admin/ResultChecker').catch(() => ({ default: () => <div>Error loading Result Checker</div> })));
 const StudentResultChecker = lazy(() => import('./../components/dashboards/admin/StudentResultChecker').catch(() => ({ default: () => <div>Error loading Student Result Checker</div> })));
 const StudentResultDetail = lazy(() => import('./../components/dashboards/admin/StudentResultDetail').catch(() => ({ default: () => <div>Error loading Student Result Detail</div> })));
@@ -213,11 +213,11 @@ export const router = createBrowserRouter([
             element: <HowToApplyPage />, 
             errorElement: <RouteErrorElement />
           },
-          {
-            path: 'teacher/bio/:teacherId',
-            element: <PublicTeacherBio />, 
-            errorElement: <RouteErrorElement />
-          },
+          // {
+          //   path: 'teacher/bio/:teacherId',
+          //   element: <PublicTeacherBio />, 
+          //   errorElement: <RouteErrorElement />
+          // },
           {
             path: '*',
             element: <NotFound />,
