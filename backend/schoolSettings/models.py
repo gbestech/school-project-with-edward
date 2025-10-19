@@ -36,6 +36,7 @@ class SchoolSettings(models.Model):
 
     # Academic Year
     academic_year = models.CharField(max_length=50, blank=True, null=True)
+    current_term = models.CharField(max_length=50, blank=True, null=True)
 
     # Localization
     timezone = models.CharField(max_length=50, default="UTC")
