@@ -28,6 +28,7 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "logo",  # This is now a URL string
             "favicon",  # This is now a URL string
             "academic_year",
+            "current_term",
             "timezone",
             "date_format",
             "language",
