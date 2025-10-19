@@ -10,7 +10,7 @@ export interface SchoolSettings {
   email: string;
   logo: string;
   favicon: string;
-  academicYear: string;
+  academicSession: string;
   currentTerm?: string;
   motto: string;
   timezone: string;
@@ -337,7 +337,7 @@ class SettingsService {
       favicon: response.favicon_url ?? response.favicon ?? '',
       
       // Parse academic_year if it exists (might be "2024/2025" format)
-      academicYear: response.academic_year ?? '',
+      academicSession: response.academic_session ?? '',
       
       motto: response.school_motto ?? 'Knowledge at its spring', // FIXED: was response.motto
       timezone: response.timezone ?? 'UTC-5',
@@ -473,7 +473,7 @@ class SettingsService {
     if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
     
     // Academic year transformations
-    if (settings.academicYear !== undefined) backendSettings.academic_year = settings.academicYear;
+    if (settings.academicSession !== undefined) backendSettings.academic_year = settings.academicSession;
     
     // File uploads (only if they're actual files or URLs)
     if (settings.logo !== undefined) backendSettings.logo = settings.logo;
@@ -560,7 +560,7 @@ private async transformBackendToFrontend(response: any): Promise<SchoolSettings>
     email: response.school_email ?? '',         // FIXED
     logo: response.logo_url ?? response.logo ?? '',
     favicon: response.favicon_url ?? response.favicon ?? '',
-    academicYear: response.academic_year ?? '',
+    academicSession: response.academic_session ?? '',
     motto: response.school_motto ?? 'Knowledge at its spring', // FIXED
     timezone: response.timezone ?? 'UTC-5',
     dateFormat: response.date_format ?? 'dd/mm/yyyy',
@@ -1006,7 +1006,7 @@ async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
       email: '',
       logo: '',
       favicon: '',
-      academicYear: '',
+      academicSession: '',
       motto: 'Knowledge at its spring',
       timezone: 'UTC-5',
       dateFormat: 'dd/mm/yyyy',
