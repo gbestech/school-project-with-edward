@@ -144,6 +144,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   const [theoryInstructions, setTheoryInstructions] = useState('');
   const [practicalInstructions, setPracticalInstructions] = useState('');
 
+
+  useEffect(() => {
+  console.log('📊 Current Settings:', settings);
+  console.log('📊 Current Term:', settings?.currentTerm);
+}, [settings]);
+
   // Helper function to safely extract array from API response
   const safeArrayFromResponse = (data: any): any[] => {
     if (Array.isArray(data)) return data;
@@ -894,6 +900,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   };
 
   const generateExamHTML = (exam: Exam, questionData?: {
+
     objectiveQuestions: any[];
     theoryQuestions: any[];
     practicalQuestions: any[];
@@ -902,6 +909,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     theoryInstructions: string;
     practicalInstructions: string;
   }) => {
+    // Add debug logging
+  console.log('🔍 Settings in generateExamHTML:', {
+    currentTerm: settings?.currentTerm,
+    academicYear: settings?.academicYear,
+    fullSettings: settings
+  });
     // Use dynamic school information from settings
     const schoolName = settings?.school_name || 'School Name';
     const schoolAddress = settings?.address || 'School Address';
