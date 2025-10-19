@@ -338,6 +338,7 @@ class SettingsService {
       
       // Parse academic_year if it exists (might be "2024/2025" format)
       academicYear: response.academic_year ?? '',
+      currentTerm: response.current_term ?? '',
       
       motto: response.school_motto ?? 'Knowledge at its spring', // FIXED: was response.motto
       timezone: response.timezone ?? 'UTC-5',
@@ -474,6 +475,7 @@ class SettingsService {
     
     // Academic year transformations
     if (settings.academicYear !== undefined) backendSettings.academic_year = settings.academicYear;
+    if (settings.currentTerm !== undefined) backendSettings.current_term = settings.currentTerm;
     
     // File uploads (only if they're actual files or URLs)
     if (settings.logo !== undefined) backendSettings.logo = settings.logo;
@@ -561,6 +563,7 @@ private async transformBackendToFrontend(response: any): Promise<SchoolSettings>
     logo: response.logo_url ?? response.logo ?? '',
     favicon: response.favicon_url ?? response.favicon ?? '',
     academicYear: response.academic_year ?? '',
+    currentTerm: response.current_term ?? '',
     motto: response.school_motto ?? 'Knowledge at its spring', // FIXED
     timezone: response.timezone ?? 'UTC-5',
     dateFormat: response.date_format ?? 'dd/mm/yyyy',
