@@ -493,8 +493,8 @@ const loadTeacherData = async () => {
     <TeacherDashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2">
+          <div className='p-3'>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Exam & Test Management
             </h1>
