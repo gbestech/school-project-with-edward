@@ -123,7 +123,7 @@ const PublicTeacherBio: React.FC = () => {
       <div className="bg-blue-600 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <button
-            onClick={() => navigate('teaher/dashboard')}
+            onClick={() => navigate('/teaher/dashboard')}
             className="flex items-center gap-2 text-white/90 hover:text-white mb-6 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
