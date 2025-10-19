@@ -99,7 +99,7 @@ const AcademicCalendarTab: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
-
+console.log('Loading academic calendar data...');
   const loadData = async () => {
     try {
       setLoading(true);
@@ -169,7 +169,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL
       return [];
     }
   };
-
+console.log('Fetching academic sessions and terms from API...');
   // Session management
   const handleCreateSession = async () => {
     try {
