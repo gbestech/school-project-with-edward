@@ -2852,10 +2852,10 @@ const handleInputChange = (field: keyof ExamCreateData, value: any) => {
   };
 
   const updateObjectiveQuestion = (index: number, field: string, value: string) => {
-    setObjectiveQuestions(prev => prev.map((q, i) => 
-      i === index ? { ...q, [field]: value } : q
-    ));
-  };
+  setObjectiveQuestions(prev => prev.map((q, i) => 
+    i === index ? { ...q, [field]: field === 'marks' ? Number(value) : value } : q
+  ));
+};
 
   const removeObjectiveQuestion = (index: number) => {
     setObjectiveQuestions(prev => prev.filter((_, i) => i !== index));
