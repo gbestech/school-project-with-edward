@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, X,AlertCircle, Save } from 'lucide-react';
+import { Plus, Edit, Trash2, X, AlertCircle, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '@/services/api';
 
@@ -36,6 +36,7 @@ const ExamScheduleManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<ExamSchedule | null>(null);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
   const [formData, setFormData] = useState<ExamSchedule>({
     name: '',
     description: '',
@@ -53,142 +54,135 @@ const ExamScheduleManagement: React.FC = () => {
 
   // Load data
   const loadData = useCallback(async () => {
-  try {
-    setLoading(true);
-    setDataLoadError(null);
-    
-    console.log('🔍 Loading exam schedules, sessions, and terms...');
-
-    // Load exam schedules
-    let schedulesData = [];
     try {
-      const response = await api.get('exams/schedules/');
-      schedulesData = response;
-      console.log('✅ Loaded exam schedules:', schedulesData);
+      setLoading(true);
+      setDataLoadError(null);
+      
+      console.log('🔍 Loading exam schedules, sessions, and terms...');
+
+      // Load exam schedules
+      let schedulesData: ExamSchedule[] = [];
+      try {
+        const response = await api.get('/api/exams/schedules/');
+        console.log('📊 Schedules response:', response);
+        
+        if (Array.isArray(response)) {
+          schedulesData = response;
+        } else if (response?.results && Array.isArray(response.results)) {
+          schedulesData = response.results;
+        } else if (response?.data && Array.isArray(response.data)) {
+          schedulesData = response.data;
+        }
+        
+        console.log('✅ Loaded exam schedules:', schedulesData);
+      } catch (err: any) {
+        console.warn('⚠️ Could not load exam schedules:', err.message);
+      }
+
+      // Load academic sessions - try multiple endpoints
+      let sessionsData: AcademicSession[] = [];
+      const sessionEndpoints = [
+        'fee/academic-sessions/',
+        'academic/sessions/',
+        'sessions/',
+        'academics/academic-sessions/'
+      ];
+      
+      for (const endpoint of sessionEndpoints) {
+        try {
+          console.log(`🔍 Trying to load academic sessions from: ${endpoint}`);
+          const response = await api.get(endpoint);
+          console.log('📊 Response:', response);
+          
+          if (Array.isArray(response)) {
+            sessionsData = response;
+          } else if (response?.results && Array.isArray(response.results)) {
+            sessionsData = response.results;
+          } else if (response?.data && Array.isArray(response.data)) {
+            sessionsData = response.data;
+          }
+          
+          if (sessionsData.length > 0) {
+            console.log('✅ Loaded academic sessions from:', endpoint, sessionsData);
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ Failed to load from ${endpoint}:`, err.message);
+        }
+      }
+
+      // Load terms - try multiple endpoints
+      let termsData: Term[] = [];
+      const termEndpoints = [
+        'fee/terms/',
+        'academic/terms/',
+        'terms/',
+        'academics/terms/'
+      ];
+      
+      for (const endpoint of termEndpoints) {
+        try {
+          console.log(`🔍 Trying to load terms from: ${endpoint}`);
+          const response = await api.get(endpoint);
+          console.log('📊 Response:', response);
+          
+          if (Array.isArray(response)) {
+            termsData = response;
+          } else if (response?.results && Array.isArray(response.results)) {
+            termsData = response.results;
+          } else if (response?.data && Array.isArray(response.data)) {
+            termsData = response.data;
+          }
+          
+          if (termsData.length > 0) {
+            console.log('✅ Loaded terms from:', endpoint, termsData);
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ Failed to load from ${endpoint}:`, err.message);
+        }
+      }
+
+      // Use fallback data only if API calls failed
+      if (sessionsData.length === 0) {
+        console.warn('⚠️ Using fallback academic sessions');
+        setDataLoadError('Could not load academic sessions from database. Using fallback data.');
+        sessionsData = [
+          { id: 1, name: '2025/2026 Academic Session' },
+          { id: 2, name: '2024/2025 Academic Session' },
+          { id: 3, name: '2023/2024 Academic Session' },
+        ];
+      }
+
+      if (termsData.length === 0) {
+        console.warn('⚠️ Using fallback terms');
+        if (!dataLoadError) {
+          setDataLoadError('Could not load terms from database. Using fallback data.');
+        }
+        termsData = [
+          { id: 1, name: 'First Term' },
+          { id: 2, name: 'Second Term' },
+          { id: 3, name: 'Third Term' },
+        ];
+      }
+
+      setSchedules(schedulesData);
+      setAcademicSessions(sessionsData);
+      setTerms(termsData);
+
+      console.log('✅ Final data loaded:');
+      console.log('  - Schedules:', schedulesData.length);
+      console.log('  - Academic Sessions:', sessionsData.length);
+      console.log('  - Terms:', termsData.length);
+
     } catch (err: any) {
-      console.warn('⚠️ Could not load exam schedules:', err.message);
+      console.error('❌ Error loading data:', err);
+      toast.error('Failed to load exam schedules');
+      setDataLoadError(err.message || 'Failed to load data');
+    } finally {
+      setLoading(false);
     }
-
-    // Load academic sessions - try multiple endpoints
-    let sessionsData: AcademicSession[] = [];
-    const sessionEndpoints = [
-      'fee/academic-sessions/',
-      'academic/sessions/',
-      'sessions/',
-      'academics/academic-sessions/'
-    ];
-    
-    for (const endpoint of sessionEndpoints) {
-      try {
-        console.log(`🔍 Trying to load academic sessions from: ${endpoint}`);
-        const response = await api.get(endpoint);
-        console.log('📊 Response:', response);
-        
-        // Handle different response formats
-        if (Array.isArray(response)) {
-          sessionsData = response;
-        } else if (response?.results && Array.isArray(response.results)) {
-          sessionsData = response.results;
-        } else if (response?.data && Array.isArray(response.data)) {
-          sessionsData = response.data;
-        }
-        
-        if (sessionsData.length > 0) {
-          console.log('✅ Loaded academic sessions from:', endpoint, sessionsData);
-          break;
-        }
-      } catch (err: any) {
-        console.warn(`⚠️ Failed to load from ${endpoint}:`, err.message);
-      }
-    }
-
-    // Load terms - try multiple endpoints
-    let termsData: Term[] = [];
-    const termEndpoints = [
-      'fee/terms/',
-      'academic/terms/',
-      'terms/',
-      'academics/terms/'
-    ];
-    
-    for (const endpoint of termEndpoints) {
-      try {
-        console.log(`🔍 Trying to load terms from: ${endpoint}`);
-        const response = await api.get(endpoint);
-        console.log('📊 Response:', response);
-        
-        // Handle different response formats
-        if (Array.isArray(response)) {
-          termsData = response;
-        } else if (response?.results && Array.isArray(response.results)) {
-          termsData = response.results;
-        } else if (response?.data && Array.isArray(response.data)) {
-          termsData = response.data;
-        }
-        
-        if (termsData.length > 0) {
-          console.log('✅ Loaded terms from:', endpoint, termsData);
-          break;
-        }
-      } catch (err: any) {
-        console.warn(`⚠️ Failed to load from ${endpoint}:`, err.message);
-      }
-    }
-
-    // Use fallback data only if API calls failed
-    if (sessionsData.length === 0) {
-      console.warn('⚠️ Using fallback academic sessions');
-      setDataLoadError('Could not load academic sessions from database. Using fallback data.');
-      sessionsData = [
-        { id: 1, name: '2025/2026 Academic Session' },
-        { id: 2, name: '2024/2025 Academic Session' },
-        { id: 3, name: '2023/2024 Academic Session' },
-      ];
-    }
-
-    if (termsData.length === 0) {
-      console.warn('⚠️ Using fallback terms');
-      setDataLoadError('Could not load terms from database. Using fallback data.');
-      termsData = [
-        { id: 1, name: 'First Term' },
-        { id: 2, name: 'Second Term' },
-        { id: 3, name: 'Third Term' },
-      ];
-    }
-
-    setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
-    setAcademicSessions(sessionsData);
-    setTerms(termsData);
-
-    console.log('✅ Final data loaded:');
-    console.log('  - Schedules:', schedulesData.length);
-    console.log('  - Academic Sessions:', sessionsData.length);
-    console.log('  - Terms:', termsData.length);
-
-  } catch (err: any) {
-    console.error('❌ Error loading data:', err);
-    toast.error('Failed to load exam schedules');
-    setDataLoadError(err.message || 'Failed to load data');
-  } finally {
-    setLoading(false);
-  }
-}, []);
-
-
-const [dataLoadError, setDataLoadError] = useState<string | null>(null);
-
-// 3. Add a warning banner in the JSX to show when fallback data is used:
-{dataLoadError && (
-  <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-    <div>
-      <h3 className="text-sm font-semibold text-yellow-800">Using Fallback Data</h3>
-      <p className="text-sm text-yellow-700 mt-1">
-        {dataLoadError} Please check your API endpoints or contact your administrator.
-      </p>
-    </div>
-  </div>
-)}
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -217,7 +211,6 @@ const [dataLoadError, setDataLoadError] = useState<string | null>(null);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Improved validation
     if (!formData.name.trim()) {
       toast.error('Please enter a schedule name');
       return;
@@ -244,30 +237,27 @@ const [dataLoadError, setDataLoadError] = useState<string | null>(null);
     }
 
     try {
-      // Prepare the data for submission
       const submitData = {
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          academic_session: Number(formData.academic_session),
-          term: Number(formData.term),
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-          registration_start: formData.registration_start || undefined,
-          registration_end: formData.registration_end || undefined,
-          results_publication_date: formData.results_publication_date || undefined,
-          is_active: formData.is_active,
-          allow_late_registration: formData.allow_late_registration,
-          is_default: formData.is_default,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        academic_session: Number(formData.academic_session),
+        term: Number(formData.term),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        registration_start: formData.registration_start || undefined,
+        registration_end: formData.registration_end || undefined,
+        results_publication_date: formData.results_publication_date || undefined,
+        is_active: formData.is_active,
+        allow_late_registration: formData.allow_late_registration,
+        is_default: formData.is_default,
       };
 
       console.log('Submitting schedule data:', submitData);
 
       if (editingSchedule?.id) {
-        // Update existing schedule
-        await api.put(`exams/schedules/${editingSchedule.id}/`, submitData);
+        await api.put(`/api/exams/schedules/${editingSchedule.id}/`, submitData);
         toast.success('Exam schedule updated successfully');
       } else {
-        // Create new schedule
         await api.post('exams/schedules/', submitData);
         toast.success('Exam schedule created successfully');
       }
@@ -282,25 +272,23 @@ const [dataLoadError, setDataLoadError] = useState<string | null>(null);
     }
   };
 
-  // 4. Update handleEdit to ensure proper number conversion:
-const handleEdit = (schedule: ExamSchedule) => {
-  setEditingSchedule(schedule);
-  setFormData({
-    ...schedule,
-    academic_session: schedule.academic_session,
-    term: schedule.term,
-  });
-  setShowForm(true);
-};
+  const handleEdit = (schedule: ExamSchedule) => {
+    setEditingSchedule(schedule);
+    setFormData({
+      ...schedule,
+      academic_session: schedule.academic_session,
+      term: schedule.term,
+    });
+    setShowForm(true);
+  };
 
-  // Handle delete
   const handleDelete = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this exam schedule?')) {
       return;
     }
 
     try {
-      await api.delete(`exams/schedules/${id}/`);
+      await api.delete(`/api/exams/schedules/${id}/`);
       toast.success('Exam schedule deleted successfully');
       loadData();
     } catch (err) {
@@ -309,10 +297,9 @@ const handleEdit = (schedule: ExamSchedule) => {
     }
   };
 
-  // Handle set as default
   const handleSetDefault = async (id: number) => {
     try {
-      await api.post(`exams/schedules/${id}/set-default/`, {});
+      await api.post(`/api/exams/schedules/${id}/set-default/`, {});
       toast.success('Default exam schedule updated');
       loadData();
     } catch (err) {
@@ -344,6 +331,19 @@ const handleEdit = (schedule: ExamSchedule) => {
           Add Schedule
         </button>
       </div>
+
+      {/* Warning Banner */}
+      {dataLoadError && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-yellow-800">Using Fallback Data</h3>
+            <p className="text-sm text-yellow-700 mt-1">
+              {dataLoadError} Please check your API endpoints or contact your administrator.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Schedule List */}
       <div className="bg-white rounded-lg shadow">
