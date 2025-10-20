@@ -169,12 +169,29 @@ const EditStudentForm: React.FC<EditStudentFormProps> = ({ onStudentUpdated }) =
       };
       
       // Populate form with existing student data
-      const nameParts = (studentData.full_name || '').split(' ');
+      const nameParts = (studentData.full_name || '').split(' ').filter(part => part.length > 0);
+       let firstName = '';
+      let middleName = '';
+      let lastName = '';
+
+       if (nameParts.length === 1) {
+        // Only one name provided
+        firstName = nameParts[0];
+      } else if (nameParts.length === 2) {
+        // First and last name only
+        firstName = nameParts[0];
+        lastName = nameParts[1];
+      } else if (nameParts.length >= 3) {
+        // First, middle, and last name
+        firstName = nameParts[0];
+        middleName = nameParts.slice(1, -1).join(' '); // Everything between first and last
+        lastName = nameParts[nameParts.length - 1];
+      }
       setFormData({
         photo: studentData.profile_picture || null,
-        firstName: nameParts[0] || '',
-        middleName: nameParts[1] || '',
-        lastName: nameParts.slice(2).join(' ') || '',
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
         email: studentData.email || '',
         gender: mapGenderValue(studentData.gender || ''),
         bloodGroup: studentData.blood_group || '',
