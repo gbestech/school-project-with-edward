@@ -18,7 +18,7 @@ def auto_enroll_or_update_student(sender, instance, created, **kwargs):
 
         education_level = instance.education_level
         student_class = instance.student_class
-        classroom_name = instance.classroom  # e.g., "Primary 1 A"
+        classroom_name = instance.classroom
 
         # Class to grade mapping
         class_to_grade_mapping = {
@@ -36,12 +36,15 @@ def auto_enroll_or_update_student(sender, instance, created, **kwargs):
             "JSS_1": "JSS 1",
             "JSS_2": "JSS 2",
             "JSS_3": "JSS 3",
-            "SS_1": "SS 1",
-            "SS_2": "SS 2",
-            "SS_3": "SS 3",
-            "SS1": "SS 1",
-            "SS2": "SS 2",
-            "SS3": "SS 3",
+            "SS_1": "SSS 1",
+            "SS_2": "SSS 2",
+            "SS_3": "SSS 3",
+            "SS1": "SSS 1",
+            "SS2": "SSS 2",
+            "SS3": "SSS 3",
+            "SSS_1": "SSS 1",
+            "SSS_2": "SSS 2",
+            "SSS_3": "SSS 3",
             "JSS1": "JSS 1",
             "JSS2": "JSS 2",
             "JSS3": "JSS 3",
@@ -76,16 +79,17 @@ def auto_enroll_or_update_student(sender, instance, created, **kwargs):
             return
 
         # Step 4: Get current session and term
-        academic_year = AcademicSession.objects.filter(is_current=True).first()
+        academic_session = AcademicSession.objects.filter(is_current=True).first()
         term = Term.objects.filter(is_current=True).first()
-        if not academic_year or not term:
+        if not academic_session or not term:
             print("⚠️ No current academic session or term found.")
             return
 
         # Step 5: Get or create classroom
+        # FIXED: Changed 'academic_year' to 'academic_session'
         classroom, _ = Classroom.objects.get_or_create(
             section=section,
-            academic_year=academic_year,
+            academic_session=academic_session,  # ← FIXED HERE
             term=term,
             defaults={
                 "name": f"{grade_level.name} {section_name}",
@@ -124,3 +128,6 @@ def auto_enroll_or_update_student(sender, instance, created, **kwargs):
 
     except Exception as e:
         print(f"❌ Error enrolling/updating {instance.user.full_name}: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
