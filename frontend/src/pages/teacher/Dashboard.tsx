@@ -52,7 +52,7 @@ const TeacherDashboard: React.FC = () => {
         throw new Error('Teacher ID not found. Please ensure your teacher profile is properly set up.');
       }
 
-      console.log('🔍 Teacher Dashboard - About to fetch dashboard data for teacher ID:', teacherId);
+      
       
       // Fetch comprehensive dashboard data from the database
       const [data, teacherProfile] = await Promise.all([
@@ -60,11 +60,7 @@ const TeacherDashboard: React.FC = () => {
         TeacherDashboardService.getTeacherProfile(teacherId)
       ]);
       
-      console.log('🔍 Teacher Dashboard - Dashboard data received:', data);
-      console.log('🔍 Teacher Dashboard - Stats object:', data.stats);
-      console.log('🔍 Teacher Dashboard - Classes array:', data.classes);
-      console.log('🔍 Teacher Dashboard - Subjects array:', data.subjects);
-      console.log('🔍 Teacher Dashboard - Teacher profile received:', teacherProfile);
+      
       
       // Combine with user data and teacher profile
       const completeData = {

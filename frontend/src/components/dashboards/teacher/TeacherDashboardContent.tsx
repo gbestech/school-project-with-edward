@@ -100,7 +100,7 @@ const TeacherDashboardContent: React.FC<TeacherDashboardContentProps> = ({
       title: 'Messages',
       icon: MessageSquare,
       color: 'bg-orange-500',
-      path: '/teacher/messages'
+      path: '/'
     },
     {
       id: 'schedule',
