@@ -304,7 +304,8 @@ const AssignmentManagement: React.FC<AssignmentManagementProps> = ({
             <div>
               <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Students</p>
               <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                {profileData?.classroom_assignments?.reduce((sum: number, assignment: any) => sum + (assignment.student_count || 0), 0) || 0}
+                {/* {profileData?.classroom_assignments?.reduce((sum: number, assignment: any) => sum + (assignment.student_count || 0), 0) || 0} */}
+                 {profileData?.total_students || 0}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">

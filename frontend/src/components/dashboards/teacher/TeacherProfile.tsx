@@ -441,12 +441,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
                         </div>
                         <span className="text-slate-700 dark:text-slate-300 font-medium text-sm">Students</span>
                       </div>
-                      {/* <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                        {profileData?.classroom_assignments?.reduce(
-                          (sum: number, a: { student_count?: number }) => sum + (a.student_count || 0),
-                          0
-                        ) || 0}
-                      </span> */}
+                      
                       <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
                             {profileData?.total_students || 0}
                       </span>
