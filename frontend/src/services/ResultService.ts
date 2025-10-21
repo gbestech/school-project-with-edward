@@ -678,7 +678,7 @@ class ResultService {
   }
 
   async getScoringConfigurations() {
-    return api.get(`${this.baseURL}/api/scoring-configurations/`);
+    return api.get(`${this.baseURL}/scoring-configurations/`);
   }
 
   async getResultSheets(params?: FilterParams) {

@@ -592,8 +592,8 @@ class ResultSettingsService {
   async getScoringConfigurations(educationLevel?: string): Promise<ScoringConfiguration[]> {
     try {
       const url = educationLevel 
-        ? `results/scoring-configurations/?education_level=${educationLevel}`
-        : 'results/scoring-configurations/';
+        ? `/api/results/scoring-configurations/?education_level=${educationLevel}`
+        : '/api/results/scoring-configurations/';
       const response = await api.get(url);
       return this.handleApiResponse<ScoringConfiguration>(response);
     } catch (error) {
@@ -604,7 +604,7 @@ class ResultSettingsService {
 
   async getScoringConfiguration(id: string): Promise<ScoringConfiguration> {
     try {
-      const response = await api.get(`results/scoring-configurations/${id}/`);
+      const response = await api.get(`/api/results/scoring-configurations/${id}/`);
       return this.handleSingleApiResponse<ScoringConfiguration>(response);
     } catch (error) {
       console.error('Error fetching scoring configuration:', error);
@@ -614,7 +614,7 @@ class ResultSettingsService {
 
   async createScoringConfiguration(data: ScoringConfigurationCreateUpdate): Promise<ScoringConfiguration> {
     try {
-      const response = await api.post('results/scoring-configurations/', data);
+      const response = await api.post('/api/results/scoring-configurations/', data);
       return this.handleSingleApiResponse<ScoringConfiguration>(response);
     } catch (error) {
       console.error('Error creating scoring configuration:', error);
@@ -624,7 +624,7 @@ class ResultSettingsService {
 
   async updateScoringConfiguration(id: string, data: Partial<ScoringConfigurationCreateUpdate>): Promise<ScoringConfiguration> {
     try {
-      const response = await api.patch(`results/scoring-configurations/${id}/`, data);
+      const response = await api.patch(`/api/results/scoring-configurations/${id}/`, data);
       return this.handleSingleApiResponse<ScoringConfiguration>(response);
     } catch (error) {
       console.error('Error updating scoring configuration:', error);
@@ -634,7 +634,7 @@ class ResultSettingsService {
 
   async deleteScoringConfiguration(id: string): Promise<void> {
     try {
-      await api.delete(`results/scoring-configurations/${id}/`);
+      await api.delete(`/api/results/scoring-configurations/${id}/`);
     } catch (error) {
       console.error('Error deleting scoring configuration:', error);
       throw error;
@@ -643,7 +643,7 @@ class ResultSettingsService {
 
   async getDefaultScoringConfigurations(): Promise<Record<string, ScoringConfiguration>> {
     try {
-      const response = await api.get('results/scoring-configurations/defaults/');
+      const response = await api.get('/api/results/scoring-configurations/defaults/');
       return response?.data || response || {};
     } catch (error) {
       console.error('Error fetching default scoring configurations:', error);
@@ -664,7 +664,7 @@ class ResultSettingsService {
       };
       if (templateId) params.template = templateId;
 
-      const response = await api.get('results/generate-enhanced-result/', params);
+      const response = await api.get('/api/results/generate-enhanced-result/', params);
       const result = this.handleSingleApiResponse<Omit<EnhancedResultSheet, 'school_info'>>(response);
 
       return {
@@ -682,7 +682,7 @@ class ResultSettingsService {
     examSessionId: string
   ): Promise<EnhancedResultSheet[]> {
     try {
-      const response = await api.post('results/generate-bulk-results/', {
+      const response = await api.post('/api/results/generate-bulk-results/', {
         students: studentIds,
         exam_session: examSessionId,
       });
@@ -702,7 +702,7 @@ class ResultSettingsService {
   // Education-Level Specific Results
   async getNurseryResults(filters?: ResultFilters): Promise<NurseryResult[]> {
     try {
-      const response = await api.get('results/nursery/results/', filters);
+      const response = await api.get('/api/results/nursery/results/', filters);
       return this.handleApiResponse<NurseryResult>(response);
     } catch (error) {
       console.error('Error fetching nursery results:', error);
@@ -712,7 +712,7 @@ class ResultSettingsService {
 
   async createNurseryResult(data: Partial<NurseryResult>): Promise<NurseryResult> {
     try {
-      const response = await api.post('results/nursery/results/', data);
+      const response = await api.post('/api/results/nursery/results/', data);
       return this.handleSingleApiResponse<NurseryResult>(response);
     } catch (error) {
       console.error('Error creating nursery result:', error);
@@ -724,7 +724,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/nursery/results/${id}/`);
+        await api.get(`/api/results/nursery/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Nursery result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -732,7 +732,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      const response = await api.patch(`results/nursery/results/${id}/`, data);
+      const response = await api.patch(`/api/results/nursery/results/${id}/`, data);
       return this.handleSingleApiResponse<NurseryResult>(response);
     } catch (error) {
       console.error('Error updating nursery result:', error);
@@ -744,7 +744,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/nursery/results/${id}/`);
+        await api.get(`/api/results/nursery/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Nursery result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -752,7 +752,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      await api.delete(`results/nursery/results/${id}/`);
+      await api.delete(`/api/results/nursery/results/${id}/`);
     } catch (error) {
       console.error('Error deleting nursery result:', error);
       throw error;
@@ -762,7 +762,7 @@ class ResultSettingsService {
   // Primary Results
   async getPrimaryResults(filters?: ResultFilters): Promise<PrimaryResult[]> {
     try {
-      const response = await api.get('results/primary/results/', filters);
+      const response = await api.get('/api/results/primary/results/', filters);
       return this.handleApiResponse<PrimaryResult>(response);
     } catch (error) {
       console.error('Error fetching primary results:', error);
@@ -772,7 +772,7 @@ class ResultSettingsService {
 
   async createPrimaryResult(data: Partial<PrimaryResult>): Promise<PrimaryResult> {
     try {
-      const response = await api.post('results/primary/results/', data);
+      const response = await api.post('/api/results/primary/results/', data);
       return this.handleSingleApiResponse<PrimaryResult>(response);
     } catch (error) {
       console.error('Error creating primary result:', error);
@@ -784,7 +784,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/primary/results/${id}/`);
+        await api.get(`/api/results/primary/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Primary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -792,7 +792,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      const response = await api.patch(`results/primary/results/${id}/`, data);
+      const response = await api.patch(`/api/results/primary/results/${id}/`, data);
       return this.handleSingleApiResponse<PrimaryResult>(response);
     } catch (error) {
       console.error('Error updating primary result:', error);
@@ -804,7 +804,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/primary/results/${id}/`);
+        await api.get(`/api/results/primary/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Primary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -812,7 +812,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      await api.delete(`results/primary/results/${id}/`);
+      await api.delete(`/api/results/primary/results/${id}/`);
     } catch (error) {
       console.error('Error deleting primary result:', error);
       throw error;
@@ -822,7 +822,7 @@ class ResultSettingsService {
   // Junior Secondary Results
   async getJuniorSecondaryResults(filters?: ResultFilters): Promise<JuniorSecondaryResult[]> {
     try {
-      const response = await api.get('results/junior-secondary/results/', filters);
+      const response = await api.get('/api/results/junior-secondary/results/', filters);
       return this.handleApiResponse<JuniorSecondaryResult>(response);
     } catch (error) {
       console.error('Error fetching junior secondary results:', error);
@@ -832,7 +832,7 @@ class ResultSettingsService {
 
   async createJuniorSecondaryResult(data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> {
     try {
-      const response = await api.post('results/junior-secondary/results/', data);
+      const response = await api.post('/api/results/junior-secondary/results/', data);
       return this.handleSingleApiResponse<JuniorSecondaryResult>(response);
     } catch (error) {
       console.error('Error creating junior secondary result:', error);
@@ -844,7 +844,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/junior-secondary/results/${id}/`);
+        await api.get(`/api/results/junior-secondary/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Junior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -852,7 +852,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      const response = await api.patch(`results/junior-secondary/results/${id}/`, data);
+      const response = await api.patch(`/api/results/junior-secondary/results/${id}/`, data);
       return this.handleSingleApiResponse<JuniorSecondaryResult>(response);
     } catch (error) {
       console.error('Error updating junior secondary result:', error);
@@ -864,7 +864,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/junior-secondary/results/${id}/`);
+        await api.get(`/api/results/junior-secondary/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Junior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -872,7 +872,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      await api.delete(`results/junior-secondary/results/${id}/`);
+      await api.delete(`/api/results/junior-secondary/results/${id}/`);
     } catch (error) {
       console.error('Error deleting junior secondary result:', error);
       throw error;
@@ -882,7 +882,7 @@ class ResultSettingsService {
   // Senior Secondary Results
   async getSeniorSecondaryTermlyResults(filters?: ResultFilters): Promise<SeniorSecondaryResult[]> {
     try {
-      const response = await api.get('results/senior-secondary/results/', filters);
+      const response = await api.get('/api/results/senior-secondary/results/', filters);
       return this.handleApiResponse<SeniorSecondaryResult>(response);
     } catch (error) {
       console.error('Error fetching senior secondary results:', error);
@@ -892,7 +892,7 @@ class ResultSettingsService {
 
   async getSeniorSecondaryTermReports(filters?: ResultFilters): Promise<any[]> {
     try {
-      const response = await api.get('results/senior-secondary/term-reports/', filters);
+      const response = await api.get('/api/results/senior-secondary/term-reports/', filters);
       return this.handleApiResponse<any>(response);
     } catch (error) {
       console.error('Error fetching senior secondary term reports:', error);
@@ -902,7 +902,7 @@ class ResultSettingsService {
 
   async createSeniorSecondaryResult(data: Partial<SeniorSecondaryResult>): Promise<SeniorSecondaryResult> {
     try {
-      const response = await api.post('results/senior-secondary/results/', data);
+      const response = await api.post('/api/results/senior-secondary/results/', data);
       return this.handleSingleApiResponse<SeniorSecondaryResult>(response);
     } catch (error) {
       console.error('Error creating senior secondary result:', error);
@@ -914,7 +914,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/senior-secondary/results/${id}/`);
+        await api.get(`/api/results/senior-secondary/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Senior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -922,7 +922,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      const response = await api.patch(`results/senior-secondary/results/${id}/`, data);
+      const response = await api.patch(`/api/results/senior-secondary/results/${id}/`, data);
       return this.handleSingleApiResponse<SeniorSecondaryResult>(response);
     } catch (error) {
       console.error('Error updating senior secondary result:', error);
@@ -934,7 +934,7 @@ class ResultSettingsService {
     try {
       // First check if the individual result exists
       try {
-        await api.get(`results/senior-secondary/results/${id}/`);
+        await api.get(`/api/results/senior-secondary/results/${id}/`);
       } catch (checkError: any) {
         if (checkError.response?.status === 404) {
           throw new Error(`Senior Secondary result with ID ${id} not found. This might be a term report ID instead of an individual result ID.`);
@@ -942,7 +942,7 @@ class ResultSettingsService {
         throw checkError;
       }
       
-      await api.delete(`results/senior-secondary/results/${id}/`);
+      await api.delete(`/api/results/senior-secondary/results/${id}/`);
     } catch (error) {
       console.error('Error deleting senior secondary result:', error);
       throw error;
@@ -952,7 +952,7 @@ class ResultSettingsService {
   // Senior Secondary Session Results
   async getSeniorSecondarySessionResults(filters?: ResultFilters): Promise<SeniorSecondarySessionResult[]> {
     try {
-      const response = await api.get('results/senior-secondary/session-results/', filters);
+      const response = await api.get('/api/results/senior-secondary/session-results/', filters);
       return this.handleApiResponse<SeniorSecondarySessionResult>(response);
     } catch (error) {
       console.error('Error fetching senior secondary session results:', error);
@@ -962,7 +962,7 @@ class ResultSettingsService {
 
   async createSeniorSecondarySessionResult(data: Partial<SeniorSecondarySessionResult>): Promise<SeniorSecondarySessionResult> {
     try {
-      const response = await api.post('results/senior-secondary/session-results/', data);
+      const response = await api.post('/api/results/senior-secondary/session-results/', data);
       return this.handleSingleApiResponse<SeniorSecondarySessionResult>(response);
     } catch (error) {
       console.error('Error creating senior secondary session result:', error);
@@ -972,7 +972,7 @@ class ResultSettingsService {
 
   async updateSeniorSecondarySessionResult(id: string, data: Partial<SeniorSecondarySessionResult>): Promise<SeniorSecondarySessionResult> {
     try {
-      const response = await api.patch(`results/senior-secondary/session-results/${id}/`, data);
+      const response = await api.patch(`/api/results/senior-secondary/session-results/${id}/`, data);
       return this.handleSingleApiResponse<SeniorSecondarySessionResult>(response);
     } catch (error) {
       console.error('Error updating senior secondary session result:', error);
@@ -982,7 +982,7 @@ class ResultSettingsService {
 
   async deleteSeniorSecondarySessionResult(id: string): Promise<void> {
     try {
-      await api.delete(`results/senior-secondary/session-results/${id}/`);
+      await api.delete(`/api/results/senior-secondary/session-results/${id}/`);
     } catch (error) {
       console.error('Error deleting senior secondary session result:', error);
       throw error;
@@ -992,7 +992,7 @@ class ResultSettingsService {
   // Generic CRUD operations for legacy endpoints
   async getStudentResults(filters?: ResultFilters): Promise<StudentResult[]> {
     try {
-      const response = await api.get('results/student-results/', filters);
+      const response = await api.get('/api/results/student-results/', filters);
       return this.handleApiResponse<StudentResult>(response);
     } catch (error) {
       console.error('Error fetching student results:', error);
@@ -1002,7 +1002,7 @@ class ResultSettingsService {
 
   async getStudentTermResults(filters?: ResultFilters): Promise<StudentTermResult[]> {
     try {
-      const response = await api.get('results/student-term-results/', filters);
+      const response = await api.get('/api/results/student-term-results/', filters);
       return this.handleApiResponse<StudentTermResult>(response);
     } catch (error) {
       console.error('Error fetching student term results:', error);
@@ -1012,7 +1012,7 @@ class ResultSettingsService {
 
   async getResultSheets(filters?: ResultFilters): Promise<ApiResultSheet[]> {
     try {
-      const response = await api.get('results/result-sheets/', filters);
+      const response = await api.get('/api/results/result-sheets/', filters);
       return this.handleApiResponse<ApiResultSheet>(response);
     } catch (error) {
       console.error('Error fetching result sheets:', error);
@@ -1022,7 +1022,7 @@ class ResultSettingsService {
 
   async getAssessmentScores(filters?: ResultFilters): Promise<AssessmentScore[]> {
     try {
-      const response = await api.get('results/assessment-scores/', filters);
+      const response = await api.get('/api/results/assessment-scores/', filters);
       return this.handleApiResponse<AssessmentScore>(response);
     } catch (error) {
       console.error('Error fetching assessment scores:', error);
@@ -1032,7 +1032,7 @@ class ResultSettingsService {
 
   async getResultComments(filters?: ResultFilters): Promise<ResultComment[]> {
     try {
-      const response = await api.get('results/result-comments/', filters);
+      const response = await api.get('/api/results/result-comments/', filters);
       return this.handleApiResponse<ResultComment>(response);
     } catch (error) {
       console.error('Error fetching result comments:', error);
@@ -1048,7 +1048,7 @@ class ResultSettingsService {
     access_code?: string;
   }): Promise<any> {
     try {
-      const response = await api.post('results/result-checker/', data);
+      const response = await api.post('/api/results/result-checker/', data);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error checking result:', error);
@@ -1062,7 +1062,7 @@ class ResultSettingsService {
     available_formats: string[];
   }> {
     try {
-      const response = await api.get('results/result-checker/options/');
+      const response = await api.get('/api/results/result-checker/options/');
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error fetching result checker options:', error);
@@ -1094,7 +1094,7 @@ class ResultSettingsService {
     }
   ): Promise<any> {
     try {
-      const response = await api.get(`results/${educationLevel}/results/class_statistics/`, filters);
+      const response = await api.get(`/api/results/${educationLevel}/results/class_statistics/`, filters);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error(`Error fetching ${educationLevel} result statistics:`, error);
@@ -1105,7 +1105,7 @@ class ResultSettingsService {
   // Exam Session Statistics (using actual endpoint)
   async getExamSessionStatistics(examSessionId: string): Promise<any> {
     try {
-      const response = await api.get(`results/exam-sessions/${examSessionId}/statistics/`);
+      const response = await api.get(`/api/results/exam-sessions/${examSessionId}/statistics/`);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error fetching exam session statistics:', error);
@@ -1116,7 +1116,7 @@ class ResultSettingsService {
   // Grade Distribution (Senior Secondary specific)
   async getGradeDistribution(filters?: ResultFilters): Promise<any> {
     try {
-      const response = await api.get('results/senior-secondary/results/grade_distribution/', filters);
+      const response = await api.get('/api/results/senior-secondary/results/grade_distribution/', filters);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error fetching grade distribution:', error);
@@ -1127,7 +1127,7 @@ class ResultSettingsService {
   // Report Generation (using actual endpoints)
   async generateResultSheet(data: any): Promise<any> {
     try {
-      const response = await api.post('results/result-sheets/generate_sheet/', data);
+      const response = await api.post('/api/results/result-sheets/generate_sheet/', data);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error generating result sheet:', error);
@@ -1137,7 +1137,7 @@ class ResultSettingsService {
 
   async generateTermReport(data: any): Promise<any> {
     try {
-      const response = await api.post('results/student-term-results/generate_report/', data);
+      const response = await api.post('/api/results/student-term-results/generate_report/', data);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error generating term report:', error);
@@ -1147,7 +1147,7 @@ class ResultSettingsService {
 
   async generateSessionReport(data: any): Promise<any> {
     try {
-      const response = await api.post('results/senior-secondary/session-reports/generate_session_report/', data);
+      const response = await api.post('/api/results/senior-secondary/session-reports/generate_session_report/', data);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error generating session report:', error);
@@ -1162,8 +1162,8 @@ class ResultSettingsService {
   ): Promise<any> {
     try {
       const endpoint = educationLevel === 'student' 
-        ? `results/student-results/${resultId}/approve/`
-        : `results/${educationLevel}/results/${resultId}/approve/`;
+        ? `/api/results/student-results/${resultId}/approve/`
+        : `/api/results/${educationLevel}/results/${resultId}/approve/`;
       const response = await api.post(endpoint, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
@@ -1178,8 +1178,8 @@ class ResultSettingsService {
   ): Promise<any> {
     try {
       const endpoint = educationLevel === 'student' 
-        ? `results/student-results/${resultId}/publish/`
-        : `results/${educationLevel}/results/${resultId}/publish/`;
+        ? `/api/results/student-results/${resultId}/publish/`
+        : `/api/results/${educationLevel}/results/${resultId}/publish/`;
       const response = await api.post(endpoint, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
@@ -1190,7 +1190,7 @@ class ResultSettingsService {
 
   async publishExamSession(examSessionId: string): Promise<any> {
     try {
-      const response = await api.post(`results/exam-sessions/${examSessionId}/publish/`, {});
+      const response = await api.post(`/api/results/exam-sessions/${examSessionId}/publish/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error publishing exam session:', error);
@@ -1228,7 +1228,7 @@ class ResultSettingsService {
   // Senior Secondary specific operations
   async bulkPublishSeniorSecondaryTermReports(data: any): Promise<any> {
     try {
-      const response = await api.post('results/senior-secondary/term-reports/bulk_publish/', data);
+      const response = await api.post('/api/results/senior-secondary/term-reports/bulk_publish/', data);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error bulk publishing senior secondary term reports:', error);
@@ -1238,7 +1238,7 @@ class ResultSettingsService {
 
   async calculateSessionReportMetrics(reportId: string): Promise<any> {
     try {
-      const response = await api.post(`results/senior-secondary/session-reports/${reportId}/calculate_metrics/`, {});
+      const response = await api.post(`/api/results/senior-secondary/session-reports/${reportId}/calculate_metrics/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error calculating session report metrics:', error);
@@ -1249,7 +1249,7 @@ class ResultSettingsService {
   // Scoring Configuration specific operations
   async setDefaultScoringConfiguration(configId: string): Promise<any> {
     try {
-      const response = await api.post(`results/scoring-configurations/${configId}/set_as_default/`, {});
+      const response = await api.post(`/api/results/scoring-configurations/${configId}/set_as_default/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error setting default scoring configuration:', error);
@@ -1259,7 +1259,7 @@ class ResultSettingsService {
 
   async getScoringConfigurationsByEducationLevel(educationLevel: string): Promise<ScoringConfiguration[]> {
     try {
-      const response = await api.get('results/scoring-configurations/by_education_level/', {
+      const response = await api.get('/api/results/scoring-configurations/by_education_level/', {
         education_level: educationLevel
       });
       return this.handleApiResponse<ScoringConfiguration>(response);
@@ -1271,7 +1271,7 @@ class ResultSettingsService {
 
   async getScoringConfigurationsByResultType(resultType: string): Promise<ScoringConfiguration[]> {
     try {
-      const response = await api.get('results/scoring-configurations/by_result_type/', {
+      const response = await api.get('/api/results/scoring-configurations/by_result_type/', {
         result_type: resultType
       });
       return this.handleApiResponse<ScoringConfiguration>(response);
@@ -1284,7 +1284,7 @@ class ResultSettingsService {
   // Grading System specific operations
   async activateGradingSystem(systemId: string): Promise<any> {
     try {
-      const response = await api.post(`results/grading-systems/${systemId}/activate/`, {});
+      const response = await api.post(`/api/results/grading-systems/${systemId}/activate/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error activating grading system:', error);
@@ -1294,7 +1294,7 @@ class ResultSettingsService {
 
   async deactivateGradingSystem(systemId: string): Promise<any> {
     try {
-      const response = await api.post(`results/grading-systems/${systemId}/deactivate/`, {});
+      const response = await api.post(`/api/results/grading-systems/${systemId}/deactivate/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error deactivating grading system:', error);
@@ -1305,7 +1305,7 @@ class ResultSettingsService {
   // Student Result specific operations
   async getStudentResultsByStudent(studentId: string): Promise<StudentResult[]> {
     try {
-      const response = await api.get('results/student-results/by_student/', {
+      const response = await api.get('/api/results/student-results/by_student/', {
         student: studentId
       });
       return this.handleApiResponse<StudentResult>(response);
@@ -1317,7 +1317,7 @@ class ResultSettingsService {
 
   async getStudentTermResultDetailed(resultId: string): Promise<any> {
     try {
-      const response = await api.get(`results/student-term-results/${resultId}/detailed/`);
+      const response = await api.get(`/api/results/student-term-results/${resultId}/detailed/`);
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error fetching detailed student term result:', error);
@@ -1328,7 +1328,7 @@ class ResultSettingsService {
   // Result Sheet specific operations
   async approveResultSheet(sheetId: string): Promise<any> {
     try {
-      const response = await api.post(`results/result-sheets/${sheetId}/approve/`, {});
+      const response = await api.post(`/api/results/result-sheets/${sheetId}/approve/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error('Error approving result sheet:', error);
