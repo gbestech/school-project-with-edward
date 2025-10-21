@@ -3192,7 +3192,7 @@ const ResultRecordingForm = ({
                         <option value="">Select Student</option>
                         {filteredStudents.map(student => (
                           <option key={student.id} value={student.id}>
-                            {student.full_name} ({student.registration_number})
+                            {student.full_name}
                           </option>
                         ))}
                       </select>
