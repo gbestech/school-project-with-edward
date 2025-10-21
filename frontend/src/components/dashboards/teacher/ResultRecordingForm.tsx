@@ -2454,7 +2454,9 @@ const ResultRecordingForm = ({
       
       try {
         const configsResponse = await ResultSettingsService.getScoringConfigurations();
-        const configsArray = Array.isArray(configsResponse) ? configsResponse : (configsResponse?.results || configsResponse?.data || []);
+        const configsArray = Array.isArray(configsResponse)
+          ? configsResponse
+          : ((configsResponse as any)?.results || (configsResponse as any)?.data || []);
         setScoringConfigs(configsArray || []);
       } catch (e) {
         console.warn('Could not load scoring configurations.', e);
@@ -3170,7 +3172,7 @@ const ResultRecordingForm = ({
                         <option value="">Select Exam Session</option>
                         {examSessions.map(session => (
                           <option key={session.id} value={session.id}>
-                            {session.name} - {session.term} {typeof session.academic_session === 'object' ? session.academic_session?.name : session.academic_session || ''}
+                            {session.academic_session?.name} - {session.term} {typeof session.academic_session === 'object' ? session.academic_session?.name : session.academic_session || ''}
                           </option>
                         ))}
                       </select>
