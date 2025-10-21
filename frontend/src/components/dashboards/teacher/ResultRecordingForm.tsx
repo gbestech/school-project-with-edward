@@ -3314,7 +3314,7 @@ const ResultRecordingForm = ({
                         <option value="">Select Exam Session</option>
                         {examSessions.map(session => (
                           <option key={session.id} value={session.id}>
-                            {session.name} - {session.term} {typeof session.academic_session === 'object' ? session.academic_session?.name : session.academic_session || ''}
+                            {session.academic_session?.name} - {session.term} {typeof session.academic_session === 'object' ? session.academic_session?.name : session.academic_session || ''}
                           </option>
                         ))}
                       </select>
