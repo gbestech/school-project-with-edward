@@ -79,7 +79,7 @@ const TeacherDashboardContent: React.FC<TeacherDashboardContentProps> = ({
       title: 'Attendance',
       icon: CheckSquare,
       color: 'bg-green-500',
-      path: '/teacher/attendance'
+      path: '/teacher/classes'
     },
     {
       id: 'exam',

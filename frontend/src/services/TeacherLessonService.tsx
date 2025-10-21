@@ -116,7 +116,7 @@ export const lessonAPI = {
   async getLessons(filters?: LessonFilters) {
     try {
       console.log('🔍 Fetching lessons with filters:', filters);
-      const response = await api.get('/lessons/lessons/', filters);
+      const response = await api.get('/api/lessons/lessons/', filters);
       console.log('✅ Lessons fetched successfully:', response);
       return response;
     } catch (error) {
@@ -648,40 +648,3 @@ export const getRoleBasisedLessons = async (customFilters?: LessonFilters) => {
   }
 };
 
-// === USAGE EXAMPLES ===
-
-/*
-// Example: Get lessons for current user
-const userLessons = await lessonAPI.getMyLessons();
-
-// Example: Get role-specific lessons with smart defaults
-const { roleInfo, lessons } = await getRoleBasisedLessons();
-
-// Example: Get lessons with custom filters
-const filteredLessons = await lessonAPI.getLessons({
-  status: 'scheduled',
-  date_filter: 'this_week',
-  subject_id: 123
-});
-
-// Example: Check user role before showing UI elements
-const roleInfo = await lessonAPI.getUserRoleInfo();
-if (roleInfo.role === 'teacher' || roleInfo.role === 'admin') {
-  // Show lesson creation button
-}
-
-// Example: Get calendar lessons
-const calendarLessons = await lessonAPI.getCalendarLessons('2024-01-01', '2024-01-31');
-
-// Example: Student getting their attendance
-const myAttendance = await attendanceAPI.getAttendance();
-
-// Example: Parent getting their children's attendance
-const childrenAttendance = await attendanceAPI.getAttendance();
-
-// Example: Teacher checking lesson conflicts before creating
-const conflicts = await lessonAPI.checkLessonConflicts(1, '2024-01-15', '09:00', '10:00');
-if (conflicts.conflicts.length === 0) {
-  // Safe to create lesson
-}
-*/
