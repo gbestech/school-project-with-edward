@@ -259,11 +259,15 @@ const TeacherList = () => {
     const teachersArray = Array.isArray(teachers) ? teachers : [];
     const nursery = teachersArray.filter(t => t?.level === 'nursery' && t?.is_active).length;
     const primary = teachersArray.filter(t => t?.level === 'primary' && t?.is_active).length;
+    const seniorSecondary = teachersArray.filter(t => t?.level === 'senior_secondary' && t?.is_active).length;
+    const juniorSecondary = teachersArray.filter(t => t?.level === 'junior_secondary' && t?.is_active).length;
     const secondary = teachersArray.filter(t => t?.level === 'secondary' && t?.is_active).length;
-    return { nursery, primary, secondary, juniorSecondary: 0, seniorSecondary: 0 };
+    return { nursery, primary, secondary, juniorSecondary, seniorSecondary };
   };
 
   const levelStats = getLevelStats();
+  console.log('Levelstarts:', levelStats.juniorSecondary);
+    console.log('Levelstarts:', levelStats.seniorSecondary);
 
   // Helper function to get initials from name
   const getInitials = (firstName: string, lastName: string) => {
@@ -349,6 +353,8 @@ const TeacherList = () => {
       </div>
     );
   }
+  console.log('Levelstarts:', levelStats.juniorSecondary);
+    console.log('Levelstarts:', levelStats.seniorSecondary);
 
   return (
     <div className={`${themeClasses.bgPrimary} transition-colors duration-300`}>
