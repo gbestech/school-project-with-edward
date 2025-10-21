@@ -641,6 +641,43 @@ class ResultService {
     return api.get(endpoint, { params });
   }
 
+  async findResultIdByComposite(params: {
+  student: string;
+  subject: string;
+  exam_session: string;
+  education_level: string;
+}): Promise<string | null> {
+  try {
+    const { education_level, ...filterParams } = params;
+    const normalizedLevel = education_level.toUpperCase().replace(/\s+/g, '_');
+    
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/results/`,
+      'PRIMARY': `${this.baseURL}/primary/results/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/`,
+    };
+    
+    const endpoint = endpoints[normalizedLevel];
+    if (!endpoint) {
+      console.warn(`Unsupported education level: ${normalizedLevel}`);
+      return null;
+    }
+    
+    const response = await api.get(endpoint, { params: filterParams });
+    const results = Array.isArray(response) ? response : (response?.results || []);
+    
+    if (results.length > 0) {
+      return results[0].id?.toString() || null;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding result by composite:', error);
+    return null;
+  }
+}
+
   // NEW: Grade distribution (Senior Secondary only)
   async getGradeDistribution(params?: {
     exam_session?: string;
