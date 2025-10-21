@@ -407,8 +407,17 @@ const TeacherList = () => {
               <div className={`p-3 rounded-full mb-3 ${isDark ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-600'}`}>
                 <School size={24} />
               </div>
-              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Secondary</p>
-              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.secondary}</p>
+              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Junior Secondary</p>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.juniorSecondary}</p>
+            </div>
+          </div>
+          <div className={`${themeClasses.bgCard} rounded-xl p-6 shadow-lg border transition-all duration-300 hover:shadow-xl`}>
+            <div className="flex flex-col items-center text-center">
+              <div className={`p-3 rounded-full mb-3 ${isDark ? 'bg-purple-900 text-purple-300' : 'bg-purple-100 text-purple-600'}`}>
+                <School size={24} />
+              </div>
+              <p className={`${themeClasses.textSecondary} text-sm mb-1`}>Senior Secondary</p>
+              <p className={`text-2xl font-bold ${themeClasses.textPrimary}`}>{levelStats.seniorSecondary} </p>
             </div>
           </div>
 

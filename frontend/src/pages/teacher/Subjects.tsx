@@ -2,27 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
-import { TeacherUserData } from '@/types/types';
+// import { TeacherUserData } from '@/types/types';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
 import { 
   BookOpen, 
   Users, 
   GraduationCap, 
   Clock, 
-  Search, 
-  Filter, 
+  Search,  
   Grid3X3, 
   List, 
   Eye,
-  Calendar,
-  Award,
   TrendingUp,
-  BarChart3,
   Loader2,
   RefreshCw,
   AlertCircle,
-  CheckCircle,
-  XCircle
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 

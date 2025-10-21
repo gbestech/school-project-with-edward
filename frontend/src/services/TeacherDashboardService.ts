@@ -76,11 +76,11 @@ class TeacherDashboardService {
   // Get teacher dashboard statistics
   async getTeacherDashboardStats(teacherId: number): Promise<TeacherDashboardStats> {
     try {
-      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - START - teacherId:', teacherId);
+      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - STAT - teacherId:', teacherId);
       
       // Get teacher's classroom assignments
       const teacherResponse = await TeacherService.getTeacher(teacherId);
-      console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - teacherResponse:', teacherResponse);
+      // console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - teacherResponse:', teacherResponse);
       
       const classroomAssignments = teacherResponse.classroom_assignments || [];
       console.log('🔍 TeacherDashboardService.getTeacherDashboardStats - classroomAssignments:', classroomAssignments);
