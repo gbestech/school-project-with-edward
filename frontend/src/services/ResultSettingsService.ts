@@ -405,7 +405,7 @@ class ResultSettingsService {
   // Grading Systems
   async getGradingSystems(): Promise<GradingSystem[]> {
     try {
-      const response = await api.get('results/grading-systems/');
+      const response = await api.get('/api/results/grading-systems/');
       return this.handleApiResponse<GradingSystem>(response);
     } catch (error) {
       console.error('Error fetching grading systems:', error);
@@ -415,7 +415,7 @@ class ResultSettingsService {
 
   async getGradingSystem(id: string): Promise<GradingSystem> {
     try {
-      const response = await api.get(`results/grading-systems/${id}/`);
+      const response = await api.get(`/api/results/grading-systems/${id}/`);
       return this.handleSingleApiResponse<GradingSystem>(response);
     } catch (error) {
       console.error('Error fetching grading system:', error);
@@ -425,7 +425,7 @@ class ResultSettingsService {
 
   async createGradingSystem(data: GradingSystemCreateUpdate): Promise<GradingSystem> {
     try {
-      const response = await api.post('results/grading-systems/', data);
+      const response = await api.post('/api/results/grading-systems/', data);
       return this.handleSingleApiResponse<GradingSystem>(response);
     } catch (error) {
       console.error('Error creating grading system:', error);
@@ -435,7 +435,7 @@ class ResultSettingsService {
 
   async updateGradingSystem(id: string, data: Partial<GradingSystemCreateUpdate>): Promise<GradingSystem> {
     try {
-      const response = await api.patch(`results/grading-systems/${id}/`, data);
+      const response = await api.patch(`/api/results/grading-systems/${id}/`, data);
       return this.handleSingleApiResponse<GradingSystem>(response);
     } catch (error) {
       console.error('Error updating grading system:', error);
@@ -445,7 +445,7 @@ class ResultSettingsService {
 
   async deleteGradingSystem(id: string): Promise<void> {
     try {
-      await api.delete(`results/grading-systems/${id}/`);
+      await api.delete(`/api/results/grading-systems/${id}/`);
     } catch (error) {
       console.error('Error deleting grading system:', error);
       throw error;
@@ -456,8 +456,8 @@ class ResultSettingsService {
   async getGrades(gradingSystemId?: string): Promise<GradeRange[]> {
     try {
       const url = gradingSystemId 
-        ? `results/grades/?grading_system=${gradingSystemId}`
-        : 'results/grades/';
+        ? `/api/results/grades/?grading_system=${gradingSystemId}`
+        : '/api/results/grades/';
       const response = await api.get(url);
       return this.handleApiResponse<GradeRange>(response);
     } catch (error) {
@@ -468,7 +468,7 @@ class ResultSettingsService {
 
   async createGrade(data: GradeCreateUpdate): Promise<GradeRange> {
     try {
-      const response = await api.post('results/grades/', data);
+      const response = await api.post('/api/results/grades/', data);
       return this.handleSingleApiResponse<GradeRange>(response);
     } catch (error) {
       console.error('Error creating grade:', error);
@@ -478,7 +478,7 @@ class ResultSettingsService {
 
   async updateGrade(id: string, data: Partial<GradeCreateUpdate>): Promise<GradeRange> {
     try {
-      const response = await api.patch(`results/grades/${id}/`, data);
+      const response = await api.patch(`/api/results/grades/${id}/`, data);
       return this.handleSingleApiResponse<GradeRange>(response);
     } catch (error) {
       console.error('Error updating grade:', error);
@@ -488,7 +488,7 @@ class ResultSettingsService {
 
   async deleteGrade(id: string): Promise<void> {
     try {
-      await api.delete(`results/grades/${id}/`);
+      await api.delete(`/api/results/grades/${id}/`);
     } catch (error) {
       console.error('Error deleting grade:', error);
       throw error;
@@ -499,8 +499,8 @@ class ResultSettingsService {
   async getAssessmentTypes(educationLevel?: string): Promise<AssessmentType[]> {
     try {
       const url = educationLevel 
-        ? `results/assessment-types/?education_level=${educationLevel}`
-        : 'results/assessment-types/';
+        ? `/api/results/assessment-types/?education_level=${educationLevel}`
+        : '/api/results/assessment-types/';
       const response = await api.get(url);
       return this.handleApiResponse<AssessmentType>(response);
     } catch (error) {
@@ -511,7 +511,7 @@ class ResultSettingsService {
 
   async createAssessmentType(data: AssessmentTypeCreateUpdate): Promise<AssessmentType> {
     try {
-      const response = await api.post('results/assessment-types/', data);
+      const response = await api.post('/api/results/assessment-types/', data);
       return this.handleSingleApiResponse<AssessmentType>(response);
     } catch (error) {
       console.error('Error creating assessment type:', error);
@@ -521,7 +521,7 @@ class ResultSettingsService {
 
   async updateAssessmentType(id: string, data: Partial<AssessmentTypeCreateUpdate>): Promise<AssessmentType> {
     try {
-      const response = await api.patch(`results/assessment-types/${id}/`, data);
+      const response = await api.patch(`/api/results/assessment-types/${id}/`, data);
       return this.handleSingleApiResponse<AssessmentType>(response);
     } catch (error) {
       console.error('Error updating assessment type:', error);
@@ -531,7 +531,7 @@ class ResultSettingsService {
 
   async deleteAssessmentType(id: string): Promise<void> {
     try {
-      await api.delete(`results/assessment-types/${id}/`);
+      await api.delete(`/api/results/assessment-types/${id}/`);
     } catch (error) {
       console.error('Error deleting assessment type:', error);
       throw error;
@@ -541,7 +541,7 @@ class ResultSettingsService {
   // Exam Sessions
   async getExamSessions(filters?: ExamSessionFilters): Promise<ExamSession[]> {
     try {
-      const response = await api.get('results/exam-sessions/', filters);
+      const response = await api.get('/api/results/exam-sessions/', filters);
       return this.handleApiResponse<ExamSession>(response);
     } catch (error) {
       console.error('Error fetching exam sessions:', error);
@@ -551,7 +551,7 @@ class ResultSettingsService {
 
   async getExamSession(id: string): Promise<ExamSession> {
     try {
-      const response = await api.get(`results/exam-sessions/${id}/`);
+      const response = await api.get(`/api/results/exam-sessions/${id}/`);
       return this.handleSingleApiResponse<ExamSession>(response);
     } catch (error) {
       console.error('Error fetching exam session:', error);
@@ -561,7 +561,7 @@ class ResultSettingsService {
 
   async createExamSession(data: ExamSessionCreateUpdate): Promise<ExamSession> {
     try {
-      const response = await api.post('results/exam-sessions/', data);
+      const response = await api.post('/api/results/exam-sessions/', data);
       return this.handleSingleApiResponse<ExamSession>(response);
     } catch (error) {
       console.error('Error creating exam session:', error);
@@ -571,7 +571,7 @@ class ResultSettingsService {
 
   async updateExamSession(id: string, data: Partial<ExamSessionCreateUpdate>): Promise<ExamSession> {
     try {
-      const response = await api.patch(`results/exam-sessions/${id}/`, data);
+      const response = await api.patch(`/api/results/exam-sessions/${id}/`, data);
       return this.handleSingleApiResponse<ExamSession>(response);
     } catch (error) {
       console.error('Error updating exam session:', error);
@@ -581,7 +581,7 @@ class ResultSettingsService {
 
   async deleteExamSession(id: string): Promise<void> {
     try {
-      await api.delete(`results/exam-sessions/${id}/`);
+      await api.delete(`/api/results/exam-sessions/${id}/`);
     } catch (error) {
       console.error('Error deleting exam session:', error);
       throw error;
@@ -1204,7 +1204,7 @@ class ResultSettingsService {
     reportId: string
   ): Promise<any> {
     try {
-      const response = await api.post(`results/${educationLevel}/term-reports/${reportId}/publish/`, {});
+      const response = await api.post(`/api/results/${educationLevel}/term-reports/${reportId}/publish/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error(`Error publishing ${educationLevel} term report:`, error);
@@ -1217,7 +1217,7 @@ class ResultSettingsService {
     reportId: string
   ): Promise<any> {
     try {
-      const response = await api.post(`results/${educationLevel}/term-reports/${reportId}/calculate_metrics/`, {});
+      const response = await api.post(`/api/results/${educationLevel}/term-reports/${reportId}/calculate_metrics/`, {});
       return this.handleSingleApiResponse(response);
     } catch (error) {
       console.error(`Error calculating ${educationLevel} term report metrics:`, error);
