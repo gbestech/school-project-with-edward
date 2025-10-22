@@ -82,10 +82,10 @@ const ExamScheduleManagement: React.FC = () => {
       // Load academic sessions - try multiple endpoints
       let sessionsData: AcademicSession[] = [];
       const sessionEndpoints = [
-        'fee/academic-sessions/',
-        'academic/sessions/',
-        'sessions/',
-        'academics/academic-sessions/'
+        '/api/fee/academic-sessions/',
+        '/api/academic/sessions/',
+        '/api/sessions/',
+        '/api/academics/academic-sessions/'
       ];
       
       for (const endpoint of sessionEndpoints) {
@@ -114,10 +114,10 @@ const ExamScheduleManagement: React.FC = () => {
       // Load terms - try multiple endpoints
       let termsData: Term[] = [];
       const termEndpoints = [
-        'fee/terms/',
-        'academic/terms/',
-        'terms/',
-        'academics/terms/'
+        '/api/fee/terms/',
+        '/api/academic/terms/',
+        '/api/terms/',
+        '/api/academics/terms/'
       ];
       
       for (const endpoint of termEndpoints) {
@@ -151,6 +151,7 @@ const ExamScheduleManagement: React.FC = () => {
           { id: 1, name: '2025/2026 Academic Session' },
           { id: 2, name: '2024/2025 Academic Session' },
           { id: 3, name: '2023/2024 Academic Session' },
+           { id: 4, name: '2022/2023 Academic Session' },
         ];
       }
 
@@ -258,7 +259,7 @@ const ExamScheduleManagement: React.FC = () => {
         await api.put(`/api/exams/schedules/${editingSchedule.id}/`, submitData);
         toast.success('Exam schedule updated successfully');
       } else {
-        await api.post('exams/schedules/', submitData);
+        await api.post('/api/exams/schedules/', submitData);
         toast.success('Exam schedule created successfully');
       }
       
