@@ -1,5 +1,6 @@
 import api from './api';
-import { SchoolSettings } from '@/types/types';
+import { SchoolSettings, AcademicSession } from '@/types/types';
+
 
 export interface GradingSystem {
   id: string;
@@ -379,7 +380,11 @@ export interface ResultFilters {
   class_level?: string;
 }
 
+
+
 class ResultSettingsService {
+
+  
   private schoolSettings: SchoolSettings | null = null;
 
   setSchoolSettings(settings: SchoolSettings) {
@@ -400,6 +405,27 @@ class ResultSettingsService {
 
   private handleSingleApiResponse<T>(response: any): T {
     return response?.data || response;
+  }
+
+  // Academic Sessions
+  async getAcademicSessions(): Promise<AcademicSession[]> {
+    try {
+      const response = await api.get('/api/academic/sessions/');
+      return this.handleApiResponse<AcademicSession>(response);
+    } catch (error) {
+      console.error('Error fetching academic sessions:', error);
+      throw error;
+    }
+  }
+
+  async getAcademicSession(id: string): Promise<AcademicSession> {
+    try {
+      const response = await api.get(`/api/academic/sessions/${id}/`);
+      return this.handleSingleApiResponse<AcademicSession>(response);
+    } catch (error) {
+      console.error('Error fetching academic session:', error);
+      throw error;
+    }
   }
 
   // Grading Systems

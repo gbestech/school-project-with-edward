@@ -29,9 +29,11 @@ import {
   ScoringConfigurationCreateUpdate,
   GradingSystemCreateUpdate,
   AssessmentTypeCreateUpdate,
-  ExamSessionCreateUpdate
+  ExamSessionCreateUpdate,
+  
 } from '@/services/ResultSettingsService';
 import resultSettingsService from '@/services/ResultSettingsService';
+import { AcademicSession } from '@/types/types';
 
 interface ExamsResultTabProps {
   // Add any props if needed
@@ -46,6 +48,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
   const [grades, setGrades] = useState<GradeRange[]>([]);
   const [assessmentTypes, setAssessmentTypes] = useState<AssessmentType[]>([]);
   const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
+  const [academicSessions, setAcademicSessions] = useState<AcademicSession[]>([]);
   const [scoringConfigurations, setScoringConfigurations] = useState<ScoringConfiguration[]>([]);
 
   // Form states
@@ -123,23 +126,24 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
         gradesData,
         assessmentTypesData,
         examSessionsData,
-        scoringConfigsData
+        scoringConfigsData,
+         academicSessionsData
       ] = await Promise.all([
         resultSettingsService.getGradingSystems(),
         resultSettingsService.getGrades(),
         resultSettingsService.getAssessmentTypes(),
         resultSettingsService.getExamSessions(),
-        resultSettingsService.getScoringConfigurations()
+        resultSettingsService.getScoringConfigurations(),
+        resultSettingsService.getAcademicSessions()
       ]);
 
-      console.log('loadData - scoringConfigsData:', scoringConfigsData);
-      console.log('loadData - scoringConfigsData length:', scoringConfigsData?.length);
       
       setGradingSystems(gradingSystemsData);
       setGrades(gradesData);
       setAssessmentTypes(assessmentTypesData);
       setExamSessions(examSessionsData);
       setScoringConfigurations(scoringConfigsData);
+       setAcademicSessions(academicSessionsData);
       
       console.log('loadData - State updated, scoringConfigurations should now have:', scoringConfigsData?.length, 'items');
     } catch (error) {
@@ -659,6 +663,33 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
   const handleCreateExamSession = async () => {
     try {
       setSaving(true);
+      // Validate that academic session is selected
+    if (!examSessionForm.academic_session) {
+      toast.error('Please select an academic session');
+      setSaving(false);
+      return;
+    }
+    
+    // Validate exam type
+    if (!examSessionForm.exam_type) {
+      toast.error('Please select an exam type');
+      setSaving(false);
+      return;
+    }
+    // Validate term
+    if (!examSessionForm.term) {
+      toast.error('Please select a term');
+      setSaving(false);
+      return;
+    }
+
+    // Convert academic_session to integer and prepare payload
+    const payload = {
+      ...examSessionForm,
+      academic_session: parseInt(examSessionForm.academic_session)
+    };
+    
+    console.log('Creating exam session with payload:', payload);
       await resultSettingsService.createExamSession(examSessionForm);
       toast.success('Exam session created successfully');
       setShowExamSessionForm(false);
@@ -687,6 +718,21 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
   const handleUpdateExamSession = async (id: string) => {
     try {
       setSaving(true);
+
+      // Validate that academic session is selected
+    if (!examSessionForm.academic_session) {
+      toast.error('Please select an academic session');
+      setSaving(false);
+      return;
+    }
+    
+    // Convert academic_session to integer and prepare payload
+    const payload = {
+      ...examSessionForm,
+      academic_session: parseInt(examSessionForm.academic_session)
+    };
+    
+    console.log('Updating exam session with payload:', payload);
       await resultSettingsService.updateExamSession(id, examSessionForm);
       toast.success('Exam session updated successfully');
       setShowExamSessionForm(false);
