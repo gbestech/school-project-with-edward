@@ -123,7 +123,9 @@ class Command(BaseCommand):
             self.stdout.write(f"  - Max Mark Obtainable: {config.total_max_score}")
 
         if config.created_by:
-            self.stdout.write(f"\nCreated By: {config.created_by.get_first_name()}")
+            self.stdout.write(
+                f"\nCreated By: {config.created_by.first_name} ({config.created_by.email})"
+            )
         self.stdout.write(
             f'Created At: {config.created_at.strftime("%Y-%m-%d %H:%M:%S")}'
         )
