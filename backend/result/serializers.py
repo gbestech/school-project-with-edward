@@ -94,6 +94,276 @@ class ScoringConfigurationSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
+# class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
+#     """Serializer for creating/updating ScoringConfiguration"""
+
+#     # Map frontend field names to backend field names - make them optional
+#     first_test_max_score = serializers.DecimalField(
+#         source="test1_max_score",
+#         max_digits=5,
+#         decimal_places=2,
+#         coerce_to_string=False,
+#         required=False,
+#         allow_null=True,
+#     )
+#     second_test_max_score = serializers.DecimalField(
+#         source="test2_max_score",
+#         max_digits=5,
+#         decimal_places=2,
+#         coerce_to_string=False,
+#         required=False,
+#         allow_null=True,
+#     )
+#     third_test_max_score = serializers.DecimalField(
+#         source="test3_max_score",
+#         max_digits=5,
+#         decimal_places=2,
+#         coerce_to_string=False,
+#         required=False,
+#         allow_null=True,
+#     )
+
+#     class Meta:
+#         model = ScoringConfiguration
+#         fields = [
+#             "name",
+#             "education_level",
+#             "result_type",
+#             "description",
+#             "first_test_max_score",
+#             "second_test_max_score",
+#             "third_test_max_score",
+#             "continuous_assessment_max_score",
+#             "take_home_test_max_score",
+#             "appearance_max_score",
+#             "practical_max_score",
+#             "project_max_score",
+#             "note_copying_max_score",
+#             "exam_max_score",
+#             "total_max_score",
+#             "ca_weight_percentage",
+#             "exam_weight_percentage",
+#             "is_active",
+#             "is_default",
+#         ]
+
+#     def validate(self, data):
+#         """Enhanced validation for scoring configuration"""
+#         # Set default result_type if not provided
+#         if "result_type" not in data:
+#             data["result_type"] = "TERMLY"
+
+#         result_type = data.get("result_type", "TERMLY")
+#         education_level = data.get("education_level")
+
+#         # Validate required fields based on education level
+#         if education_level in ["JUNIOR_SECONDARY", "PRIMARY"]:
+#             # For Junior Secondary and Primary, require the CA fields
+#             required_fields = [
+#                 "continuous_assessment_max_score",
+#                 "take_home_test_max_score",
+#                 "appearance_max_score",
+#                 "practical_max_score",
+#                 "project_max_score",
+#                 "note_copying_max_score",
+#             ]
+#             for field in required_fields:
+#                 if field not in data or data[field] is None:
+#                     raise serializers.ValidationError(
+#                         {
+#                             field: [
+#                                 "This field is required for Junior Secondary and Primary education levels."
+#                             ]
+#                         }
+#                     )
+#         elif education_level == "SENIOR_SECONDARY":
+#             # For Senior Secondary, require the test fields
+#             required_fields = [
+#                 "first_test_max_score",
+#                 "second_test_max_score",
+#                 "third_test_max_score",
+#             ]
+#             for field in required_fields:
+#                 if field not in data or data[field] is None:
+#                     raise serializers.ValidationError(
+#                         {
+#                             field: [
+#                                 "This field is required for Senior Secondary education level."
+#                             ]
+#                         }
+#                     )
+#         elif education_level == "NURSERY":
+#             # For Nursery, only require total_max_score
+#             if "total_max_score" not in data or data["total_max_score"] is None:
+#                 raise serializers.ValidationError(
+#                     {
+#                         "total_max_score": [
+#                             "Max Mark Obtainable is required for Nursery education level."
+#                         ]
+#                     }
+#                 )
+
+#         # Only validate weight percentages for TERMLY result type and non-Nursery education levels
+#         if result_type == "TERMLY" and education_level != "NURSERY":
+#             ca_weight = data.get("ca_weight_percentage", 0)
+#             exam_weight = data.get("exam_weight_percentage", 0)
+
+#             # Validate weight percentages sum to 100
+#             if ca_weight + exam_weight != 100:
+#                 raise serializers.ValidationError(
+#                     {
+#                         "non_field_errors": [
+#                             "CA weight percentage and exam weight percentage must sum to 100"
+#                         ]
+#                     }
+#                 )
+
+#         # Validate total max score matches sum of components (only for TERMLY)
+#         if result_type == "TERMLY":
+#             if education_level in ["JUNIOR_SECONDARY", "PRIMARY"]:
+#                 ca_score = data.get("continuous_assessment_max_score", 0)
+#                 take_home = data.get("take_home_test_max_score", 0)
+#                 appearance = data.get("appearance_max_score", 0)
+#                 practical = data.get("practical_max_score", 0)
+#                 project = data.get("project_max_score", 0)
+#                 note_copying = data.get("note_copying_max_score", 0)
+#                 exam = data.get("exam_max_score", 0)
+
+#                 expected_total = (
+#                     ca_score
+#                     + take_home
+#                     + appearance
+#                     + practical
+#                     + project
+#                     + note_copying
+#                     + exam
+#                 )
+#             elif education_level == "SENIOR_SECONDARY":
+#                 # The frontend sends first_test_max_score, second_test_max_score, third_test_max_score
+#                 first_test = data.get(
+#                     "first_test_max_score", data.get("test1_max_score", 0)
+#                 )
+#                 second_test = data.get(
+#                     "second_test_max_score", data.get("test2_max_score", 0)
+#                 )
+#                 third_test = data.get(
+#                     "third_test_max_score", data.get("test3_max_score", 0)
+#                 )
+
+#                 # For TERMLY result type, the total should be tests + exam
+#                 expected_total = (
+#                     first_test
+#                     + second_test
+#                     + third_test
+#                     + data.get("exam_max_score", 0)
+#                 )
+#             elif education_level == "NURSERY":
+#                 # For Nursery, the total is just the max mark obtainable
+#                 expected_total = data.get("total_max_score", 0)
+
+#             total_max_score = data.get("total_max_score", 0)
+#             if expected_total != total_max_score:
+#                 raise serializers.ValidationError(
+#                     {
+#                         "total_max_score": [
+#                             f"Total max score must equal sum of components ({expected_total})"
+#                         ]
+#                     }
+#                 )
+
+#         return data
+
+#     def create(self, validated_data):
+#         """Set created_by when creating and handle data type conversion"""
+#         request = self.context.get("request")
+#         if request and request.user:
+#             validated_data["created_by"] = request.user
+
+#         # Map frontend field names to backend field names
+#         field_mapping = {
+#             "first_test_max_score": "test1_max_score",
+#             "second_test_max_score": "test2_max_score",
+#             "third_test_max_score": "test3_max_score",
+#         }
+
+#         # Create a new dict with mapped field names
+#         mapped_data = {}
+#         for frontend_field, model_field in field_mapping.items():
+#             if frontend_field in validated_data:
+#                 mapped_data[model_field] = validated_data.pop(frontend_field)
+
+#         # Add remaining fields
+#         mapped_data.update(validated_data)
+
+#         # Ensure all decimal fields are properly converted
+#         decimal_fields = [
+#             "test1_max_score",
+#             "test2_max_score",
+#             "test3_max_score",
+#             "continuous_assessment_max_score",
+#             "take_home_test_max_score",
+#             "appearance_max_score",
+#             "practical_max_score",
+#             "project_max_score",
+#             "note_copying_max_score",
+#             "exam_max_score",
+#             "total_max_score",
+#             "ca_weight_percentage",
+#             "exam_weight_percentage",
+#         ]
+
+#         for field in decimal_fields:
+#             if field in mapped_data and mapped_data[field] is not None:
+#                 from decimal import Decimal
+
+#                 mapped_data[field] = Decimal(str(mapped_data[field]))
+
+#         return super().create(mapped_data)
+
+#     def update(self, instance, validated_data):
+#         """Handle field mapping during updates"""
+#         # Map frontend field names back to model field names
+#         field_mapping = {
+#             "first_test_max_score": "test1_max_score",
+#             "second_test_max_score": "test2_max_score",
+#             "third_test_max_score": "test3_max_score",
+#         }
+
+#         # Create a new dict with mapped field names
+#         mapped_data = {}
+#         for frontend_field, model_field in field_mapping.items():
+#             if frontend_field in validated_data:
+#                 mapped_data[model_field] = validated_data.pop(frontend_field)
+
+#         # Add remaining fields
+#         mapped_data.update(validated_data)
+
+#         # Ensure all decimal fields are properly converted
+#         decimal_fields = [
+#             "test1_max_score",
+#             "test2_max_score",
+#             "test3_max_score",
+#             "continuous_assessment_max_score",
+#             "take_home_test_max_score",
+#             "appearance_max_score",
+#             "practical_max_score",
+#             "project_max_score",
+#             "note_copying_max_score",
+#             "exam_max_score",
+#             "total_max_score",
+#             "ca_weight_percentage",
+#             "exam_weight_percentage",
+#         ]
+
+#         for field in decimal_fields:
+#             if field in mapped_data and mapped_data[field] is not None:
+#                 from decimal import Decimal
+
+#                 mapped_data[field] = Decimal(str(mapped_data[field]))
+
+#         return super().update(instance, mapped_data)
+
+
 class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating ScoringConfiguration"""
 
@@ -156,6 +426,10 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
         result_type = data.get("result_type", "TERMLY")
         education_level = data.get("education_level")
 
+        # IMPORTANT: Check both the source field name (test1_max_score)
+        # AND the frontend field name (first_test_max_score)
+        # because DRF puts the value in the source field during validation
+
         # Validate required fields based on education level
         if education_level in ["JUNIOR_SECONDARY", "PRIMARY"]:
             # For Junior Secondary and Primary, require the CA fields
@@ -177,18 +451,20 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
                         }
                     )
         elif education_level == "SENIOR_SECONDARY":
-            # For Senior Secondary, require the test fields
-            required_fields = [
-                "first_test_max_score",
-                "second_test_max_score",
-                "third_test_max_score",
-            ]
-            for field in required_fields:
+            # For Senior Secondary, check the SOURCE field names (test1_max_score, etc.)
+            # because DRF has already mapped them during field validation
+            required_test_fields = {
+                "test1_max_score": "First test score",
+                "test2_max_score": "Second test score",
+                "test3_max_score": "Third test score",
+            }
+
+            for field, display_name in required_test_fields.items():
                 if field not in data or data[field] is None:
                     raise serializers.ValidationError(
                         {
                             field: [
-                                "This field is required for Senior Secondary education level."
+                                f"{display_name} is required for Senior Secondary education level."
                             ]
                         }
                     )
@@ -239,16 +515,11 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
                     + exam
                 )
             elif education_level == "SENIOR_SECONDARY":
-                # The frontend sends first_test_max_score, second_test_max_score, third_test_max_score
-                first_test = data.get(
-                    "first_test_max_score", data.get("test1_max_score", 0)
-                )
-                second_test = data.get(
-                    "second_test_max_score", data.get("test2_max_score", 0)
-                )
-                third_test = data.get(
-                    "third_test_max_score", data.get("test3_max_score", 0)
-                )
+                # Use the SOURCE field names (test1_max_score, etc.)
+                # DRF has already mapped the frontend names to source names
+                first_test = data.get("test1_max_score", 0)
+                second_test = data.get("test2_max_score", 0)
+                third_test = data.get("test3_max_score", 0)
 
                 # For TERMLY result type, the total should be tests + exam
                 expected_total = (
@@ -279,21 +550,9 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
         if request and request.user:
             validated_data["created_by"] = request.user
 
-        # Map frontend field names to backend field names
-        field_mapping = {
-            "first_test_max_score": "test1_max_score",
-            "second_test_max_score": "test2_max_score",
-            "third_test_max_score": "test3_max_score",
-        }
-
-        # Create a new dict with mapped field names
-        mapped_data = {}
-        for frontend_field, model_field in field_mapping.items():
-            if frontend_field in validated_data:
-                mapped_data[model_field] = validated_data.pop(frontend_field)
-
-        # Add remaining fields
-        mapped_data.update(validated_data)
+        # Note: Field mapping from first_test_max_score -> test1_max_score
+        # is already handled by DRF because we used source="test1_max_score"
+        # So validated_data already has the correct field names
 
         # Ensure all decimal fields are properly converted
         decimal_fields = [
@@ -313,30 +572,17 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
         ]
 
         for field in decimal_fields:
-            if field in mapped_data and mapped_data[field] is not None:
+            if field in validated_data and validated_data[field] is not None:
                 from decimal import Decimal
 
-                mapped_data[field] = Decimal(str(mapped_data[field]))
+                validated_data[field] = Decimal(str(validated_data[field]))
 
-        return super().create(mapped_data)
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
         """Handle field mapping during updates"""
-        # Map frontend field names back to model field names
-        field_mapping = {
-            "first_test_max_score": "test1_max_score",
-            "second_test_max_score": "test2_max_score",
-            "third_test_max_score": "test3_max_score",
-        }
-
-        # Create a new dict with mapped field names
-        mapped_data = {}
-        for frontend_field, model_field in field_mapping.items():
-            if frontend_field in validated_data:
-                mapped_data[model_field] = validated_data.pop(frontend_field)
-
-        # Add remaining fields
-        mapped_data.update(validated_data)
+        # Note: Field mapping is already handled by DRF source parameter
+        # So validated_data already has the correct field names (test1_max_score, etc.)
 
         # Ensure all decimal fields are properly converted
         decimal_fields = [
@@ -356,12 +602,12 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
         ]
 
         for field in decimal_fields:
-            if field in mapped_data and mapped_data[field] is not None:
+            if field in validated_data and validated_data[field] is not None:
                 from decimal import Decimal
 
-                mapped_data[field] = Decimal(str(mapped_data[field]))
+                validated_data[field] = Decimal(str(validated_data[field]))
 
-        return super().update(instance, mapped_data)
+        return super().update(instance, validated_data)
 
 
 class GradingSystemSerializer(serializers.ModelSerializer):
