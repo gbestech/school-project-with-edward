@@ -340,6 +340,11 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
       const level = scoringConfigForm.education_level?.toUpperCase();
               // Remove fields that don't apply based on education level
        if (level === 'SENIOR_SECONDARY') {
+        formData.first_test_max_score ??= 10;
+        formData.second_test_max_score ??= 10;
+        formData.third_test_max_score ??= 10;
+        formData.exam_max_score ??= 70;
+        formData.total_max_score ??= 100;
          // For Senior Secondary, remove Junior Secondary/Primary fields
          delete formData.continuous_assessment_max_score;
          delete formData.take_home_test_max_score;
