@@ -2362,50 +2362,65 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
             <div className="p-8 space-y-6">
               {/* Basic Information */}
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={examSessionForm.name}
-                    onChange={(e) => setExamSessionForm({...examSessionForm, name: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Enter exam session name"
-                  />
-                </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+    <input
+      type="text"
+      value={examSessionForm.name}
+      onChange={(e) => setExamSessionForm({...examSessionForm, name: e.target.value})}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      placeholder="Enter exam session name"
+    />
+  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Exam Type</label>
-                  <input
-                    type="text"
-                    value={examSessionForm.exam_type}
-                    onChange={(e) => setExamSessionForm({...examSessionForm, exam_type: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="e.g., Mid-term, Final, etc."
-                  />
-                </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">Exam Type</label>
+    <select
+      value={examSessionForm.exam_type}
+      onChange={(e) => setExamSessionForm({...examSessionForm, exam_type: e.target.value})}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+    >
+      <option value="">Select Exam Type</option>
+      <option value="FIRST_CA">First Continuous Assessment</option>
+      <option value="SECOND_CA">Second Continuous Assessment</option>
+      <option value="THIRD_CA">Third Continuous Assessment</option>
+      <option value="MID_TERM">Mid-term Examination</option>
+      <option value="FINAL_EXAM">Final Examination</option>
+      <option value="MOCK_EXAM">Mock Examination</option>
+      <option value="PRACTICAL">Practical Examination</option>
+      <option value="PROJECT">Project Assessment</option>
+      <option value="OTHER">Other</option>
+    </select>
+  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Term</label>
-                  <input
-                    type="text"
-                    value={examSessionForm.term}
-                    onChange={(e) => setExamSessionForm({...examSessionForm, term: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="e.g., First Term, Second Term"
-                  />
-                </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">Term</label>
+    <select
+      value={examSessionForm.term}
+      onChange={(e) => setExamSessionForm({...examSessionForm, term: e.target.value})}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+    >
+      <option value="">Select Term</option>
+      <option value="FIRST">First Term</option>
+      <option value="SECOND">Second Term</option>
+      <option value="THIRD">Third Term</option>
+    </select>
+  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Academic Session ID</label>
-                  <input
-                    type="text"
-                    value={examSessionForm.academic_session}
-                    onChange={(e) => setExamSessionForm({...examSessionForm, academic_session: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Enter academic session ID"
-                  />
-                </div>
-              </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">Academic Session</label>
+    <input
+      type="number"
+      value={examSessionForm.academic_session}
+      onChange={(e) => setExamSessionForm({...examSessionForm, academic_session: e.target.value})}
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      placeholder="Enter academic session ID (number)"
+    />
+    <p className="text-xs text-gray-500 mt-1">
+      Enter the numeric ID of the academic session
+    </p>
+  </div>
+</div>
 
               {/* Date Configuration */}
               <div className="bg-gray-50 rounded-xl p-6">
