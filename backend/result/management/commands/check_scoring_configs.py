@@ -1,6 +1,6 @@
 # results/management/commands/check_scoring_configs.py
 from django.core.management.base import BaseCommand
-from results.models import ScoringConfiguration
+from result.models import ScoringConfiguration
 from django.db import connection
 from decimal import Decimal
 import json
