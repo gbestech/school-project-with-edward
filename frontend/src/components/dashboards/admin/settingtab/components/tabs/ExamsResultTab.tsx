@@ -206,7 +206,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
      console.log('Default configuration validation passed');
      
             // Prepare form data based on education level and result type
-      let formData: any = { ...scoringConfigForm };
+       let formData: any = JSON.parse(JSON.stringify(scoringConfigForm));
       
       console.log('Original formData:', formData);
       
@@ -220,6 +220,20 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          delete formData.project_max_score;
          delete formData.note_copying_max_score;
          console.log('After removing Junior/Primary fields for Senior Secondary:', formData);
+
+         if (scoringConfigForm.result_type === 'SESSION') {
+        // Remove fields that don't apply to SESSION result type
+        delete formData.exam_max_score;
+        delete formData.ca_weight_percentage;
+        delete formData.exam_weight_percentage;
+        delete formData.total_max_score;
+        console.log('After removing SESSION fields:', formData);
+      }
+
+      // For TERMLY, keep test scores, exam score, and weights
+        console.log('After processing Senior Secondary fields:', formData);
+
+        
        } else if (scoringConfigForm.education_level === 'NURSERY') {
          // For Nursery, remove all other fields except total_max_score
          delete formData.first_test_max_score;
@@ -243,14 +257,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          console.log('After removing Senior Secondary fields for Junior/Primary:', formData);
        }
       
-      if (scoringConfigForm.result_type === 'SESSION') {
-        // Remove fields that don't apply to SESSION result type
-        delete formData.exam_max_score;
-        delete formData.ca_weight_percentage;
-        delete formData.exam_weight_percentage;
-        delete formData.total_max_score;
-        console.log('After removing SESSION fields:', formData);
-      }
+      
       
       console.log('Final formData being sent:', formData);
      console.log('About to call resultSettingsService.createScoringConfiguration...');
@@ -2455,16 +2462,6 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
 
   <div>
     <label className="block text-sm font-medium text-gray-700 mb-2">Academic Session</label>
-    <input
-      type="number"
-      value={examSessionForm.academic_session}
-      onChange={(e) => setExamSessionForm({...examSessionForm, academic_session: e.target.value})}
-      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-      placeholder="Enter academic session ID (number)"
-    />
-    <p className="text-xs text-gray-500 mt-1">
-      Enter the numeric ID of the academic session
-    </p>
     <select
   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
   value={examSessionForm.academic_session || ""}
