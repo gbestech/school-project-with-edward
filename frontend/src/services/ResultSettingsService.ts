@@ -410,7 +410,7 @@ class ResultSettingsService {
   // Academic Sessions
   async getAcademicSessions(): Promise<AcademicSession[]> {
     try {
-      const response = await api.get('/api/academic/sessions/');
+      const response = await api.get('/api/academics/sessions/');
       return this.handleApiResponse<AcademicSession>(response);
     } catch (error) {
       console.error('Error fetching academic sessions:', error);
@@ -420,7 +420,7 @@ class ResultSettingsService {
 
   async getAcademicSession(id: string): Promise<AcademicSession> {
     try {
-      const response = await api.get(`/api/academic/sessions/${id}/`);
+      const response = await api.get(`/api/academics/sessions/${id}/`);
       return this.handleSingleApiResponse<AcademicSession>(response);
     } catch (error) {
       console.error('Error fetching academic session:', error);
