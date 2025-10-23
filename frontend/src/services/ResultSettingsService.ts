@@ -64,9 +64,9 @@ export interface ScoringConfiguration {
   education_level_display: string;
   result_type: 'TERMLY' | 'SESSION';
   description: string;
-  first_test_max_score: number;
-  second_test_max_score: number;
-  third_test_max_score: number;
+  test1_max_score: number;
+  test2_max_score: number;
+  test3_max_score: number;
   exam_max_score: number;
   total_max_score: number;
   ca_weight_percentage: number;
@@ -205,9 +205,9 @@ export interface ScoringConfigurationCreateUpdate {
   education_level: 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY';
   result_type: 'TERMLY' | 'SESSION';
   description: string;
-  first_test_max_score: number;
-  second_test_max_score: number;
-  third_test_max_score: number;
+  test1_max_score: number;
+  test2_max_score: number;
+  test3_max_score: number;
   exam_max_score: number;
   total_max_score: number;
   ca_weight_percentage: number;
