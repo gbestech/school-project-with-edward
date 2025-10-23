@@ -1014,7 +1014,61 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         )
 
 
-class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+#     """ViewSet for exam schedules"""
+
+#     queryset = ExamSchedule.objects.all()
+#     serializer_class = ExamScheduleSerializer
+#     ordering = ["-created_at"]
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         """Apply section-based filtering for authenticated users"""
+#         queryset = super().get_queryset()
+
+#         # Apply section-based filtering for authenticated users
+#         if self.request.user.is_authenticated:
+#             # Filter exam schedules by exams that belong to allowed education levels
+#             section_access = self.get_user_section_access()
+#             education_levels = self.get_education_levels_for_sections(section_access)
+
+#             if not education_levels:
+#                 return queryset.none()
+
+#             # Filter schedules that have exams in allowed education levels
+#             queryset = queryset.filter(
+#                 exams__grade_level__education_level__in=education_levels
+#             ).distinct()
+
+#         return queryset
+
+#     @action(detail=True, methods=["get"])
+#     def exams(self, request, pk=None):
+#         """Get exams for a schedule"""
+#         schedule = self.get_object()
+#         exams = Exam.objects.filter(exam_schedule=schedule)
+#         from .serializers import ExamListSerializer
+
+#         serializer = ExamListSerializer(exams, many=True)
+#         return Response(serializer.data)
+
+#     @action(detail=True, methods=["get"])
+#     def get_exams(self, request, pk=None):
+#         """Get exams for a schedule (alias for exams)"""
+#         return self.exams(request, pk)
+
+#     @action(detail=True, methods=["post"])
+#     def toggle_active(self, request, pk=None):
+#         """Toggle schedule active status"""
+#         schedule = self.get_object()
+#         schedule.is_active = not schedule.is_active
+#         schedule.save()
+
+#         status_text = "activated" if schedule.is_active else "deactivated"
+#         return Response({"message": f"Schedule {status_text}"})
+
+
+class ExamScheduleViewSet(viewsets.ModelViewSet):
     """ViewSet for exam schedules"""
 
     queryset = ExamSchedule.objects.all()
@@ -1023,23 +1077,19 @@ class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Apply section-based filtering for authenticated users"""
+        """
+        Return all exam schedules.
+        Admin/Staff see everything, others see based on permissions.
+        """
         queryset = super().get_queryset()
+        user = self.request.user
 
-        # Apply section-based filtering for authenticated users
-        if self.request.user.is_authenticated:
-            # Filter exam schedules by exams that belong to allowed education levels
-            section_access = self.get_user_section_access()
-            education_levels = self.get_education_levels_for_sections(section_access)
+        # 🟢 ADMINS/STAFF: See all schedules
+        if user.is_superuser or user.is_staff:
+            return queryset
 
-            if not education_levels:
-                return queryset.none()
-
-            # Filter schedules that have exams in allowed education levels
-            queryset = queryset.filter(
-                exams__grade_level__education_level__in=education_levels
-            ).distinct()
-
+        # 🟢 For other users, return all schedules
+        # They can view schedules, but exams will be filtered separately
         return queryset
 
     @action(detail=True, methods=["get"])
@@ -1058,6 +1108,26 @@ class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return self.exams(request, pk)
 
     @action(detail=True, methods=["post"])
+    def set_default(self, request, pk=None):
+        """Set a schedule as the default schedule"""
+        schedule = self.get_object()
+
+        # Remove default flag from all other schedules
+        ExamSchedule.objects.exclude(pk=schedule.pk).update(is_default=False)
+
+        # Set this schedule as default
+        schedule.is_default = True
+        schedule.save()
+
+        serializer = self.get_serializer(schedule)
+        return Response(
+            {
+                "message": "Default schedule updated successfully",
+                "schedule": serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
     def toggle_active(self, request, pk=None):
         """Toggle schedule active status"""
         schedule = self.get_object()
@@ -1065,7 +1135,9 @@ class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         schedule.save()
 
         status_text = "activated" if schedule.is_active else "deactivated"
-        return Response({"message": f"Schedule {status_text}"})
+        return Response(
+            {"message": f"Schedule {status_text}", "is_active": schedule.is_active}
+        )
 
 
 class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
