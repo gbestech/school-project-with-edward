@@ -735,7 +735,7 @@ const ExamScheduleManagement: React.FC = () => {
     const endpoints = [
       '/api/academics/academic-sessions/',
       '/api/fee/academic-sessions/',
-      '/api/academic/sessions/',
+      '/api/academics/sessions/',
       '/api/sessions/'
     ];
 
