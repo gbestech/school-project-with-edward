@@ -42,15 +42,15 @@ class ScoringConfigurationSerializer(serializers.ModelSerializer):
     )
 
     # Add frontend field names for compatibility
-    # first_test_max_score = serializers.DecimalField(
-    #     source="test1_max_score", read_only=True, max_digits=5, decimal_places=2
-    # )
-    # second_test_max_score = serializers.DecimalField(
-    #     source="test2_max_score", read_only=True, max_digits=5, decimal_places=2
-    # )
-    # third_test_max_score = serializers.DecimalField(
-    #     source="test3_max_score", read_only=True, max_digits=5, decimal_places=2
-    # )
+    first_test_max_score = serializers.DecimalField(
+        decimal_places=2, max_digits=5, required=True, source="test1_max_score"
+    )
+    second_test_max_score = serializers.DecimalField(
+        decimal_places=2, max_digits=5, required=True, source="test2_max_score"
+    )
+    third_test_max_score = serializers.DecimalField(
+        decimal_places=2, max_digits=5, required=True, source="test3_max_score"
+    )
 
     # Add created_by information
     created_by_name = serializers.CharField(
