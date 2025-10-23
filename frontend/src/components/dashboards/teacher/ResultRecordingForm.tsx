@@ -1954,7 +1954,6 @@ const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => 
         fields: [
           'ca_score',
           'take_home_marks',
-          'take_home_test',
           'appearance_marks',
           'practical_marks',
           'project_marks',
@@ -1964,24 +1963,22 @@ const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => 
         ],
         labels: [
           `C.A (${Number(scoringConfig.continuous_assessment_max_score) || 15})`,
-          'Take Home',
-          `Take Home Test (${Number(scoringConfig.take_home_test_max_score) || 10})`,
-          `Appearance (${Number(scoringConfig.appearance_max_score) || 10})`,
-          `Practical (${Number(scoringConfig.practical_max_score) || 10})`,
-          `Project (${Number(scoringConfig.project_max_score) || 10})`,
-          `Note Copying (${Number(scoringConfig.note_copying_max_score) || 10})`,
-          `C.A Total (${Number(scoringConfig.total_ca_max_score) || 75})`,
+          `Take Home Test (${Number(scoringConfig.take_home_test_max_score) || 5})`,
+          `Appearance (${Number(scoringConfig.appearance_max_score) || 5})`,
+          `Practical (${Number(scoringConfig.practical_max_score) || 5})`,
+          `Project (${Number(scoringConfig.project_max_score) || 5})`,
+          `Note Copying (${Number(scoringConfig.note_copying_max_score) || 5})`,
+          `C.A Total (${Number(scoringConfig.total_ca_max_score) || 40})`,
           `Exam (${Number(scoringConfig.exam_max_score) || 60})`
         ],
         maxValues: [
           Number(scoringConfig.continuous_assessment_max_score) || 15,
-          10,
-          Number(scoringConfig.take_home_test_max_score) || 10,
-          Number(scoringConfig.appearance_max_score) || 10,
-          Number(scoringConfig.practical_max_score) || 10,
-          Number(scoringConfig.project_max_score) || 10,
-          Number(scoringConfig.note_copying_max_score) || 10,
-          Number(scoringConfig.total_ca_max_score) || 75,
+          Number(scoringConfig.take_home_test_max_score) || 5,
+          Number(scoringConfig.appearance_max_score) || 5,
+          Number(scoringConfig.practical_max_score) || 5,
+          Number(scoringConfig.project_max_score) || 5,
+          Number(scoringConfig.note_copying_max_score) || 5,
+          Number(scoringConfig.total_ca_max_score) || 40,
           Number(scoringConfig.exam_max_score) || 60
         ],
         showPhysicalDevelopment: true,
@@ -2017,7 +2014,7 @@ const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => 
         type: 'primary',
         fields: ['ca_score', 'take_home_marks', 'take_home_test', 'appearance_marks', 'practical_marks', 'project_marks', 'note_copying_marks', 'ca_total', 'exam_score'],
         labels: ['C.A (15)', 'Take Home', 'Take Home Test', 'Appearance', 'Practical', 'Project', 'Note Copying', 'C.A Total', 'Exam (60%)'],
-        maxValues: [15, 10, 10, 10, 10, 10, 10, 75, 60],
+        maxValues: [15, 5, 5, 5, 5, 5, 5, 40, 60],
         showPhysicalDevelopment: true,
         showClassStatistics: true
       };
@@ -2026,7 +2023,7 @@ const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => 
         type: 'junior',
         fields: ['ca_score', 'take_home_marks', 'take_home_test', 'appearance_marks', 'practical_marks', 'project_marks', 'note_copying_marks', 'ca_total', 'exam_score'],
         labels: ['C.A (15)', 'Take Home', 'Take Home Test', 'Appearance', 'Practical', 'Project', 'Note Copying', 'C.A Total', 'Exam (60%)'],
-        maxValues: [15, 10, 10, 10, 10, 10, 10, 75, 60],
+        maxValues: [15, 5, 5, 5, 5, 5, 5, 40, 60],
         showPhysicalDevelopment: true,
         showClassStatistics: true
       };
