@@ -63,9 +63,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
     education_level: 'SENIOR_SECONDARY',
     result_type: 'TERMLY',
     description: '',
-    test1_max_score: 10,
-    test2_max_score: 10,
-    test3_max_score: 10,
+    first_test_max_score: 10,
+    second_test_max_score: 10,
+    third_test_max_score: 10,
     exam_max_score: 70,
     total_max_score: 100,
     ca_weight_percentage: 30,
@@ -224,9 +224,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          console.log('After removing Junior/Primary fields for Senior Secondary:', formData);
        } else if (level === 'NURSERY') {
          // For Nursery, remove all other fields except total_max_score
-         delete formData.test1_max_score;
-         delete formData.test2_max_score;
-         delete formData.test3_max_score;
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
          delete formData.continuous_assessment_max_score;
          delete formData.take_home_test_max_score;
          delete formData.appearance_max_score;
@@ -239,9 +239,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          console.log('After removing all fields except total_max_score for Nursery:', formData);
        } else {
          // For Junior Secondary and Primary, remove Senior Secondary fields
-         delete formData.test1_max_score;
-         delete formData.test2_max_score;
-         delete formData.test3_max_score;
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
          console.log('After removing Senior Secondary fields for Junior/Primary:', formData);
        }
       
@@ -267,9 +267,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
        education_level: 'SENIOR_SECONDARY',
        result_type: 'TERMLY',
        description: '',
-       test1_max_score: 10,
-       test2_max_score: 10,
-       test3_max_score: 10,
+       first_test_max_score: 10,
+       second_test_max_score: 10,
+       third_test_max_score: 10,
        exam_max_score: 70,
        total_max_score: 100,
        ca_weight_percentage: 30,
@@ -340,9 +340,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
       const level = scoringConfigForm.education_level?.toUpperCase();
               // Remove fields that don't apply based on education level
        if (level === 'SENIOR_SECONDARY') {
-        formData.test1_max_score ??= 10;
-        formData.test2_max_score ??= 10;
-        formData.test3_max_score ??= 10;
+        formData.first_test_max_score ??= 10;
+        formData.second_test_max_score ??= 10;
+        formData.third_test_max_score ??= 10;
         formData.exam_max_score ??= 70;
         formData.total_max_score ??= 100;
          // For Senior Secondary, remove Junior Secondary/Primary fields
@@ -355,9 +355,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          console.log('After removing Junior/Primary fields for Senior Secondary (update):', formData);
        } else if (level === 'NURSERY') {
          // For Nursery, remove all other fields except total_max_score
-         delete formData.test1_max_score;
-         delete formData.test2_max_score;
-         delete formData.test3_max_score;
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
          delete formData.continuous_assessment_max_score;
          delete formData.take_home_test_max_score;
          delete formData.appearance_max_score;
@@ -370,9 +370,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          console.log('After removing all fields except total_max_score for Nursery (update):', formData);
        } else {
          // For Junior Secondary and Primary, remove Senior Secondary fields
-         delete formData.test1_max_score;
-         delete formData.test2_max_score;
-         delete formData.test3_max_score;
+         delete formData.first_test_max_score;
+         delete formData.second_test_max_score;
+         delete formData.third_test_max_score;
          console.log('After removing Senior Secondary fields for Junior/Primary (update):', formData);
        }
       
@@ -429,9 +429,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
   };
 
   const calculateTotalCA = () => {
-    const firstTest = Number(scoringConfigForm.test1_max_score) || 0;
-    const secondTest = Number(scoringConfigForm.test2_max_score) || 0;
-    const thirdTest = Number(scoringConfigForm.test3_max_score) || 0;
+    const firstTest = Number(scoringConfigForm.first_test_max_score) || 0;
+    const secondTest = Number(scoringConfigForm.second_test_max_score) || 0;
+    const thirdTest = Number(scoringConfigForm.third_test_max_score) || 0;
     return firstTest + secondTest + thirdTest;
   };
 
@@ -998,15 +998,15 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                              <div className="space-y-1 text-blue-800">
                                <div className="flex justify-between">
                                  <span>{config.result_type === 'SESSION' ? '1st Term (Tests+Exam):' : '1st Test:'}</span>
-                                 <span className="font-medium">{config.test1_max_score}</span>
+                                 <span className="font-medium">{config.first_test_max_score}</span>
                                </div>
                                <div className="flex justify-between">
                                  <span>{config.result_type === 'SESSION' ? '2nd Term (Tests+Exam):' : '2nd Test:'}</span>
-                                 <span className="font-medium">{config.test2_max_score}</span>
+                                 <span className="font-medium">{config.second_test_max_score}</span>
                                </div>
                                <div className="flex justify-between">
                                  <span>{config.result_type === 'SESSION' ? '3rd Term (Tests+Exam):' : '3rd Test:'}</span>
-                                 <span className="font-medium">{config.test3_max_score}</span>
+                                 <span className="font-medium">{config.third_test_max_score}</span>
                                </div>
                              </div>
                            </div>
@@ -1064,11 +1064,11 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                              <div className="space-y-1 text-green-800">
                                <div className="flex justify-between">
                                  <span>Average of Year:</span>
-                                 <span className="font-medium">{(Number(config.test1_max_score) + Number(config.test2_max_score) + Number(config.test3_max_score)) / 3}</span>
+                                 <span className="font-medium">{(Number(config.first_test_max_score) + Number(config.second_test_max_score) + Number(config.third_test_max_score)) / 3}</span>
                                </div>
                                <div className="flex justify-between">
                                  <span>Total Year Score:</span>
-                                 <span className="font-medium">{Number(config.test1_max_score) + Number(config.test2_max_score) + Number(config.test3_max_score)}</span>
+                                 <span className="font-medium">{Number(config.first_test_max_score) + Number(config.second_test_max_score) + Number(config.third_test_max_score)}</span>
                                </div>
                              </div>
                            </div>
@@ -1675,10 +1675,10 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                              <input
                                type="number"
                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                               value={scoringConfigForm.test1_max_score}
+                               value={scoringConfigForm.first_test_max_score}
                                onChange={(e) => setScoringConfigForm({
                                  ...scoringConfigForm,
-                                 test1_max_score: parseFloat(e.target.value) || 0
+                                 first_test_max_score: parseFloat(e.target.value) || 0
                                })}
                              />
                              {scoringConfigForm.result_type === 'SESSION' && (
@@ -1694,10 +1694,10 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                              <input
                                type="number"
                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                               value={scoringConfigForm.test2_max_score}
+                               value={scoringConfigForm.second_test_max_score}
                                onChange={(e) => setScoringConfigForm({
                                  ...scoringConfigForm,
-                                 test2_max_score: parseFloat(e.target.value) || 0
+                                 second_test_max_score: parseFloat(e.target.value) || 0
                                })}
                              />
                              {scoringConfigForm.result_type === 'SESSION' && (
@@ -1713,10 +1713,10 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                              <input
                                type="number"
                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
-                               value={scoringConfigForm.test3_max_score}
+                               value={scoringConfigForm.third_test_max_score}
                                onChange={(e) => setScoringConfigForm({
                                  ...scoringConfigForm,
-                                 test3_max_score: parseFloat(e.target.value) || 0
+                                 third_test_max_score: parseFloat(e.target.value) || 0
                                })}
                              />
                              {scoringConfigForm.result_type === 'SESSION' && (
