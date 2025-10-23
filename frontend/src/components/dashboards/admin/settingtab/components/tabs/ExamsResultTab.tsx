@@ -2465,6 +2465,18 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
     <p className="text-xs text-gray-500 mt-1">
       Enter the numeric ID of the academic session
     </p>
+    <select
+  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+  value={examSessionForm.academic_session || ""}
+  onChange={e => setExamSessionForm({ ...examSessionForm, academic_session: (e.target.value) })}
+>
+  <option value="">Select Academic Session</option>
+  {academicSessions?.map(session => (
+    <option key={session.id} value={session.id}>
+      {session.name}
+    </option>
+  ))}
+</select>
   </div>
 </div>
 
