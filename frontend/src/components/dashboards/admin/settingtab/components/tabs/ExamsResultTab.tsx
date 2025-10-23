@@ -174,6 +174,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
 
   // Scoring Configuration handlers
   const handleCreateScoringConfig = async () => {
+    
     try {
       console.log('=== handleCreateScoringConfig START ===');
       setSaving(true);
@@ -209,9 +210,10 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
        let formData: any = JSON.parse(JSON.stringify(scoringConfigForm));
       
       console.log('Original formData:', formData);
-      
+      const level = scoringConfigForm.education_level?.toUpperCase();
+
               // Remove fields that don't apply based on education level
-       if (scoringConfigForm.education_level === 'SENIOR_SECONDARY') {
+       if (level === 'SENIOR_SECONDARY') {
          // For Senior Secondary, remove Junior Secondary/Primary fields
          delete formData.continuous_assessment_max_score;
          delete formData.take_home_test_max_score;
@@ -220,21 +222,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          delete formData.project_max_score;
          delete formData.note_copying_max_score;
          console.log('After removing Junior/Primary fields for Senior Secondary:', formData);
-
-         if (scoringConfigForm.result_type === 'SESSION') {
-        // Remove fields that don't apply to SESSION result type
-        delete formData.exam_max_score;
-        delete formData.ca_weight_percentage;
-        delete formData.exam_weight_percentage;
-        delete formData.total_max_score;
-        console.log('After removing SESSION fields:', formData);
-      }
-
-      // For TERMLY, keep test scores, exam score, and weights
-        console.log('After processing Senior Secondary fields:', formData);
-
-        
-       } else if (scoringConfigForm.education_level === 'NURSERY') {
+       } else if (level === 'NURSERY') {
          // For Nursery, remove all other fields except total_max_score
          delete formData.first_test_max_score;
          delete formData.second_test_max_score;
@@ -257,7 +245,14 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          console.log('After removing Senior Secondary fields for Junior/Primary:', formData);
        }
       
-      
+      if (scoringConfigForm.result_type === 'SESSION') {
+        // Remove fields that don't apply to SESSION result type
+        delete formData.exam_max_score;
+        delete formData.ca_weight_percentage;
+        delete formData.exam_weight_percentage;
+        delete formData.total_max_score;
+        console.log('After removing SESSION fields:', formData);
+      }
       
       console.log('Final formData being sent:', formData);
      console.log('About to call resultSettingsService.createScoringConfiguration...');
@@ -337,12 +332,12 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
      }
      
                         // Prepare form data based on education level and result type
-      let formData: any = { ...scoringConfigForm };
+      let formData: any = JSON.parse(JSON.stringify(scoringConfigForm));
       
       console.log('Original formData (update):', formData);
-      
+      const level = scoringConfigForm.education_level?.toUpperCase();
               // Remove fields that don't apply based on education level
-       if (scoringConfigForm.education_level === 'SENIOR_SECONDARY') {
+       if (level === 'SENIOR_SECONDARY') {
          // For Senior Secondary, remove Junior Secondary/Primary fields
          delete formData.continuous_assessment_max_score;
          delete formData.take_home_test_max_score;
@@ -351,7 +346,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
          delete formData.project_max_score;
          delete formData.note_copying_max_score;
          console.log('After removing Junior/Primary fields for Senior Secondary (update):', formData);
-       } else if (scoringConfigForm.education_level === 'NURSERY') {
+       } else if (level === 'NURSERY') {
          // For Nursery, remove all other fields except total_max_score
          delete formData.first_test_max_score;
          delete formData.second_test_max_score;
