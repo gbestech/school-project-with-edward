@@ -250,12 +250,14 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
         delete formData.exam_max_score;
         delete formData.ca_weight_percentage;
         delete formData.exam_weight_percentage;
-        delete formData.total_max_score;
+        // delete formData.total_max_score;
         console.log('After removing SESSION fields:', formData);
       }
       
       console.log('Final formData being sent:', formData);
      console.log('About to call resultSettingsService.createScoringConfiguration...');
+
+     console.log("Payload actually sent:", formData);
      const response = await resultSettingsService.createScoringConfiguration(formData);
      console.log('API Response:', response);
      toast.success('Scoring configuration created successfully');
@@ -374,7 +376,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
         delete formData.exam_max_score;
         delete formData.ca_weight_percentage;
         delete formData.exam_weight_percentage;
-        delete formData.total_max_score;
+        // delete formData.total_max_score;
         console.log('After removing SESSION fields (update):', formData);
       }
       
