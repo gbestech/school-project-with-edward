@@ -380,21 +380,21 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           margin-bottom: 20px;
         }
 
-        .school-name { font-weight: bold; font-size: 20px; margin-bottom: 2px; }
-    .school-address { font-size: 12px; margin-bottom: 2px; }
-    .exam-title { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+    .school-name { font-weight: bold; font-size: 20px; margin-bottom: 2px; text-align: center; }
+    .school-address { font-size: 12px; margin-bottom: 2px;text-align: center; }
+    .exam-title { font-size: 12px; font-weight: bold; margin-bottom: 2px;text-align: center; }
         h2, h3 { 
           color: #0056b3;
-          margin-top: 20px;
+          margin-top: 5px;
         }
         .exam-header {
           background-color: #f0f0f0;
           padding: 15px;
           border-radius: 5px;
-          margin-bottom: 20px;
+          margin-bottom: 10px;
         }
         .exam-header p {
-          margin: 5px 0;
+          margin: 3px 0;
         }
         .instructions {
           background-color: #fff3cd;
