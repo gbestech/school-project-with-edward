@@ -1,100 +1,352 @@
-import React, { useMemo } from 'react';
-// @ts-ignore - react-quill has no type declarations in this project
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+// // components/RichTextEditor.tsx
+// import React from "react";
+// import { useEditor, EditorContent } from "@tiptap/react";
+// import StarterKit from "@tiptap/starter-kit";
+// import Link from "@tiptap/extension-link";
+// import Image from "@tiptap/extension-image";
+// import Table from "@tiptap/extension-table";
+// import TableRow from "@tiptap/extension-table-row";
+// import TableHeader from "@tiptap/extension-table-header";
+// import TableCell from "@tiptap/extension-table-cell";
+
+// interface RichTextEditorProps {
+//   value: string;
+//   onChange: (content: string) => void;
+//   placeholder?: string;
+//   readOnly?: boolean;
+// }
+
+// const MenuBar = ({ editor }: any) => {
+//   if (!editor) return null;
+
+//   return (
+//     <div className="bg-gray-100 border-b border-gray-300 p-2 flex flex-wrap gap-1 rounded-t-lg">
+//       <button
+//         onClick={() => editor.chain().focus().toggleBold().run()}
+//         disabled={!editor.can().chain().focus().toggleBold().run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("bold")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Bold
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleItalic().run()}
+//         disabled={!editor.can().chain().focus().toggleItalic().run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("italic")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Italic
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleStrike().run()}
+//         disabled={!editor.can().chain().focus().toggleStrike().run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("strike")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Strike
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("heading", { level: 1 })
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         H1
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("heading", { level: 2 })
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         H2
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleBulletList().run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("bulletList")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Bullet List
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleOrderedList().run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("orderedList")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Ordered List
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("codeBlock")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Code
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+//         className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+//       >
+//         Table
+//       </button>
+//       <button
+//         onClick={() => {
+//           const url = prompt("Enter image URL:");
+//           if (url) editor.chain().focus().setImage({ src: url }).run();
+//         }}
+//         className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+//       >
+//         Image
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().setLink({ href: prompt("Enter URL:") || "" }).run()}
+//         className={`px-3 py-1 rounded text-sm font-medium transition ${
+//           editor.isActive("link")
+//             ? "bg-blue-600 text-white"
+//             : "bg-white text-gray-700 hover:bg-gray-200"
+//         }`}
+//       >
+//         Link
+//       </button>
+//       <button
+//         onClick={() => editor.chain().focus().clearNodes().run()}
+//         className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+//       >
+//         Clear Format
+//       </button>
+//     </div>
+//   );
+// };
+
+// const RichTextEditor: React.FC<RichTextEditorProps> = ({
+//   value,
+//   onChange,
+//   placeholder = "Enter text...",
+//   readOnly = false,
+// }) => {
+//   const editor = useEditor({
+//     extensions: [
+//       StarterKit,
+//       Link.configure({ openOnClick: false }),
+//       Image,
+//       Table.configure({ resizable: true }),
+//       TableRow,
+//       TableHeader,
+//       TableCell,
+//     ],
+//     content: value,
+//     onUpdate: ({ editor }) => {
+//       onChange(editor.getHTML());
+//     },
+//     editable: !readOnly,
+//   });
+
+//   return (
+//     <div className="border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+//       {!readOnly && <MenuBar editor={editor} />}
+//       <EditorContent
+//         editor={editor}
+//         className="prose prose-sm max-w-none px-4 py-3 min-h-[150px] bg-white focus:outline-none"
+//       />
+//     </div>
+//   );
+// };
+
+// export default RichTextEditor;
+
+
+// components/RichTextEditor.tsx
+import React from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import {Table} from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 
 interface RichTextEditorProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (content: string) => void;
   placeholder?: string;
-  minHeight?: string;
+  readOnly?: boolean;
 }
+
+const MenuBar = ({ editor }: any) => {
+  if (!editor) return null;
+
+  return (
+    <div className="bg-gray-100 border-b border-gray-300 p-2 flex flex-wrap gap-1 rounded-t-lg">
+      <button
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        disabled={!editor.can().chain().focus().toggleBold().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("bold")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Bold
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        disabled={!editor.can().chain().focus().toggleItalic().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("italic")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Italic
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+        disabled={!editor.can().chain().focus().toggleStrike().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("strike")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Strike
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("heading", { level: 1 })
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        H1
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("heading", { level: 2 })
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        H2
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("bulletList")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Bullet List
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("orderedList")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Ordered List
+      </button>
+      <button
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("codeBlock")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Code
+      </button>
+      <button
+        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+        className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+      >
+        Table
+      </button>
+      <button
+        onClick={() => {
+          const url = prompt("Enter image URL:");
+          if (url) editor.chain().focus().setImage({ src: url }).run();
+        }}
+        className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+      >
+        Image
+      </button>
+      <button
+        onClick={() => editor.chain().focus().setLink({ href: prompt("Enter URL:") || "" }).run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("link")
+            ? "bg-blue-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+      >
+        Link
+      </button>
+      <button
+        onClick={() => editor.chain().focus().clearNodes().run()}
+        className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+      >
+        Clear Format
+      </button>
+    </div>
+  );
+};
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
-  placeholder = 'Enter content...',
-  minHeight = '150px',
+  placeholder = "Enter text...",
+  readOnly = false,
 }) => {
-  const modules = useMemo(() => ({
-    toolbar: {
-      container: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'script': 'sub'}, { 'script': 'super' }],
-        [{ 'color': [] }, { 'background': [] }],
-        ['link', 'image'],
-        ['clean']
-      ],
-      handlers: {
-        image: function(this: any) {
-          const input = document.createElement('input');
-          input.setAttribute('type', 'file');
-          input.setAttribute('accept', 'image/*');
-          input.click();
-
-          input.onchange = async () => {
-            const file = input.files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                const range = this.quill.getSelection(true);
-                this.quill.insertEmbed(range.index, 'image', e.target?.result);
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-        }
-      }
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link.configure({ openOnClick: false }),
+      Image,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
     },
-    clipboard: {
-      matchVisual: false
-    }
-  }), []);
-
-  const formats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike',
-    'script',
-    'list', 'bullet',
-    'color', 'background',
-    'link', 'image'
-  ];
+    editable: !readOnly,
+  });
 
   return (
-    <div className="rich-text-editor-wrapper">
-      <ReactQuill
-        theme="snow"
-        value={value || ''}
-        onChange={onChange}
-        modules={modules}
-        formats={formats}
-        placeholder={placeholder}
-        style={{ minHeight }}
+    <div className="border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+      {!readOnly && <MenuBar editor={editor} />}
+      <EditorContent
+        editor={editor}
+        className="prose prose-sm max-w-none px-4 py-3 min-h-[150px] bg-white focus:outline-none"
       />
-      <style>{`
-        .rich-text-editor-wrapper .ql-container {
-          font-size: 14px;
-          min-height: ${minHeight};
-        }
-        .rich-text-editor-wrapper .ql-editor {
-          min-height: ${minHeight};
-        }
-        .rich-text-editor-wrapper .ql-editor img {
-          max-width: 100%;
-          height: auto;
-        }
-        .rich-text-editor-wrapper .ql-editor table {
-          border-collapse: collapse;
-          width: 100%;
-        }
-        .rich-text-editor-wrapper .ql-editor table td,
-        .rich-text-editor-wrapper .ql-editor table th {
-          border: 1px solid #ddd;
-          padding: 8px;
-        }
-      `}</style>
     </div>
   );
 };
