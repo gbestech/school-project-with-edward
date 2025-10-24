@@ -4,7 +4,7 @@
 // export function generateExamHtml(exam: Exam): string {
 //   const renderList = (title: string, questions: any[], renderer: (q: any, idx: number) => string) =>
 //     questions?.length
-//       ? `<div style="margin-top: 20px;"><h3 style="border-bottom: 2px solid #333; padding-bottom: 10px;">${title}</h3><ol>${questions.map(renderer).join("")}</ol></div>`
+//       ? `<div style="margin-top: 20px;"><h4 style="border-bottom: 2px solid #333; padding-bottom: 10px;">${title}</h4><ol>${questions.map(renderer).join("")}</ol></div>`
 //       : "";
 
 // interface ObjectiveQuestion {
@@ -81,7 +81,7 @@
 //                 padding-bottom: 10px;
 //                 margin-bottom: 20px;
 //             }
-//             h2, h3 { 
+//             h2, h4 { 
 //                 color: #0056b3;
 //                 margin-top: 20px;
 //             }
@@ -383,7 +383,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
     .school-name { font-weight: bold; font-size: 20px; margin-bottom: 2px; text-align: center; }
     .school-address { font-size: 12px; margin-bottom: 2px;text-align: center; }
     .exam-title { font-size: 12px; font-weight: bold; margin-bottom: 2px;text-align: center; }
-        h2, h3 { 
+        h2, h4 { 
           color: #0056b3;
           margin-top: 5px;
         }
@@ -404,7 +404,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           border-radius: 3px;
         }
         .question {
-          margin-bottom: 15px;
+          margin-bottom: 5px;
           page-break-inside: avoid;
         }
         .options-row {
@@ -467,7 +467,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           display: ${copyType === "teacher" ? "block" : "none"};
         }
         @media print {
-          body { margin: 20px; }
+          body { margin: 8px; }
           .question { page-break-inside: avoid; }
         }
       </style>
@@ -506,7 +506,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
       ${
         exam.objective_questions?.length
           ? `
-            <h2>Section A: Objective Questions</h2>
+            <h4>Section A: Objective Questions</h4>
             ${exam.objective_instructions ? `<div class="instructions">${exam.objective_instructions}</div>` : ""}
             ${exam.objective_questions
               .map(
@@ -534,7 +534,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
       ${
         exam.theory_questions?.length
           ? `
-            <h2>Section B: Theory Questions</h2>
+            <h4>Section B: Theory Questions</h4>
             ${exam.theory_instructions ? `<div class="instructions">${exam.theory_instructions}</div>` : ""}
             ${exam.theory_questions
               .map(
@@ -555,8 +555,9 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
                           (sq: any) => `
                         <li>
                           ${sq.question || ""}
-                          ${sq.wordLimit || sq.word_limit ? `<br/><em>Word Limit: ${sq.word_limit || sq.wordLimit}</em>` : ""}
-                          <br/><em>Marks: ${sq.marks || 1}</em>
+                          ${copyType === "teacher" && (sq.wordLimit || sq.word_limit) ? `<br/><em>Word Limit: ${sq.word_limit || sq.wordLimit}</em>` : ""}
+                          ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
+                          
                           ${copyType === "teacher" && (sq.expectedPoints || sq.expected_points) ? `<div class="expected-points" style="margin-top: 5px; margin-left: 10px;"><strong>Expected:</strong> ${sq.expected_points || sq.expectedPoints}</div>` : ""}
                         </li>
                       `
@@ -579,7 +580,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
       ${
         exam.practical_questions?.length
           ? `
-            <h2>Section C: Practical Questions</h2>
+            <h4>Section C: Practical Questions</h4>
             ${exam.practical_instructions ? `<div class="instructions">${exam.practical_instructions}</div>` : ""}
             ${exam.practical_questions
               .map(
@@ -604,7 +605,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           ? exam.custom_sections
               .map(
                 (section: any, sidx: number) => `
-            <h2>Section ${String.fromCharCode(68 + sidx)}: ${section.name || "Custom Section"}</h2>
+            <h4>Section ${String.fromCharCode(68 + sidx)}: ${section.name || "Custom Section"}</h4>
             ${section.instructions ? `<div class="instructions">${section.instructions}</div>` : ""}
             ${
               section.questions && section.questions.length
