@@ -409,16 +409,14 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
         }
         .options-row {
           display: flex;
-          gap: 20px;
+          gap: 8px;
           margin-top: 8px;
           flex-wrap: wrap;
         }
         .option {
           flex: 1;
-          min-width: 150px;
+          min-width: 50px;
           padding: 8px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
           background-color: #fafafa;
         }
         .option-letter {
@@ -520,7 +518,6 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
                   <div class="option"><span class="option-letter">D)</span> ${q.optionD || q.option_d || ""}</div>
                 </div>
                 ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
-               
                 ${copyType === "teacher" && (q.correctAnswer || q.correct_answer) ? `<div class="correct-answer">✓ Correct Answer: ${q.correctAnswer || q.correct_answer}</div>` : ""}
               </div>
             `
@@ -541,7 +538,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
                 (q: any, idx: number) => `
               <div class="question">
                 <strong>${idx + 1}. ${q.question || ""}</strong>
-                ${q.wordLimit || q.word_limit ? `<p><strong>Word Limit:</strong> ${q.word_limit || q.wordLimit} words</p>` : ""}
+                ${copyType === "teacher" && (q.wordLimit || q.word_limit) ? `<p><strong>Word Limit:</strong> ${q.word_limit || q.wordLimit} words</p>` : ""}
                 ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
                 ${copyType === "teacher" && (q.expectedPoints || q.expected_points) ? `<div class="expected-points"><strong>Expected Points:</strong><br/>${q.expected_points || q.expectedPoints}</div>` : ""}
                 ${
