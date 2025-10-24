@@ -379,6 +379,10 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           padding-bottom: 10px;
           margin-bottom: 20px;
         }
+
+        .school-name { font-weight: bold; font-size: 20px; margin-bottom: 2px; }
+    .school-address { font-size: 12px; margin-bottom: 2px; }
+    .exam-title { font-size: 12px; font-weight: bold; margin-bottom: 2px; }
         h2, h3 { 
           color: #0056b3;
           margin-top: 20px;
@@ -468,12 +472,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
         }
       </style>
     </head>
-    <body>
-      <div class="copy-header">
-        ${copyType === "student" ? "STUDENT COPY - NO MARKING SCHEME" : "TEACHER'S COPY - WITH MARKING SCHEME"}
-      </div>
-      
-      <h1>${exam.title}</h1>.
+    <body>      
       <div class="header">
     <div class="school-name">${schoolName}</div>
     <div class="school-address">${schoolAddress}</div>
@@ -496,21 +495,6 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
   <div class="student-info">
     <span class="label">STUDENT NAME:</span> ________________________________________________
   </div>
-      
-      <div class="exam-header">
-        <p><strong>Code:</strong> ${exam.code || "N/A"}</p>
-        <p><strong>Subject:</strong> ${exam.subject_name || exam.subject || "N/A"}</p>
-        <p><strong>Grade Level:</strong> ${exam.grade_level_name || exam.grade_level || "N/A"}</p>
-        <p><strong>Exam Type:</strong> ${exam.exam_type_display || exam.exam_type || "N/A"}</p>
-        <p><strong>Difficulty Level:</strong> ${exam.difficulty_level_display || exam.difficulty_level || "N/A"}</p>
-        <p><strong>Date:</strong> ${exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : "N/A"}</p>
-        <p><strong>Time:</strong> ${exam.start_time || "N/A"} - ${exam.end_time || "N/A"}</p>
-        <p><strong>Duration:</strong> ${exam.duration_minutes || "N/A"} minutes</p>
-        <p><strong>Total Marks:</strong> ${exam.total_marks || 0}</p>
-        ${copyType === "teacher" ? `<p><strong>Pass Marks:</strong> ${exam.pass_marks || "N/A"}</p>` : ""}
-        ${exam.venue ? `<p><strong>Venue:</strong> ${exam.venue}</p>` : ""}
-        ${exam.max_students && copyType === "teacher" ? `<p><strong>Max Students:</strong> ${exam.max_students}</p>` : ""}
-      </div>
 
       ${exam.instructions ? `<div class="instructions"><strong>General Instructions:</strong><br/>${exam.instructions}</div>` : ""}
 
