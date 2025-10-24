@@ -398,9 +398,9 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
         }
         .instructions {
           background-color: #fff3cd;
-          padding: 15px;
-          border-left: 4px solid #ffc107;
-          margin: 15px 0;
+          padding: 5px;
+          border-left: 3px solid #ffc107;
+          margin: 5px 0;
           border-radius: 3px;
         }
         .question {
@@ -437,7 +437,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           border-left: 4px solid #007bff;
           padding: 8px;
           margin-top: 8px;
-          font-size: 14px;
+          font-size: 12px;
         }
         table {
           border-collapse: collapse;
@@ -465,7 +465,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
           display: ${copyType === "teacher" ? "block" : "none"};
         }
         @media print {
-          body { margin: 8px; }
+          body { margin: 5px; }
           .question { page-break-inside: avoid; }
         }
       </style>
