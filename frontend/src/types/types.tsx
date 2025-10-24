@@ -2038,6 +2038,67 @@ export interface StudentInfo {
   education_level: string;
   profile_picture?: string;
 }
+
+export interface ObjectiveQuestion {
+  id: number;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  marks: number;
+}
+
+export interface SubSubQuestion {
+  id: number;
+  question: string;
+  expectedPoints: string;
+  marks: number;
+  wordLimit: string;
+}
+
+export interface SubQuestion {
+  id: number;
+  question: string;
+  expectedPoints: string;
+  marks: number;
+  wordLimit: string;
+  subSubQuestions: SubSubQuestion[];
+}
+
+export interface TheoryQuestion {
+  id: number;
+  question: string;
+  expectedPoints: string;
+  marks: number;
+  wordLimit: string;
+  subQuestions: SubQuestion[];
+}
+
+export interface PracticalQuestion {
+  id: number;
+  task: string;
+  materials: string;
+  expectedOutcome: string;
+  marks: number;
+  timeLimit: string;
+}
+
+export interface Question {
+  id: number;
+  question: string;
+  marks: number;
+  wordLimit?: string;
+}
+
+export interface CustomSection {
+  id: number;
+  name: string;
+  instructions: string;
+  questions: Question[];
+}
+
  
  export interface AcademicSession {
   id: string;        // Django uses AutoField (int), but DRF usually serializes as string or number.
