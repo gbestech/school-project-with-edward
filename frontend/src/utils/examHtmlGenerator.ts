@@ -320,8 +320,23 @@
 // utils/examHtmlGenerator.ts
 // utils/examHtmlGenerator.ts
 import { Exam } from "../services/ExamService";
+import { useSettings } from '@/contexts/SettingsContext';
 
 export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "student"): string {
+     const { settings } = useSettings();
+
+// Use dynamic school information from settings
+    const schoolName = settings?.school_name || 'School Name';
+    const schoolAddress = settings?.address || 'School Address';
+    const academicSession = settings?.academicYear || 'Academic Year';
+    const currentTerm = settings?.currentTerm || 'Current Term';
+    
+    // Get grade level name (handle both flat and nested structures)
+    const gradeLevelName = exam.grade_level_name || exam.grade_level?.name || 'Class';
+    
+    // Get subject name (handle both flat and nested structures)
+    const subjectName = exam.subject_name || exam.subject?.name || 'Subject';
+
   let html = `
     <!DOCTYPE html>
     <html>
@@ -330,6 +345,23 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
       <title>${exam.title} - ${copyType === "student" ? "Student Copy" : "Teacher's Copy"}</title>
       <style>
         body { 
+        body::before {
+      content: "${schoolName}";
+      position: fixed;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 60px;
+      color: #cccccc;
+      opacity: 0.12;
+      z-index: 0;
+      pointer-events: none;
+      white-space: pre;
+      width: 100vw;
+      text-align: center;
+      font-weight: bold;
+      user-select: none;
+    }
           font-family: Arial, sans-serif; 
           margin: 40px; 
           line-height: 1.6;
@@ -441,7 +473,29 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
         ${copyType === "student" ? "STUDENT COPY - NO MARKING SCHEME" : "TEACHER'S COPY - WITH MARKING SCHEME"}
       </div>
       
-      <h1>${exam.title}</h1>
+      <h1>${exam.title}</h1>.
+      <div class="header">
+    <div class="school-name">${schoolName}</div>
+    <div class="school-address">${schoolAddress}</div>
+    <div class="exam-title">${currentTerm} EXAMINATION  ${academicSession} ACADEMIC SESSION</div>
+  </div>
+  <table class="exam-details-table">
+    <tr>
+      <td class="label">CLASS:</td>
+      <td class="value">${gradeLevelName}</td>
+      <td class="label">TIME:</td>
+      <td class="value">${exam.duration_minutes} minutes</td>
+    </tr>
+    <tr>
+      <td class="label">SUBJECT:</td>
+      <td class="value">${subjectName}</td>
+      <td class="label">DATE:</td>
+      <td class="value">${exam.exam_date}</td>
+    </tr>
+  </table>
+  <div class="student-info">
+    <span class="label">STUDENT NAME:</span> ________________________________________________
+  </div>
       
       <div class="exam-header">
         <p><strong>Code:</strong> ${exam.code || "N/A"}</p>
@@ -481,7 +535,8 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
                   <div class="option"><span class="option-letter">C)</span> ${q.optionC || q.option_c || ""}</div>
                   <div class="option"><span class="option-letter">D)</span> ${q.optionD || q.option_d || ""}</div>
                 </div>
-                <div class="marks">Marks: ${q.marks || 1}</div>
+                ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
+               
                 ${copyType === "teacher" && (q.correctAnswer || q.correct_answer) ? `<div class="correct-answer">✓ Correct Answer: ${q.correctAnswer || q.correct_answer}</div>` : ""}
               </div>
             `
@@ -503,7 +558,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
               <div class="question">
                 <strong>${idx + 1}. ${q.question || ""}</strong>
                 ${q.wordLimit || q.word_limit ? `<p><strong>Word Limit:</strong> ${q.word_limit || q.wordLimit} words</p>` : ""}
-                <div class="marks">Marks: ${q.marks || 1}</div>
+                ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
                 ${copyType === "teacher" && (q.expectedPoints || q.expected_points) ? `<div class="expected-points"><strong>Expected Points:</strong><br/>${q.expected_points || q.expectedPoints}</div>` : ""}
                 ${
                   q.subQuestions && q.subQuestions.length
@@ -549,7 +604,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
                 <strong>${idx + 1}. ${q.task || q.question || ""}</strong>
                 ${q.materials ? `<p><strong>Materials Required:</strong> ${q.materials}</p>` : ""}
                 ${q.timeLimit || q.time_limit ? `<p><strong>Time Limit:</strong> ${q.time_limit || q.timeLimit}</p>` : ""}
-                <div class="marks">Marks: ${q.marks || 1}</div>
+                ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
                 ${copyType === "teacher" && (q.expectedOutcome || q.expected_outcome) ? `<div class="expected-points"><strong>Expected Outcome:</strong><br/>${q.expected_outcome || q.expectedOutcome}</div>` : ""}
               </div>
             `
@@ -575,7 +630,7 @@ export function generateExamHtml(exam: Exam, copyType: "student" | "teacher" = "
                   <div class="question">
                     <strong>${qidx + 1}. ${q.question || ""}</strong>
                     ${q.wordLimit || q.word_limit ? `<p><strong>Word Limit:</strong> ${q.word_limit || q.wordLimit} words</p>` : ""}
-                    <div class="marks">Marks: ${q.marks || 1}</div>
+                   ${copyType === "teacher" && (q.marks || 1) ? ` <div class="marks">Marks: ${q.marks || 1}</div>` : ""}
                   </div>
                 `
                     )
