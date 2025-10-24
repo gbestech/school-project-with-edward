@@ -147,6 +147,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       try {
         const updatedExam = await ExamService.approveExam(exam.id, notes || "");
         
+        await fetchExams();
         setExams((prev) =>
           prev.map((e) => (e.id === exam.id ? updatedExam : e))
         );
@@ -167,6 +168,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       try {
         const updatedExam = await ExamService.rejectExam(exam.id, reason || "");
         
+        await fetchExams();
         setExams((prev) =>
           prev.map((e) => (e.id === exam.id ? updatedExam : e))
         );
@@ -297,7 +299,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       <ExamListTable
         exams={exams}
         loading={loading}
-        error={null}
+        error={error}
         onEdit={handleEditExam}
         onDelete={handleDeleteExam}
         onPrint={handlePrintExam}
