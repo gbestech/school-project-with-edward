@@ -1,10 +1,11 @@
-// // components/ExamsPage.tsx
-// import React, { useState, useCallback, useEffect, useMemo } from "react";
+
+// import React, { useState, useCallback, useEffect } from "react";
 // import { Exam, ExamCreateData, ExamUpdateData, ExamFilters, ExamService } from "@/services/ExamService";
 // import ExamListTable from "./ExamListTable";
 // import ExamFormModal from "./ExamFormModal";
 // import PrintPreviewModal from "./PrintPreviewModal";
 // import ApprovalModal from "./ApprovalModal";
+
 
 // interface ExamsPageProps {
 //   searchTerm?: string;
@@ -60,7 +61,22 @@
 //       if (localSubject) filters.subject = localSubject;
 
 //       const data = await ExamService.getExams(filters);
-//       setExams(data || []);
+      
+//       // Ensure all exams have their IDs properly set
+//       const examsWithIds = (data || []).map(exam => {
+//         // If ID is missing at top level but exists nested, extract it
+//         if (!exam.id && typeof exam === 'object') {
+//           // Try to find ID in common nested locations
+//           const possibleId = (exam as any).pk || (exam as any).exam_id || (exam as any).examId;
+//           if (possibleId) {
+//             return { ...exam, id: possibleId };
+//           }
+//         }
+//         return exam;
+//       });
+      
+//       console.log("📚 Loaded exams:", examsWithIds);
+//       setExams(examsWithIds);
 //     } catch (err) {
 //       setError(err instanceof Error ? err.message : "Failed to load exams");
 //       console.error("Fetch exams error:", err);
@@ -76,32 +92,48 @@
 //       try {
 //         let savedExam: Exam;
         
-//         if (editingExam) {
+//         if (editingExam && editingExam.id) {
+//           console.log("🔄 Updating exam with ID:", editingExam.id);
+//           console.log("📝 Exam data:", examData);
+          
 //           // Update existing exam
 //           const updateData: ExamUpdateData = examData;
 //           savedExam = await ExamService.updateExam(editingExam.id, updateData);
+          
+//           // Ensure the saved exam has the ID (in case API doesn't return it)
+//           if (!savedExam.id) {
+//             savedExam = { ...savedExam, id: editingExam.id };
+//           }
+          
+//           console.log("📦 Saved exam object:", savedExam);
           
 //           // Update local state
 //           setExams((prev) =>
 //             prev.map((e) => (e.id === editingExam.id ? savedExam : e))
 //           );
+          
+//           console.log("✅ Exam updated successfully!");
 //         } else {
+//           console.log("➕ Creating new exam");
+//           console.log("📝 Exam data:", examData);
+          
 //           // Create new exam
 //           savedExam = await ExamService.createExam(examData);
           
+//           console.log("📦 Created exam object:", savedExam);
+          
 //           // Add to local state
 //           setExams((prev) => [savedExam, ...prev]);
+          
+//           console.log("✅ Exam created successfully!");
 //         }
 
 //         // Close modal and clear editing state
 //         setShowExamModal(false);
 //         setEditingExam(null);
-
-//         // Show success message
-//         console.log(editingExam ? "✅ Exam updated!" : "✅ Exam created!");
 //       } catch (err) {
+//         console.error("❌ Save exam error:", err);
 //         setError(err instanceof Error ? err.message : "Failed to save exam");
-//         console.error("Save exam error:", err);
 //       } finally {
 //         setSubmitting(false);
 //       }
@@ -125,6 +157,21 @@
 
 //   // Edit Exam
 //   const handleEditExam = useCallback((exam: Exam) => {
+//     console.log("📝 Editing exam:", exam);
+//     console.log("🆔 Exam ID:", exam.id);
+//     console.log("🔍 Full exam keys:", Object.keys(exam));
+    
+//     // Ensure the exam object has an ID
+//     if (!exam.id) {
+//       console.error("❌ Cannot edit exam: Missing ID");
+//       console.error("❌ Exam object:", JSON.stringify(exam, null, 2));
+//       setError("Cannot edit exam: Missing ID. Please refresh and try again.");
+      
+//       // Try to recover by fetching fresh data
+//       fetchExams();
+//       return;
+//     }
+    
 //     setEditingExam(exam);
 //     setShowExamModal(true);
 //   }, []);
@@ -335,15 +382,16 @@
 // };
 
 // export default ExamsPage;
-// components/ExamsPage.tsx
-// components/ExamsPage.tsx
+
+
+
 import React, { useState, useCallback, useEffect } from "react";
 import { Exam, ExamCreateData, ExamUpdateData, ExamFilters, ExamService } from "@/services/ExamService";
 import ExamListTable from "./ExamListTable";
 import ExamFormModal from "./ExamFormModal";
 import PrintPreviewModal from "./PrintPreviewModal";
 import ApprovalModal from "./ApprovalModal";
-
+import { normalizeExamDataForDisplay, normalizeExamDataForEdit } from "@/utils/examDataNormalizer";
 
 interface ExamsPageProps {
   searchTerm?: string;
@@ -400,24 +448,44 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
 
       const data = await ExamService.getExams(filters);
       
-      // Ensure all exams have their IDs properly set
-      const examsWithIds = (data || []).map(exam => {
-        // If ID is missing at top level but exists nested, extract it
-        if (!exam.id && typeof exam === 'object') {
-          // Try to find ID in common nested locations
-          const possibleId = (exam as any).pk || (exam as any).exam_id || (exam as any).examId;
-          if (possibleId) {
-            return { ...exam, id: possibleId };
-          }
-        }
-        return exam;
+      // CRITICAL: Normalize all exams for display
+      // This ensures images and tables are properly formatted
+      const normalizedExams = (data || []).map(exam => {
+        // Ensure ID is preserved
+        const examWithId = {
+          ...exam,
+          id: exam.id || (exam as any).pk || (exam as any).exam_id || (exam as any).examId
+        };
+        
+        // Normalize for display (converts tables to HTML, standardizes image fields)
+        const normalized = normalizeExamDataForDisplay(examWithId);
+        
+        // Ensure ID is still present after normalization
+        return normalized ? { ...normalized, id: examWithId.id } : examWithId;
       });
       
-      console.log("📚 Loaded exams:", examsWithIds);
-      setExams(examsWithIds);
+      console.log("📚 Loaded and normalized exams:", normalizedExams);
+      console.log(`✅ Total exams: ${normalizedExams.length}`);
+      
+      // Log image/table statistics
+      const stats = normalizedExams.reduce((acc, exam) => {
+        const objWithImages = (exam.objective_questions || []).filter((q: any) => q.image).length;
+        const objWithTables = (exam.objective_questions || []).filter((q: any) => q.table).length;
+        const theoryWithImages = (exam.theory_questions || []).filter((q: any) => q.image).length;
+        const theoryWithTables = (exam.theory_questions || []).filter((q: any) => q.table).length;
+        
+        return {
+          images: acc.images + objWithImages + theoryWithImages,
+          tables: acc.tables + objWithTables + theoryWithTables
+        };
+      }, { images: 0, tables: 0 });
+      
+      console.log(`📊 Found ${stats.images} questions with images, ${stats.tables} questions with tables`);
+      
+      setExams(normalizedExams);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load exams");
-      console.error("Fetch exams error:", err);
+      console.error("❌ Fetch exams error:", err);
     } finally {
       setLoading(false);
     }
@@ -443,11 +511,14 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
             savedExam = { ...savedExam, id: editingExam.id };
           }
           
-          console.log("📦 Saved exam object:", savedExam);
+          // Normalize for display
+          const normalizedSaved = normalizeExamDataForDisplay(savedExam);
+          
+          console.log("📦 Saved and normalized exam:", normalizedSaved);
           
           // Update local state
           setExams((prev) =>
-            prev.map((e) => (e.id === editingExam.id ? savedExam : e))
+            prev.map((e) => (e.id === editingExam.id ? normalizedSaved || savedExam : e))
           );
           
           console.log("✅ Exam updated successfully!");
@@ -458,10 +529,13 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
           // Create new exam
           savedExam = await ExamService.createExam(examData);
           
-          console.log("📦 Created exam object:", savedExam);
+          // Normalize for display
+          const normalizedSaved = normalizeExamDataForDisplay(savedExam);
+          
+          console.log("📦 Created and normalized exam:", normalizedSaved);
           
           // Add to local state
-          setExams((prev) => [savedExam, ...prev]);
+          setExams((prev) => [normalizedSaved || savedExam, ...prev]);
           
           console.log("✅ Exam created successfully!");
         }
@@ -489,7 +563,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       console.log("✅ Exam deleted!");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete exam");
-      console.error("Delete exam error:", err);
+      console.error("❌ Delete exam error:", err);
     }
   }, []);
 
@@ -497,7 +571,6 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   const handleEditExam = useCallback((exam: Exam) => {
     console.log("📝 Editing exam:", exam);
     console.log("🆔 Exam ID:", exam.id);
-    console.log("🔍 Full exam keys:", Object.keys(exam));
     
     // Ensure the exam object has an ID
     if (!exam.id) {
@@ -510,13 +583,23 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       return;
     }
     
-    setEditingExam(exam);
+    // CRITICAL: Normalize for edit (parses table JSON, handles field name variations)
+    const normalizedForEdit = normalizeExamDataForEdit(exam);
+    
+    console.log("✅ Normalized exam for editing:", normalizedForEdit);
+    
+    setEditingExam(normalizedForEdit);
     setShowExamModal(true);
   }, []);
 
   // Print Exam
   const handlePrintExam = useCallback((exam: Exam) => {
-    setSelectedExamForPrint(exam);
+    console.log("🖨️ Preparing exam for print:", exam.title);
+    
+    // Data is already normalized from fetchExams, but ensure it's ready for print
+    const normalizedForPrint = normalizeExamDataForDisplay(exam);
+    
+    setSelectedExamForPrint(normalizedForPrint);
     setShowPrintPreview(true);
   }, []);
 
@@ -532,9 +615,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       try {
         const updatedExam = await ExamService.approveExam(exam.id, notes || "");
         
-        await fetchExams();
+        // Normalize the updated exam
+        const normalizedUpdated = normalizeExamDataForDisplay(updatedExam);
+        
+        // Update local state
         setExams((prev) =>
-          prev.map((e) => (e.id === exam.id ? updatedExam : e))
+          prev.map((e) => (e.id === exam.id ? normalizedUpdated || updatedExam : e))
         );
 
         setShowApprovalModal(false);
@@ -542,6 +628,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
         console.log("✅ Exam approved!");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to approve exam");
+        console.error("❌ Approve exam error:", err);
       }
     },
     []
@@ -553,9 +640,12 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       try {
         const updatedExam = await ExamService.rejectExam(exam.id, reason || "");
         
-        await fetchExams();
+        // Normalize the updated exam
+        const normalizedUpdated = normalizeExamDataForDisplay(updatedExam);
+        
+        // Update local state
         setExams((prev) =>
-          prev.map((e) => (e.id === exam.id ? updatedExam : e))
+          prev.map((e) => (e.id === exam.id ? normalizedUpdated || updatedExam : e))
         );
 
         setShowApprovalModal(false);
@@ -563,6 +653,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
         console.log("✅ Exam rejected!");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to reject exam");
+        console.error("❌ Reject exam error:", err);
       }
     },
     []
