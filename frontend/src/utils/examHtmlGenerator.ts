@@ -859,17 +859,22 @@ function generateStudentCopy(
       padding: 8px;
       text-align: left;
     }
-    .options { 
-      margin-left: 16px; 
-      margin-top: 4px; 
-      font-size: 13px; 
-    }
-    .options > div { 
-      margin: 2px 0; 
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      max-width: 100%;
-    }
+   .options {
+  margin-left: 16px;
+  margin-top: 4px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap; /* allow wrapping if long */
+  gap: 4px 16px; /* consistent spacing */
+  align-items: center;
+}
+
+.options > div {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* space between letter and text */
+  white-space: normal; /* allow wrapping within each option */
+}
     .sub-questions { margin-left: 16px; margin-top: 3px; }
     @media print { 
       body { margin: 10mm; font-size: 14px; } 
@@ -1137,21 +1142,21 @@ function generateTeacherCopy(
       text-align: left;
     }
    .options {
-      margin-left: 16px;
-      margin-top: 4px;
-      font-size: 13px;
-      display: flex;
-      // flex-wrap: wrap;
-      gap: 4px 12px; /* small vertical gap, moderate horizontal gap */
-      align-items: flex-start;
-    }
-    .options > div {
-      flex: 0 1 auto; /* Don't grow, can shrink, auto width based on content */
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      word-break: break-word;
-      line-height: 1.4;
-    }
+  margin-left: 16px;
+  margin-top: 4px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap; /* allow wrapping if long */
+  gap: 4px 16px; /* consistent spacing */
+  align-items: center;
+}
+
+.options > div {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* space between letter and text */
+  white-space: normal; /* allow wrapping within each option */
+}
     .sub-questions { margin-left: 16px; margin-top: 3px; }
     .answer { 
       background-color: #e8f5e8; 
@@ -1230,11 +1235,13 @@ function generateTeacherCopy(
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       <div class="options">
-        ${q.optionA || q.option_a ? `<div>A. ${renderRichContent(q.optionA || q.option_a)}</div>` : ''}
-        ${q.optionB || q.option_b ? `<div>B. ${renderRichContent(q.optionB || q.option_b)}</div>` : ''}
-        ${q.optionC || q.option_c ? `<div>C. ${renderRichContent(q.optionC || q.option_c)}</div>` : ''}
-        ${q.optionD || q.option_d ? `<div>D. ${renderRichContent(q.optionD || q.option_d)}</div>` : ''}
-      </div>
+  ${q.optionA || q.option_a ? `<div><span class="label">A)</span> ${renderRichContent(q.optionA || q.option_a)}</div>` : ''}
+  ${q.optionB || q.option_b ? `<div><span class="label">B)</span> ${renderRichContent(q.optionB || q.option_b)}</div>` : ''}
+  ${q.optionC || q.option_c ? `<div><span class="label">C)</span> ${renderRichContent(q.optionC || q.option_c)}</div>` : ''}
+  ${q.optionD || q.option_d ? `<div><span class="label">D)</span> ${renderRichContent(q.optionD || q.option_d)}</div>` : ''}
+</div>
+
+      
       <div class="answer"><strong>Correct Answer:</strong> ${safeString(q.correctAnswer || q.correct_answer)}</div>
       <div class="expected-points"><strong>Marks:</strong> ${safeString(q.marks || 1)}</div>
     </div>
