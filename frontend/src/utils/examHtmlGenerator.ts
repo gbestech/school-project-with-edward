@@ -1704,11 +1704,18 @@ function generateStudentCopy(
   <div class="section">
     <h3>SECTION A: OBJECTIVE QUESTIONS</h3>
     ${exam.objective_instructions ? `<div class="section-instruction">${renderRichContent(exam.objective_instructions)}</div>` : ''}
-    ${exam.objective_questions.map((q: any, index: number) => `
+    ${exam.objective_questions.map((q: any, index: number) => {
+      // Check if image is a plain URL and convert to img tag
+      const imageHtml = q.image ? (q.image.startsWith('http') && !q.image.includes('<img') 
+        ? `<img src="${q.image}" alt="Question ${index + 1} Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+        : renderRichContent(q.image)
+      ) : '';
+      
+      return `
     <div class="question">
       <strong>${index + 1}.</strong> 
       <span class="question-content">${renderRichContent(q.question || q.question_text)}</span>
-      ${q.image ? `<div class="question-content">${renderRichContent(q.image)}</div>` : ''}
+      ${imageHtml ? `<div class="question-content">${imageHtml}</div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       <div class="options">
         ${q.optionA || q.option_a ? `<div>A. ${renderRichContent(q.optionA || q.option_a)}</div>` : ''}
@@ -1717,7 +1724,8 @@ function generateStudentCopy(
         ${q.optionD || q.option_d ? `<div>D. ${renderRichContent(q.optionD || q.option_d)}</div>` : ''}
       </div>
     </div>
-    `).join('')}
+    `;
+    }).join('')}
   </div>
   ` : ''}
 
@@ -1725,38 +1733,60 @@ function generateStudentCopy(
   <div class="section">
     <h3>SECTION B: THEORY QUESTIONS</h3>
     ${exam.theory_instructions ? `<div class="section-instruction">${renderRichContent(exam.theory_instructions)}</div>` : ''}
-    ${exam.theory_questions.map((q: any, index: number) => `
+    ${exam.theory_questions.map((q: any, index: number) => {
+      // Check if image is a plain URL
+      const imageHtml = q.image ? (q.image.startsWith('http') && !q.image.includes('<img') 
+        ? `<img src="${q.image}" alt="Question ${index + 1} Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+        : renderRichContent(q.image)
+      ) : '';
+      
+      return `
     <div class="question">
       <strong>${index + 1}.</strong> 
       <span class="question-content">${renderRichContent(q.question || q.question_text)}</span>
-      ${q.image ? `<div class="question-content">${renderRichContent(q.image)}</div>` : ''}
+      ${imageHtml ? `<div class="question-content">${imageHtml}</div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.subQuestions && q.subQuestions.length ? `
       <div class="sub-questions">
-        ${q.subQuestions.map((sq: any, sqIndex: number) => `
+        ${q.subQuestions.map((sq: any, sqIndex: number) => {
+          const sqImageHtml = sq.image ? (sq.image.startsWith('http') && !sq.image.includes('<img') 
+            ? `<img src="${sq.image}" alt="Sub-question ${index + 1}${String.fromCharCode(97 + sqIndex)} Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+            : renderRichContent(sq.image)
+          ) : '';
+          
+          return `
         <div class="question">
           <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}.</strong> 
           <span class="question-content">${renderRichContent(sq.question || sq.question_text)}</span>
-          ${sq.image ? `<div class="question-content">${renderRichContent(sq.image)}</div>` : ''}
+          ${sqImageHtml ? `<div class="question-content">${sqImageHtml}</div>` : ''}
           ${sq.table ? `<div class="question-content">${renderRichContent(sq.table)}</div>` : ''}
           ${sq.subSubQuestions && sq.subSubQuestions.length ? `
           <div class="sub-questions">
-            ${sq.subSubQuestions.map((ssq: any, ssqIndex: number) => `
+            ${sq.subSubQuestions.map((ssq: any, ssqIndex: number) => {
+              const ssqImageHtml = ssq.image ? (ssq.image.startsWith('http') && !ssq.image.includes('<img') 
+                ? `<img src="${ssq.image}" alt="Sub-sub-question Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+                : renderRichContent(ssq.image)
+              ) : '';
+              
+              return `
             <div class="question">
               <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}${toRomanNumeral(ssqIndex + 1)}.</strong> 
               <span class="question-content">${renderRichContent(ssq.question || ssq.question_text)}</span>
-              ${ssq.image ? `<div class="question-content">${renderRichContent(ssq.image)}</div>` : ''}
+              ${ssqImageHtml ? `<div class="question-content">${ssqImageHtml}</div>` : ''}
               ${ssq.table ? `<div class="question-content">${renderRichContent(ssq.table)}</div>` : ''}
             </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
           ` : ''}
         </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
       ` : ''}
     </div>
-    `).join('')}
+    `;
+    }).join('')}
   </div>
   ` : ''}
 
@@ -1764,16 +1794,23 @@ function generateStudentCopy(
   <div class="section">
     <h3>SECTION C: PRACTICAL QUESTIONS</h3>
     ${exam.practical_instructions ? `<div class="section-instruction">${renderRichContent(exam.practical_instructions)}</div>` : ''}
-    ${exam.practical_questions.map((q: any, index: number) => `
+    ${exam.practical_questions.map((q: any, index: number) => {
+      const imageHtml = q.image ? (q.image.startsWith('http') && !q.image.includes('<img') 
+        ? `<img src="${q.image}" alt="Practical Question ${index + 1} Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+        : renderRichContent(q.image)
+      ) : '';
+      
+      return `
     <div class="question">
       <strong>${index + 1}.</strong> 
       <span class="question-content">${renderRichContent(q.task || q.question || q.question_text)}</span>
-      ${q.image ? `<div class="question-content">${renderRichContent(q.image)}</div>` : ''}
+      ${imageHtml ? `<div class="question-content">${imageHtml}</div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.materials ? `<div style="margin-left: 16px; margin-top: 4px;"><strong>Materials:</strong> ${renderRichContent(q.materials)}</div>` : ''}
       ${q.timeLimit || q.time_limit ? `<div style="margin-left: 16px;"><strong>Time Limit:</strong> ${safeString(q.timeLimit || q.time_limit)}</div>` : ''}
     </div>
-    `).join('')}
+    `;
+    }).join('')}
   </div>
   ` : ''}
 
@@ -1781,14 +1818,21 @@ function generateStudentCopy(
   <div class="section">
     <h3>SECTION ${String.fromCharCode(68 + sectionIndex)}: ${safeString(section.name).toUpperCase()}</h3>
     ${section.instructions ? `<div class="section-instruction">${renderRichContent(section.instructions)}</div>` : ''}
-    ${section.questions && section.questions.length ? section.questions.map((q: any, qIndex: number) => `
+    ${section.questions && section.questions.length ? section.questions.map((q: any, qIndex: number) => {
+      const imageHtml = q.image ? (q.image.startsWith('http') && !q.image.includes('<img') 
+        ? `<img src="${q.image}" alt="Question ${qIndex + 1} Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+        : renderRichContent(q.image)
+      ) : '';
+      
+      return `
     <div class="question">
       <strong>${qIndex + 1}.</strong> 
       <span class="question-content">${renderRichContent(q.question || q.question_text)}</span>
-      ${q.image ? `<div class="question-content">${renderRichContent(q.image)}</div>` : ''}
+      ${imageHtml ? `<div class="question-content">${imageHtml}</div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
     </div>
-    `).join('') : ''}
+    `;
+    }).join('') : ''}
   </div>
   `).join('') : ''}
 
@@ -2002,11 +2046,17 @@ function generateTeacherCopy(
   <div class="section">
     <h3>SECTION A: OBJECTIVE QUESTIONS - ANSWERS</h3>
     ${exam.objective_instructions ? `<div class="section-instruction">${renderRichContent(exam.objective_instructions)}</div>` : ''}
-    ${exam.objective_questions.map((q: any, index: number) => `
+    ${exam.objective_questions.map((q: any, index: number) => {
+      const imageHtml = q.image ? (q.image.startsWith('http') && !q.image.includes('<img') 
+        ? `<img src="${q.image}" alt="Question ${index + 1} Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`
+        : renderRichContent(q.image)
+      ) : '';
+      
+      return `
     <div class="question">
       <strong>${index + 1}.</strong> 
       <span class="question-content">${renderRichContent(q.question || q.question_text)}</span>
-      ${q.image ? `<div class="question-content">${renderRichContent(q.image)}</div>` : ''}
+      ${imageHtml ? `<div class="question-content">${imageHtml}</div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       <div class="options">
         ${q.optionA || q.option_a ? `<div><span class="label">A)</span> ${renderRichContent(q.optionA || q.option_a)}</div>` : ''}
@@ -2017,7 +2067,8 @@ function generateTeacherCopy(
       <div class="answer"><strong>Correct Answer:</strong> ${safeString(q.correctAnswer || q.correct_answer)}</div>
       <div class="expected-points"><strong>Marks:</strong> ${safeString(q.marks || 1)}</div>
     </div>
-    `).join('')}
+    `;
+    }).join('')}
   </div>
   ` : ''}
 

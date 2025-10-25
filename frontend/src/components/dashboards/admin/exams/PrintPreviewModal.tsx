@@ -4,6 +4,17 @@ import { generateExamHtml } from "@/utils/examHtmlGenerator";
 import { useSettings } from '@/contexts/SettingsContext';
 import { normalizeExamDataForDisplay } from '@/utils/examDataNormalizer';
 
+
+interface Question {
+  question_text?: string;
+  question?: string;
+  image?: string;
+  imageUrl?: string;
+  table?: string | object;
+  subQuestions?: Question[];
+  subSubQuestions?: Question[];
+}
+
 interface Props {
   open: boolean;
   exam?: Exam | null;
@@ -13,6 +24,112 @@ interface Props {
 const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
   const [copyType, setCopyType] = useState<"student" | "teacher">("student");
   const { settings } = useSettings();
+  const [normalizedExam, setNormalizedExam] = useState<any>(null);
+
+
+useEffect(() => {
+    if (open && exam) {
+      console.log('🔄 Normalizing exam for display...');
+      const normalized = normalizeExamDataForDisplay(exam);
+      setNormalizedExam(normalized);
+      console.log('✅ Normalized exam set:', normalized);
+    } else {
+      setNormalizedExam(null);
+    }
+  }, [open, exam]);
+  
+   // Debug normalized exam data with focus on images and tables
+  useEffect(() => {
+    if (open && normalizedExam) {
+      console.group("🖼️ NORMALIZED EXAM - IMAGE & TABLE DEBUG");
+      
+      let imageCount = 0;
+      let tableCount = 0;
+      
+      // Check objective questions
+      if (normalizedExam.objective_questions) {
+        console.group("📊 Objective Questions (Normalized)");
+        normalizedExam.objective_questions.forEach((q: Question, idx: number) => {
+          if (q.image || q.table) {
+            console.log(`Objective ${idx + 1}:`, {
+              hasImage: !!q.image,
+              imageValue: q.image,
+              imageType: typeof q.image,
+              startsWithHttp: typeof q.image === 'string' && q.image.startsWith('http'),
+              includesImgTag: typeof q.image === 'string' && q.image.includes('<img'),
+              first100Chars: q.image ? (typeof q.image === 'string' ? q.image.substring(0, 100) : JSON.stringify(q.image).substring(0, 100)) : null,
+              hasTable: !!q.table,
+              tableIsHTML: typeof q.table === 'string' && q.table.includes('<table'),
+              tablePreview: q.table ? (typeof q.table === 'string' ? q.table.substring(0, 150) : JSON.stringify(q.table).substring(0, 150)) : null
+            });
+            if (q.image) imageCount++;
+            if (q.table) tableCount++;
+          }
+        });
+        console.groupEnd();
+      }
+      
+      // Check theory questions
+      if (normalizedExam.theory_questions) {
+        console.group("📝 Theory Questions (Normalized)");
+        normalizedExam.theory_questions.forEach((q: Question, idx: number) => {
+          if (q.image || q.table) {
+            console.log(`Theory ${idx + 1}:`, {
+              hasImage: !!q.image,
+              imageValue: q.image,
+              imageType: typeof q.image,
+              startsWithHttp: typeof q.image === 'string' && q.image.startsWith('http'),
+              includesImgTag: typeof q.image === 'string' && q.image.includes('<img'),
+              first100Chars: q.image ? (typeof q.image === 'string' ? q.image.substring(0, 100) : JSON.stringify(q.image).substring(0, 100)) : null,
+              hasTable: !!q.table,
+              tableIsHTML: typeof q.table === 'string' && q.table.includes('<table'),
+              tablePreview: q.table ? (typeof q.table === 'string' ? q.table.substring(0, 150) : JSON.stringify(q.table).substring(0, 150)) : null
+            });
+            if (q.image) imageCount++;
+            if (q.table) tableCount++;
+          }
+          
+          // Check sub-questions
+          if (q.subQuestions) {
+            q.subQuestions.forEach((sq, sqIdx) => {
+              if (sq.image || sq.table) {
+                console.log(`  Sub ${idx + 1}.${sqIdx + 1}:`, {
+                  hasImage: !!sq.image,
+                  imageValue: sq.image,
+                  hasTable: !!sq.table,
+                  tablePreview: sq.table ? (typeof sq.table === 'string' ? sq.table.substring(0, 100) : JSON.stringify(sq.table).substring(0, 100)) : null
+                });
+                if (sq.image) imageCount++;
+                if (sq.table) tableCount++;
+              }
+            });
+          }
+        });
+        console.groupEnd();
+      }
+      
+      // Check practical questions
+      if (normalizedExam.practical_questions) {
+        console.group("🔬 Practical Questions (Normalized)");
+        (normalizedExam.practical_questions as Question[]).forEach((q: Question, idx: number) => {
+          if (q.image || q.table) {
+            console.log(`Practical ${idx + 1}:`, {
+              hasImage: !!q.image,
+              imageValue: q.image,
+              hasTable: !!q.table,
+              tablePreview: typeof q.table === 'string' ? q.table.substring(0, 100) : null
+            });
+            if (q.image) imageCount++;
+            if (q.table) tableCount++;
+          }
+        });
+        console.groupEnd();
+      }
+      
+      console.log(`📊 SUMMARY: ${imageCount} images, ${tableCount} tables`);
+      console.groupEnd();
+    }
+  }, [open, normalizedExam]);
   
   // Enhanced debugging
   useEffect(() => {
@@ -74,7 +191,22 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
   if (!open || !exam) return null;
 
   // Generate HTML with settings
-  const html = generateExamHtml(exam, copyType, settings);
+  const html = generateExamHtml(normalizedExam || exam, copyType, settings);
+
+
+  // Debug generated HTML
+  useEffect(() => {
+    if (html) {
+      console.group("📄 GENERATED HTML DEBUG");
+      console.log("HTML length:", html.length);
+      console.log("Contains <img> tags:", html.includes('<img'));
+      console.log("Contains <table> tags:", html.includes('<table'));
+      console.log("Number of <img> tags:", (html.match(/<img/g) || []).length);
+      console.log("Number of <table> tags:", (html.match(/<table/g) || []).length);
+      console.log("First 1000 chars:", html.substring(0, 1000));
+      console.groupEnd();
+    }
+  }, [html]);
   
   // Log generated HTML to check if images/tables are in the output
   console.log("📄 Generated HTML preview (first 1000 chars):", html.substring(0, 1000));
