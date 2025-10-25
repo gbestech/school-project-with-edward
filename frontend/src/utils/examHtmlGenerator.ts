@@ -1004,7 +1004,7 @@ function generateStudentCopy(
         ${q.subQuestions.map((sq: any, sqIndex: number) => `
         <div class="question">
           <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}.</strong> 
-          <div class="question-content">${renderRichContent(sq.question)}</div>
+          <span class="question-content">${renderRichContent(sq.question)}</span>
           ${sq.image ? `<div class="question-content"><img src="${safeString(sq.image)}" alt="Sub-question ${index + 1}${String.fromCharCode(97 + sqIndex)} Image" /></div>` : ''}
           ${sq.table ? `<div class="question-content">${renderRichContent(sq.table)}</div>` : ''}
           ${sq.subSubQuestions && sq.subSubQuestions.length ? `
@@ -1012,7 +1012,7 @@ function generateStudentCopy(
             ${sq.subSubQuestions.map((ssq: any, ssqIndex: number) => `
             <div class="question">
               <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}${toRomanNumeral(ssqIndex + 1)}.</strong> 
-              <div class="question-content">${renderRichContent(ssq.question)}</div>
+              <span class="question-content">${renderRichContent(ssq.question)}</span>
               ${ssq.image ? `<div class="question-content"><img src="${safeString(ssq.image)}" alt="Sub-sub-question Image" /></div>` : ''}
               ${ssq.table ? `<div class="question-content">${renderRichContent(ssq.table)}</div>` : ''}
             </div>
@@ -1035,7 +1035,7 @@ function generateStudentCopy(
     ${exam.practical_questions.map((q: any, index: number) => `
     <div class="question">
       <strong>${index + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.task || q.question)}</div>
+      <span class="question-content">${renderRichContent(q.task || q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Practical Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.materials ? `<div style="margin-left: 16px; margin-top: 4px;"><strong>Materials:</strong> ${renderRichContent(q.materials)}</div>` : ''}
@@ -1052,7 +1052,7 @@ function generateStudentCopy(
     ${section.questions && section.questions.length ? section.questions.map((q: any, qIndex: number) => `
     <div class="question">
       <strong>${qIndex + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.question)}</div>
+      <span class="question-content">${renderRichContent(q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${qIndex + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
     </div>
@@ -1274,7 +1274,7 @@ function generateTeacherCopy(
     ${exam.objective_questions.map((q: any, index: number) => `
     <div class="question">
       <strong>${index + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.question)}</div>
+      <span class="question-content">${renderRichContent(q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       <div class="options">
@@ -1299,7 +1299,7 @@ function generateTeacherCopy(
     ${exam.theory_questions.map((q: any, index: number) => `
     <div class="question">
       <strong>${index + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.question)}</div>
+      <span class="question-content">${renderRichContent(q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.expectedPoints || q.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${renderRichContent(q.expectedPoints || q.expected_points)}</div>` : ''}
@@ -1310,7 +1310,7 @@ function generateTeacherCopy(
         ${q.subQuestions.map((sq: any, sqIndex: number) => `
         <div class="question">
           <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}.</strong> 
-          <div class="question-content">${renderRichContent(sq.question)}</div>
+          <span class="question-content">${renderRichContent(sq.question)}</span>
           ${sq.image ? `<div class="question-content"><img src="${safeString(sq.image)}" alt="Sub-question Image" /></div>` : ''}
           ${sq.table ? `<div class="question-content">${renderRichContent(sq.table)}</div>` : ''}
           ${sq.expectedPoints || sq.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${renderRichContent(sq.expectedPoints || sq.expected_points)}</div>` : ''}
@@ -1321,7 +1321,7 @@ function generateTeacherCopy(
             ${sq.subSubQuestions.map((ssq: any, ssqIndex: number) => `
             <div class="question">
               <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}${toRomanNumeral(ssqIndex + 1)}.</strong> 
-              <div class="question-content">${renderRichContent(ssq.question)}</div>
+              <span class="question-content">${renderRichContent(ssq.question)}</span>
               ${ssq.image ? `<div class="question-content"><img src="${safeString(ssq.image)}" alt="Sub-sub-question Image" /></div>` : ''}
               ${ssq.table ? `<div class="question-content">${renderRichContent(ssq.table)}</div>` : ''}
               ${ssq.expectedPoints || ssq.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${renderRichContent(ssq.expectedPoints || ssq.expected_points)}</div>` : ''}
@@ -1347,7 +1347,7 @@ function generateTeacherCopy(
     ${exam.practical_questions.map((q: any, index: number) => `
     <div class="question">
       <strong>${index + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.task || q.question)}</div>
+      <span class="question-content">${renderRichContent(q.task || q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Practical Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.materials ? `<div class="section-instruction"><strong>Materials:</strong> ${renderRichContent(q.materials)}</div>` : ''}
@@ -1366,7 +1366,7 @@ function generateTeacherCopy(
     ${section.questions && section.questions.length ? section.questions.map((q: any, qIndex: number) => `
     <div class="question">
       <strong>${qIndex + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.question)}</div>
+      <span class="question-content">${renderRichContent(q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${qIndex + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.wordLimit || q.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${safeString(q.wordLimit || q.word_limit)} words</div>` : ''}
