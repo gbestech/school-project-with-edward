@@ -7,6 +7,11 @@ import TeacherDashboardService from '@/services/TeacherDashboardService';
 import { ExamService, ExamCreateData } from '@/services/ExamService';
 import { toast } from 'react-toastify';
 import { X, Plus, Trash2, Save, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { 
+  normalizeExamDataForSave, 
+  normalizeExamDataForEdit 
+} from '@/utils/examDataNormalizer';
+
 
 interface ExamCreationFormProps {
   isOpen: boolean;
@@ -106,55 +111,105 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     }
   }, [isOpen, editingExam, prefill]);
 
-  useEffect(() => {
-    if (editingExam) {
-      setFormData({
-        title: editingExam.title || '',
-        subject: editingExam.subject?.id || editingExam.subject || 0,
-        grade_level: editingExam.grade_level?.id || editingExam.grade_level || 0,
-        exam_type: editingExam.exam_type || 'test',
-        difficulty_level: editingExam.difficulty_level || 'medium',
-        exam_date: editingExam.exam_date || '',
-        start_time: editingExam.start_time || '',
-        end_time: editingExam.end_time || '',
-        duration_minutes: editingExam.duration_minutes || 45,
-        total_marks: editingExam.total_marks || 100,
-        pass_marks: editingExam.pass_marks || 50,
-        venue: editingExam.venue || '',
-        instructions: editingExam.instructions || '',
-        status: editingExam.status || 'scheduled',
-        is_practical: editingExam.is_practical || false,
-        requires_computer: editingExam.is_requires_computer || false,
-        is_online: editingExam.is_online || false,
-        objective_questions: editingExam.objective_questions || [],
-        theory_questions: editingExam.theory_questions || [],
-        practical_questions: editingExam.practical_questions || [],
-        custom_sections: editingExam.custom_sections || [],
-        objective_instructions: editingExam.objective_instructions || '',
-        theory_instructions: editingExam.theory_instructions || '',
-        practical_instructions: editingExam.practical_instructions || ''
-      });
+  // useEffect(() => {
+  //   if (editingExam) {
+  //     setFormData({
+  //       title: editingExam.title || '',
+  //       subject: editingExam.subject?.id || editingExam.subject || 0,
+  //       grade_level: editingExam.grade_level?.id || editingExam.grade_level || 0,
+  //       exam_type: editingExam.exam_type || 'test',
+  //       difficulty_level: editingExam.difficulty_level || 'medium',
+  //       exam_date: editingExam.exam_date || '',
+  //       start_time: editingExam.start_time || '',
+  //       end_time: editingExam.end_time || '',
+  //       duration_minutes: editingExam.duration_minutes || 45,
+  //       total_marks: editingExam.total_marks || 100,
+  //       pass_marks: editingExam.pass_marks || 50,
+  //       venue: editingExam.venue || '',
+  //       instructions: editingExam.instructions || '',
+  //       status: editingExam.status || 'scheduled',
+  //       is_practical: editingExam.is_practical || false,
+  //       requires_computer: editingExam.is_requires_computer || false,
+  //       is_online: editingExam.is_online || false,
+  //       objective_questions: editingExam.objective_questions || [],
+  //       theory_questions: editingExam.theory_questions || [],
+  //       practical_questions: editingExam.practical_questions || [],
+  //       custom_sections: editingExam.custom_sections || [],
+  //       objective_instructions: editingExam.objective_instructions || '',
+  //       theory_instructions: editingExam.theory_instructions || '',
+  //       practical_instructions: editingExam.practical_instructions || ''
+  //     });
 
-      setObjectiveQuestions(editingExam.objective_questions || []);
-      setTheoryQuestions(editingExam.theory_questions || []);
-      setPracticalQuestions(editingExam.practical_questions || []);
-      const existingCustom = editingExam.custom_sections || [];
-      setCustomSections(existingCustom);
-      setObjectiveInstructions(editingExam.objective_instructions || '');
-      setTheoryInstructions(editingExam.theory_instructions || '');
-      setPracticalInstructions(editingExam.practical_instructions || '');
-      const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
-        { kind: 'objective' },
-        { kind: 'theory' },
-        { kind: 'practical' }
-      ];
-      for (const s of existingCustom) {
-        order.push({ kind: 'custom', id: s.id });
-      }
-      setSectionOrder(order);
+  //     setObjectiveQuestions(editingExam.objective_questions || []);
+  //     setTheoryQuestions(editingExam.theory_questions || []);
+  //     setPracticalQuestions(editingExam.practical_questions || []);
+  //     const existingCustom = editingExam.custom_sections || [];
+  //     setCustomSections(existingCustom);
+  //     setObjectiveInstructions(editingExam.objective_instructions || '');
+  //     setTheoryInstructions(editingExam.theory_instructions || '');
+  //     setPracticalInstructions(editingExam.practical_instructions || '');
+  //     const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
+  //       { kind: 'objective' },
+  //       { kind: 'theory' },
+  //       { kind: 'practical' }
+  //     ];
+  //     for (const s of existingCustom) {
+  //       order.push({ kind: 'custom', id: s.id });
+  //     }
+  //     setSectionOrder(order);
+  //   }
+  // }, [editingExam]);
+useEffect(() => {
+  if (editingExam) {
+    // NORMALIZE DATA FOR EDITING
+    const normalized = normalizeExamDataForEdit(editingExam);
+    
+    setFormData({
+      title: normalized.title || '',
+      subject: normalized.subject?.id || normalized.subject || 0,
+      grade_level: normalized.grade_level?.id || normalized.grade_level || 0,
+      exam_type: normalized.exam_type || 'test',
+      difficulty_level: normalized.difficulty_level || 'medium',
+      exam_date: normalized.exam_date || '',
+      start_time: normalized.start_time || '',
+      end_time: normalized.end_time || '',
+      duration_minutes: normalized.duration_minutes || 45,
+      total_marks: normalized.total_marks || 100,
+      pass_marks: normalized.pass_marks || 50,
+      venue: normalized.venue || '',
+      instructions: normalized.instructions || '',
+      status: normalized.status || 'scheduled',
+      is_practical: normalized.is_practical || false,
+      requires_computer: normalized.is_requires_computer || false,
+      is_online: normalized.is_online || false,
+      objective_questions: normalized.objective_questions || [],
+      theory_questions: normalized.theory_questions || [],
+      practical_questions: normalized.practical_questions || [],
+      custom_sections: normalized.custom_sections || [],
+      objective_instructions: normalized.objective_instructions || '',
+      theory_instructions: normalized.theory_instructions || '',
+      practical_instructions: normalized.practical_instructions || ''
+    });
+
+    setObjectiveQuestions(normalized.objective_questions || []);
+    setTheoryQuestions(normalized.theory_questions || []);
+    setPracticalQuestions(normalized.practical_questions || []);
+    const existingCustom = normalized.custom_sections || [];
+    setCustomSections(existingCustom);
+    setObjectiveInstructions(normalized.objective_instructions || '');
+    setTheoryInstructions(normalized.theory_instructions || '');
+    setPracticalInstructions(normalized.practical_instructions || '');
+    const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
+      { kind: 'objective' },
+      { kind: 'theory' },
+      { kind: 'practical' }
+    ];
+    for (const s of existingCustom) {
+      order.push({ kind: 'custom', id: s.id });
     }
-  }, [editingExam]);
-
+    setSectionOrder(order);
+  }
+}, [editingExam]);
   useEffect(() => {
     if (isOpen && !editingExam) {
       setSectionOrder([
@@ -559,99 +614,250 @@ const handleInputChange = (field: keyof ExamCreateData, value: any) => {
     return true;
   };
 
-  const saveAsDraft = async () => {
-    if (!validateForm()) return;
+  // const saveAsDraft = async () => {
+  //   if (!validateForm()) return;
 
-    try {
-      setSavingDraft(true);
+  //   try {
+  //     setSavingDraft(true);
       
-      const examData: ExamCreateData = {
-        ...formData,
-        status: 'scheduled',
-        teacher: currentTeacherId!,
-        objective_questions: objectiveQuestions,
-        theory_questions: theoryQuestions,
-        practical_questions: practicalQuestions,
-        custom_sections: getOrderedCustomSections(),
-        objective_instructions: objectiveInstructions,
-        theory_instructions: theoryInstructions,
-        practical_instructions: practicalInstructions,
-        total_marks: calculateTotalMarks()
-      };
+  //     const examData: ExamCreateData = {
+  //       ...formData,
+  //       status: 'scheduled',
+  //       teacher: currentTeacherId!,
+  //       objective_questions: objectiveQuestions,
+  //       theory_questions: theoryQuestions,
+  //       practical_questions: practicalQuestions,
+  //       custom_sections: getOrderedCustomSections(),
+  //       objective_instructions: objectiveInstructions,
+  //       theory_instructions: theoryInstructions,
+  //       practical_instructions: practicalInstructions,
+  //       total_marks: calculateTotalMarks()
+  //     };
 
-      console.log('📝 CREATING EXAM - Full payload:', examData);
-      console.log('📝 Teacher ID being sent:', examData.teacher);
-      console.log('📝 Subject ID being sent:', examData.subject);
-      console.log('📝 Grade Level ID being sent:', examData.grade_level);
+  //     console.log('📝 CREATING EXAM - Full payload:', examData);
+  //     console.log('📝 Teacher ID being sent:', examData.teacher);
+  //     console.log('📝 Subject ID being sent:', examData.subject);
+  //     console.log('📝 Grade Level ID being sent:', examData.grade_level);
 
-      if (editingExam) {
-        const response = await ExamService.updateExam(editingExam.id, examData);
-        console.log('✅ EXAM UPDATED - Response:', response);
-        toast.success('Exam updated successfully!');
-      } else {
-        const response = await ExamService.createExam(examData);
-        console.log('✅ EXAM CREATED - Response:', response);
-        console.log('✅ Created exam ID:', response?.id);
-        console.log('✅ Created exam teacher:', response?.teacher);
-        toast.success(`Exam saved successfully! ID: ${response?.id || 'N/A'}`);
-      }
+  //     if (editingExam) {
+  //       const response = await ExamService.updateExam(editingExam.id, examData);
+  //       console.log('✅ EXAM UPDATED - Response:', response);
+  //       toast.success('Exam updated successfully!');
+  //     } else {
+  //       const response = await ExamService.createExam(examData);
+  //       console.log('✅ EXAM CREATED - Response:', response);
+  //       console.log('✅ Created exam ID:', response?.id);
+  //       console.log('✅ Created exam teacher:', response?.teacher);
+  //       toast.success(`Exam saved successfully! ID: ${response?.id || 'N/A'}`);
+  //     }
 
-      onExamCreated();
-      onClose();
-    } catch (error) {
-      console.error('❌ Error saving exam:', error);
-      console.error('❌ Error details:', error instanceof Error ? error.message : error);
-      toast.error('Failed to save exam. Please try again.');
-    } finally {
-      setSavingDraft(false);
+  //     onExamCreated();
+  //     onClose();
+  //   } catch (error) {
+  //     console.error('❌ Error saving exam:', error);
+  //     console.error('❌ Error details:', error instanceof Error ? error.message : error);
+  //     toast.error('Failed to save exam. Please try again.');
+  //   } finally {
+  //     setSavingDraft(false);
+  //   }
+  // };
+// Replace these two functions in your ExamCreationForm.tsx
+
+const saveAsDraft = async () => {
+  if (!validateForm()) return;
+
+  try {
+    setSavingDraft(true);
+    
+    const examData: ExamCreateData = {
+      ...formData,
+      status: 'scheduled',
+      teacher: currentTeacherId!,
+      objective_questions: objectiveQuestions,
+      theory_questions: theoryQuestions,
+      practical_questions: practicalQuestions,
+      custom_sections: getOrderedCustomSections(),
+      objective_instructions: objectiveInstructions,
+      theory_instructions: theoryInstructions,
+      practical_instructions: practicalInstructions,
+      total_marks: calculateTotalMarks()
+    };
+
+    // NORMALIZE DATA FOR COMPATIBILITY
+    const normalizedData = normalizeExamDataForSave(examData);
+
+    console.log('📝 CREATING EXAM - Full payload:', normalizedData);
+    console.log('📝 Teacher ID being sent:', normalizedData.teacher);
+    console.log('📝 Subject ID being sent:', normalizedData.subject);
+    console.log('📝 Grade Level ID being sent:', normalizedData.grade_level);
+
+    if (editingExam) {
+      const response = await ExamService.updateExam(editingExam.id, normalizedData);
+      console.log('✅ EXAM UPDATED - Response:', response);
+      toast.success('Exam updated successfully!');
+    } else {
+      const response = await ExamService.createExam(normalizedData);
+      console.log('✅ EXAM CREATED - Response:', response);
+      console.log('✅ Created exam ID:', response?.id);
+      console.log('✅ Created exam teacher:', response?.teacher);
+      toast.success(`Exam saved successfully! ID: ${response?.id || 'N/A'}`);
     }
-  };
 
-  const submitForApproval = async () => {
-    if (!validateForm()) return;
+    onExamCreated();
+    onClose();
+  } catch (error) {
+    console.error('❌ Error saving exam:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : error);
+    toast.error('Failed to save exam. Please try again.');
+  } finally {
+    setSavingDraft(false);
+  }
+};
 
-    try {
-      setLoading(true);
+const submitForApproval = async () => {
+  if (!validateForm()) return;
+
+  try {
+    setLoading(true);
+    
+    const examData: ExamCreateData = {
+      ...formData,
+      status: 'scheduled',
+      teacher: currentTeacherId!,
+      objective_questions: objectiveQuestions,
+      theory_questions: theoryQuestions,
+      practical_questions: practicalQuestions,
+      custom_sections: getOrderedCustomSections(),
+      objective_instructions: objectiveInstructions,
+      theory_instructions: theoryInstructions,
+      practical_instructions: practicalInstructions,
+      total_marks: calculateTotalMarks()
+    };
+
+    // NORMALIZE DATA FOR COMPATIBILITY
+    const normalizedData = normalizeExamDataForSave(examData);
+
+    console.log('🔍 Submitting exam for approval with data:', {
+      teacher: normalizedData.teacher,
+      title: normalizedData.title,
+      subject: normalizedData.subject,
+      grade_level: normalizedData.grade_level
+    });
+
+    if (editingExam) {
+      await ExamService.updateExam(editingExam.id, normalizedData);
+      toast.success('Exam submitted for review successfully!');
+    } else {
+      const response = await ExamService.createExam(normalizedData);
+      console.log('🔍 Exam created and submitted successfully:', response);
+      toast.success('Exam submitted for review successfully!');
+    }
+
+    onExamCreated();
+    onClose();
+  } catch (error) {
+    console.error('❌ Error submitting exam:', error);
+    toast.error('Failed to submit exam. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // const submitForApproval = async () => {
+  //   if (!validateForm()) return;
+
+  //   try {
+  //     setLoading(true);
       
-      const examData: ExamCreateData = {
-        ...formData,
-        status: 'scheduled',
-        teacher: currentTeacherId!,
-        objective_questions: objectiveQuestions,
-        theory_questions: theoryQuestions,
-        practical_questions: practicalQuestions,
-        custom_sections: getOrderedCustomSections(),
-        objective_instructions: objectiveInstructions,
-        theory_instructions: theoryInstructions,
-        practical_instructions: practicalInstructions,
-        total_marks: calculateTotalMarks()
-      };
+  //     const examData: ExamCreateData = {
+  //       ...formData,
+  //       status: 'scheduled',
+  //       teacher: currentTeacherId!,
+  //       objective_questions: objectiveQuestions,
+  //       theory_questions: theoryQuestions,
+  //       practical_questions: practicalQuestions,
+  //       custom_sections: getOrderedCustomSections(),
+  //       objective_instructions: objectiveInstructions,
+  //       theory_instructions: theoryInstructions,
+  //       practical_instructions: practicalInstructions,
+  //       total_marks: calculateTotalMarks()
+  //     };
 
-      console.log('🔍 Submitting exam for approval with data:', {
-        teacher: examData.teacher,
-        title: examData.title,
-        subject: examData.subject,
-        grade_level: examData.grade_level
-      });
+  //     console.log('🔍 Submitting exam for approval with data:', {
+  //       teacher: examData.teacher,
+  //       title: examData.title,
+  //       subject: examData.subject,
+  //       grade_level: examData.grade_level
+  //     });
 
-      if (editingExam) {
-        await ExamService.updateExam(editingExam.id, examData);
-        toast.success('Exam submitted for review successfully!');
-      } else {
-        const response = await ExamService.createExam(examData);
-        console.log('🔍 Exam created and submitted successfully:', response);
-        toast.success('Exam submitted for review successfully!');
-      }
+  //     if (editingExam) {
+  //       await ExamService.updateExam(editingExam.id, examData);
+  //       toast.success('Exam submitted for review successfully!');
+  //     } else {
+  //       const response = await ExamService.createExam(examData);
+  //       console.log('🔍 Exam created and submitted successfully:', response);
+  //       toast.success('Exam submitted for review successfully!');
+  //     }
 
-      onExamCreated();
-      onClose();
-    } catch (error) {
-      console.error('❌ Error submitting exam:', error);
-      toast.error('Failed to submit exam. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //     onExamCreated();
+  //     onClose();
+  //   } catch (error) {
+  //     console.error('❌ Error submitting exam:', error);
+  //     toast.error('Failed to submit exam. Please try again.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+// Update submitForApproval function (around line 490):
+// const submitForApproval = async () => {
+//   if (!validateForm()) return;
+
+//   try {
+//     setLoading(true);
+    
+//     const examData: ExamCreateData = {
+//       ...formData,
+//       status: 'scheduled',
+//       teacher: currentTeacherId!,
+//       objective_questions: objectiveQuestions,
+//       theory_questions: theoryQuestions,
+//       practical_questions: practicalQuestions,
+//       custom_sections: getOrderedCustomSections(),
+//       objective_instructions: objectiveInstructions,
+//       theory_instructions: theoryInstructions,
+//       practical_instructions: practicalInstructions,
+//       total_marks: calculateTotalMarks()
+//     };
+
+//     // NORMALIZE DATA FOR COMPATIBILITY
+//     const normalizedData = normalizeExamDataForSave(examData);
+
+//     console.log('🔍 Submitting exam for approval with data:', {
+//       teacher: normalizedData.teacher,
+//       title: normalizedData.title,
+//       subject: normalizedData.subject,
+//       grade_level: normalizedData.grade_level
+//     });
+
+//     if (editingExam) {
+//       await ExamService.updateExam(editingExam.id, normalizedData);
+//       toast.success('Exam submitted for review successfully!');
+//     } else {
+//       const response = await ExamService.createExam(normalizedData);
+//       console.log('🔍 Exam created and submitted successfully:', response);
+//       toast.success('Exam submitted for review successfully!');
+//     }
+
+//     onExamCreated();
+//     onClose();
+//   } catch (error) {
+//     console.error('❌ Error submitting exam:', error);
+//     toast.error('Failed to submit exam. Please try again.');
+//   } finally {
+//     setLoading(false);
+//   }
+// };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {

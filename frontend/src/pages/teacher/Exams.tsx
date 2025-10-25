@@ -8,6 +8,7 @@ import { ExamService, Exam } from '@/services/ExamService';
 import { toast } from 'react-toastify';
 import ExamCreationForm from '@/components/dashboards/teacher/ExamCreationForm';
 import TestCreationForm from '@/components/dashboards/teacher/TestCreationForm';
+import { normalizeExamDataForDisplay } from '@/utils/examDataNormalizer';
 import { 
   Plus, 
   Edit, 
@@ -345,8 +346,12 @@ const loadTeacherData = async () => {
   try {
     const full = await ExamService.getExam(exam.id);
     console.log('✅ Loaded full exam details:', full);
+
+    // NORMALIZE DATA FOR DISPLAY
+      const normalizedFull = normalizeExamDataForDisplay(full);
+      console.log('✅ Normalized exam details:', normalizedFull);
     setSelectedExam(exam);
-    setSelectedExamDetail(full);
+    setSelectedExamDetail(normalizedFull);
   } catch (e) {
     console.error('❌ Error loading exam details:', e);
     
