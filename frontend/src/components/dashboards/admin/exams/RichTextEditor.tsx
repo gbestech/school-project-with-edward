@@ -127,6 +127,36 @@ const MenuBar = ({ editor }: any) => {
       >
         {"</>"}
       </button>
+      <button
+        onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+        title="Horizontal Rule"
+      >
+        ― HR
+      </button>
+        <button
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("blockquote")
+        ? "bg-blue-600 text-white"
+        : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+        title="Blockquote"
+      >
+        ❝ Quote
+          
+        </button>
+        <button
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        className={`px-3 py-1 rounded text-sm font-medium transition ${
+          editor.isActive("underline")
+        ? "bg-blue-600 text-white"    
+        : "bg-white text-gray-700 hover:bg-gray-200"
+        }`}
+        title="Underline"
+      >
+        Underline U 
+        </button>
 
       <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
