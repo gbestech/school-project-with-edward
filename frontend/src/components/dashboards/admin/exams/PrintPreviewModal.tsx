@@ -229,6 +229,7 @@ import React, { useState, useEffect } from "react";
 import { Exam } from "@/services/ExamService";
 import { generateExamHtml } from "@/utils/examHtmlGenerator";
 import { useSettings } from '@/contexts/SettingsContext';
+import { normalizeExamDataForDisplay } from '@/utils/examDataNormalizer';
 
 interface Props {
   open: boolean;
@@ -264,6 +265,14 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
             tableIsString: typeof q.table === 'string',
             tableParsed: typeof q.table === 'string' ? JSON.parse(q.table) : q.table
           });
+          console.log("📊 Sample objective question:", q);
+  console.log("🖼️ Image fields:", {
+    image: q.image,
+    imageUrl: q.imageUrl,
+    image_url: q.image_url
+  });
+  console.log("📋 Table data:", q.table);
+  console.log("📝 Question text:", q.question || q.question_text);
         });
         console.groupEnd();
       }

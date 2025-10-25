@@ -344,6 +344,7 @@ import ExamFormModal from "./ExamFormModal";
 import PrintPreviewModal from "./PrintPreviewModal";
 import ApprovalModal from "./ApprovalModal";
 
+
 interface ExamsPageProps {
   searchTerm?: string;
   selectedExamType?: string;
