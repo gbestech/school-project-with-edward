@@ -187,15 +187,16 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
       console.groupEnd();
     }
   }, [open, normalizedExam]);
-  
-  if (!open || !exam) return null;
 
   // Generate HTML with normalized exam data and settings - memoized to prevent unnecessary recalculation
+  // MUST be called before early return to follow Rules of Hooks
   const html = useMemo(() => {
     if (!normalizedExam) return '';
     console.log('🔨 Generating HTML with:', { normalizedExam, copyType });
     return generateExamHtml(normalizedExam, copyType, settings);
   }, [normalizedExam, copyType, settings]);
+  
+  if (!open || !exam) return null;
 
   // Debug generated HTML - runs only when dependencies change
   useEffect(() => {
