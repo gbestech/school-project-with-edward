@@ -1,11 +1,10 @@
-
 // components/RichTextEditor.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
-import {Table} from "@tiptap/extension-table";
+import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
 import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
@@ -20,8 +19,11 @@ interface RichTextEditorProps {
 const MenuBar = ({ editor }: any) => {
   if (!editor) return null;
 
+  const isTableActive = editor.isActive("table");
+
   return (
     <div className="bg-gray-100 border-b border-gray-300 p-2 flex flex-wrap gap-1 rounded-t-lg">
+      {/* Text Formatting */}
       <button
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={!editor.can().chain().focus().toggleBold().run()}
@@ -30,8 +32,9 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Bold"
       >
-        Bold
+        <strong>B</strong>
       </button>
       <button
         onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -41,8 +44,9 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Italic"
       >
-        Italic
+        <em>I</em>
       </button>
       <button
         onClick={() => editor.chain().focus().toggleStrike().run()}
@@ -52,9 +56,14 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Strikethrough"
       >
-        Strike
+        <s>S</s>
       </button>
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Headings */}
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         className={`px-3 py-1 rounded text-sm font-medium transition ${
@@ -62,6 +71,7 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Heading 1"
       >
         H1
       </button>
@@ -72,9 +82,14 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Heading 2"
       >
         H2
       </button>
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Lists */}
       <button
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         className={`px-3 py-1 rounded text-sm font-medium transition ${
@@ -82,8 +97,9 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Bullet List"
       >
-        Bullet List
+        • List
       </button>
       <button
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -92,9 +108,14 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Numbered List"
       >
-        Ordered List
+        1. List
       </button>
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Code Block */}
       <button
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         className={`px-3 py-1 rounded text-sm font-medium transition ${
@@ -102,39 +123,115 @@ const MenuBar = ({ editor }: any) => {
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Code Block"
       >
-        Code
+        {"</>"}
       </button>
-      <button
-        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-        className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
-      >
-        Table
-      </button>
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Table Controls */}
+      {!isTableActive ? (
+        <button
+          onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+          className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+          title="Insert Table"
+        >
+          ⊞ Table
+        </button>
+      ) : (
+        <>
+          <button
+            onClick={() => editor.chain().focus().addColumnBefore().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+            title="Add Column Before"
+          >
+            ←Col
+          </button>
+          <button
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+            title="Add Column After"
+          >
+            Col→
+          </button>
+          <button
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition"
+            title="Delete Column"
+          >
+            ✕Col
+          </button>
+          <button
+            onClick={() => editor.chain().focus().addRowBefore().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+            title="Add Row Before"
+          >
+            ↑Row
+          </button>
+          <button
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+            title="Add Row After"
+          >
+            Row↓
+          </button>
+          <button
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition"
+            title="Delete Row"
+          >
+            ✕Row
+          </button>
+          <button
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            className="px-2 py-1 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-700 transition"
+            title="Delete Table"
+          >
+            ✕Table
+          </button>
+        </>
+      )}
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Image */}
       <button
         onClick={() => {
           const url = prompt("Enter image URL:");
           if (url) editor.chain().focus().setImage({ src: url }).run();
         }}
         className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+        title="Insert Image"
       >
-        Image
+        🖼️ Image
       </button>
+
+      {/* Link */}
       <button
-        onClick={() => editor.chain().focus().setLink({ href: prompt("Enter URL:") || "" }).run()}
+        onClick={() => {
+          const url = prompt("Enter URL:");
+          if (url) editor.chain().focus().setLink({ href: url }).run();
+        }}
         className={`px-3 py-1 rounded text-sm font-medium transition ${
           editor.isActive("link")
             ? "bg-blue-600 text-white"
             : "bg-white text-gray-700 hover:bg-gray-200"
         }`}
+        title="Insert Link"
       >
-        Link
+        🔗 Link
       </button>
+
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+      {/* Clear Formatting */}
       <button
-        onClick={() => editor.chain().focus().clearNodes().run()}
+        onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
         className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-200 transition"
+        title="Clear Formatting"
       >
-        Clear Format
+        Clear
       </button>
     </div>
   );
@@ -149,27 +246,70 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Link.configure({ openOnClick: false }),
-      Image,
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      Link.configure({ 
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-600 underline hover:text-blue-800',
+        },
+      }),
+      Image.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded',
+        },
+      }),
+      Table.configure({ 
+        resizable: true,
+        HTMLAttributes: {
+          class: 'border-collapse table-auto w-full my-4',
+        },
+      }),
+      TableRow.configure({
+        HTMLAttributes: {
+          class: 'border border-gray-300',
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'border border-gray-300 bg-gray-100 px-4 py-2 text-left font-semibold',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'border border-gray-300 px-4 py-2',
+        },
+      }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
     editable: !readOnly,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none focus:outline-none',
+      },
+    },
   });
+
+  // Update editor content when value changes externally
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value);
+    }
+  }, [editor, value]);
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden shadow-sm">
       {!readOnly && <MenuBar editor={editor} />}
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-4 py-3 min-h-[150px] bg-white focus:outline-none"
+        className="px-4 py-3 min-h-[150px] bg-white focus-within:bg-gray-50"
       />
+      {!readOnly && (
+        <div className="bg-gray-50 border-t border-gray-300 px-4 py-2 text-xs text-gray-500">
+          {placeholder}
+        </div>
+      )}
     </div>
   );
 };
