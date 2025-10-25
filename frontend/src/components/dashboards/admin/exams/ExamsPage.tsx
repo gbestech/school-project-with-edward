@@ -336,6 +336,7 @@
 
 // export default ExamsPage;
 // components/ExamsPage.tsx
+// components/ExamsPage.tsx
 import React, { useState, useCallback, useEffect } from "react";
 import { Exam, ExamCreateData, ExamUpdateData, ExamFilters, ExamService } from "@/services/ExamService";
 import ExamListTable from "./ExamListTable";
@@ -397,7 +398,22 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
       if (localSubject) filters.subject = localSubject;
 
       const data = await ExamService.getExams(filters);
-      setExams(data || []);
+      
+      // Ensure all exams have their IDs properly set
+      const examsWithIds = (data || []).map(exam => {
+        // If ID is missing at top level but exists nested, extract it
+        if (!exam.id && typeof exam === 'object') {
+          // Try to find ID in common nested locations
+          const possibleId = (exam as any).pk || (exam as any).exam_id || (exam as any).examId;
+          if (possibleId) {
+            return { ...exam, id: possibleId };
+          }
+        }
+        return exam;
+      });
+      
+      console.log("📚 Loaded exams:", examsWithIds);
+      setExams(examsWithIds);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load exams");
       console.error("Fetch exams error:", err);
@@ -421,6 +437,13 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
           const updateData: ExamUpdateData = examData;
           savedExam = await ExamService.updateExam(editingExam.id, updateData);
           
+          // Ensure the saved exam has the ID (in case API doesn't return it)
+          if (!savedExam.id) {
+            savedExam = { ...savedExam, id: editingExam.id };
+          }
+          
+          console.log("📦 Saved exam object:", savedExam);
+          
           // Update local state
           setExams((prev) =>
             prev.map((e) => (e.id === editingExam.id ? savedExam : e))
@@ -433,6 +456,8 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
           
           // Create new exam
           savedExam = await ExamService.createExam(examData);
+          
+          console.log("📦 Created exam object:", savedExam);
           
           // Add to local state
           setExams((prev) => [savedExam, ...prev]);
@@ -471,11 +496,16 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   const handleEditExam = useCallback((exam: Exam) => {
     console.log("📝 Editing exam:", exam);
     console.log("🆔 Exam ID:", exam.id);
+    console.log("🔍 Full exam keys:", Object.keys(exam));
     
     // Ensure the exam object has an ID
     if (!exam.id) {
       console.error("❌ Cannot edit exam: Missing ID");
-      setError("Cannot edit exam: Missing ID");
+      console.error("❌ Exam object:", JSON.stringify(exam, null, 2));
+      setError("Cannot edit exam: Missing ID. Please refresh and try again.");
+      
+      // Try to recover by fetching fresh data
+      fetchExams();
       return;
     }
     
