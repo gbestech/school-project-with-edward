@@ -621,14 +621,14 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
         let subjects: any[] = [];
 
         try {
-          const gradeLevelsData = await api.get('classrooms/grades/');
+          const gradeLevelsData = await api.get('/api/classrooms/grades/');
           gradeLevels = safeArrayFromResponse(gradeLevelsData);
         } catch (err) {
           console.error('Failed to load grade levels:', err);
         }
 
         try {
-          const subjectsData = await api.get('subjects/');
+          const subjectsData = await api.get('/api/subjects/');
           subjects = safeArrayFromResponse(subjectsData);
         } catch (err) {
           console.error('Failed to load subjects:', err);
