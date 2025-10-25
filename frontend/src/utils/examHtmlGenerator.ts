@@ -1136,8 +1136,22 @@ function generateTeacherCopy(
       padding: 8px;
       text-align: left;
     }
-   .options { margin-left: 8px; margin-top: 1px; font-size: 12px; display: flex; justify-content: flex-start; gap: 2px; flex-wrap: wrap; }
-    .options > div { margin-right: 8px; }
+   .options {
+      margin-left: 16px;
+      margin-top: 4px;
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 12px; /* small vertical gap, moderate horizontal gap */
+      align-items: flex-start;
+    }
+    .options > div {
+      flex: 0 1 auto; /* Don't grow, can shrink, auto width based on content */
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      line-height: 1.4;
+    }
     .sub-questions { margin-left: 16px; margin-top: 3px; }
     .answer { 
       background-color: #e8f5e8; 
