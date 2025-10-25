@@ -652,6 +652,7 @@
 
 
 // utils/examHtmlGenerator.ts
+// utils/examHtmlGenerator.ts
 import { Exam } from "../services/ExamService";
 
 // Helper function to safely convert any value to string
@@ -860,14 +861,15 @@ function generateStudentCopy(
     }
     .options { 
       margin-left: 16px; 
-      margin-top: 2px; 
+      margin-top: 4px; 
       font-size: 13px; 
-      display: flex; 
-      justify-content: flex-start; 
-      gap: 2px; 
-      flex-wrap: wrap; 
     }
-    .options > div { margin-right: 8px; }
+    .options > div { 
+      margin: 2px 0; 
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
+    }
     .sub-questions { margin-left: 16px; margin-top: 3px; }
     @media print { 
       body { margin: 10mm; font-size: 14px; } 
@@ -1136,14 +1138,15 @@ function generateTeacherCopy(
     }
     .options { 
       margin-left: 16px; 
-      margin-top: 2px; 
+      margin-top: 4px; 
       font-size: 13px; 
-      display: flex; 
-      justify-content: flex-start; 
-      gap: 2px; 
-      flex-wrap: wrap; 
     }
-    .options > div { margin-right: 8px; }
+    .options > div { 
+      margin: 2px 0; 
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
+    }
     .sub-questions { margin-left: 16px; margin-top: 3px; }
     .answer { 
       background-color: #e8f5e8; 
@@ -1234,34 +1237,41 @@ function generateTeacherCopy(
   </div>
   ` : ''}
 
-    ${exam.theory_questions?.length ? `
+  ${exam.theory_questions?.length ? `
   <div class="section">
     <h3>SECTION B: THEORY QUESTIONS - MARKING GUIDE</h3>
-    ${exam.theory_instructions ? `<div class="section-instruction">${exam.theory_instructions}</div>` : ''}
+    ${exam.theory_instructions ? `<div class="section-instruction">${renderRichContent(exam.theory_instructions)}</div>` : ''}
     ${exam.theory_questions.map((q: any, index: number) => `
     <div class="question">
-      <strong>${index + 1}.</strong> ${q.question}
-      ${q.expectedPoints || q.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${q.expectedPoints || q.expected_points}</div>` : ''}
-      ${q.wordLimit || q.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${q.wordLimit || q.word_limit} words</div>` : ''}
-      <div class="expected-points"><strong>Marks:</strong> ${q.marks || 1}</div>
+      <strong>${index + 1}.</strong> 
+      <div class="question-content">${renderRichContent(q.question)}</div>
+      ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${index + 1} Image" /></div>` : ''}
+      ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
+      ${q.expectedPoints || q.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${renderRichContent(q.expectedPoints || q.expected_points)}</div>` : ''}
+      ${q.wordLimit || q.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${safeString(q.wordLimit || q.word_limit)} words</div>` : ''}
+      <div class="expected-points"><strong>Marks:</strong> ${safeString(q.marks || 1)}</div>
       ${q.subQuestions && q.subQuestions.length ? `
       <div class="sub-questions">
         ${q.subQuestions.map((sq: any, sqIndex: number) => `
         <div class="question">
-          <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}.</strong> ${sq.question}
-          ${sq.expectedPoints || sq.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${sq.expectedPoints || sq.expected_points}</div>` : ''}
-          ${sq.wordLimit || sq.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${sq.wordLimit || sq.word_limit} words</div>` : ''}
-          <div class="expected-points"><strong>Marks:</strong> ${sq.marks || 1}</div>
+          <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}.</strong> 
+          <div class="question-content">${renderRichContent(sq.question)}</div>
+          ${sq.image ? `<div class="question-content"><img src="${safeString(sq.image)}" alt="Sub-question Image" /></div>` : ''}
+          ${sq.table ? `<div class="question-content">${renderRichContent(sq.table)}</div>` : ''}
+          ${sq.expectedPoints || sq.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${renderRichContent(sq.expectedPoints || sq.expected_points)}</div>` : ''}
+          ${sq.wordLimit || sq.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${safeString(sq.wordLimit || sq.word_limit)} words</div>` : ''}
+          <div class="expected-points"><strong>Marks:</strong> ${safeString(sq.marks || 1)}</div>
           ${sq.subSubQuestions && sq.subSubQuestions.length ? `
           <div class="sub-questions">
             ${sq.subSubQuestions.map((ssq: any, ssqIndex: number) => `
             <div class="question">
-              <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}${toRomanNumeral(ssqIndex + 1)}.</strong> ${ssq.question}
-              ${ssq.image ? `<div class="question-content"><img src="${ssq.image}" alt="Sub-sub-question Image" /></div>` : ''}
+              <strong>${index + 1}${String.fromCharCode(97 + sqIndex)}${toRomanNumeral(ssqIndex + 1)}.</strong> 
+              <div class="question-content">${renderRichContent(ssq.question)}</div>
+              ${ssq.image ? `<div class="question-content"><img src="${safeString(ssq.image)}" alt="Sub-sub-question Image" /></div>` : ''}
               ${ssq.table ? `<div class="question-content">${renderRichContent(ssq.table)}</div>` : ''}
-              ${ssq.expectedPoints || ssq.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${ssq.expectedPoints || ssq.expected_points}</div>` : ''}
-              ${ssq.wordLimit || ssq.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${ssq.wordLimit || ssq.word_limit} words</div>` : ''}
-              <div class="expected-points"><strong>Marks:</strong> ${ssq.marks || 1}</div>
+              ${ssq.expectedPoints || ssq.expected_points ? `<div class="expected-points"><strong>Expected Points:</strong> ${renderRichContent(ssq.expectedPoints || ssq.expected_points)}</div>` : ''}
+              ${ssq.wordLimit || ssq.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${safeString(ssq.wordLimit || ssq.word_limit)} words</div>` : ''}
+              <div class="expected-points"><strong>Marks:</strong> ${safeString(ssq.marks || 1)}</div>
             </div>
             `).join('')}
           </div>
@@ -1278,14 +1288,17 @@ function generateTeacherCopy(
   ${exam.practical_questions?.length ? `
   <div class="section">
     <h3>SECTION C: PRACTICAL QUESTIONS - MARKING GUIDE</h3>
-    ${exam.practical_instructions ? `<div class="section-instruction">${exam.practical_instructions}</div>` : ''}
+    ${exam.practical_instructions ? `<div class="section-instruction">${renderRichContent(exam.practical_instructions)}</div>` : ''}
     ${exam.practical_questions.map((q: any, index: number) => `
     <div class="question">
-      <strong>${index + 1}.</strong> ${q.task || q.question}
-      ${q.materials ? `<div class="section-instruction"><strong>Materials:</strong> ${q.materials}</div>` : ''}
-      ${q.expectedOutcome || q.expected_outcome ? `<div class="expected-points"><strong>Expected Outcome:</strong> ${q.expectedOutcome || q.expected_outcome}</div>` : ''}
-      ${q.timeLimit || q.time_limit ? `<div class="section-instruction"><strong>Time Limit:</strong> ${q.timeLimit || q.time_limit}</div>` : ''}
-      <div class="expected-points"><strong>Marks:</strong> ${q.marks || 1}</div>
+      <strong>${index + 1}.</strong> 
+      <div class="question-content">${renderRichContent(q.task || q.question)}</div>
+      ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Practical Question ${index + 1} Image" /></div>` : ''}
+      ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
+      ${q.materials ? `<div class="section-instruction"><strong>Materials:</strong> ${renderRichContent(q.materials)}</div>` : ''}
+      ${q.expectedOutcome || q.expected_outcome ? `<div class="expected-points"><strong>Expected Outcome:</strong> ${renderRichContent(q.expectedOutcome || q.expected_outcome)}</div>` : ''}
+      ${q.timeLimit || q.time_limit ? `<div class="section-instruction"><strong>Time Limit:</strong> ${safeString(q.timeLimit || q.time_limit)}</div>` : ''}
+      <div class="expected-points"><strong>Marks:</strong> ${safeString(q.marks || 1)}</div>
     </div>
     `).join('')}
   </div>
@@ -1293,13 +1306,16 @@ function generateTeacherCopy(
 
   ${exam.custom_sections?.length ? exam.custom_sections.map((section: any, sectionIndex: number) => `
   <div class="section">
-    <h3>SECTION ${String.fromCharCode(68 + sectionIndex)}: ${section.name.toUpperCase()} - MARKING GUIDE</h3>
-    ${section.instructions ? `<div class="section-instruction">${section.instructions}</div>` : ''}
+    <h3>SECTION ${String.fromCharCode(68 + sectionIndex)}: ${safeString(section.name).toUpperCase()} - MARKING GUIDE</h3>
+    ${section.instructions ? `<div class="section-instruction">${renderRichContent(section.instructions)}</div>` : ''}
     ${section.questions && section.questions.length ? section.questions.map((q: any, qIndex: number) => `
     <div class="question">
-      <strong>${qIndex + 1}.</strong> ${q.question}
-      ${q.wordLimit || q.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${q.wordLimit || q.word_limit} words</div>` : ''}
-      <div class="expected-points"><strong>Marks:</strong> ${q.marks || 1}</div>
+      <strong>${qIndex + 1}.</strong> 
+      <div class="question-content">${renderRichContent(q.question)}</div>
+      ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${qIndex + 1} Image" /></div>` : ''}
+      ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
+      ${q.wordLimit || q.word_limit ? `<div class="section-instruction"><strong>Word Limit:</strong> ${safeString(q.wordLimit || q.word_limit)} words</div>` : ''}
+      <div class="expected-points"><strong>Marks:</strong> ${safeString(q.marks || 1)}</div>
     </div>
     `).join('') : ''}
   </div>
