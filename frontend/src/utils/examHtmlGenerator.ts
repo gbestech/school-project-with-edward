@@ -1141,7 +1141,7 @@ function generateTeacherCopy(
       margin-top: 4px;
       font-size: 13px;
       display: flex;
-      flex-wrap: wrap;
+      // flex-wrap: wrap;
       gap: 4px 12px; /* small vertical gap, moderate horizontal gap */
       align-items: flex-start;
     }
