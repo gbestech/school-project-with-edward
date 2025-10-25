@@ -26,6 +26,8 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
   const { settings } = useSettings();
   const [normalizedExam, setNormalizedExam] = useState<any>(null);
 
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+  
   // Normalize exam data when modal opens
   useEffect(() => {
     if (open && exam) {
@@ -38,179 +40,158 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
     }
   }, [open, exam]);
 
-  // Debug original exam data
+  // Debug original exam data - ONLY ONCE when modal opens
   useEffect(() => {
-    if (open && exam) {
-      console.group("🔍 ORIGINAL EXAM DATA");
-      console.log("Full exam object:", exam);
+    if (!open || !exam) return;
+    
+    console.group("🔍 ORIGINAL EXAM DATA");
+    console.log("Full exam object:", exam);
+    
+    // Check objective questions
+    if (exam.objective_questions && exam.objective_questions.length > 0) {
+      console.group("📊 OBJECTIVE QUESTIONS (Original)");
+      console.log(`Total: ${exam.objective_questions.length}`);
       
-      // Check objective questions
-      if (exam.objective_questions && exam.objective_questions.length > 0) {
-        console.group("📊 OBJECTIVE QUESTIONS (Original)");
-        console.log(`Total: ${exam.objective_questions.length}`);
-        
-        exam.objective_questions.forEach((q: any, idx: number) => {
-          console.log(`\nQuestion ${idx + 1}:`, {
-            text: q.question_text?.substring(0, 50) + "...",
-            hasImage: !!q.image,
-            imageType: typeof q.image,
-            imageValue: q.image,
-            imageLength: q.image?.length,
-            hasImageUrl: !!q.imageUrl,
-            imageUrlValue: q.imageUrl,
-            hasTable: !!q.table,
-            tableType: typeof q.table,
-            tableIsString: typeof q.table === 'string'
-          });
-          console.log("📊 Sample objective question:", q);
-          console.log("🖼️ Image fields:", {
-            image: q.image,
-            imageUrl: q.imageUrl,
-            image_url: q.image_url
-          });
-          console.log("📋 Table data:", q.table);
-          console.log("📝 Question text:", q.question || q.question_text);
+      exam.objective_questions.forEach((q: any, idx: number) => {
+        console.log(`\nQuestion ${idx + 1}:`, {
+          text: q.question_text?.substring(0, 50) + "...",
+          hasImage: !!q.image,
+          imageType: typeof q.image,
+          imageValue: q.image,
+          hasImageUrl: !!q.imageUrl,
+          hasTable: !!q.table,
+          tableType: typeof q.table,
         });
-        console.groupEnd();
-      }
-      
-      // Check theory questions
-      if (exam.theory_questions && exam.theory_questions.length > 0) {
-        console.group("📝 THEORY QUESTIONS (Original)");
-        console.log(`Total: ${exam.theory_questions.length}`);
-        
-        exam.theory_questions.forEach((q: any, idx: number) => {
-          console.log(`\nQuestion ${idx + 1}:`, {
-            text: q.question_text?.substring(0, 50) + "...",
-            hasImage: !!q.image,
-            imageType: typeof q.image,
-            hasTable: !!q.table,
-            tableType: typeof q.table,
-          });
-        });
-        console.groupEnd();
-      }
-      
+      });
       console.groupEnd();
     }
+    
+    // Check theory questions
+    if (exam.theory_questions && exam.theory_questions.length > 0) {
+      console.group("📝 THEORY QUESTIONS (Original)");
+      console.log(`Total: ${exam.theory_questions.length}`);
+      
+      exam.theory_questions.forEach((q: any, idx: number) => {
+        console.log(`\nQuestion ${idx + 1}:`, {
+          text: q.question_text?.substring(0, 50) + "...",
+          hasImage: !!q.image,
+          imageType: typeof q.image,
+          hasTable: !!q.table,
+          tableType: typeof q.table,
+        });
+      });
+      console.groupEnd();
+    }
+    
+    console.groupEnd();
   }, [open, exam]);
   
-  // Debug normalized exam data with focus on images and tables
+  // Debug normalized exam data - ONLY ONCE when normalization completes
   useEffect(() => {
-    if (open && normalizedExam) {
-      console.group("🖼️ NORMALIZED EXAM - IMAGE & TABLE DEBUG");
-      
-      let imageCount = 0;
-      let tableCount = 0;
-      
-      // Check objective questions
-      if (normalizedExam.objective_questions) {
-        console.group("📊 Objective Questions (Normalized)");
-        normalizedExam.objective_questions.forEach((q: Question, idx: number) => {
-          if (q.image || q.table) {
-            console.log(`Objective ${idx + 1}:`, {
-              hasImage: !!q.image,
-              imageValue: q.image,
-              imageType: typeof q.image,
-              startsWithHttp: typeof q.image === 'string' && q.image.startsWith('http'),
-              includesImgTag: typeof q.image === 'string' && q.image.includes('<img'),
-              first100Chars: q.image ? (typeof q.image === 'string' ? q.image.substring(0, 100) : JSON.stringify(q.image).substring(0, 100)) : null,
-              hasTable: !!q.table,
-              tableIsHTML: typeof q.table === 'string' && q.table.includes('<table'),
-              tablePreview: q.table ? (typeof q.table === 'string' ? q.table.substring(0, 150) : JSON.stringify(q.table).substring(0, 150)) : null
-            });
-            if (q.image) imageCount++;
-            if (q.table) tableCount++;
-          }
-        });
-        console.groupEnd();
-      }
-      
-      // Check theory questions
-      if (normalizedExam.theory_questions) {
-        console.group("📝 Theory Questions (Normalized)");
-        normalizedExam.theory_questions.forEach((q: Question, idx: number) => {
-          if (q.image || q.table) {
-            console.log(`Theory ${idx + 1}:`, {
-              hasImage: !!q.image,
-              imageValue: q.image,
-              imageType: typeof q.image,
-              startsWithHttp: typeof q.image === 'string' && q.image.startsWith('http'),
-              includesImgTag: typeof q.image === 'string' && q.image.includes('<img'),
-              first100Chars: q.image ? (typeof q.image === 'string' ? q.image.substring(0, 100) : JSON.stringify(q.image).substring(0, 100)) : null,
-              hasTable: !!q.table,
-              tableIsHTML: typeof q.table === 'string' && q.table.includes('<table'),
-              tablePreview: q.table ? (typeof q.table === 'string' ? q.table.substring(0, 150) : JSON.stringify(q.table).substring(0, 150)) : null
-            });
-            if (q.image) imageCount++;
-            if (q.table) tableCount++;
-          }
-          
-          // Check sub-questions
-          if (q.subQuestions) {
-            q.subQuestions.forEach((sq: Question, sqIdx: number) => {
-              if (sq.image || sq.table) {
-                console.log(`  Sub ${idx + 1}.${sqIdx + 1}:`, {
-                  hasImage: !!sq.image,
-                  imageValue: sq.image,
-                  hasTable: !!sq.table,
-                  tablePreview: sq.table ? (typeof sq.table === 'string' ? sq.table.substring(0, 100) : JSON.stringify(sq.table).substring(0, 100)) : null
-                });
-                if (sq.image) imageCount++;
-                if (sq.table) tableCount++;
-              }
-            });
-          }
-        });
-        console.groupEnd();
-      }
-      
-      // Check practical questions
-      if (normalizedExam.practical_questions) {
-        console.group("🔬 Practical Questions (Normalized)");
-        (normalizedExam.practical_questions as Question[]).forEach((q: Question, idx: number) => {
-          if (q.image || q.table) {
-            console.log(`Practical ${idx + 1}:`, {
-              hasImage: !!q.image,
-              imageValue: q.image,
-              hasTable: !!q.table,
-              tablePreview: q.table ? (typeof q.table === 'string' ? q.table.substring(0, 100) : JSON.stringify(q.table).substring(0, 100)) : null
-            });
-            if (q.image) imageCount++;
-            if (q.table) tableCount++;
-          }
-        });
-        console.groupEnd();
-      }
-      
-      console.log(`📊 SUMMARY: ${imageCount} images, ${tableCount} tables`);
+    if (!open || !normalizedExam) return;
+    
+    console.group("🖼️ NORMALIZED EXAM - IMAGE & TABLE DEBUG");
+    
+    let imageCount = 0;
+    let tableCount = 0;
+    
+    // Check objective questions
+    if (normalizedExam.objective_questions) {
+      console.group("📊 Objective Questions (Normalized)");
+      normalizedExam.objective_questions.forEach((q: Question, idx: number) => {
+        if (q.image || q.table) {
+          console.log(`Objective ${idx + 1}:`, {
+            hasImage: !!q.image,
+            imageValue: q.image,
+            imageType: typeof q.image,
+            startsWithHttp: typeof q.image === 'string' && q.image.startsWith('http'),
+            first100Chars: q.image ? (typeof q.image === 'string' ? q.image.substring(0, 100) : 'not string') : null,
+            hasTable: !!q.table,
+            tableIsHTML: typeof q.table === 'string' && q.table.includes('<table'),
+          });
+          if (q.image) imageCount++;
+          if (q.table) tableCount++;
+        }
+      });
       console.groupEnd();
     }
+    
+    // Check theory questions
+    if (normalizedExam.theory_questions) {
+      console.group("📝 Theory Questions (Normalized)");
+      normalizedExam.theory_questions.forEach((q: Question, idx: number) => {
+        if (q.image || q.table) {
+          console.log(`Theory ${idx + 1}:`, {
+            hasImage: !!q.image,
+            imageValue: q.image,
+            imageType: typeof q.image,
+            startsWithHttp: typeof q.image === 'string' && q.image.startsWith('http'),
+            first100Chars: q.image ? (typeof q.image === 'string' ? q.image.substring(0, 100) : 'not string') : null,
+            hasTable: !!q.table,
+            tableIsHTML: typeof q.table === 'string' && q.table.includes('<table'),
+          });
+          if (q.image) imageCount++;
+          if (q.table) tableCount++;
+        }
+        
+        // Check sub-questions
+        if (q.subQuestions) {
+          q.subQuestions.forEach((sq: Question, sqIdx: number) => {
+            if (sq.image || sq.table) {
+              console.log(`  Sub ${idx + 1}.${sqIdx + 1}:`, {
+                hasImage: !!sq.image,
+                hasTable: !!sq.table,
+              });
+              if (sq.image) imageCount++;
+              if (sq.table) tableCount++;
+            }
+          });
+        }
+      });
+      console.groupEnd();
+    }
+    
+    // Check practical questions
+    if (normalizedExam.practical_questions) {
+      console.group("🔬 Practical Questions (Normalized)");
+      (normalizedExam.practical_questions as Question[]).forEach((q: Question, idx: number) => {
+        if (q.image || q.table) {
+          console.log(`Practical ${idx + 1}:`, {
+            hasImage: !!q.image,
+            hasTable: !!q.table,
+          });
+          if (q.image) imageCount++;
+          if (q.table) tableCount++;
+        }
+      });
+      console.groupEnd();
+    }
+    
+    console.log(`📊 SUMMARY: ${imageCount} images, ${tableCount} tables`);
+    console.groupEnd();
   }, [open, normalizedExam]);
 
-  // Generate HTML with normalized exam data and settings - memoized to prevent unnecessary recalculation
-  // MUST be called before early return to follow Rules of Hooks
+  // Generate HTML - memoized to prevent unnecessary recalculation
   const html = useMemo(() => {
     if (!normalizedExam) return '';
-    console.log('🔨 Generating HTML with:', { normalizedExam, copyType });
     return generateExamHtml(normalizedExam, copyType, settings);
   }, [normalizedExam, copyType, settings]);
-  
-  if (!open || !exam) return null;
 
-  // Debug generated HTML - runs only when dependencies change
+  // Debug generated HTML - ONLY when html changes
   useEffect(() => {
-    if (open && html) {
-      console.group("📄 GENERATED HTML DEBUG");
-      console.log("HTML length:", html.length);
-      console.log("Contains <img> tags:", html.includes('<img'));
-      console.log("Contains <table> tags:", html.includes('<table'));
-      console.log("Number of <img> tags:", (html.match(/<img/g) || []).length);
-      console.log("Number of <table> tags:", (html.match(/<table/g) || []).length);
-      console.log("First 1000 chars:", html.substring(0, 1000));
-      console.groupEnd();
-    }
-  }, [open, normalizedExam, copyType]); // Don't depend on html itself to avoid infinite loop!
+    if (!open || !html) return;
+    
+    console.group("📄 GENERATED HTML DEBUG");
+    console.log("HTML length:", html.length);
+    console.log("Contains <img> tags:", html.includes('<img'));
+    console.log("Contains <table> tags:", html.includes('<table'));
+    console.log("Number of <img> tags:", (html.match(/<img/g) || []).length);
+    console.log("Number of <table> tags:", (html.match(/<table/g) || []).length);
+    console.groupEnd();
+  }, [open, html]);
+  
+  // Early return AFTER all hooks
+  if (!open || !exam) return null;
   
   const handlePrint = () => {
     const printWin = window.open("");
@@ -315,26 +296,6 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
                   </div>
                 </>
               )}
-              <div className="text-xs mt-2 p-2 bg-white rounded border border-yellow-300">
-                <div className="font-semibold">Sample data (first question):</div>
-                <pre className="overflow-x-auto max-h-40">{
-                  JSON.stringify({
-                    original: {
-                      image: (exam.objective_questions as any)?.[0]?.image || (exam.theory_questions as any)?.[0]?.image || "No image",
-                      imageUrl: (exam.objective_questions as any)?.[0]?.imageUrl || (exam.theory_questions as any)?.[0]?.imageUrl,
-                      table: (exam.objective_questions as any)?.[0]?.table || (exam.theory_questions as any)?.[0]?.table || "No table"
-                    },
-                    normalized: normalizedExam ? {
-                      image: normalizedExam.objective_questions?.[0]?.image || normalizedExam.theory_questions?.[0]?.image || "No image",
-                      table: normalizedExam.objective_questions?.[0]?.table ? 
-                        (typeof normalizedExam.objective_questions[0].table === 'string' ? normalizedExam.objective_questions[0].table.substring(0, 100) + "..." : 'Not a string') :
-                        (normalizedExam.theory_questions?.[0]?.table ? 
-                          (typeof normalizedExam.theory_questions[0].table === 'string' ? normalizedExam.theory_questions[0].table.substring(0, 100) + "..." : 'Not a string') :
-                          "No table")
-                    } : "Not normalized yet"
-                  }, null, 2)
-                }</pre>
-              </div>
             </div>
           </details>
         </div>
