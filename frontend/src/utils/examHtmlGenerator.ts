@@ -681,37 +681,80 @@ function toRomanNumeral(num: number): string {
 }
 
 // Helper function to process and render rich content (images, tables, formatted text)
+// function renderRichContent(content: any): string {
+//   // CRITICAL FIX: Convert to string first
+//   const contentStr = safeString(content);
+  
+//   if (!contentStr) return '';
+  
+//   // Handle images - look for image URLs or base64 data
+//   let processedContent = contentStr.replace(
+//     /<img\s+[^>]*src="([^"]*)"[^>]*>/gi,
+//     '<img src="$1" style="max-width: 100%; height: auto; margin: 10px 0; display: block;" />'
+//   );
+  
+//   // Handle tables - ensure proper styling
+//   processedContent = processedContent.replace(
+//     /<table/gi,
+//     '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"'
+//   );
+  
+//   processedContent = processedContent.replace(
+//     /<th/gi,
+//     '<th style="border: 1px solid #ddd; padding: 8px; background-color: #f0f0f0; text-align: left; font-weight: bold;"'
+//   );
+  
+//   processedContent = processedContent.replace(
+//     /<td/gi,
+//     '<td style="border: 1px solid #ddd; padding: 8px; text-align: left;"'
+//   );
+  
+//   return processedContent;
+// }
+// Helper function to process and render rich content (images, tables, formatted text)
 function renderRichContent(content: any): string {
   // CRITICAL FIX: Convert to string first
   const contentStr = safeString(content);
   
   if (!contentStr) return '';
   
-  // Handle images - look for image URLs or base64 data
-  let processedContent = contentStr.replace(
-    /<img\s+[^>]*src="([^"]*)"[^>]*>/gi,
-    '<img src="$1" style="max-width: 100%; height: auto; margin: 10px 0; display: block;" />'
+  let processedContent = contentStr;
+  
+  // Handle plain image URLs (not already in HTML tags)
+  if (processedContent.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
+    processedContent = `<img src="${processedContent}" alt="Question Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />`;
+  }
+  
+  // Handle images already in HTML tags - ensure proper styling
+  processedContent = processedContent.replace(
+    /<img\s+([^>]*?)src="([^"]*)"([^>]*?)>/gi,
+    '<img src="$2" alt="Question Image" style="max-width: 100%; height: auto; margin: 10px 0; display: block; border: 1px solid #ddd; border-radius: 4px; padding: 4px;" />'
   );
   
   // Handle tables - ensure proper styling
   processedContent = processedContent.replace(
-    /<table/gi,
-    '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"'
+    /<table([^>]*)>/gi,
+    '<table style="border-collapse: collapse; width: 100%; margin: 10px 0; border: 1px solid #ddd;"$1>'
   );
   
   processedContent = processedContent.replace(
-    /<th/gi,
-    '<th style="border: 1px solid #ddd; padding: 8px; background-color: #f0f0f0; text-align: left; font-weight: bold;"'
+    /<th([^>]*)>/gi,
+    '<th style="border: 1px solid #ddd; padding: 8px; background-color: #f0f0f0; text-align: left; font-weight: bold;"$1>'
   );
   
   processedContent = processedContent.replace(
-    /<td/gi,
-    '<td style="border: 1px solid #ddd; padding: 8px; text-align: left;"'
+    /<td([^>]*)>/gi,
+    '<td style="border: 1px solid #ddd; padding: 8px; text-align: left;"$1>'
+  );
+  
+  // Ensure table rows have proper styling
+  processedContent = processedContent.replace(
+    /<tr([^>]*)>/gi,
+    '<tr style="border: 1px solid #ddd;"$1>'
   );
   
   return processedContent;
 }
-
 export function generateExamHtml(
   exam: Exam, 
   copyType: "student" | "teacher" = "student",
@@ -932,7 +975,7 @@ function generateStudentCopy(
     ${exam.objective_questions.map((q: any, index: number) => `
     <div class="question">
       <strong>${index + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.question)}</div>
+      <span class="question-content">${renderRichContent(q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       <div class="options">
@@ -953,7 +996,7 @@ function generateStudentCopy(
     ${exam.theory_questions.map((q: any, index: number) => `
     <div class="question">
       <strong>${index + 1}.</strong> 
-      <div class="question-content">${renderRichContent(q.question)}</div>
+      <span class="question-content">${renderRichContent(q.question)}</span>
       ${q.image ? `<div class="question-content"><img src="${safeString(q.image)}" alt="Question ${index + 1} Image" /></div>` : ''}
       ${q.table ? `<div class="question-content">${renderRichContent(q.table)}</div>` : ''}
       ${q.subQuestions && q.subQuestions.length ? `
@@ -1112,7 +1155,7 @@ function generateTeacherCopy(
     }
     .question { margin: 4px 0; padding-left: 8px; }
     .question-content {
-      margin: 4px 0;
+      display: inline;
     }
     .question-content img {
       max-width: 100%;

@@ -121,6 +121,7 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
   
   if (!open || !exam) return null;
   
+  
   // Pass settings to generateExamHtml
   const html = generateExamHtml(exam, copyType, settings);
   
