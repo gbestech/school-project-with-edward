@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Exam } from "@/services/ExamService";
 import { generateExamHtml } from "@/utils/examHtmlGenerator";
 import { useSettings } from '@/contexts/SettingsContext';
 import { normalizeExamDataForDisplay } from '@/utils/examDataNormalizer';
-
 
 interface Question {
   question_text?: string;
   question?: string;
   image?: string;
   imageUrl?: string;
+  image_url?: string;
   table?: string | object;
   subQuestions?: Question[];
   subSubQuestions?: Question[];
@@ -26,8 +26,8 @@ const PrintPreviewModal: React.FC<Props> = ({ open, exam, onClose }) => {
   const { settings } = useSettings();
   const [normalizedExam, setNormalizedExam] = useState<any>(null);
 
-
-useEffect(() => {
+  // Normalize exam data when modal opens
+  useEffect(() => {
     if (open && exam) {
       console.log('🔄 Normalizing exam for display...');
       const normalized = normalizeExamDataForDisplay(exam);
@@ -37,8 +37,65 @@ useEffect(() => {
       setNormalizedExam(null);
     }
   }, [open, exam]);
+
+  // Debug original exam data
+  useEffect(() => {
+    if (open && exam) {
+      console.group("🔍 ORIGINAL EXAM DATA");
+      console.log("Full exam object:", exam);
+      
+      // Check objective questions
+      if (exam.objective_questions && exam.objective_questions.length > 0) {
+        console.group("📊 OBJECTIVE QUESTIONS (Original)");
+        console.log(`Total: ${exam.objective_questions.length}`);
+        
+        exam.objective_questions.forEach((q: any, idx: number) => {
+          console.log(`\nQuestion ${idx + 1}:`, {
+            text: q.question_text?.substring(0, 50) + "...",
+            hasImage: !!q.image,
+            imageType: typeof q.image,
+            imageValue: q.image,
+            imageLength: q.image?.length,
+            hasImageUrl: !!q.imageUrl,
+            imageUrlValue: q.imageUrl,
+            hasTable: !!q.table,
+            tableType: typeof q.table,
+            tableIsString: typeof q.table === 'string'
+          });
+          console.log("📊 Sample objective question:", q);
+          console.log("🖼️ Image fields:", {
+            image: q.image,
+            imageUrl: q.imageUrl,
+            image_url: q.image_url
+          });
+          console.log("📋 Table data:", q.table);
+          console.log("📝 Question text:", q.question || q.question_text);
+        });
+        console.groupEnd();
+      }
+      
+      // Check theory questions
+      if (exam.theory_questions && exam.theory_questions.length > 0) {
+        console.group("📝 THEORY QUESTIONS (Original)");
+        console.log(`Total: ${exam.theory_questions.length}`);
+        
+        exam.theory_questions.forEach((q: any, idx: number) => {
+          console.log(`\nQuestion ${idx + 1}:`, {
+            text: q.question_text?.substring(0, 50) + "...",
+            hasImage: !!q.image,
+            imageType: typeof q.image,
+            hasTable: !!q.table,
+            tableType: typeof q.table,
+          });
+        });
+        console.groupEnd();
+      }
+      
+      console.groupEnd();
+    }
+  }, [open, exam]);
   
-   // Debug normalized exam data with focus on images and tables
+  // Debug normalized exam data with focus on images and tables
   useEffect(() => {
     if (open && normalizedExam) {
       console.group("🖼️ NORMALIZED EXAM - IMAGE & TABLE DEBUG");
@@ -91,7 +148,7 @@ useEffect(() => {
           
           // Check sub-questions
           if (q.subQuestions) {
-            q.subQuestions.forEach((sq, sqIdx) => {
+            q.subQuestions.forEach((sq: Question, sqIdx: number) => {
               if (sq.image || sq.table) {
                 console.log(`  Sub ${idx + 1}.${sqIdx + 1}:`, {
                   hasImage: !!sq.image,
@@ -117,7 +174,7 @@ useEffect(() => {
               hasImage: !!q.image,
               imageValue: q.image,
               hasTable: !!q.table,
-              tablePreview: typeof q.table === 'string' ? q.table.substring(0, 100) : null
+              tablePreview: q.table ? (typeof q.table === 'string' ? q.table.substring(0, 100) : JSON.stringify(q.table).substring(0, 100)) : null
             });
             if (q.image) imageCount++;
             if (q.table) tableCount++;
@@ -131,72 +188,18 @@ useEffect(() => {
     }
   }, [open, normalizedExam]);
   
-  // Enhanced debugging
-  useEffect(() => {
-    if (open && exam) {
-      console.group("🔍 EXAM DEBUG INFO");
-      console.log("Full exam object:", exam);
-      
-      // Check objective questions
-      if (exam.objective_questions && exam.objective_questions.length > 0) {
-        console.group("📊 OBJECTIVE QUESTIONS");
-        console.log(`Total: ${exam.objective_questions.length}`);
-        
-        exam.objective_questions.forEach((q, idx) => {
-          console.log(`\nQuestion ${idx + 1}:`, {
-            text: q.question_text?.substring(0, 50) + "...",
-            hasImage: !!q.image,
-            imageType: typeof q.image,
-            imageValue: q.image,
-            imageLength: q.image?.length,
-            hasTable: !!q.table,
-            tableType: typeof q.table,
-            tableValue: q.table,
-            tableIsString: typeof q.table === 'string',
-            tableParsed: typeof q.table === 'string' ? JSON.parse(q.table) : q.table
-          });
-          console.log("📊 Sample objective question:", q);
-  console.log("🖼️ Image fields:", {
-    image: q.image,
-    imageUrl: q.imageUrl,
-    image_url: q.image_url
-  });
-  console.log("📋 Table data:", q.table);
-  console.log("📝 Question text:", q.question || q.question_text);
-        });
-        console.groupEnd();
-      }
-      
-      // Check theory questions
-      if (exam.theory_questions && exam.theory_questions.length > 0) {
-        console.group("📝 THEORY QUESTIONS");
-        console.log(`Total: ${exam.theory_questions.length}`);
-        
-        exam.theory_questions.forEach((q, idx) => {
-          console.log(`\nQuestion ${idx + 1}:`, {
-            text: q.question_text?.substring(0, 50) + "...",
-            hasImage: !!q.image,
-            imageType: typeof q.image,
-            hasTable: !!q.table,
-            tableType: typeof q.table,
-          });
-        });
-        console.groupEnd();
-      }
-      
-      console.groupEnd();
-    }
-  }, [open, exam]);
-  
   if (!open || !exam) return null;
 
-  // Generate HTML with settings
-  const html = generateExamHtml(normalizedExam || exam, copyType, settings);
+  // Generate HTML with normalized exam data and settings - memoized to prevent unnecessary recalculation
+  const html = useMemo(() => {
+    if (!normalizedExam) return '';
+    console.log('🔨 Generating HTML with:', { normalizedExam, copyType });
+    return generateExamHtml(normalizedExam, copyType, settings);
+  }, [normalizedExam, copyType, settings]);
 
-
-  // Debug generated HTML
+  // Debug generated HTML - runs only when dependencies change
   useEffect(() => {
-    if (html) {
+    if (open && html) {
       console.group("📄 GENERATED HTML DEBUG");
       console.log("HTML length:", html.length);
       console.log("Contains <img> tags:", html.includes('<img'));
@@ -206,12 +209,7 @@ useEffect(() => {
       console.log("First 1000 chars:", html.substring(0, 1000));
       console.groupEnd();
     }
-  }, [html]);
-  
-  // Log generated HTML to check if images/tables are in the output
-  console.log("📄 Generated HTML preview (first 1000 chars):", html.substring(0, 1000));
-  console.log("🖼️ HTML contains <img> tags:", html.includes('<img'));
-  console.log("📋 HTML contains <table> tags:", html.includes('<table'));
+  }, [open, normalizedExam, copyType]); // Don't depend on html itself to avoid infinite loop!
   
   const handlePrint = () => {
     const printWin = window.open("");
@@ -271,7 +269,7 @@ useEffect(() => {
           </div>
         </div>
         
-        {/* Debug Info Panel (Remove in production) */}
+        {/* Debug Info Panel */}
         <div className="mx-6 mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded text-xs">
           <details>
             <summary className="cursor-pointer font-semibold text-yellow-800">
@@ -280,28 +278,60 @@ useEffect(() => {
             <div className="mt-2 space-y-2 text-yellow-900">
               <div>Objective Questions: {exam.objective_questions?.length || 0}</div>
               <div>Theory Questions: {exam.theory_questions?.length || 0}</div>
+              <div>Practical Questions: {exam.practical_questions?.length || 0}</div>
               <div>
-                Questions with images: {
-                  (exam.objective_questions?.filter(q => q.image)?.length || 0) +
-                  (exam.theory_questions?.filter(q => q.image)?.length || 0)
+                Questions with images (original): {
+                  ((exam.objective_questions as any)?.filter((q: any) => q.image || q.imageUrl)?.length || 0) +
+                  ((exam.theory_questions as any)?.filter((q: any) => q.image || q.imageUrl)?.length || 0) +
+                  ((exam.practical_questions as any)?.filter((q: any) => q.image || q.imageUrl)?.length || 0)
                 }
               </div>
               <div>
-                Questions with tables: {
-                  (exam.objective_questions?.filter(q => q.table)?.length || 0) +
-                  (exam.theory_questions?.filter(q => q.table)?.length || 0)
+                Questions with tables (original): {
+                  ((exam.objective_questions as any)?.filter((q: any) => q.table)?.length || 0) +
+                  ((exam.theory_questions as any)?.filter((q: any) => q.table)?.length || 0) +
+                  ((exam.practical_questions as any)?.filter((q: any) => q.table)?.length || 0)
                 }
               </div>
+              {normalizedExam && (
+                <>
+                  <div className="font-semibold mt-2 pt-2 border-t border-yellow-300">
+                    After Normalization:
+                  </div>
+                  <div>
+                    Questions with images (normalized): {
+                      (normalizedExam.objective_questions?.filter((q: Question) => q.image)?.length || 0) +
+                      (normalizedExam.theory_questions?.filter((q: Question) => q.image)?.length || 0) +
+                      (normalizedExam.practical_questions?.filter((q: Question) => q.image)?.length || 0)
+                    }
+                  </div>
+                  <div>
+                    Questions with tables (normalized): {
+                      (normalizedExam.objective_questions?.filter((q: Question) => q.table)?.length || 0) +
+                      (normalizedExam.theory_questions?.filter((q: Question) => q.table)?.length || 0) +
+                      (normalizedExam.practical_questions?.filter((q: Question) => q.table)?.length || 0)
+                    }
+                  </div>
+                </>
+              )}
               <div className="text-xs mt-2 p-2 bg-white rounded border border-yellow-300">
-                <div className="font-semibold">Sample table data:</div>
-                <pre className="overflow-x-auto">{
-                  JSON.stringify(
-                    exam.objective_questions?.[0]?.table || 
-                    exam.theory_questions?.[0]?.table || 
-                    "No table data",
-                    null,
-                    2
-                  )
+                <div className="font-semibold">Sample data (first question):</div>
+                <pre className="overflow-x-auto max-h-40">{
+                  JSON.stringify({
+                    original: {
+                      image: (exam.objective_questions as any)?.[0]?.image || (exam.theory_questions as any)?.[0]?.image || "No image",
+                      imageUrl: (exam.objective_questions as any)?.[0]?.imageUrl || (exam.theory_questions as any)?.[0]?.imageUrl,
+                      table: (exam.objective_questions as any)?.[0]?.table || (exam.theory_questions as any)?.[0]?.table || "No table"
+                    },
+                    normalized: normalizedExam ? {
+                      image: normalizedExam.objective_questions?.[0]?.image || normalizedExam.theory_questions?.[0]?.image || "No image",
+                      table: normalizedExam.objective_questions?.[0]?.table ? 
+                        (typeof normalizedExam.objective_questions[0].table === 'string' ? normalizedExam.objective_questions[0].table.substring(0, 100) + "..." : 'Not a string') :
+                        (normalizedExam.theory_questions?.[0]?.table ? 
+                          (typeof normalizedExam.theory_questions[0].table === 'string' ? normalizedExam.theory_questions[0].table.substring(0, 100) + "..." : 'Not a string') :
+                          "No table")
+                    } : "Not normalized yet"
+                  }, null, 2)
                 }</pre>
               </div>
             </div>
