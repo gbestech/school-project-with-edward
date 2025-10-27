@@ -6,6 +6,7 @@ from rest_framework.decorators import (
     action,
     authentication_classes,
 )
+from django.contrib.auth import get_user_model
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from django.core.management import call_command
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
@@ -180,6 +181,81 @@ class SchoolSettingsDetail(APIView):
                 {"error": f"Failed to update settings: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+User = get_user_model()
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def update_user_role(request):
+    """
+    Allows an admin to update a user's role, adjust is_staff,
+    and automatically manage UserRole relationships.
+
+    Expected JSON:
+    {
+        "email": "secondaryadmin@gmail.com",
+        "role": "secondary_admin"
+    }
+    """
+    email = request.data.get("email")
+    role_name = request.data.get("role")
+
+    if not email or not role_name:
+        return Response(
+            {"error": "Both 'email' and 'role' fields are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response(
+            {"error": f"No user found with email '{email}'"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Ensure role exists (create if missing)
+    role, _ = Role.objects.get_or_create(
+        name=role_name,
+        defaults={"description": f"Auto-created role: {role_name}"},
+    )
+
+    # Update user's primary role field and staff status
+    user.role = role_name
+    user.is_staff = role_name in ["admin", "secondary_admin"]
+    user.save(update_fields=["role", "is_staff"])
+
+    # Ensure UserRole link exists
+    user_role, created = UserRole.objects.get_or_create(
+        user=user,
+        role=role,
+        defaults={
+            "assigned_by": request.user,
+            "assigned_at": timezone.now(),
+            "is_active": True,
+        },
+    )
+
+    if not created:
+        # If already exists, re-activate it if it was inactive
+        if not user_role.is_active:
+            user_role.is_active = True
+            user_role.assigned_by = request.user
+            user_role.assigned_at = timezone.now()
+            user_role.save(update_fields=["is_active", "assigned_by", "assigned_at"])
+
+    return Response(
+        {
+            "message": f"User '{user.email}' successfully updated.",
+            "role": user.role,
+            "is_staff": user.is_staff,
+            "user_role_id": user_role.id,
+            "user_role_status": "created" if created else "updated",
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(["POST"])
