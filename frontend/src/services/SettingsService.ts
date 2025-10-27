@@ -445,7 +445,118 @@ class SettingsService {
   }
 }
 
-  async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
+//   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
+//   try {
+//     console.log('📤 Sending settings update:', settings);
+    
+//     // Transform ALL frontend fields to backend format
+//     const backendSettings: any = {};
+    
+//     // General settings transformations
+//      // CRITICAL FIXES - Map frontend field names to backend field names
+//     if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
+//     if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
+    
+//     // These were WRONG - they need the school_ prefix
+//     if (settings.address !== undefined) backendSettings.school_address = settings.address;  // ← FIX
+//     if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;        // ← FIX
+//     if (settings.email !== undefined) backendSettings.school_email = settings.email;        // ← FIX
+//     if (settings.motto !== undefined) backendSettings.school_motto = settings.motto;        // ← FIX
+    
+//     if (settings.timezone !== undefined) backendSettings.timezone = settings.timezone;
+//     if (settings.dateFormat !== undefined) backendSettings.date_format = settings.dateFormat;
+//     if (settings.language !== undefined) backendSettings.language = settings.language;
+    
+//     // Design settings transformations
+//     if (settings.theme !== undefined) backendSettings.theme = settings.theme;
+//     if (settings.primaryColor !== undefined) backendSettings.primary_color = settings.primaryColor;
+    
+//     if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
+    
+//     // Academic year transformations
+//     if (settings.academicYear !== undefined) backendSettings.academic_year = settings.academicYear;
+//     if (settings.currentTerm !== undefined) backendSettings.current_term = settings.currentTerm;
+    
+//     // File uploads (only if they're actual files or URLs)
+//     if (settings.logo !== undefined) backendSettings.logo = settings.logo;
+//     if (settings.favicon !== undefined) backendSettings.favicon = settings.favicon;
+    
+//     // Security settings transformations
+//     if (settings.allowSelfRegistration !== undefined) backendSettings.allow_self_registration = settings.allowSelfRegistration;
+//     if (settings.emailVerificationRequired !== undefined) backendSettings.email_verification_required = settings.emailVerificationRequired;
+//     if (settings.registrationApprovalRequired !== undefined) backendSettings.registration_approval_required = settings.registrationApprovalRequired;
+//     if (settings.defaultUserRole !== undefined) backendSettings.default_user_role = settings.defaultUserRole;
+//     if (settings.passwordMinLength !== undefined) backendSettings.password_min_length = settings.passwordMinLength;
+//     if (settings.passwordResetInterval !== undefined) backendSettings.password_reset_interval = settings.passwordResetInterval;
+//     if (settings.passwordRequireNumbers !== undefined) backendSettings.password_require_numbers = settings.passwordRequireNumbers;
+//     if (settings.passwordRequireSymbols !== undefined) backendSettings.password_require_symbols = settings.passwordRequireSymbols;
+//     if (settings.passwordRequireUppercase !== undefined) backendSettings.password_require_uppercase = settings.passwordRequireUppercase;
+//     if (settings.allowProfileImageUpload !== undefined) backendSettings.allow_profile_image_upload = settings.allowProfileImageUpload;
+//     if (settings.profileImageMaxSize !== undefined) backendSettings.profile_image_max_size = settings.profileImageMaxSize;
+    
+//     // Nested object transformations (if your backend accepts them)
+//     if (settings.notifications !== undefined) backendSettings.notifications = settings.notifications;
+//     if (settings.paymentGateways !== undefined) backendSettings.payment_gateways = settings.paymentGateways;
+//     if (settings.classLevels !== undefined) backendSettings.class_levels = settings.classLevels;
+//     if (settings.subjects !== undefined) backendSettings.subjects = settings.subjects;
+//     if (settings.sessions !== undefined) backendSettings.sessions = settings.sessions;
+//     if (settings.grading !== undefined) backendSettings.grading = settings.grading;
+//     if (settings.markingScheme !== undefined) backendSettings.marking_scheme = settings.markingScheme;
+//     if (settings.messageTemplates !== undefined) backendSettings.message_templates = settings.messageTemplates;
+//     if (settings.chatSystem !== undefined) backendSettings.chat_system = settings.chatSystem;
+//     if (settings.userRolePaymentAccess !== undefined) backendSettings.user_role_payment_access = settings.userRolePaymentAccess;
+//     if (settings.feeStructure !== undefined) backendSettings.fee_structure = settings.feeStructure;
+//     if (settings.discountRules !== undefined) backendSettings.discount_rules = settings.discountRules;
+    
+//     console.log('📤 Transformed for backend:', backendSettings);
+    
+//     const response = await api.put('/api/school-settings/school-settings/', backendSettings);
+//     console.log('✅ Backend response:', response);
+    
+//     // Transform response back to frontend format
+//     const transformedResponse = await this.transformBackendToFrontend(response);
+//     console.log('✅ Transformed response:', transformedResponse);
+    
+//     // Broadcast the update to all listeners
+//     if (typeof window !== 'undefined') {
+//       window.dispatchEvent(new CustomEvent('settings-updated', { detail: transformedResponse }));
+//     }
+    
+//     return transformedResponse;
+//   } catch (error: any) {
+//     console.error('Error updating settings:', error);
+    
+//     const errorData = error.response?.data;
+//     let errorMessage = 'Failed to update school settings';
+    
+//     if (typeof errorData === 'object' && errorData !== null) {
+//       const errors: string[] = [];
+//       for (const [field, messages] of Object.entries(errorData)) {
+//         if (Array.isArray(messages)) {
+//           errors.push(`${field}: ${messages.join(', ')}`);
+//         } else if (typeof messages === 'string') {
+//           errors.push(`${field}: ${messages}`);
+//         } else if (typeof messages === 'object') {
+//           errors.push(`${field}: ${JSON.stringify(messages)}`);
+//         }
+//       }
+//       if (errors.length > 0) {
+//         errorMessage = `Validation errors:\n${errors.join('\n')}`;
+//       }
+//     } else if (typeof errorData === 'string') {
+//       errorMessage = errorData;
+//     } else if (error.message) {
+//       errorMessage = error.message;
+//     }
+    
+//     throw new Error(errorMessage);
+//   }
+// }
+
+// Add this to your SettingsService.ts updateSettings method
+// Insert this code after line 373 (after the discountRules transformation)
+
+async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
   try {
     console.log('📤 Sending settings update:', settings);
     
@@ -453,15 +564,14 @@ class SettingsService {
     const backendSettings: any = {};
     
     // General settings transformations
-     // CRITICAL FIXES - Map frontend field names to backend field names
     if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
     if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
     
     // These were WRONG - they need the school_ prefix
-    if (settings.address !== undefined) backendSettings.school_address = settings.address;  // ← FIX
-    if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;        // ← FIX
-    if (settings.email !== undefined) backendSettings.school_email = settings.email;        // ← FIX
-    if (settings.motto !== undefined) backendSettings.school_motto = settings.motto;        // ← FIX
+    if (settings.address !== undefined) backendSettings.school_address = settings.address;
+    if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;
+    if (settings.email !== undefined) backendSettings.school_email = settings.email;
+    if (settings.motto !== undefined) backendSettings.school_motto = settings.motto;
     
     if (settings.timezone !== undefined) backendSettings.timezone = settings.timezone;
     if (settings.dateFormat !== undefined) backendSettings.date_format = settings.dateFormat;
@@ -470,7 +580,6 @@ class SettingsService {
     // Design settings transformations
     if (settings.theme !== undefined) backendSettings.theme = settings.theme;
     if (settings.primaryColor !== undefined) backendSettings.primary_color = settings.primaryColor;
-    
     if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
     
     // Academic year transformations
@@ -507,6 +616,28 @@ class SettingsService {
     if (settings.userRolePaymentAccess !== undefined) backendSettings.user_role_payment_access = settings.userRolePaymentAccess;
     if (settings.feeStructure !== undefined) backendSettings.fee_structure = settings.feeStructure;
     if (settings.discountRules !== undefined) backendSettings.discount_rules = settings.discountRules;
+    
+    // 🔥 ADD THIS: Security settings transformation
+    if ((settings as any).security !== undefined) {
+      const security = (settings as any).security;
+      backendSettings.security_settings = {
+        two_factor_auth: security.twoFactorAuth,
+        password_policy: {
+          min_length: security.passwordPolicy?.minLength,
+          require_uppercase: security.passwordPolicy?.requireUppercase,
+          require_lowercase: security.passwordPolicy?.requireLowercase,
+          require_numbers: security.passwordPolicy?.requireNumbers,
+          require_special_chars: security.passwordPolicy?.requireSpecialChars,
+          password_expiry: security.passwordPolicy?.passwordExpiry
+        },
+        session_timeout: security.sessionTimeout,
+        max_login_attempts: security.maxLoginAttempts,
+        lockout_duration: security.lockoutDuration,
+        ip_whitelist: security.ipWhitelist,
+        audit_logging: security.auditLogging,
+        data_encryption: security.dataEncryption
+      };
+    }
     
     console.log('📤 Transformed for backend:', backendSettings);
     
