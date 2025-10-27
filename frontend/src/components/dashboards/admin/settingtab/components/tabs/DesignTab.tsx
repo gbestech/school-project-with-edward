@@ -27,6 +27,9 @@ interface DesignTabProps {
   onSettingsUpdate?: (settings: any) => void;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+
+
 const DesignTab: React.FC<DesignTabProps> = ({ settings: initialSettings, onSettingsUpdate }) => {
   const { settings: designSettings, updateSettings: updateDesignSettings } = useDesign();
   const [settings, setSettings] = useState<DesignSettings>({
@@ -112,7 +115,7 @@ const DesignTab: React.FC<DesignTabProps> = ({ settings: initialSettings, onSett
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/school-settings/', {
+      const response = await fetch(`${API_BASE_URL}/api/school-settings/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
