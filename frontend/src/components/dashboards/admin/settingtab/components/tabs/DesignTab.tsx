@@ -27,7 +27,7 @@ interface DesignTabProps {
   onSettingsUpdate?: (settings: any) => void;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL 
+
 
 
 const DesignTab: React.FC<DesignTabProps> = ({ settings: initialSettings, onSettingsUpdate }) => {
@@ -47,7 +47,7 @@ const DesignTab: React.FC<DesignTabProps> = ({ settings: initialSettings, onSett
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const initialized = useRef(false);
-
+const API_BASE_URL = import.meta.env.VITE_API_URL 
   // Initialize settings from props or design context (only once)
   useEffect(() => {
     const sourceSettings = initialSettings || designSettings;
