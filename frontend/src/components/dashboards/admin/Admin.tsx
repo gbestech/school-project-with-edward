@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   Users,
@@ -20,7 +20,9 @@ import {
   ChevronRight,
   ChevronDown,
   Key,
-  Calendar
+  Calendar,
+  Menu,
+  X
 } from 'lucide-react';
 import StudentResultChecker from './StudentResultChecker';
 import {
@@ -99,6 +101,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [parentDropdownOpen, setParentDropdownOpen] = useState(false);
   const [showStudentResultChecker, setShowStudentResultChecker] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { canViewStudents, canViewTeachers, canViewAttendance, canViewSettings } = usePermissions();
   const { user } = useAuth();
 
@@ -119,6 +122,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const femaleStudents = Array.isArray(students) 
     ? students.filter(s => s.gender && s.gender.toLowerCase() === 'female').length 
     : 0;
+
+  // Handle window resize - close mobile menu on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
 
   const navigationItems = [
     { name: 'Home', icon: Home, active: true, path: '/admin/dashboard' },
@@ -175,6 +202,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleNavigationClick = (itemName: string, path?: string) => {
     setActiveItem(itemName);
+    setIsMobileMenuOpen(false); // Close mobile menu on navigation
     
     if (itemName === 'Student Result Checker') {
       setShowStudentResultChecker(true);
@@ -189,6 +217,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setStudentDropdownOpen(false);
     setTeacherDropdownOpen(false);
     setParentDropdownOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   const renderNavItem = (item: any) => {
@@ -317,8 +349,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}
     >
       <div className="flex h-screen">
+        {/* Mobile Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
-        <div className={`transition-all duration-500 ease-out ${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-y-auto h-full`}>
+        <div className={`
+          transition-all duration-500 ease-out bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 overflow-y-auto h-full
+          ${isSidebarCollapsed ? 'w-20' : 'w-72'}
+          md:relative md:translate-x-0
+          fixed z-50 
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}>
           {/* Header */}
           <div className="p-6 border-b border-slate-200 dark:border-slate-700 relative">
             <div className="flex items-center overflow-hidden">
@@ -346,12 +392,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
             </div>
             
-            {/* Toggle Button */}
+            {/* Close button for mobile */}
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="
+                md:hidden absolute top-6 right-6
+                w-8 h-8 flex items-center justify-center rounded-lg
+                text-slate-600 dark:text-slate-300
+                hover:bg-slate-100 dark:hover:bg-slate-800
+                transition-all duration-200
+              "
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Toggle Button (Desktop only) */}
             <button
               onClick={toggleSidebar}
               className="
+                hidden md:flex
                 absolute top-1/2 -translate-y-1/2 -right-5 z-50
-                w-10 h-10 flex items-center justify-center rounded-full 
+                w-10 h-10 items-center justify-center rounded-full 
                 transition-all duration-300 hover:scale-110 active:scale-95
                 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700
                 text-white shadow-xl hover:shadow-2xl
@@ -399,22 +460,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Main Content */}
         <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
-          <div className="p-6 pt-8">
+          {/* Mobile Header */}
+          <div className="md:hidden sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between shadow-sm">
+            <button
+              onClick={toggleMobileMenu}
+              className="
+                w-10 h-10 flex items-center justify-center rounded-lg
+                text-slate-600 dark:text-slate-300
+                hover:bg-slate-100 dark:hover:bg-slate-800
+                transition-all duration-200
+              "
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {settings?.school_name || "Admin Portal"}
+            </h1>
+            <div className="w-10" /> {/* Spacer for centering */}
+          </div>
+
+          <div className="p-4 md:p-6 pt-4 md:pt-8">
             {children}
           </div>
         </div>
         
-        {/* Floating Action Button for Password Recovery */}
+        {/* Floating Action Button for Password Recovery (Hidden on mobile when menu is open) */}
         <button
           onClick={() => navigate('/admin/password-recovery')}
-          className="
-            fixed bottom-6 right-6 z-50
+          className={`
+            fixed bottom-6 right-6 z-40
             w-14 h-14 flex items-center justify-center rounded-full 
             transition-all duration-300 hover:scale-110 active:scale-95
             bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600
             text-white shadow-xl hover:shadow-2xl
             border-2 border-white dark:border-slate-800
-          "
+            ${isMobileMenuOpen ? 'md:flex hidden' : 'flex'}
+          `}
           title="Password Recovery"
         >
           <Key className="w-6 h-6" strokeWidth={2} />
