@@ -1560,6 +1560,8 @@ export interface Permission {
   codename: string;
   content_type: string;
   description?: string;
+  module?: string;
+  action?: string;
 }
 
 export interface Role {
@@ -1567,9 +1569,27 @@ export interface Role {
   name: string;
   description?: string;
   permissions: string[];
+  is_system?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface RolePermissionUpdate {
+  permission_ids?: number[];
+  permissions?: number[];
+  add_permissions?: number[];
+  remove_permissions?: number[];
+}
+
+export interface ModulePermission {
+  module: string;
+  permissions: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+    admin?: boolean;
+  };
 }
 
 export interface RoleCreateUpdate {
@@ -1595,6 +1615,7 @@ export interface UserRoleCreateUpdate {
 }
 
 class SettingsService {
+  
   
   async getSettings(): Promise<SchoolSettings> {
     try {
@@ -1684,6 +1705,8 @@ class SettingsService {
       return this.getDefaultSettings();
     }
   }
+
+  
 
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
     try {
