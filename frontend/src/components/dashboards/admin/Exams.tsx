@@ -399,7 +399,7 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
 
         // Load each API separately with better error handling
         try {
-          const gradeLevelsData = await api.get('classrooms/grades/');
+          const gradeLevelsData = await api.get('/api/classrooms/grades/');
           gradeLevels = safeArrayFromResponse(gradeLevelsData);
 
         } catch (err) {
