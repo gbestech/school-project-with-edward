@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
 from .views import force_migrate
+from .views import force_migrate, update_user_role
 
 app_name = "schoolSettings"
 
@@ -26,6 +27,7 @@ urlpatterns = [
         views.upload_favicon,  # ✅ Use the function-based view
         name="upload-favicon",
     ),
+    path("update-user-role/", update_user_role, name="update-user-role"),
     # Main settings endpoints
     path(
         "school-settings/",

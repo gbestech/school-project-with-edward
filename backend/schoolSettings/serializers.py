@@ -336,6 +336,93 @@ class PermissionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
+# class RoleSerializer(serializers.ModelSerializer):
+#     """Serializer for roles"""
+
+#     permissions = serializers.SerializerMethodField()
+#     user_count = serializers.ReadOnlyField()
+#     created_by_name = serializers.CharField(
+#         source="created_by.full_name", read_only=True
+#     )
+
+#     # Nested permissions structure for frontend compatibility
+#     permissions_dict = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = Role
+#         fields = [
+#             "id",
+#             "name",
+#             "description",
+#             "color",
+#             "is_system",
+#             "is_active",
+#             "user_count",
+#             "permissions",
+#             "permissions_dict",
+#             "primary_section_access",
+#             "secondary_section_access",
+#             "nursery_section_access",
+#             "created_by",
+#             "created_by_name",
+#             "created_at",
+#             "updated_at",
+#         ]
+#         read_only_fields = ["id", "user_count", "created_at", "updated_at"]
+
+#     def get_permissions(self, obj):
+#         """Get permissions for the role"""
+#         if obj.pk and hasattr(obj, "permissions"):
+#             return PermissionSerializer(obj.permissions.all(), many=True).data
+#         return []
+
+#     def get_permissions_dict(self, obj):
+#         """
+#         Convert permissions to nested dictionary structure
+#         matching the frontend format
+#         """
+#         permissions_dict = {}
+
+#         # Initialize all modules with default permissions
+#         modules = [
+#             "dashboard",
+#             "students",
+#             "teachers",
+#             "parents",
+#             "attendance",
+#             "results",
+#             "exams",
+#             "messaging",
+#             "finance",
+#             "reports",
+#             "settings",
+#             "announcements",
+#             "events",
+#             "library",
+#             "timetable",
+#             "subjects",
+#             "classes",
+#         ]
+
+#         for module in modules:
+#             permissions_dict[module] = {
+#                 "read": False,
+#                 "write": False,
+#                 "delete": False,
+#                 "admin": False,
+#             }
+
+#         # Set actual permissions only if the object is saved
+#         if obj.pk and hasattr(obj, "permissions"):
+#             for permission in obj.permissions.all():
+#                 if permission.module in permissions_dict:
+#                     permissions_dict[permission.module][
+#                         permission.permission_type
+#                     ] = permission.granted
+
+#         return permissions_dict
+
+
 class RoleSerializer(serializers.ModelSerializer):
     """Serializer for roles"""
 
@@ -421,6 +508,25 @@ class RoleSerializer(serializers.ModelSerializer):
                     ] = permission.granted
 
         return permissions_dict
+
+    # 🔥 ADD THESE METHODS BELOW 🔥
+    def create(self, validated_data):
+        # Remove permissions if present (handled manually)
+        permissions_data = self.initial_data.get("permissions", [])
+        role = super().create(validated_data)
+
+        if permissions_data:
+            role.permissions.set(permissions_data)
+        return role
+
+    def update(self, instance, validated_data):
+        # Same logic for update
+        permissions_data = self.initial_data.get("permissions", None)
+        role = super().update(instance, validated_data)
+
+        if permissions_data is not None:
+            role.permissions.set(permissions_data)
+        return role
 
 
 class RoleCreateUpdateSerializer(serializers.ModelSerializer):
