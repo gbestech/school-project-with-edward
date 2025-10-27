@@ -49,137 +49,137 @@ from .permissions import (
 logger = logging.getLogger(__name__)
 
 
-class SchoolSettingsDetail(APIView):
-    """
-    Retrieve and update school settings
-    """
-
-    permission_classes = [HasSettingsPermissionOrReadOnly]
-    parser_classes = [MultiPartParser, FormParser]
-
-    def get(self, request):
-        try:
-            settings, created = SchoolSettings.objects.get_or_create(pk=1)
-            serializer = SchoolSettingsSerializer(settings)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @transaction.atomic
-    def put(self, request):
-        try:
-            settings, created = SchoolSettings.objects.get_or_create(pk=1)
-            serializer = SchoolSettingsSerializer(
-                settings, data=request.data, partial=True
-            )
-
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
 # class SchoolSettingsDetail(APIView):
 #     """
 #     Retrieve and update school settings
 #     """
 
-#     permission_classes = [PublicReadOnly]
-
-#     def get_permissions(self):
-#         """Allow public read access, require admin for write"""
-#         if self.request.method == "GET":
-#             return [AllowAny()]
-#         return [IsAuthenticated(), IsAdminUser()]
+#     permission_classes = [HasSettingsPermissionOrReadOnly]
+#     parser_classes = [MultiPartParser, FormParser]
 
 #     def get(self, request):
-#         """Get current school settings with caching"""
 #         try:
-#             # Try to get from cache first (5 minute cache)
-#             cache_key = "school_settings"
-#             cached_data = cache.get(cache_key)
-
-#             if cached_data:
-#                 return Response(cached_data)
-
-#             # Get from database
-#             settings = SchoolSettings.objects.first()
-#             if not settings:
-#                 settings = SchoolSettings.objects.create()
-
-#             serializer = SchoolSettingsSerializer(
-#                 settings, context={"request": request}
-#             )
-
-#             # Cache the response
-#             cache.set(cache_key, serializer.data, 300)  # 5 minutes
-
-#             return Response(serializer.data)
-
+#             settings, created = SchoolSettings.objects.get_or_create(pk=1)
+#             serializer = SchoolSettingsSerializer(settings)
+#             return Response(serializer.data, status=status.HTTP_200_OK)
 #         except Exception as e:
-#             logger.error(f"Failed to fetch settings: {str(e)}", exc_info=True)
 #             return Response(
-#                 {"error": f"Failed to fetch settings: {str(e)}"},
-#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
 #             )
 
 #     @transaction.atomic
 #     def put(self, request):
-#         """Update school settings with better validation"""
 #         try:
-#             settings = SchoolSettings.objects.first()
-#             if not settings:
-#                 settings = SchoolSettings.objects.create()
-
-#             # Clean data - remove read-only fields
-#             data = request.data.copy()
-#             readonly_fields = [
-#                 "logo_url",
-#                 "favicon_url",
-#                 "logo",
-#                 "favicon",
-#                 "id",
-#                 "created_at",
-#                 "updated_at",
-#             ]
-#             for field in readonly_fields:
-#                 data.pop(field, None)
-
-#             # Validate required fields
-#             if "school_name" in data and not data["school_name"].strip():
-#                 return Response(
-#                     {"error": "School name cannot be empty"},
-#                     status=status.HTTP_400_BAD_REQUEST,
-#                 )
-
-#             # Perform update
+#             settings, created = SchoolSettings.objects.get_or_create(pk=1)
 #             serializer = SchoolSettingsSerializer(
-#                 settings, data=data, partial=True, context={"request": request}
+#                 settings, data=request.data, partial=True
 #             )
 
 #             if serializer.is_valid():
 #                 serializer.save()
-
-#                 # Clear cache after update
-#                 cache.delete("school_settings")
-
-#                 return Response(serializer.data)
-#             else:
-#                 logger.warning(f"Settings validation failed: {serializer.errors}")
-#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+#                 return Response(serializer.data, status=status.HTTP_200_OK)
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #         except Exception as e:
-#             logger.error(f"Failed to update settings: {str(e)}", exc_info=True)
 #             return Response(
-#                 {"error": f"Failed to update settings: {str(e)}"},
-#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
 #             )
+
+
+class SchoolSettingsDetail(APIView):
+    """
+    Retrieve and update school settings
+    """
+
+    permission_classes = [PublicReadOnly]
+
+    def get_permissions(self):
+        """Allow public read access, require admin for write"""
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminUser()]
+
+    def get(self, request):
+        """Get current school settings with caching"""
+        try:
+            # Try to get from cache first (5 minute cache)
+            cache_key = "school_settings"
+            cached_data = cache.get(cache_key)
+
+            if cached_data:
+                return Response(cached_data)
+
+            # Get from database
+            settings = SchoolSettings.objects.first()
+            if not settings:
+                settings = SchoolSettings.objects.create()
+
+            serializer = SchoolSettingsSerializer(
+                settings, context={"request": request}
+            )
+
+            # Cache the response
+            cache.set(cache_key, serializer.data, 300)  # 5 minutes
+
+            return Response(serializer.data)
+
+        except Exception as e:
+            logger.error(f"Failed to fetch settings: {str(e)}", exc_info=True)
+            return Response(
+                {"error": f"Failed to fetch settings: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @transaction.atomic
+    def put(self, request):
+        """Update school settings with better validation"""
+        try:
+            settings = SchoolSettings.objects.first()
+            if not settings:
+                settings = SchoolSettings.objects.create()
+
+            # Clean data - remove read-only fields
+            data = request.data.copy()
+            readonly_fields = [
+                "logo_url",
+                "favicon_url",
+                "logo",
+                "favicon",
+                "id",
+                "created_at",
+                "updated_at",
+            ]
+            for field in readonly_fields:
+                data.pop(field, None)
+
+            # Validate required fields
+            if "school_name" in data and not data["school_name"].strip():
+                return Response(
+                    {"error": "School name cannot be empty"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Perform update
+            serializer = SchoolSettingsSerializer(
+                settings, data=data, partial=True, context={"request": request}
+            )
+
+            if serializer.is_valid():
+                serializer.save()
+
+                # Clear cache after update
+                cache.delete("school_settings")
+
+                return Response(serializer.data)
+            else:
+                logger.warning(f"Settings validation failed: {serializer.errors}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Failed to update settings: {str(e)}", exc_info=True)
+            return Response(
+                {"error": f"Failed to update settings: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @api_view(["POST"])
