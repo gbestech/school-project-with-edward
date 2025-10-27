@@ -20,14 +20,9 @@ const ApprovalModal: React.FC<Props> = ({ open, exam, onApprove, onReject, onClo
   // Check if exam is in a valid state for approval/rejection
   // Use the backend's is_pending_approval flag if available, otherwise check status
   const isPending = (exam as any).is_pending_approval === true || 
-                    exam.status === 'pending_approval' ||
+                    exam.status === 'pending_approval' || exam.status === 'scheduled'
                     exam.status_display?.toLowerCase().includes('pending');
   
-  // // Get readable status
-  // const getStatusDisplay = () => {
-  //   const status = exam.status_display || exam.status || 'Unknown';
-  //   return status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-  // };
 
  // Get the exam status as a lowercase string for comparisons
   const examStatus = (exam.status_display || exam.status || '').toLowerCase();
