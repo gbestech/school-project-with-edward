@@ -19,7 +19,11 @@ const ApprovalModal: React.FC<Props> = ({ open, exam, onApprove, onReject, onClo
 
   // Check if exam is in a valid state for approval/rejection
   const examStatus = exam.status?.toLowerCase() || exam.status_display?.toLowerCase() || '';
-  const isPending = examStatus.includes('pending') || examStatus === 'pending_approval';
+  const isPending = examStatus.includes('pending') || 
+                    examStatus === 'pending_approval' || 
+                    examStatus === 'pending' ||
+                    examStatus === 'draft' ||
+                    examStatus === 'awaiting_approval';
   
   // Get readable status
   const getStatusDisplay = () => {
