@@ -310,7 +310,10 @@ const RolesPermissions = () => {
       const existingUserRole = userRoles.find(ur => ur.user === selectedUser.id && ur.role === selectedRole.id);
       
       const method = existingUserRole ? 'PUT' : 'POST';
-      const url = existingUserRole ? `/api/school-settings/user-roles/${existingUserRole.id}/` : '/api/school-settings/user-roles/';
+      const url = existingUserRole 
+  ? `/api/school-settings/user-roles/${existingUserRole.id}/`
+  : '/api/school-settings/user-roles/'; // ✅ Corrected
+
       
       const response = await fetch(url, {
         method,
