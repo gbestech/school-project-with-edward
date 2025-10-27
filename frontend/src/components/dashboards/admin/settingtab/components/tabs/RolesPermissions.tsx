@@ -310,7 +310,7 @@ const RolesPermissions = () => {
       const existingUserRole = userRoles.find(ur => ur.user === selectedUser.id && ur.role === selectedRole.id);
       
       const method = existingUserRole ? 'PUT' : 'POST';
-      const url = existingUserRole ? `/api/school-settings/user-roles/${existingUserRole.id}/` : '/api/user-roles/';
+      const url = existingUserRole ? `/api/school-settings/user-roles/${existingUserRole.id}/` : '/api/school-settings/user-roles/';
       
       const response = await fetch(url, {
         method,
@@ -404,58 +404,6 @@ const RolesPermissions = () => {
     setShowPermissionModal(true);
   };
 
-  // const saveRolePermissions = async () => {
-  //   if (!editingRolePermissions) return;
-
-  //   try {
-  //     setSaving(true);
-  //     const token = localStorage.getItem('authToken');
-      
-  //     // Convert permissions_dict back to permission IDs
-  //     const permissionIds: number[] = [];
-  //     Object.entries(selectedPermissions).forEach(([module, perms]) => {
-  //       Object.entries(perms).forEach(([permType, granted]) => {
-  //         if (granted) {
-  //           const permission = permissions.find(p => 
-  //             p.module === module && p.permission_type === permType
-  //           );
-  //           if (permission) {
-  //             permissionIds.push(permission.id);
-  //           }
-  //         }
-  //       });
-  //     });
-
-  //     const response = await fetch(`${API_BASE_URL}/api/school-settings/roles/${editingRolePermissions.id}/`, {
-  //       method: 'PATCH',
-  //       headers: {
-  //         'Authorization': `Bearer ${token}`,
-  //         'Content-Type': 'application/json'
-  //       },
-  //       body: JSON.stringify({
-  //         permissions: permissionIds
-  //       })
-  //     });
-
-  //     if (response.ok) {
-  //       setSuccessMessage('Role permissions updated successfully!');
-  //        await loadRoles();
-  //        // Close modal after reload completes
-  //       setShowPermissionModal(false);
-  //       setEditingRolePermissions(null);
-  //        setSelectedPermissions({});
-       
-  //     } else {
-  //       const errorData = await response.json();
-  //       setErrorMessage(errorData.error || 'Failed to update role permissions');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error saving role permissions:', error);
-  //     setErrorMessage('Failed to update role permissions');
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
 
    const saveRolePermissions = async () => {
     if (!editingRolePermissions) return;
