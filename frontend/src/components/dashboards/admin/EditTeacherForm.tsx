@@ -1390,10 +1390,27 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           return;
         }
 
+        // Get auth token from localStorage
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Token ${token}`;
+        }
+
         // Fetch subjects
         try {
           console.log('🔍 Fetching subjects...');
-          const subjectResponse = await fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`);
+          const subjectResponse = await fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`, {
+            headers
+          });
+          
+          if (!subjectResponse.ok) {
+            throw new Error(`Subject fetch failed: ${subjectResponse.status}`);
+          }
+          
           const subjectData = await subjectResponse.json();
           const subjects = Array.isArray(subjectData) ? subjectData : (subjectData.results || []);
           console.log('✅ Loaded subjects:', subjects);
@@ -1409,7 +1426,15 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         // Fetch classrooms
         try {
           console.log('🔍 Fetching classrooms...');
-          const classroomResponse = await fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`);
+          const classroomResponse = await fetch(
+            `${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
+            { headers }
+          );
+          
+          if (!classroomResponse.ok) {
+            throw new Error(`Classroom fetch failed: ${classroomResponse.status}`);
+          }
+          
           const classroomData = await classroomResponse.json();
           const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
           console.log('✅ Loaded classrooms:', classrooms);
