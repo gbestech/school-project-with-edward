@@ -872,7 +872,7 @@ const TeacherList = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Name</label>
-                    <p className={themeClasses.textPrimary}>{selectedTeacher.first_name} {selectedTeacher.last_name}</p>
+                    <p className={themeClasses.textPrimary}>{selectedTeacher.user?.first_name || selectedTeacher.first_name} {selectedTeacher.user?.last_name || selectedTeacher.last_name}</p>
                   </div>
                   <div>
                     <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Email</label>
@@ -1064,14 +1064,14 @@ const TeacherList = () => {
   );
 };
 
-// Edit Teacher Form Component
-interface EditTeacherFormProps {
-  teacher: Teacher;
-  onSave: (data: UpdateTeacherData) => void;
-  onCancel: () => void;
-  themeClasses: any;
-  isDark: boolean;
-}
+// // Edit Teacher Form Component
+// interface EditTeacherFormProps {
+//   teacher: Teacher;
+//   onSave: (data: UpdateTeacherData) => void;
+//   onCancel: () => void;
+//   themeClasses: any;
+//   isDark: boolean;
+// }
 
 // // Replace the entire EditTeacherForm component with this fixed version
 
