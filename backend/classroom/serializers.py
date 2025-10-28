@@ -571,6 +571,8 @@ class ClassroomSerializer(serializers.ModelSerializer):
     class_teacher_employee_id = serializers.CharField(
         source="class_teacher.employee_id", read_only=True
     )
+    # ✅ Direct ManyToMany relation — subjects taught in this class
+    subjects = SubjectSerializer(many=True, read_only=True)
 
     # Enrollment statistics
     current_enrollment = serializers.SerializerMethodField()
@@ -595,6 +597,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
             "class_teacher_name",
             "class_teacher_phone",
             "class_teacher_employee_id",
+            "subjects",
             "room_number",
             "max_capacity",
             "current_enrollment",
@@ -631,6 +634,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
 # Detailed Classroom Serializer with nested data
 class ClassroomDetailSerializer(ClassroomSerializer):
+    subjects = SubjectSerializer(many=True, read_only=True)
     teacher_assignments = serializers.SerializerMethodField()
     student_enrollments = StudentEnrollmentSerializer(
         source="studentenrollment_set", many=True, read_only=True
@@ -642,6 +646,7 @@ class ClassroomDetailSerializer(ClassroomSerializer):
 
     class Meta(ClassroomSerializer.Meta):
         fields = ClassroomSerializer.Meta.fields + [
+            "subjects",
             "teacher_assignments",
             "student_enrollments",
             "class_schedules",

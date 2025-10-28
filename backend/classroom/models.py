@@ -118,6 +118,14 @@ class Classroom(models.Model):
         related_name="assigned_classes",
     )
 
+    # Nursery & Primary subjects linked directly to the classroom
+    subjects = models.ManyToManyField(
+        "subject.Subject",
+        related_name="classrooms",
+        blank=True,
+        help_text="Subjects taught in this classroom (mainly for Nursery & Primary)",
+    )
+
     # Students
     students = models.ManyToManyField(
         "students.Student", through="StudentEnrollment", related_name="enrolled_classes"
@@ -137,6 +145,10 @@ class Classroom(models.Model):
     class Meta:
         unique_together = [("section", "academic_session", "term", "name")]
         ordering = ["section__grade_level", "section__name", "academic_session"]
+
+    @property
+    def education_level(self):
+        return self.section.grade_level.education_level
 
     def __str__(self):
         return f"{self.section} - {self.academic_session.name} ({self.term.get_name_display()})"

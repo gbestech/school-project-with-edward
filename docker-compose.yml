@@ -1,47 +1,99 @@
+# services:
+#   backend:
+#     build:
+#       context: ./backend
+#     image: edwad148/schoolmsapp-backend:latest
+#     container_name: backend
+#     # command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+#     command: gunicorn --bind 0.0.0.0:8000 --timeout 120 --workers 2 --worker-class sync --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 --preload config.wsgi:application
+#     volumes:
+#       - ./backend:/app
+#     env_file:
+#       - .env.backend
+#     ports:
+#       - "8000:8000"
+#     depends_on:
+#       - db
+
+#   frontend:
+#     build:
+#       context: ./frontend
+#       # Add build arguments for Vite environment variables
+#       args:
+#         - VITE_API_URL=http://localhost:8000/api
+#         - VITE_GOOGLE_CLIENT_ID=940399406105-7hq84lip258fsuo107a95bjh4au1k1mj.apps.googleusercontent.com
+#     container_name: frontend
+#     image: edwad148/schoolmsapp-frontend:latest
+#     env_file:
+#       - .env.frontend
+#     ports:
+#       - "3000:80"
+#     depends_on:
+#       - backend
+
+#   db:
+#     image: postgres:15
+#     container_name: postgres
+#     environment:
+#       POSTGRES_DB: schooldb
+#       POSTGRES_USER: schooluser
+#       POSTGRES_PASSWORD: schoolpass
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     ports:
+#       - "5432:5432"
+
+# volumes:
+#   postgres_data:
+
 services:
   backend:
     build:
       context: ./backend
     image: edwad148/schoolmsapp-backend:latest
     container_name: backend
-    # command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
-    command: gunicorn --bind 0.0.0.0:8000 --timeout 120 --workers 2 --worker-class sync --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 --preload config.wsgi:application
+    # Use runserver instead of gunicorn for easier shell access
+    command: python manage.py runserver 0.0.0.0:8000
+    # Original gunicorn command (commented out):
+    # command: gunicorn --bind 0.0.0.0:8000 --timeout 120 --workers 2 --worker-class sync --keep-alive 5 --max-requests 1000 --max-requests-jitter 100 --preload config.wsgi:application
     volumes:
       - ./backend:/app
     env_file:
       - .env.backend
     ports:
       - "8000:8000"
-    depends_on:
-      - db
+    # Comment out db dependency since using production database
+    # depends_on:
+    #   - db
 
-  frontend:
-    build:
-      context: ./frontend
-      # Add build arguments for Vite environment variables
-      args:
-        - VITE_API_URL=http://localhost:8000/api
-        - VITE_GOOGLE_CLIENT_ID=940399406105-7hq84lip258fsuo107a95bjh4au1k1mj.apps.googleusercontent.com
-    container_name: frontend
-    image: edwad148/schoolmsapp-frontend:latest
-    env_file:
-      - .env.frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
+  # Comment out frontend - you don't need it for checking data
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     args:
+  #       - VITE_API_URL=http://localhost:8000/api
+  #       - VITE_GOOGLE_CLIENT_ID=940399406105-7hq84lip258fsuo107a95bjh4au1k1mj.apps.googleusercontent.com
+  #   container_name: frontend
+  #   image: edwad148/schoolmsapp-frontend:latest
+  #   env_file:
+  #     - .env.frontend
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - backend
 
-  db:
-    image: postgres:15
-    container_name: postgres
-    environment:
-      POSTGRES_DB: schooldb
-      POSTGRES_USER: schooluser
-      POSTGRES_PASSWORD: schoolpass
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+  # Comment out local database since using production
+  # db:
+  #   image: postgres:15
+  #   container_name: postgres
+  #   environment:
+  #     POSTGRES_DB: schooldb
+  #     POSTGRES_USER: schooluser
+  #     POSTGRES_PASSWORD: schoolpass
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
 
 volumes:
   postgres_data:

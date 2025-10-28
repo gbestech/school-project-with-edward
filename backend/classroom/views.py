@@ -395,7 +395,7 @@ class SubjectManagementViewSet(viewsets.ModelViewSet):
 class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Classroom model"""
 
-    permission_classes = []  # Allow public access for classroom assignment
+    permission_classes = [IsAuthenticated]
     serializer_class = ClassroomSerializer
     filter_backends = [
         DjangoFilterBackend,
@@ -408,51 +408,107 @@ class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         "academic_session",
         "term",
     ]
-
     search_fields = ["name", "section__name", "section__grade_level__name"]
     ordering_fields = ["name", "created_at", "current_enrollment"]
 
+    # def get_queryset(self):
+    #     """Filter classrooms based on user's role, section, and education level"""
+    #     queryset = Classroom.objects.select_related(
+    #         "section__grade_level", "academic_session", "term", "class_teacher__user"
+    #     ).prefetch_related("students", "subject_teachers", "schedules")
+
+    #     # Apply section-based filtering
+    #     user = self.request.user
+
+    #     # Super Admin sees everything
+    #     if user.role == "superadmin" or user.is_superuser:
+    #         return queryset
+
+    #     # Apply section filtering for all other users (including section admins and teachers)
+    #     try:
+    #         filtered_queryset = self.filter_classrooms_by_section_access(queryset)
+
+    #         # ✅ Now handle level-based logic
+    #         education_level = self.request.query_params.get("education_level", "").upper()
+
+    #         # If the request explicitly filters by level
+    #         if education_level in ["NURSERY", "PRIMARY"]:
+    #             # Include only classrooms that belong to these levels
+    #             filtered_queryset = filtered_queryset.filter(
+    #                 section__grade_level__education_level=education_level
+    #             ).distinct()
+
+    #             # Prefetch only the class teacher (avoid subject teacher duplicates)
+    #             filtered_queryset = filtered_queryset.prefetch_related(
+    #                 "class_teacher__user"
+    #             )
+    #         return filtered_queryset
+    #     except Exception as e:
+    #         # Log the error in production
+    #         import logging
+
+    #         logger = logging.getLogger(__name__)
+    #         logger.error(f"Section filtering error for user {user.username}: {str(e)}")
+
+    #         # Return empty queryset on error (safer than returning all)
+    #         return queryset.none()
     def get_queryset(self):
-        """
-        Get queryset with proper filtering and permissions
-        """
+        """Filter classrooms based on user's role, section, and education level"""
         queryset = Classroom.objects.select_related(
-            "section__grade_level", "academic_session", "term", "class_teacher__user"
-        ).prefetch_related("students", "subject_teachers", "schedules")
+            "section__grade_level",
+            "academic_session",
+            "term",
+            "class_teacher__user",
+        ).prefetch_related(
+            "students",
+            "schedules",
+            "subject_teachers__user",
+        )
 
-        # 🔍 DEBUG LOGGING
-        total_count = queryset.count()
-        print(f"🔍 Total classrooms in database: {total_count}")
+        user = self.request.user
 
-        # ✅ Apply section filtering with proper checks
-        if self.request.user.is_authenticated:
-            # Check if user is admin/staff - they should see all classrooms
-            if self.request.user.is_staff or self.request.user.is_superuser:
-                print(f"🔍 User is admin/staff - showing all {total_count} classrooms")
-                return queryset
+        # Super Admin sees everything
+        if user.role == "superadmin" or user.is_superuser:
+            return queryset
 
-            # For non-admin users, apply section filtering
-            try:
-                filtered_queryset = self.filter_classrooms_by_section_access(queryset)
-                filtered_count = filtered_queryset.count()
-                print(f"🔍 After section filtering: {filtered_count} classrooms")
+        try:
+            # Apply section filtering for all other users
+            filtered_queryset = self.filter_classrooms_by_section_access(queryset)
 
-                # ⚠️ If filtering removes ALL classrooms, log warning
-                if filtered_count == 0 and total_count > 0:
-                    print(f"⚠️ WARNING: Section filtering removed all classrooms!")
-                    print(f"⚠️ User: {self.request.user.username}")
-                    print(f"⚠️ User ID: {self.request.user.id}")
-                    print(f"⚠️ Check user's section access permissions")
+            # ✅ Explicitly separate Nursery/Primary vs Secondary levels
+            nursery_primary_classes = filtered_queryset.filter(
+                section__grade_level__education_level__in=["NURSERY", "PRIMARY"]
+            )
 
-                return filtered_queryset
-            except Exception as e:
-                print(f"❌ Error in section filtering: {e}")
-                # If section filtering fails, return all for now (you can change this)
-                return queryset
+            secondary_classes = filtered_queryset.filter(
+                section__grade_level__education_level__in=[
+                    "JUNIOR_SECONDARY",
+                    "SENIOR_SECONDARY",
+                ]
+            )
 
-        # For unauthenticated users, return all (based on your permission_classes = [])
-        print(f"🔍 Unauthenticated request - showing all {total_count} classrooms")
-        return queryset
+            # ✅ Prefetch differently based on section
+            nursery_primary_classes = nursery_primary_classes.prefetch_related(
+                "class_teacher__user"
+            )
+
+            secondary_classes = secondary_classes.prefetch_related(
+                "subject_teachers__user"
+            )
+
+            # ✅ Combine both sets into a single queryset (union)
+            combined_queryset = nursery_primary_classes.union(
+                secondary_classes, all=True
+            )
+
+            return combined_queryset.order_by("section__grade_level__order")
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Section filtering error for user {user.username}: {str(e)}")
+            return queryset.none()
 
     def get_serializer_class(self):
         if self.action in ["retrieve", "list"]:
