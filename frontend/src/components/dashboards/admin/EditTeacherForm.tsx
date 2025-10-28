@@ -1286,6 +1286,7 @@ interface EditTeacherFormProps {
 
 const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses, isDark }) => {
   console.log('🔍 EditTeacherForm received teacher:', teacher);
+  console.log('🔍 Teacher JSON:', JSON.stringify(teacher, null, 2));
   
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com';
 
@@ -1449,29 +1450,82 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
 
   // Load teacher's classroom assignments AFTER classrooms are loaded
   useEffect(() => {
-    if (!teacher || !dataLoaded || classroomOptions.length === 0) return;
+    if (!teacher || !dataLoaded) return;
     
-    console.log('🏫 Loading classroom assignments. Teacher assignments:', teacher.classroom_assignments);
+    console.log('🏫 Loading classroom assignments. Teacher data:', teacher);
+    console.log('🏫 Teacher classroom_assignments:', teacher.classroom_assignments);
+    console.log('🏫 Teacher teacher_assignments:', teacher.teacher_assignments);
     console.log('🏫 Available classrooms:', classroomOptions);
+    console.log('🏫 Available subjects:', subjectOptions);
     
+    // Try multiple possible assignment sources
+    let assignmentsToLoad: any[] = [];
+    
+    // First try classroom_assignments (most detailed)
     if (teacher.classroom_assignments && Array.isArray(teacher.classroom_assignments) && 
         teacher.classroom_assignments.length > 0) {
-      const assignments = teacher.classroom_assignments.map((assignment: any, index: number) => {
-        console.log(`📝 Assignment ${index}:`, assignment);
-        return {
+      assignmentsToLoad = teacher.classroom_assignments;
+      console.log('✅ Using classroom_assignments:', assignmentsToLoad);
+    }
+    // Fallback to teacher_assignments (legacy format)
+    else if (teacher.teacher_assignments && Array.isArray(teacher.teacher_assignments) && 
+             teacher.teacher_assignments.length > 0) {
+      assignmentsToLoad = teacher.teacher_assignments;
+      console.log('✅ Using teacher_assignments:', assignmentsToLoad);
+    }
+    
+    if (assignmentsToLoad.length > 0) {
+      const assignments = assignmentsToLoad.map((assignment: any, index: number) => {
+        console.log(`📝 Processing assignment ${index}:`, assignment);
+        
+        // Try to extract classroom_id from various possible fields
+        let classroomId = assignment.classroom_id || 
+                         assignment.classroom || 
+                         assignment.class_id ||
+                         '';
+        
+        // Try to extract subject_id from various possible fields  
+        let subjectId = assignment.subject_id || 
+                       assignment.subject || 
+                       '';
+        
+        // If we have subject name but not ID, try to find it
+        if (!subjectId && assignment.subject_name && subjectOptions.length > 0) {
+          const foundSubject = subjectOptions.find(s => s.name === assignment.subject_name);
+          if (foundSubject) {
+            subjectId = foundSubject.id;
+            console.log(`🔍 Found subject ID ${subjectId} for ${assignment.subject_name}`);
+          }
+        }
+        
+        // If we have classroom name but not ID, try to find it
+        if (!classroomId && assignment.classroom_name && classroomOptions.length > 0) {
+          const foundClassroom = classroomOptions.find(c => c.name === assignment.classroom_name);
+          if (foundClassroom) {
+            classroomId = foundClassroom.id;
+            console.log(`🔍 Found classroom ID ${classroomId} for ${assignment.classroom_name}`);
+          }
+        }
+        
+        const processedAssignment = {
           id: `existing-${assignment.id || index}`,
-          classroom_id: assignment.classroom_id || '',
-          subject_id: assignment.subject_id || '',
+          classroom_id: classroomId,
+          subject_id: subjectId,
           is_primary_teacher: assignment.is_primary_teacher || false,
           periods_per_week: assignment.periods_per_week || 1,
         };
+        
+        console.log(`✅ Processed assignment ${index}:`, processedAssignment);
+        return processedAssignment;
       });
+      
       console.log('✅ Setting current assignments:', assignments);
       setCurrentAssignments(assignments);
     } else {
+      console.log('⚠️ No assignments found, setting empty array');
       setCurrentAssignments([]);
     }
-  }, [teacher, dataLoaded, classroomOptions.length]);
+  }, [teacher, dataLoaded, classroomOptions.length, subjectOptions.length]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
