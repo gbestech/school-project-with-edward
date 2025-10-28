@@ -602,10 +602,6 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { 
-  X,
-  AlertCircle 
-} from 'lucide-react';
 import { Teacher, UpdateTeacherData } from '@/services/TeacherService';
 
 interface EditTeacherFormProps {
@@ -616,11 +612,11 @@ interface EditTeacherFormProps {
   isDark: boolean;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com';
-
 const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses, isDark }) => {
   console.log('🔍 EditTeacherForm received teacher:', teacher);
   
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com';
+
   // Helper function to get initial form data
   const getInitialFormData = () => {
     if (!teacher) {
@@ -921,8 +917,356 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Rest of your form JSX - keep everything exactly as you have it */}
-      {/* ... (all your existing form code) ... */}
+      {/* Profile Picture Upload */}
+      <div className="mb-6">
+        <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>
+          Profile Picture
+        </label>
+        <div className="flex flex-col items-center">
+          <div className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center mb-3 bg-gray-50 relative">
+            {photoPreview ? (
+              <div className="relative">
+                <img src={photoPreview} alt="Teacher" className="w-20 h-20 object-cover rounded" />
+                <button 
+                  type="button"
+                  onClick={removePhoto} 
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                <span className="text-lg font-bold text-white">
+                  {getInitials(formData.first_name, formData.last_name)}
+                </span>
+              </div>
+            )}
+          </div>
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handlePhotoUpload} 
+            className="hidden" 
+            id="edit-teacher-photo" 
+            disabled={uploading} 
+          />
+          <label 
+            htmlFor="edit-teacher-photo" 
+            className={`px-4 py-2 rounded text-sm cursor-pointer transition-colors ${
+              uploading 
+                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {uploading ? 'Uploading...' : 'Choose New Photo'}
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>First Name *</label>
+          <input
+            type="text"
+            name="first_name"
+            value={formData.first_name}
+            onChange={handleInputChange}
+            required
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Last Name *</label>
+          <input
+            type="text"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleInputChange}
+            required
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Email *</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            required
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Employee ID</label>
+          <input
+            type="text"
+            name="employee_id"
+            value={formData.employee_id}
+            onChange={handleInputChange}
+            placeholder="e.g., EMP001"
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Phone Number</label>
+          <input
+            type="tel"
+            name="phone_number"
+            value={formData.phone_number}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Address</label>
+          <input
+            type="text"
+            name="address"
+            value={formData.address}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Staff Type</label>
+          <select
+            name="staff_type"
+            value={formData.staff_type}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          >
+            <option value="teaching">Teaching</option>
+            <option value="non-teaching">Non-Teaching</option>
+          </select>
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Level</label>
+          <select
+            name="level"
+            value={formData.level || ''}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          >
+            <option value="">Select Level</option>
+            <option value="nursery">Nursery</option>
+            <option value="primary">Primary</option>
+            <option value="junior_secondary">Junior Secondary</option>
+            <option value="senior_secondary">Senior Secondary</option>
+          </select>
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Qualification</label>
+          <input
+            type="text"
+            name="qualification"
+            value={formData.qualification}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Specialization</label>
+          <input
+            type="text"
+            name="specialization"
+            value={formData.specialization}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-300 ${themeClasses.inputBg} ${themeClasses.inputFocus} ${themeClasses.textPrimary}`}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              name="is_active"
+              checked={formData.is_active}
+              onChange={handleInputChange}
+              className="mr-2"
+            />
+            <span className={`text-sm font-medium ${themeClasses.textSecondary}`}>Active Status</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Subject Selection */}
+      {formData.staff_type === 'teaching' && formData.level && (
+        <div className="mb-4">
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-2`}>Assigned Subjects</label>
+          
+          {selectedSubjects.length > 0 && (
+            <div className="mb-3 p-3 bg-blue-50 rounded border">
+              <p className="text-sm font-medium mb-2">Currently Selected ({selectedSubjects.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedSubjects.map(subjectId => {
+                  const subject = subjectOptions.find(s => String(s.id) === subjectId);
+                  return subject ? (
+                    <span key={subjectId} className="inline-flex items-center bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded">
+                      {subject.name}
+                      <button
+                        type="button"
+                        onClick={() => handleSubjectChange(subjectId, false)}
+                        className="ml-2 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="text-center p-4 text-gray-500">Loading subjects...</div>
+          ) : subjectOptions.length === 0 ? (
+            <div className="bg-gray-50 p-3 rounded border text-sm text-gray-500">
+              No subjects found for this level.
+            </div>
+          ) : (
+            <div className="bg-gray-50 p-3 rounded border max-h-40 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {subjectOptions.map(subj => (
+                  <label key={subj.id} className="flex items-center space-x-2 cursor-pointer hover:bg-white p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={selectedSubjects.includes(String(subj.id))}
+                      onChange={(e) => handleSubjectChange(subj.id, e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-gray-700">{subj.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Classroom Assignments */}
+      {formData.staff_type === 'teaching' && formData.level && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>Classroom Assignments</label>
+            <button
+              type="button"
+              onClick={addAssignment}
+              className="px-3 py-1 text-sm rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Add Assignment
+            </button>
+          </div>
+
+          {currentAssignments.length === 0 ? (
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center text-gray-500 text-sm">
+              No classroom assignments added yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {currentAssignments.map((assignment, index) => (
+                <div key={assignment.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">Assignment {index + 1}</h4>
+                    <button
+                      type="button"
+                      onClick={() => removeAssignment(assignment.id)}
+                      className="text-red-500 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Classroom</label>
+                      <select
+                        value={assignment.classroom_id}
+                        onChange={(e) => updateAssignment(assignment.id, 'classroom_id', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Select Classroom</option>
+                        {classroomOptions.map(classroom => (
+                          <option key={classroom.id} value={classroom.id}>
+                            {classroom.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                      <select
+                        value={assignment.subject_id}
+                        onChange={(e) => updateAssignment(assignment.id, 'subject_id', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Select Subject</option>
+                        {subjectOptions.map(subject => (
+                          <option key={subject.id} value={subject.id}>
+                            {subject.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Periods/Week</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={assignment.periods_per_week}
+                        onChange={(e) => updateAssignment(assignment.id, 'periods_per_week', parseInt(e.target.value) || 1)}
+                        className="w-full p-2 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-center pt-6">
+                      <input
+                        type="checkbox"
+                        id={`primary-${assignment.id}`}
+                        checked={assignment.is_primary_teacher}
+                        onChange={(e) => updateAssignment(assignment.id, 'is_primary_teacher', e.target.checked)}
+                        className="rounded mr-2"
+                      />
+                      <label htmlFor={`primary-${assignment.id}`} className="text-xs font-medium text-gray-600">
+                        Primary Teacher
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 px-4 py-2 border rounded-lg font-medium bg-gray-200 hover:bg-gray-300 text-gray-700"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="flex-1 px-4 py-2 rounded-lg font-medium bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          Save Changes
+        </button>
+      </div>
     </form>
   );
 };
