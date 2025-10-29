@@ -59,6 +59,20 @@ class SchoolSettings(models.Model):
     password_require_numbers = models.BooleanField(default=True)
     password_require_symbols = models.BooleanField(default=False)
     password_require_uppercase = models.BooleanField(default=False)
+    # 🔥 ADD THESE NEW FIELDS 🔥
+    password_expiration = models.IntegerField(
+        default=90, help_text="Password expiration period in days"
+    )
+    session_timeout = models.IntegerField(
+        default=30, help_text="Session timeout in minutes"
+    )
+    account_lock_duration = models.IntegerField(
+        default=15,
+        help_text="Account lock duration in minutes after failed login attempts",
+    )
+    max_login_attempts = models.IntegerField(
+        default=5, help_text="Maximum login attempts before account lock"
+    )
     allow_profile_image_upload = models.BooleanField(default=True)
     profile_image_max_size = models.IntegerField(default=2)
 

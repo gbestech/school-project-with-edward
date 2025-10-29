@@ -443,11 +443,6 @@ const loadTeacherData = async () => {
     return subjects.sort();
   }, [exams]);
 
-  // const uniqueTypes = useMemo(() => {
-  //   const types = Array.from(new Set(exams.map(exam => exam.exam_type)));
-  //   return types.sort();
-  // }, [exams]);
-
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       scheduled: { color: 'bg-blue-100 text-blue-800', icon: Calendar, text: 'Scheduled' },
@@ -494,356 +489,749 @@ const loadTeacherData = async () => {
     );
   }
 
+  // return (
+  //   <TeacherDashboardLayout>
+  //     <div className="space-y-6">
+  //       {/* Header */}
+  //       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2">
+  //         <div className='p-3'>
+  //           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+  //             Exam & Test Management
+  //           </h1>
+  //           <p className="text-slate-600 dark:text-slate-400 mt-1">
+  //             Create and manage exams, tests, and assessments for your classes
+  //           </p>
+  //         </div>
+  //         <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+  //           <button
+  //             onClick={handleRefresh}
+  //             className="flex items-center space-x-2 px-4 py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+  //           >
+  //             <RefreshCw className="w-4 h-4" />
+  //             <span>Refresh</span>
+  //           </button>
+  //         </div>
+  //       </div>
+
+  //       {/* Exam Summary */}
+  //       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+  //         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+  //           <div className="flex items-center justify-between">
+  //             <div>
+  //               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Exams</p>
+  //               <p className="text-2xl font-bold text-slate-900 dark:text-white">{exams.length}</p>
+  //             </div>
+  //             <BookOpen className="w-8 h-8 text-blue-600" />
+  //           </div>
+  //         </div>
+          
+  //         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+  //           <div className="flex items-center justify-between">
+  //             <div>
+  //               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Scheduled</p>
+  //               <p className="text-2xl font-bold text-blue-600">{exams.filter(e => e.status === 'scheduled').length}</p>
+  //             </div>
+  //             <Calendar className="w-8 h-8 text-blue-600" />
+  //           </div>
+  //         </div>
+          
+  //         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+  //           <div className="flex items-center justify-between">
+  //             <div>
+  //               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">In Progress</p>
+  //               <p className="text-2xl font-bold text-yellow-600">{exams.filter(e => e.status === 'in_progress').length}</p>
+  //             </div>
+  //             <AlertCircle className="w-8 h-8 text-yellow-600" />
+  //           </div>
+  //         </div>
+          
+  //         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+  //           <div className="flex items-center justify-between">
+  //             <div>
+  //               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Completed</p>
+  //               <p className="text-2xl font-bold text-green-600">{exams.filter(e => e.status === 'completed').length}</p>
+  //             </div>
+  //             <CheckCircle className="w-8 h-8 text-green-600" />
+  //           </div>
+  //         </div>
+          
+  //         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
+  //           <div className="flex items-center justify-between">
+  //             <div>
+  //               <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Tests & Quizzes</p>
+  //               <p className="text-2xl font-bold text-purple-600">{exams.filter(e => e.exam_type === 'test' || e.exam_type === 'quiz').length}</p>
+  //             </div>
+  //             <Target className="w-8 h-8 text-purple-600" />
+  //           </div>
+  //         </div>
+  //       </div>
+
+  //       {/* Tabs */}
+  //       <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-700">
+  //         <button
+  //           onClick={() => setActiveTab('exams')}
+  //           className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors ${
+  //             activeTab === 'exams'
+  //               ? 'bg-blue-600 text-white'
+  //               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+  //           }`}
+  //         >
+  //           <div className="flex items-center space-x-2">
+  //             <GraduationCap className="w-4 h-4" />
+  //             <span>Exams</span>
+  //           </div>
+  //         </button>
+  //         <button
+  //           onClick={() => setActiveTab('tests')}
+  //           className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors ${
+  //             activeTab === 'tests'
+  //               ? 'bg-blue-600 text-white'
+  //               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+  //           }`}
+  //         >
+  //           <div className="flex items-center space-x-2">
+  //             <Target className="w-4 h-4" />
+  //             <span>Tests & Quizzes</span>
+  //           </div>
+  //         </button>
+  //       </div>
+
+  //       {/* Action Buttons */}
+  //       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  //         <div className="flex items-center space-x-3">
+  //           {activeTab === 'exams' ? (
+  //             <button
+  //               onClick={handleCreateExam}
+  //               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+  //             >
+  //               <Plus className="w-4 h-4" />
+  //               <span>Create New Exam</span>
+  //             </button>
+  //           ) : (
+  //             <button
+  //               onClick={handleCreateTest}
+  //               className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+  //             >
+  //               <Plus className="w-4 h-4" />
+  //               <span>Create New Test</span>
+  //             </button>
+  //           )}
+  //         </div>
+
+  //         {/* Filters */}
+  //         <div className="flex items-center space-x-3">
+  //           <div className="relative">
+  //             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+  //             <input
+  //               type="text"
+  //               placeholder="Search exams..."
+  //               value={searchTerm}
+  //               onChange={(e) => setSearchTerm(e.target.value)}
+  //               className="pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+  //             />
+  //           </div>
+
+  //           <select
+  //             value={filterSubject}
+  //             onChange={(e) => setFilterSubject(e.target.value)}
+  //             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+  //           >
+  //             <option value="all">All Subjects</option>
+  //             {uniqueSubjects.map(subject => (
+  //               <option key={subject} value={subject}>{subject}</option>
+  //             ))}
+  //           </select>
+
+  //           <select
+  //             value={filterType}
+  //             onChange={(e) => setFilterType(e.target.value)}
+  //             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+  //           >
+  //             <option value="all">All Types</option>
+  //             <option value="test">Class Test</option>
+  //             <option value="quiz">Quiz</option>
+  //             <option value="mid_term">Mid-Term</option>
+  //             <option value="final_exam">Final Exam</option>
+  //             <option value="practical">Practical</option>
+  //             <option value="oral_exam">Oral Exam</option>
+  //           </select>
+
+  //           <select
+  //             value={filterStatus}
+  //             onChange={(e) => setFilterStatus(e.target.value)}
+  //             className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+  //           >
+  //             <option value="all">All Status</option>
+  //             <option value="scheduled">Scheduled</option>
+  //             <option value="in_progress">In Progress</option>
+  //             <option value="completed">Completed</option>
+  //             <option value="cancelled">Cancelled</option>
+  //             <option value="postponed">Postponed</option>
+  //           </select>
+  //         </div>
+  //       </div>
+
+  //       {/* Content */}
+  //       {loading ? (
+  //         <div className="flex items-center justify-center py-12">
+  //           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  //         </div>
+  //       ) : error ? (
+  //         <div className="text-center py-12">
+  //           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+  //           <p className="text-red-600 dark:text-red-400">{error}</p>
+  //           <button
+  //             onClick={loadTeacherData}
+  //             className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+  //           >
+  //             Try Again
+  //           </button>
+  //         </div>
+  //       ) : filteredExams.length === 0 ? (
+  //         <div className="text-center py-12">
+  //           <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+  //           <p className="text-slate-500 dark:text-slate-400">
+  //             No {activeTab === 'exams' ? 'exams' : 'tests'} found
+  //           </p>
+  //           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+  //             {activeTab === 'exams' 
+  //               ? 'Create your first exam to get started'
+  //               : 'Create your first test or quiz to get started'
+  //             }
+  //           </p>
+  //         </div>
+  //       ) : (
+  //         <div className="grid gap-6">
+  //           {filteredExams.filter(exam => exam.id !== 9).map((exam) => (
+  //             <div
+  //               key={exam.id}
+  //               className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow"
+  //             >
+  //               <div className="flex items-start justify-between">
+  //                 <div className="flex-1">
+  //                   <div className="flex items-center space-x-3 mb-3">
+  //                     {getTypeIcon(exam.exam_type)}
+  //                     <div>
+  //                       <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+  //                         {exam.title}
+  //                       </h3>
+  //                       <p className="text-sm text-slate-500 dark:text-slate-400">
+  //                         {exam.code}
+  //                       </p>
+  //                     </div>
+  //                   </div>
+
+  //                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+  //                     <div className="flex items-center space-x-2">
+  //                       <BookOpen className="w-4 h-4 text-slate-400" />
+  //                       <span className="text-sm text-slate-600 dark:text-slate-300">
+  //                         {exam.subject_name}
+  //                       </span>
+  //                     </div>
+  //                     <div className="flex items-center space-x-2">
+  //                       <Users className="w-4 h-4 text-slate-400" />
+  //                       <span className="text-sm text-slate-600 dark:text-slate-300">
+  //                         {exam.grade_level_name}
+  //                       </span>
+  //                     </div>
+  //                     <div className="flex items-center space-x-2">
+  //                       <Target className="w-4 h-4 text-slate-400" />
+  //                       <span className="text-sm text-slate-600 dark:text-slate-300">
+  //                         {exam.total_marks} marks
+  //                       </span>
+  //                     </div>
+  //                   </div>
+
+  //                   <div className="flex items-center space-x-4 mb-4">
+  //                     {getStatusBadge(exam.status)}
+  //                     <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+  //                       <Clock className="w-4 h-4" />
+  //                       <span>{exam.duration_minutes} min</span>
+  //                     </div>
+  //                     {exam.exam_date && (
+  //                       <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+  //                         <Calendar className="w-4 h-4" />
+  //                         <span>{new Date(exam.exam_date).toLocaleDateString()}</span>
+  //                       </div>
+  //                     )}
+  //                     <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+  //                       <Clock3 className="w-4 h-4" />
+  //                       <span>Created: {new Date(exam.created_at).toLocaleDateString()}</span>
+  //                     </div>
+  //                     {exam.updated_at !== exam.created_at && (
+  //                       <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+  //                         <RefreshCw className="w-4 h-4" />
+  //                         <span>Updated: {new Date(exam.updated_at).toLocaleDateString()}</span>
+  //                       </div>
+  //                     )}
+  //                   </div>
+  //                 </div>
+
+  //                 <div className="flex items-center space-x-2">
+  //                   <button
+  //                     onClick={() => handleViewExam(exam)}
+  //                     className="flex items-center space-x-2 px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+  //                   >
+  //                     <Eye className="w-4 h-4" />
+  //                     <span>View</span>
+  //                   </button>
+                    
+  //                   {(exam.status === 'scheduled' || exam.status === 'draft') && (
+  //                     <button
+  //                       onClick={() => activeTab === 'exams' ? handleEditExam(exam) : handleEditTest(exam)}
+  //                       className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+  //                     >
+  //                       <Edit className="w-4 h-4" />
+  //                       <span>Edit</span>
+  //                     </button>
+  //                   )}
+                    
+  //                   {(exam.status === 'completed' || exam.status === 'in_progress') && (
+  //                     <button
+  //                       onClick={() => navigate('/teacher/results')}
+  //                       className="flex items-center space-x-2 px-3 py-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+  //                     >
+  //                       <Award className="w-4 h-4" />
+  //                       <span>Record Results</span>
+  //                     </button>
+  //                   )}
+                    
+  //                   {exam.status === 'draft' && (
+  //                     <button
+  //                       onClick={() => handleSubmitForApproval(exam.id)}
+  //                       className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+  //                     >
+  //                       <CheckCircle className="w-4 h-4" />
+  //                       <span>Submit for Approval</span>
+  //                     </button>
+  //                   )}
+  //                   {(exam.status === 'scheduled' || exam.status === 'draft') && (
+  //                     <button
+  //                       onClick={() => handleDeleteExam(exam.id)}
+  //                       className="flex items-center space-x-2 px-3 py-2 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+  //                     >
+  //                       <Trash2 className="w-4 h-4" />
+  //                       <span>Delete</span>
+  //                     </button>
+  //                   )}
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           ))}
+  //         </div>
+  //       )}
+  //     </div>
+
+  //     {/* Exam Creation Modal */}
+  //     {showCreateModal && (
+  //       <ExamCreationForm
+  //         isOpen={showCreateModal}
+  //         onClose={closeExamModal}
+  //         onExamCreated={handleExamCreated}
+  //         editingExam={editingExam}
+  //         prefill={!editingExam && selectedExam ? {
+  //           title: selectedExam.title,
+  //           exam_type: selectedExam.exam_type,
+  //           subject: 0,
+  //           grade_level: 0,
+  //         } : undefined}
+  //       />
+  //     )}
+
+  //     {/* Test Creation Modal */}
+  //     {showTestModal && (
+  //       <TestCreationForm
+  //         isOpen={showTestModal}
+  //         onClose={closeTestModal}
+  //         onTestCreated={handleTestCreated}
+  //         editingTest={editingTest}
+  //       />
+  //     )}
+
+  //     {/* Exam View Modal */}
+  //     {selectedExam && (
+  //       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  //         <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+  //           <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+  //             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+  //               Exam Details
+  //             </h2>
+  //             <button
+  //               onClick={closeViewModal}
+  //               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+  //             >
+  //               <X className="w-6 h-6" />
+  //             </button>
+  //           </div>
+
+  //           <div className="p-6 space-y-4">
+  //             <div className="grid grid-cols-2 gap-4">
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Title</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.title}</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Code</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.code}</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Subject</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.subject_name}</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Grade Level</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.grade_level_name}</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Type</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.exam_type_display}</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Marks</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.total_marks}</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Duration</label>
+  //                 <p className="text-slate-900 dark:text-white">{selectedExam.duration_minutes} minutes</p>
+  //               </div>
+  //               <div>
+  //                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Status</label>
+  //                 <div className="mt-1">{getStatusBadge(selectedExam.status)}</div>
+  //               </div>
+  //             </div>
+
+  //             {selectedExam.exam_date && (
+  //               <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+  //                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Schedule</h3>
+  //                 <div className="grid grid-cols-3 gap-4">
+  //                   <div>
+  //                     <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Date</label>
+  //                     <p className="text-slate-900 dark:text-white">
+  //                       {new Date(selectedExam.exam_date).toLocaleDateString()}
+  //                     </p>
+  //                   </div>
+  //                   <div>
+  //                     <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Start Time</label>
+  //                     <p className="text-slate-900 dark:text-white">{selectedExam.start_time}</p>
+  //                   </div>
+  //                   <div>
+  //                     <label className="text-sm font-medium text-slate-500 dark:text-slate-400">End Time</label>
+  //                     <p className="text-slate-900 dark:text-white">{selectedExam.end_time}</p>
+  //                   </div>
+  //                 </div>
+  //               </div>
+  //             )}
+
+  //             {/* Questions Preview */}
+  //             {selectedExamDetail && (
+  //               <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-6">
+  //                 {(selectedExamDetail.objective_questions || []).length > 0 && (
+  //                   <div>
+  //                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Objective Questions</h3>
+  //                     <div className="space-y-3">
+  //                       {selectedExamDetail.objective_questions!.map((q: any, i: number) => (
+  //                         <div key={i} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
+  //                           <div className="font-medium mb-2">{i + 1}. {q.question}</div>
+  //                           {q.imageUrl && (
+  //                             <img src={q.imageUrl} alt={q.imageAlt || 'question image'} className="max-h-40 object-contain mb-2" />
+  //                           )}
+  //                           <div className="grid grid-cols-2 gap-2 text-sm">
+  //                             <div>A. {q.optionA}</div>
+  //                             <div>B. {q.optionB}</div>
+  //                             <div>C. {q.optionC}</div>
+  //                             <div>D. {q.optionD}</div>
+  //                           </div>
+  //                           <div className="text-xs text-slate-500 mt-1">Marks: {q.marks}</div>
+  //                         </div>
+  //                       ))}
+  //                     </div>
+  //                   </div>
+  //                 )}
+
+  //                 {(selectedExamDetail.theory_questions || []).length > 0 && (
+  //                   <div>
+  //                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Theory Questions</h3>
+  //                     <div className="space-y-3">
+  //                       {selectedExamDetail.theory_questions!.map((q: any, i: number) => (
+  //                         <div key={i} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
+  //                           <div className="font-medium mb-2">{i + 1}. {q.question}</div>
+  //                           {q.imageUrl && (
+  //                             <img src={q.imageUrl} alt={q.imageAlt || 'theory image'} className="max-h-40 object-contain mb-2" />
+  //                           )}
+  //                           {q.table && (
+  //                             <div className="overflow-auto mb-2">
+  //                               <table className="min-w-[300px] border border-slate-300 dark:border-slate-600 text-sm">
+  //                                 <tbody>
+  //                                   {q.table.data.map((row: string[], r: number) => (
+  //                                     <tr key={r}>
+  //                                       {row.map((cell: string, c: number) => (
+  //                                         <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">{cell}</td>
+  //                                       ))}
+  //                                     </tr>
+  //                                   ))}
+  //                                 </tbody>
+  //                               </table>
+  //                             </div>
+  //                           )}
+  //                           {(q.subQuestions || []).length > 0 && (
+  //                             <div className="space-y-2">
+  //                               {q.subQuestions.map((sq: any, si: number) => (
+  //                                 <div key={si} className="pl-3">
+  //                                   <div className="mb-1">{i + 1}{String.fromCharCode(97 + si)}. {sq.question} ({sq.marks || 0} marks)</div>
+  //                                   {(sq.subSubQuestions || []).length > 0 && (
+  //                                     <div className="pl-3 space-y-1">
+  //                                       {sq.subSubQuestions.map((ssq: any, ssi: number) => (
+  //                                         <div key={ssi}>{i + 1}{String.fromCharCode(97 + si)}{String.fromCharCode(105 + ssi)}. {ssq.question} ({ssq.marks || 0})</div>
+  //                                       ))}
+  //                                     </div>
+  //                                   )}
+  //                                 </div>
+  //                               ))}
+  //                             </div>
+  //                           )}
+  //                           <div className="text-xs text-slate-500 mt-1">Marks: {q.marks}</div>
+  //                         </div>
+  //                       ))}
+  //                     </div>
+  //                   </div>
+  //                 )}
+
+  //                 {(selectedExamDetail.custom_sections || []).length > 0 && (
+  //                   <div>
+  //                     <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Custom Sections</h3>
+  //                     <div className="space-y-3">
+  //                       {selectedExamDetail.custom_sections!.map((s: any, si: number) => (
+  //                         <div key={s.id || si} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
+  //                           <div className="font-medium mb-1">{s.name}</div>
+  //                           {s.instructions && <div className="text-xs text-slate-500 mb-2">{s.instructions}</div>}
+  //                           {(s.questions || []).map((q: any, qi: number) => (
+  //                             <div key={q.id || qi} className="mt-2">
+  //                               <div className="mb-1">{qi + 1}. {q.question}</div>
+  //                               {q.imageUrl && (
+  //                                 <img src={q.imageUrl} alt={q.imageAlt || 'custom image'} className="max-h-40 object-contain mb-2" />
+  //                               )}
+  //                               {q.table && (
+  //                                 <div className="overflow-auto mb-2">
+  //                                   <table className="min-w-[300px] border border-slate-300 dark:border-slate-600 text-sm">
+  //                                     <tbody>
+  //                                       {q.table.data.map((row: string[], r: number) => (
+  //                                         <tr key={r}>
+  //                                           {row.map((cell: string, c: number) => (
+  //                                             <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">{cell}</td>
+  //                                           ))}
+  //                                         </tr>
+  //                                       ))}
+  //                                     </tbody>
+  //                                   </table>
+  //                                 </div>
+  //                               )}
+  //                               <div className="text-xs text-slate-500">Marks: {q.marks || 0}</div>
+  //                             </div>
+  //                           ))}
+  //                         </div>
+  //                       ))}
+  //                     </div>
+  //                   </div>
+  //                 )}
+  //               </div>
+  //             )}
+  //           </div>
+  //         </div>
+  //       </div>
+  //     )}
+  //   </TeacherDashboardLayout>
+  // );
   return (
-    <TeacherDashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2">
-          <div className='p-3'>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              Exam & Test Management
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-1">
-              Create and manage exams, tests, and assessments for your classes
-            </p>
-          </div>
-          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center space-x-2 px-4 py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
-            </button>
-          </div>
-        </div>
+  <TeacherDashboardLayout>
+    <div className="space-y-6">
 
-        {/* Exam Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Exams</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{exams.length}</p>
-              </div>
-              <BookOpen className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Scheduled</p>
-                <p className="text-2xl font-bold text-blue-600">{exams.filter(e => e.status === 'scheduled').length}</p>
-              </div>
-              <Calendar className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">In Progress</p>
-                <p className="text-2xl font-bold text-yellow-600">{exams.filter(e => e.status === 'in_progress').length}</p>
-              </div>
-              <AlertCircle className="w-8 h-8 text-yellow-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Completed</p>
-                <p className="text-2xl font-bold text-green-600">{exams.filter(e => e.status === 'completed').length}</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Tests & Quizzes</p>
-                <p className="text-2xl font-bold text-purple-600">{exams.filter(e => e.exam_type === 'test' || e.exam_type === 'quiz').length}</p>
-              </div>
-              <Target className="w-8 h-8 text-purple-600" />
-            </div>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-2">
+        <div className="p-3 flex-1">
+          <h1 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white">
+            Exam & Test Management
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1 text-base">
+            Create and manage exams, tests, and assessments for your classes
+          </p>
         </div>
-
-        {/* Tabs */}
-        <div className="flex space-x-1 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-0 w-full sm:w-auto">
           <button
-            onClick={() => setActiveTab('exams')}
-            className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors ${
-              activeTab === 'exams'
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            onClick={handleRefresh}
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           >
-            <div className="flex items-center space-x-2">
-              <GraduationCap className="w-4 h-4" />
-              <span>Exams</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('tests')}
-            className={`px-6 py-3 text-sm font-medium rounded-t-lg transition-colors ${
-              activeTab === 'tests'
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Target className="w-4 h-4" />
-              <span>Tests & Quizzes</span>
-            </div>
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
           </button>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            {activeTab === 'exams' ? (
-              <button
-                onClick={handleCreateExam}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create New Exam</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleCreateTest}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create New Test</span>
-              </button>
-            )}
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search exams..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-              />
-            </div>
-
-            <select
-              value={filterSubject}
-              onChange={(e) => setFilterSubject(e.target.value)}
-              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-            >
-              <option value="all">All Subjects</option>
-              {uniqueSubjects.map(subject => (
-                <option key={subject} value={subject}>{subject}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-            >
-              <option value="all">All Types</option>
-              <option value="test">Class Test</option>
-              <option value="quiz">Quiz</option>
-              <option value="mid_term">Mid-Term</option>
-              <option value="final_exam">Final Exam</option>
-              <option value="practical">Practical</option>
-              <option value="oral_exam">Oral Exam</option>
-            </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-            >
-              <option value="all">All Status</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="postponed">Postponed</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Content */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-            <p className="text-red-600 dark:text-red-400">{error}</p>
-            <button
-              onClick={loadTeacherData}
-              className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : filteredExams.length === 0 ? (
-          <div className="text-center py-12">
-            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 dark:text-slate-400">
-              No {activeTab === 'exams' ? 'exams' : 'tests'} found
-            </p>
-            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-              {activeTab === 'exams' 
-                ? 'Create your first exam to get started'
-                : 'Create your first test or quiz to get started'
-              }
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {filteredExams.filter(exam => exam.id !== 9).map((exam) => (
-              <div
-                key={exam.id}
-                className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-3">
-                      {getTypeIcon(exam.exam_type)}
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                          {exam.title}
-                        </h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {exam.code}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <BookOpen className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600 dark:text-slate-300">
-                          {exam.subject_name}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600 dark:text-slate-300">
-                          {exam.grade_level_name}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Target className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600 dark:text-slate-300">
-                          {exam.total_marks} marks
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-4 mb-4">
-                      {getStatusBadge(exam.status)}
-                      <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Clock className="w-4 h-4" />
-                        <span>{exam.duration_minutes} min</span>
-                      </div>
-                      {exam.exam_date && (
-                        <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                          <Calendar className="w-4 h-4" />
-                          <span>{new Date(exam.exam_date).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Clock3 className="w-4 h-4" />
-                        <span>Created: {new Date(exam.created_at).toLocaleDateString()}</span>
-                      </div>
-                      {exam.updated_at !== exam.created_at && (
-                        <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                          <RefreshCw className="w-4 h-4" />
-                          <span>Updated: {new Date(exam.updated_at).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleViewExam(exam)}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>View</span>
-                    </button>
-                    
-                    {(exam.status === 'scheduled' || exam.status === 'draft') && (
-                      <button
-                        onClick={() => activeTab === 'exams' ? handleEditExam(exam) : handleEditTest(exam)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                      >
-                        <Edit className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-                    )}
-                    
-                    {(exam.status === 'completed' || exam.status === 'in_progress') && (
-                      <button
-                        onClick={() => navigate('/teacher/results')}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-                      >
-                        <Award className="w-4 h-4" />
-                        <span>Record Results</span>
-                      </button>
-                    )}
-                    
-                    {exam.status === 'draft' && (
-                      <button
-                        onClick={() => handleSubmitForApproval(exam.id)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        <span>Submit for Approval</span>
-                      </button>
-                    )}
-                    {(exam.status === 'scheduled' || exam.status === 'draft') && (
-                      <button
-                        onClick={() => handleDeleteExam(exam.id)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Delete</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Exam Creation Modal */}
+      {/* Exam Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        {/* Repeat for each summary stat */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 flex flex-col">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Exams</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{exams.length}</p>
+            </div>
+            <BookOpen className="w-8 h-8 text-blue-600" />
+          </div>
+        </div>
+        {/* ...copy/modify for Scheduled, In Progress, Completed, Tests & Quizzes... */}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex overflow-x-auto space-x-1 border-b border-slate-200 dark:border-slate-700">
+        <button
+          onClick={() => setActiveTab('exams')}
+          className={`px-4 sm:px-6 py-2 sm:py-3 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+            activeTab === 'exams'
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <GraduationCap className="w-4 h-4" />
+            <span>Exams</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('tests')}
+          className={`px-4 sm:px-6 py-2 sm:py-3 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
+            activeTab === 'tests'
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <Target className="w-4 h-4" />
+            <span>Tests & Quizzes</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Action Buttons & Filters */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          {activeTab === 'exams' ? (
+            <button
+              onClick={handleCreateExam}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create New Exam</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleCreateTest}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create New Test</span>
+            </button>
+          )}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search exams..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full sm:w-auto pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+            />
+          </div>
+          <select
+            value={filterSubject}
+            onChange={(e) => setFilterSubject(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+          >
+            <option value="all">All Subjects</option>
+            {uniqueSubjects.map(subject => (
+              <option key={subject} value={subject}>{subject}</option>
+            ))}
+          </select>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+          >
+            {/* option fields */}
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+          >
+            {/* option fields */}
+          </select>
+        </div>
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <p className="text-red-600 dark:text-red-400">{error}</p>
+          <button
+            onClick={loadTeacherData}
+            className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : filteredExams.length === 0 ? (
+        <div className="text-center py-12">
+          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="text-slate-500 dark:text-slate-400">
+            No {activeTab === 'exams' ? 'exams' : 'tests'} found
+          </p>
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
+            {activeTab === 'exams'
+              ? 'Create your first exam to get started'
+              : 'Create your first test or quiz to get started'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {filteredExams.filter(exam => exam.id !== 9).map((exam) => (
+            <div
+              key={exam.id}
+              className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 sm:p-6 hover:shadow-lg transition-shadow"
+            >
+              {/* Card content, keep flex and grid with mobile-first classes */}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modals */}
       {showCreateModal && (
         <ExamCreationForm
           isOpen={showCreateModal}
           onClose={closeExamModal}
           onExamCreated={handleExamCreated}
           editingExam={editingExam}
-          prefill={!editingExam && selectedExam ? {
-            title: selectedExam.title,
-            exam_type: selectedExam.exam_type,
-            subject: 0,
-            grade_level: 0,
-          } : undefined}
+          prefill={
+            !editingExam && selectedExam
+              ? {
+                  title: selectedExam.title,
+                  exam_type: selectedExam.exam_type,
+                  subject: 0,
+                  grade_level: 0,
+                }
+              : undefined
+          }
         />
       )}
-
-      {/* Test Creation Modal */}
       {showTestModal && (
         <TestCreationForm
           isOpen={showTestModal}
@@ -853,12 +1241,11 @@ const loadTeacherData = async () => {
         />
       )}
 
-      {/* Exam View Modal */}
       {selectedExam && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-sm sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
                 Exam Details
               </h2>
               <button
@@ -868,184 +1255,30 @@ const loadTeacherData = async () => {
                 <X className="w-6 h-6" />
               </button>
             </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Title</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.title}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Code</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.code}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Subject</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.subject_name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Grade Level</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.grade_level_name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Type</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.exam_type_display}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Marks</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.total_marks}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Duration</label>
-                  <p className="text-slate-900 dark:text-white">{selectedExam.duration_minutes} minutes</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Status</label>
-                  <div className="mt-1">{getStatusBadge(selectedExam.status)}</div>
-                </div>
+            <div className="p-4 sm:p-6 space-y-4">
+              {/* Exam detail section, convert grid-cols-2 to grid-cols-1 when on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Continue as in your code */}
               </div>
-
+              {/* Schedule: grid-cols-3 to cols-1 mobile */}
               {selectedExam.exam_date && (
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
                   <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Schedule</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Date</label>
-                      <p className="text-slate-900 dark:text-white">
-                        {new Date(selectedExam.exam_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Start Time</label>
-                      <p className="text-slate-900 dark:text-white">{selectedExam.start_time}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">End Time</label>
-                      <p className="text-slate-900 dark:text-white">{selectedExam.end_time}</p>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* date/start/end */}
                   </div>
                 </div>
               )}
-
               {/* Questions Preview */}
-              {selectedExamDetail && (
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-6">
-                  {(selectedExamDetail.objective_questions || []).length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Objective Questions</h3>
-                      <div className="space-y-3">
-                        {selectedExamDetail.objective_questions!.map((q: any, i: number) => (
-                          <div key={i} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
-                            <div className="font-medium mb-2">{i + 1}. {q.question}</div>
-                            {q.imageUrl && (
-                              <img src={q.imageUrl} alt={q.imageAlt || 'question image'} className="max-h-40 object-contain mb-2" />
-                            )}
-                            <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div>A. {q.optionA}</div>
-                              <div>B. {q.optionB}</div>
-                              <div>C. {q.optionC}</div>
-                              <div>D. {q.optionD}</div>
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">Marks: {q.marks}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {(selectedExamDetail.theory_questions || []).length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Theory Questions</h3>
-                      <div className="space-y-3">
-                        {selectedExamDetail.theory_questions!.map((q: any, i: number) => (
-                          <div key={i} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
-                            <div className="font-medium mb-2">{i + 1}. {q.question}</div>
-                            {q.imageUrl && (
-                              <img src={q.imageUrl} alt={q.imageAlt || 'theory image'} className="max-h-40 object-contain mb-2" />
-                            )}
-                            {q.table && (
-                              <div className="overflow-auto mb-2">
-                                <table className="min-w-[300px] border border-slate-300 dark:border-slate-600 text-sm">
-                                  <tbody>
-                                    {q.table.data.map((row: string[], r: number) => (
-                                      <tr key={r}>
-                                        {row.map((cell: string, c: number) => (
-                                          <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">{cell}</td>
-                                        ))}
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                            {(q.subQuestions || []).length > 0 && (
-                              <div className="space-y-2">
-                                {q.subQuestions.map((sq: any, si: number) => (
-                                  <div key={si} className="pl-3">
-                                    <div className="mb-1">{i + 1}{String.fromCharCode(97 + si)}. {sq.question} ({sq.marks || 0} marks)</div>
-                                    {(sq.subSubQuestions || []).length > 0 && (
-                                      <div className="pl-3 space-y-1">
-                                        {sq.subSubQuestions.map((ssq: any, ssi: number) => (
-                                          <div key={ssi}>{i + 1}{String.fromCharCode(97 + si)}{String.fromCharCode(105 + ssi)}. {ssq.question} ({ssq.marks || 0})</div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <div className="text-xs text-slate-500 mt-1">Marks: {q.marks}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {(selectedExamDetail.custom_sections || []).length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Custom Sections</h3>
-                      <div className="space-y-3">
-                        {selectedExamDetail.custom_sections!.map((s: any, si: number) => (
-                          <div key={s.id || si} className="p-3 border border-slate-200 dark:border-slate-600 rounded">
-                            <div className="font-medium mb-1">{s.name}</div>
-                            {s.instructions && <div className="text-xs text-slate-500 mb-2">{s.instructions}</div>}
-                            {(s.questions || []).map((q: any, qi: number) => (
-                              <div key={q.id || qi} className="mt-2">
-                                <div className="mb-1">{qi + 1}. {q.question}</div>
-                                {q.imageUrl && (
-                                  <img src={q.imageUrl} alt={q.imageAlt || 'custom image'} className="max-h-40 object-contain mb-2" />
-                                )}
-                                {q.table && (
-                                  <div className="overflow-auto mb-2">
-                                    <table className="min-w-[300px] border border-slate-300 dark:border-slate-600 text-sm">
-                                      <tbody>
-                                        {q.table.data.map((row: string[], r: number) => (
-                                          <tr key={r}>
-                                            {row.map((cell: string, c: number) => (
-                                              <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">{cell}</td>
-                                            ))}
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-                                <div className="text-xs text-slate-500">Marks: {q.marks || 0}</div>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Ensure option tables/lists use overflow-x-auto and wrap text on mobile */}
             </div>
           </div>
         </div>
       )}
-    </TeacherDashboardLayout>
-  );
+    </div>
+  </TeacherDashboardLayout>
+)
+
 };
 
 export default TeacherExams;
