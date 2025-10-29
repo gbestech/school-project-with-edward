@@ -14,7 +14,13 @@ export enum UserRole {
   STUDENT = 'student',
   TEACHER = 'teacher',
   PARENT = 'parent',
-  ADMIN = 'admin'
+  ADMIN = 'admin',
+  SUPERADMIN = 'superadmin',
+  NURSERY_ADMIN = 'nursery_admin',
+  PRIMARY_ADMIN = 'primary_admin',
+  JUNIOR_SECONDARY_ADMIN = 'junior_secondary_admin',
+  SENIOR_SECONDARY_ADMIN = 'senior_secondary_admin',
+  SECONDARY_ADMIN = 'secondary_admin'
 }
 
 export enum Gender {
