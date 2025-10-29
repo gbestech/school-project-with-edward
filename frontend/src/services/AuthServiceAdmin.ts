@@ -277,7 +277,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/admin/users/${userId}/unsuspend/`);
+      await api.post(`/admin/users/${userId}/unsuspend/`, {});
     } catch (error) {
       console.error(`Failed to unsuspend user ${userId}:`, error);
       throw error;
@@ -389,7 +389,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/admin/users/${userId}/send_verification/`);
+      await api.post(`/admin/users/${userId}/send_verification/`, {});
     } catch (error) {
       console.error(`Failed to send verification email to user ${userId}:`, error);
       throw error;
@@ -401,7 +401,7 @@ export function useAdminAuth() {
     try {
       if (!isAdmin()) throw new Error('Admin access required');
       
-      await api.post(`/admin/users/${userId}/verify/`);
+      await api.post(`/admin/users/${userId}/verify/`, {});
     } catch (error) {
       console.error(`Failed to verify user ${userId}:`, error);
       throw error;
@@ -447,11 +447,16 @@ export function useAdminAuth() {
       const formData = new FormData();
       formData.append('profile_image', file);
       
-      const response = await api.post(`/admin/users/${userId}/profile_picture/`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+     const response = await (api as any).post(
+  `/admin/users/${userId}/profile_picture/`,
+  formData,
+  { headers: { 'Content-Type': 'multipart/form-data' } }
+);
+      // const response = await api.post(`/admin/users/${userId}/profile_picture/`, formData, {
+      //   headers?: {
+      //     'Content-Type': 'multipart/form-data',
+      //   },
+      // });
       
       return response.data.profile_picture_url;
     } catch (error) {
@@ -584,7 +589,7 @@ export function useAdminAuth() {
       console.log(`🔄 Activating/deactivating student: ${studentId}, isActive: ${isActive}`);
       
       // Use the new toggle_status endpoint that handles both user and student profile
-      const response = await api.post(`/api/students/${studentId}/toggle_status/`);
+      const response = await api.post(`/api/students/${studentId}/toggle_status/`, {});
       console.log('✅ Student activation response:', response);
       
       // The endpoint returns the new status, so we can verify it worked
