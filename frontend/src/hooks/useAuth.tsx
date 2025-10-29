@@ -22,8 +22,7 @@ const clearAuthData = () => {
 
 // Helper function to map server role to enum
 const mapServerRoleToEnum = (rawRole: any): UserRole => {
-  console.log('🔍 mapServerRoleToEnum: Raw role received:', rawRole);
-  console.log('🔍 mapServerRoleToEnum: Raw role type:', typeof rawRole);
+ 
   
   if (!rawRole) {
     console.error('🔍 mapServerRoleToEnum: No role provided by server');
@@ -33,11 +32,24 @@ const mapServerRoleToEnum = (rawRole: any): UserRole => {
   const roleString = rawRole.toString().toUpperCase();
   console.log('🔍 mapServerRoleToEnum: Role string after toUpperCase:', roleString);
   
+  // const roleMapping: { [key: string]: UserRole } = {
+  //   'ADMIN': UserRole.ADMIN,
+  //   'TEACHER': UserRole.TEACHER,
+  //   'STUDENT': UserRole.STUDENT,
+  //   'PARENT': UserRole.PARENT,
+  // };
+
   const roleMapping: { [key: string]: UserRole } = {
     'ADMIN': UserRole.ADMIN,
     'TEACHER': UserRole.TEACHER,
     'STUDENT': UserRole.STUDENT,
     'PARENT': UserRole.PARENT,
+    'SUPERADMIN': UserRole.SUPERADMIN,
+    'NURSERY_ADMIN': UserRole.NURSERY_ADMIN,
+    'PRIMARY_ADMIN': UserRole.PRIMARY_ADMIN,
+    'JUNIOR_SECONDARY_ADMIN': UserRole.JUNIOR_SECONDARY_ADMIN,
+    'SENIOR_SECONDARY_ADMIN': UserRole.SENIOR_SECONDARY_ADMIN,
+    'SECONDARY_ADMIN': UserRole.SECONDARY_ADMIN
   };
 
   console.log('🔍 mapServerRoleToEnum: Available role mappings:', Object.keys(roleMapping));
@@ -197,41 +209,47 @@ const login = async (credentials: LoginCredentials): Promise<FullUserData | unde
     };
 
     switch (role) {
-      case UserRole.STUDENT:
-        userData = {
-          ...baseUserData,
-          role: UserRole.STUDENT,
-          student_data: rawUserData.student_data || {},
-        };
-        break;
+  case UserRole.STUDENT:
+    userData = {
+      ...baseUserData,
+      role: UserRole.STUDENT,
+      student_data: rawUserData.student_data || {},
+    };
+    break;
 
-      case UserRole.TEACHER:
-        userData = {
-          ...baseUserData,
-          role: UserRole.TEACHER,
-          teacher_data: rawUserData.teacher_data || {},
-        };
-        break;
+  case UserRole.TEACHER:
+    userData = {
+      ...baseUserData,
+      role: UserRole.TEACHER,
+      teacher_data: rawUserData.teacher_data || {},
+    };
+    break;
 
-      case UserRole.ADMIN:
-        userData = {
-          ...baseUserData,
-          role: UserRole.ADMIN,
-        };
-        break;
+  case UserRole.ADMIN:
+  case UserRole.SUPERADMIN:
+  case UserRole.NURSERY_ADMIN:
+  case UserRole.PRIMARY_ADMIN:
+  case UserRole.JUNIOR_SECONDARY_ADMIN:
+  case UserRole.SENIOR_SECONDARY_ADMIN:
+  case UserRole.SECONDARY_ADMIN:
+    userData = {
+      ...baseUserData,
+      role: role, // Use the actual role (not hardcoded ADMIN)
+      admin_data: rawUserData.admin_data || {}, // Optional: if you have admin-specific data
+    };
+    break;
 
-      case UserRole.PARENT:
-        userData = {
-          ...baseUserData,
-          role: UserRole.PARENT,
-          parent_data: rawUserData.parent_data || {},
-        };
-        break;
+  case UserRole.PARENT:
+    userData = {
+      ...baseUserData,
+      role: UserRole.PARENT,
+      parent_data: rawUserData.parent_data || {},
+    };
+    break;
 
-      default:
-        throw new Error(`Unsupported role: ${role}`);
-    }
-
+  default:
+    throw new Error(`Unsupported role: ${role}`);
+}
     console.log('✅ User data object created:', userData);
 
     // Fetch additional profile data (non-blocking, in background)

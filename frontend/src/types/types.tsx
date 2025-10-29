@@ -1252,7 +1252,15 @@ export interface ParentUserData extends BaseFullUserData {
 }
 
 export interface AdminUserData extends BaseFullUserData {
-  role: UserRole.ADMIN;
+  role: 
+    | UserRole.ADMIN 
+    | UserRole.SUPERADMIN
+    | UserRole.NURSERY_ADMIN
+    | UserRole.PRIMARY_ADMIN
+    | UserRole.JUNIOR_SECONDARY_ADMIN
+    | UserRole.SENIOR_SECONDARY_ADMIN
+    | UserRole.SECONDARY_ADMIN;
+  admin_data?: Record<string, any>; // Optional admin-specific data
 }
 
 export type FullUserData = StudentUserData | TeacherUserData | ParentUserData | AdminUserData;
