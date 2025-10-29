@@ -99,29 +99,6 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             return ExamCreateUpdateSerializer
         return ExamDetailSerializer
 
-    # def get_queryset(self):
-    #     """Optimize queryset for list view with section filtering"""
-    #     queryset = super().get_queryset()
-    #     if self.action == "list":
-    #         queryset = queryset.annotate(
-    #             registered_students_count=Count("examregistration", distinct=True)
-    #         )
-
-    #     # Apply section-based filtering for authenticated users
-    #     if self.request.user.is_authenticated:
-    #         # Filter exams by grade level's education level
-    #         section_access = self.get_user_section_access()
-    #         education_levels = self.get_education_levels_for_sections(section_access)
-
-    #         if not education_levels:
-    #             return queryset.none()
-
-    #         queryset = queryset.filter(
-    #             grade_level__education_level__in=education_levels
-    #         )
-
-    #     return queryset
-
     def get_queryset(self):
         """Optimize queryset for list view with section filtering"""
         queryset = super().get_queryset()
@@ -135,13 +112,13 @@ class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         if self.request.user.is_authenticated:
             user = self.request.user
 
-            # 🟢 ADMINS/STAFF: See all exams
-            if user.is_superuser or user.is_staff:
-                return queryset
-
-            # 🟢 TEACHERS: See only their own exams
+            # 🟢 TEACHERS: Check FIRST - See only their own exams
             if hasattr(user, "teacher"):
                 return queryset.filter(teacher_id=user.teacher.id)
+
+            # 🟢 ADMINS/STAFF: See all exams (checked AFTER teachers)
+            if user.is_superuser or user.is_staff:
+                return queryset
 
             # 🟢 STUDENTS/PARENTS: Filter by section access
             section_access = self.get_user_section_access()

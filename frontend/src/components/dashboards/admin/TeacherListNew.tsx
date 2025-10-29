@@ -876,7 +876,7 @@ const TeacherList = () => {
                   </div>
                   <div>
                     <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Email</label>
-                    <p className={themeClasses.textPrimary}>{selectedTeacher.email}</p>
+                    <p className={themeClasses.textPrimary}>{selectedTeacher.user?.email || selectedTeacher.email}</p>
                   </div>
                   <div>
                     <label className={`block text-sm font-medium ${themeClasses.textSecondary} mb-1`}>Phone</label>
