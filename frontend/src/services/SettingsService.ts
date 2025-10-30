@@ -1614,99 +1614,1041 @@ export interface UserRoleCreateUpdate {
   is_active: boolean;
 }
 
-class SettingsService {
+// class SettingsService {
   
+  
+  // async getSettings(): Promise<SchoolSettings> {
+  //   try {
+  //     const cacheBuster = `${Date.now()}_${Math.random()}`;
+  //     const response = await api.get(`/api/school-settings/school-settings/?_=${cacheBuster}`);
+      
+  //     if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+  //       console.error('Received HTML instead of JSON - likely a 404 or auth error');
+  //       return this.getDefaultSettings();
+  //     }
+      
+  //     const transformedSettings: SchoolSettings = {
+  //       site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
+  //       school_name: response.school_name ?? 'Gods Treasure Schools',
+  //       address: response.school_address ?? '',
+  //       phone: response.school_phone ?? '',
+  //       email: response.school_email ?? '',
+  //       logo: response.logo_url ?? response.logo ?? '',
+  //       favicon: response.favicon_url ?? response.favicon ?? '',
+        
+  //       academicYear: response.academic_year ?? '',
+  //       currentTerm: response.current_term ?? '',
+        
+  //       motto: response.school_motto ?? 'Knowledge at its spring',
+  //       timezone: response.timezone ?? 'UTC+1',
+  //       dateFormat: response.date_format ?? 'DD/MM/YYYY',
+  //       language: response.language ?? 'en',
+  //       theme: response.theme ?? 'default',
+  //       primaryColor: response.primary_color ?? '#3B82F6',
+  //       fontFamily: response.typography ?? 'Inter',
+  //       fontSize: 'medium',
+        
+  //       notifications: response.notifications ?? this.getDefaultSettings().notifications,
+  //       paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
+        
+  //       allowSelfRegistration: response.allow_self_registration ?? true,
+  //       emailVerificationRequired: response.email_verification_required ?? true,
+  //       registrationApprovalRequired: response.registration_approval_required ?? false,
+  //       defaultUserRole: response.default_user_role ?? 'student',
+  //       passwordMinLength: response.password_min_length ?? 8,
+  //       passwordResetInterval: response.password_reset_interval ?? 90,
+  //       passwordRequireNumbers: response.password_require_numbers ?? true,
+  //       passwordRequireSymbols: response.password_require_symbols ?? false,
+  //       passwordRequireUppercase: response.password_require_uppercase ?? false,
+  //       allowProfileImageUpload: response.allow_profile_image_upload ?? true,
+  //       profileImageMaxSize: response.profile_image_max_size ?? 2,
+        
+  //       classLevels: response.class_levels ?? [],
+  //       subjects: response.subjects ?? [],
+  //       sessions: response.sessions ?? [],
+  //       grading: response.grading ?? { grades: [], passMark: 40 },
+  //       markingScheme: response.marking_scheme ?? {
+  //         continuousAssessment: 30,
+  //         examination: 70,
+  //         components: []
+  //       },
+  //       messageTemplates: response.message_templates ?? this.getDefaultSettings().messageTemplates,
+  //       chatSystem: response.chat_system ?? this.getDefaultSettings().chatSystem,
+  //       userRolePaymentAccess: response.user_role_payment_access ?? this.getDefaultSettings().userRolePaymentAccess,
+  //       feeStructure: response.fee_structure ?? this.getDefaultSettings().feeStructure,
+  //       discountRules: response.discount_rules ?? this.getDefaultSettings().discountRules,
+        
+  //       // Transform security settings from backend
+  //       security: response.security_settings ? {
+  //         twoFactorAuth: response.security_settings.two_factor_auth ?? true,
+  //         passwordPolicy: {
+  //           minLength: response.security_settings.password_policy?.min_length ?? 8,
+  //           requireUppercase: response.security_settings.password_policy?.require_uppercase ?? true,
+  //           requireLowercase: response.security_settings.password_policy?.require_lowercase ?? true,
+  //           requireNumbers: response.security_settings.password_policy?.require_numbers ?? true,
+  //           requireSpecialChars: response.security_settings.password_policy?.require_special_chars ?? true,
+  //           passwordExpiry: response.security_settings.password_policy?.password_expiry ?? 90
+  //         },
+  //         sessionTimeout: response.security_settings.session_timeout ?? 30,
+  //         maxLoginAttempts: response.security_settings.max_login_attempts ?? 5,
+  //         lockoutDuration: response.security_settings.lockout_duration ?? 15,
+  //         ipWhitelist: response.security_settings.ip_whitelist ?? [],
+  //         auditLogging: response.security_settings.audit_logging ?? true,
+  //         dataEncryption: response.security_settings.data_encryption ?? true
+  //       } : undefined,
+  //     };
+      
+  //     console.log('✅ Transformed settings:', transformedSettings);
+  //     return transformedSettings;
+  //   } catch (error) {
+  //     console.error('Error fetching settings:', error);
+  //     return this.getDefaultSettings();
+  //   }
+  // }
+
+// In your SettingsService.ts, replace the getSettings() method with this fixed version:
+
+// async getSettings(): Promise<SchoolSettings> {
+//   try {
+//     const cacheBuster = `${Date.now()}_${Math.random()}`;
+//     const response = await api.get(`/api/school-settings/school-settings/?_=${cacheBuster}`, {
+//       headers: {
+//         'Cache-Control': 'no-cache',
+//         'Pragma': 'no-cache'
+//       }
+//     });
+    
+//     if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
+//       console.error('Received HTML instead of JSON - likely a 404 or auth error');
+//       return this.getDefaultSettings();
+//     }
+    
+//     console.log('📥 Raw backend response:', response);
+//     console.log('📥 Security settings from backend:', response.security_settings);
+    
+//     const transformedSettings: SchoolSettings = {
+//       site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
+//       school_name: response.school_name ?? 'Gods Treasure Schools',
+//       address: response.school_address ?? '',
+//       phone: response.school_phone ?? '',
+//       email: response.school_email ?? '',
+//       logo: response.logo_url ?? response.logo ?? '',
+//       favicon: response.favicon_url ?? response.favicon ?? '',
+      
+//       academicYear: response.academic_year ?? '',
+//       currentTerm: response.current_term ?? '',
+      
+//       motto: response.school_motto ?? 'Knowledge at its spring',
+//       timezone: response.timezone ?? 'UTC+1',
+//       dateFormat: response.date_format ?? 'DD/MM/YYYY',
+//       language: response.language ?? 'en',
+//       theme: response.theme ?? 'default',
+//       primaryColor: response.primary_color ?? '#3B82F6',
+//       fontFamily: response.typography ?? 'Inter',
+//       fontSize: 'medium',
+      
+//       notifications: response.notifications ?? this.getDefaultSettings().notifications,
+//       paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
+      
+//       allowSelfRegistration: response.allow_self_registration ?? true,
+//       emailVerificationRequired: response.email_verification_required ?? true,
+//       registrationApprovalRequired: response.registration_approval_required ?? false,
+//       defaultUserRole: response.default_user_role ?? 'student',
+//       passwordMinLength: response.password_min_length ?? 8,
+//       passwordResetInterval: response.password_reset_interval ?? 90,
+//       passwordRequireNumbers: response.password_require_numbers ?? true,
+//       passwordRequireSymbols: response.password_require_symbols ?? false,
+//       passwordRequireUppercase: response.password_require_uppercase ?? false,
+//       allowProfileImageUpload: response.allow_profile_image_upload ?? true,
+//       profileImageMaxSize: response.profile_image_max_size ?? 2,
+      
+//       classLevels: response.class_levels ?? [],
+//       subjects: response.subjects ?? [],
+//       sessions: response.sessions ?? [],
+//       grading: response.grading ?? { grades: [], passMark: 40 },
+//       markingScheme: response.marking_scheme ?? {
+//         continuousAssessment: 30,
+//         examination: 70,
+//         components: []
+//       },
+//       messageTemplates: response.message_templates ?? this.getDefaultSettings().messageTemplates,
+//       chatSystem: response.chat_system ?? this.getDefaultSettings().chatSystem,
+//       userRolePaymentAccess: response.user_role_payment_access ?? this.getDefaultSettings().userRolePaymentAccess,
+//       feeStructure: response.fee_structure ?? this.getDefaultSettings().feeStructure,
+//       discountRules: response.discount_rules ?? this.getDefaultSettings().discountRules,
+      
+//       // 🔥 FIXED: Transform security settings from backend - use explicit checks instead of ?? defaults
+//       security: response.security_settings ? {
+//         twoFactorAuth: response.security_settings.two_factor_auth !== undefined 
+//           ? response.security_settings.two_factor_auth 
+//           : true,
+//         passwordPolicy: {
+//           minLength: response.security_settings.password_policy?.min_length !== undefined
+//             ? response.security_settings.password_policy.min_length
+//             : 8,
+//           requireUppercase: response.security_settings.password_policy?.require_uppercase !== undefined
+//             ? response.security_settings.password_policy.require_uppercase
+//             : true,
+//           requireLowercase: response.security_settings.password_policy?.require_lowercase !== undefined
+//             ? response.security_settings.password_policy.require_lowercase
+//             : true,
+//           requireNumbers: response.security_settings.password_policy?.require_numbers !== undefined
+//             ? response.security_settings.password_policy.require_numbers
+//             : true,
+//           requireSpecialChars: response.security_settings.password_policy?.require_special_chars !== undefined
+//             ? response.security_settings.password_policy.require_special_chars
+//             : true,
+//           passwordExpiry: response.security_settings.password_policy?.password_expiry !== undefined
+//             ? response.security_settings.password_policy.password_expiry
+//             : 90
+//         },
+//         sessionTimeout: response.security_settings.session_timeout !== undefined
+//           ? response.security_settings.session_timeout
+//           : 30,
+//         maxLoginAttempts: response.security_settings.max_login_attempts !== undefined
+//           ? response.security_settings.max_login_attempts
+//           : 5,
+//         lockoutDuration: response.security_settings.lockout_duration !== undefined
+//           ? response.security_settings.lockout_duration
+//           : 15,
+//         ipWhitelist: Array.isArray(response.security_settings.ip_whitelist)
+//           ? response.security_settings.ip_whitelist
+//           : [],
+//         auditLogging: response.security_settings.audit_logging !== undefined
+//           ? response.security_settings.audit_logging
+//           : true,
+//         dataEncryption: response.security_settings.data_encryption !== undefined
+//           ? response.security_settings.data_encryption
+//           : true
+//       } : {
+//         // Default security settings if none exist
+//         twoFactorAuth: true,
+//         passwordPolicy: {
+//           minLength: 8,
+//           requireUppercase: true,
+//           requireLowercase: true,
+//           requireNumbers: true,
+//           requireSpecialChars: true,
+//           passwordExpiry: 90
+//         },
+//         sessionTimeout: 30,
+//         maxLoginAttempts: 5,
+//         lockoutDuration: 15,
+//         ipWhitelist: [],
+//         auditLogging: true,
+//         dataEncryption: true
+//       },
+//     };
+    
+//     console.log('✅ Transformed settings with security:', transformedSettings.security);
+//     return transformedSettings;
+//   } catch (error) {
+//     console.error('Error fetching settings:', error);
+//     return this.getDefaultSettings();
+//   }
+// }
+
+// // Also update the transformBackendToFrontend method with the same fix:
+// private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
+//   console.log('🔄 Transforming backend response:', response);
+//   console.log('🔄 Security settings in response:', response.security_settings);
+  
+//   return {
+//     site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
+//     school_name: response.school_name ?? 'Gods Treasure Schools',
+//     address: response.school_address ?? '',
+//     phone: response.school_phone ?? '',
+//     email: response.school_email ?? '',
+//     logo: response.logo_url ?? response.logo ?? '',
+//     favicon: response.favicon_url ?? response.favicon ?? '',
+//     academicYear: response.academic_year ?? '',
+//     currentTerm: response.current_term ?? '',
+//     motto: response.school_motto ?? 'Knowledge at its spring',
+//     timezone: response.timezone ?? 'UTC+1',
+//     dateFormat: response.date_format ?? 'DD/MM/YYYY',
+//     language: response.language ?? 'en',
+//     theme: response.theme ?? 'default',
+//     primaryColor: response.primary_color ?? '#3B82F6',
+//     fontFamily: response.typography ?? 'Inter',
+//     fontSize: 'medium',
+//     notifications: response.notifications ?? this.getDefaultSettings().notifications,
+//     paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
+//     allowSelfRegistration: response.allow_self_registration ?? true,
+//     emailVerificationRequired: response.email_verification_required ?? true,
+//     registrationApprovalRequired: response.registration_approval_required ?? false,
+//     defaultUserRole: response.default_user_role ?? 'student',
+//     passwordMinLength: response.password_min_length ?? 8,
+//     passwordResetInterval: response.password_reset_interval ?? 90,
+//     passwordRequireNumbers: response.password_require_numbers ?? true,
+//     passwordRequireSymbols: response.password_require_symbols ?? false,
+//     passwordRequireUppercase: response.password_require_uppercase ?? false,
+//     allowProfileImageUpload: response.allow_profile_image_upload ?? true,
+//     profileImageMaxSize: response.profile_image_max_size ?? 2,
+//     classLevels: response.class_levels ?? [],
+//     subjects: response.subjects ?? [],
+//     sessions: response.sessions ?? [],
+//     grading: response.grading ?? { grades: [], passMark: 40 },
+//     markingScheme: response.marking_scheme ?? {
+//       continuousAssessment: 30,
+//       examination: 70,
+//       components: []
+//     },
+//     messageTemplates: response.message_templates ?? this.getDefaultSettings().messageTemplates,
+//     chatSystem: response.chat_system ?? this.getDefaultSettings().chatSystem,
+//     userRolePaymentAccess: response.user_role_payment_access ?? this.getDefaultSettings().userRolePaymentAccess,
+//     feeStructure: response.fee_structure ?? this.getDefaultSettings().feeStructure,
+//     discountRules: response.discount_rules ?? this.getDefaultSettings().discountRules,
+    
+//     // 🔥 FIXED: Same explicit checks here
+//     security: response.security_settings ? {
+//       twoFactorAuth: response.security_settings.two_factor_auth !== undefined 
+//         ? response.security_settings.two_factor_auth 
+//         : true,
+//       passwordPolicy: {
+//         minLength: response.security_settings.password_policy?.min_length !== undefined
+//           ? response.security_settings.password_policy.min_length
+//           : 8,
+//         requireUppercase: response.security_settings.password_policy?.require_uppercase !== undefined
+//           ? response.security_settings.password_policy.require_uppercase
+//           : true,
+//         requireLowercase: response.security_settings.password_policy?.require_lowercase !== undefined
+//           ? response.security_settings.password_policy.require_lowercase
+//           : true,
+//         requireNumbers: response.security_settings.password_policy?.require_numbers !== undefined
+//           ? response.security_settings.password_policy.require_numbers
+//           : true,
+//         requireSpecialChars: response.security_settings.password_policy?.require_special_chars !== undefined
+//           ? response.security_settings.password_policy.require_special_chars
+//           : true,
+//         passwordExpiry: response.security_settings.password_policy?.password_expiry !== undefined
+//           ? response.security_settings.password_policy.password_expiry
+//           : 90
+//       },
+//       sessionTimeout: response.security_settings.session_timeout !== undefined
+//         ? response.security_settings.session_timeout
+//         : 30,
+//       maxLoginAttempts: response.security_settings.max_login_attempts !== undefined
+//         ? response.security_settings.max_login_attempts
+//         : 5,
+//       lockoutDuration: response.security_settings.lockout_duration !== undefined
+//         ? response.security_settings.lockout_duration
+//         : 15,
+//       ipWhitelist: Array.isArray(response.security_settings.ip_whitelist)
+//         ? response.security_settings.ip_whitelist
+//         : [],
+//       auditLogging: response.security_settings.audit_logging !== undefined
+//         ? response.security_settings.audit_logging
+//         : true,
+//       dataEncryption: response.security_settings.data_encryption !== undefined
+//         ? response.security_settings.data_encryption
+//         : true
+//     } : {
+//       twoFactorAuth: true,
+//       passwordPolicy: {
+//         minLength: 8,
+//         requireUppercase: true,
+//         requireLowercase: true,
+//         requireNumbers: true,
+//         requireSpecialChars: true,
+//         passwordExpiry: 90
+//       },
+//       sessionTimeout: 30,
+//       maxLoginAttempts: 5,
+//       lockoutDuration: 15,
+//       ipWhitelist: [],
+//       auditLogging: true,
+//       dataEncryption: true
+//     },
+//   };
+// }  
+
+//   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
+//     try {
+//       console.log('📤 Sending settings update:', settings);
+      
+//       const backendSettings: any = {};
+      
+//       // General settings
+//       if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
+//       if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
+//       if (settings.address !== undefined) backendSettings.school_address = settings.address;
+//       if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;
+//       if (settings.email !== undefined) backendSettings.school_email = settings.email;
+//       if (settings.motto !== undefined) backendSettings.school_motto = settings.motto;
+//       if (settings.timezone !== undefined) backendSettings.timezone = settings.timezone;
+//       if (settings.dateFormat !== undefined) backendSettings.date_format = settings.dateFormat;
+//       if (settings.language !== undefined) backendSettings.language = settings.language;
+      
+//       // Design settings
+//       if (settings.theme !== undefined) backendSettings.theme = settings.theme;
+//       if (settings.primaryColor !== undefined) backendSettings.primary_color = settings.primaryColor;
+//       if (settings.fontFamily !== undefined) backendSettings.typography = settings.fontFamily;
+      
+//       // Academic year
+//       if (settings.academicYear !== undefined) backendSettings.academic_year = settings.academicYear;
+//       if (settings.currentTerm !== undefined) backendSettings.current_term = settings.currentTerm;
+      
+//       // Files
+//       if (settings.logo !== undefined) backendSettings.logo = settings.logo;
+//       if (settings.favicon !== undefined) backendSettings.favicon = settings.favicon;
+      
+//       // Basic security
+//       if (settings.allowSelfRegistration !== undefined) backendSettings.allow_self_registration = settings.allowSelfRegistration;
+//       if (settings.emailVerificationRequired !== undefined) backendSettings.email_verification_required = settings.emailVerificationRequired;
+//       if (settings.registrationApprovalRequired !== undefined) backendSettings.registration_approval_required = settings.registrationApprovalRequired;
+//       if (settings.defaultUserRole !== undefined) backendSettings.default_user_role = settings.defaultUserRole;
+//       if (settings.passwordMinLength !== undefined) backendSettings.password_min_length = settings.passwordMinLength;
+//       if (settings.passwordResetInterval !== undefined) backendSettings.password_reset_interval = settings.passwordResetInterval;
+//       if (settings.passwordRequireNumbers !== undefined) backendSettings.password_require_numbers = settings.passwordRequireNumbers;
+//       if (settings.passwordRequireSymbols !== undefined) backendSettings.password_require_symbols = settings.passwordRequireSymbols;
+//       if (settings.passwordRequireUppercase !== undefined) backendSettings.password_require_uppercase = settings.passwordRequireUppercase;
+//       if (settings.allowProfileImageUpload !== undefined) backendSettings.allow_profile_image_upload = settings.allowProfileImageUpload;
+//       if (settings.profileImageMaxSize !== undefined) backendSettings.profile_image_max_size = settings.profileImageMaxSize;
+      
+//       // Complex objects
+//       if (settings.notifications !== undefined) backendSettings.notifications = settings.notifications;
+//       if (settings.paymentGateways !== undefined) backendSettings.payment_gateways = settings.paymentGateways;
+//       if (settings.classLevels !== undefined) backendSettings.class_levels = settings.classLevels;
+//       if (settings.subjects !== undefined) backendSettings.subjects = settings.subjects;
+//       if (settings.sessions !== undefined) backendSettings.sessions = settings.sessions;
+//       if (settings.grading !== undefined) backendSettings.grading = settings.grading;
+//       if (settings.markingScheme !== undefined) backendSettings.marking_scheme = settings.markingScheme;
+//       if (settings.messageTemplates !== undefined) backendSettings.message_templates = settings.messageTemplates;
+//       if (settings.chatSystem !== undefined) backendSettings.chat_system = settings.chatSystem;
+//       if (settings.userRolePaymentAccess !== undefined) backendSettings.user_role_payment_access = settings.userRolePaymentAccess;
+//       if (settings.feeStructure !== undefined) backendSettings.fee_structure = settings.feeStructure;
+//       if (settings.discountRules !== undefined) backendSettings.discount_rules = settings.discountRules;
+      
+//       // Advanced security settings
+//       if ((settings as any).security !== undefined) {
+//         const security = (settings as any).security;
+//         backendSettings.security_settings = {
+//           two_factor_auth: security.twoFactorAuth,
+//           password_policy: {
+//             min_length: security.passwordPolicy?.minLength,
+//             require_uppercase: security.passwordPolicy?.requireUppercase,
+//             require_lowercase: security.passwordPolicy?.requireLowercase,
+//             require_numbers: security.passwordPolicy?.requireNumbers,
+//             require_special_chars: security.passwordPolicy?.requireSpecialChars,
+//             password_expiry: security.passwordPolicy?.passwordExpiry
+//           },
+//           session_timeout: security.sessionTimeout,
+//           max_login_attempts: security.maxLoginAttempts,
+//           lockout_duration: security.lockoutDuration,
+//           ip_whitelist: security.ipWhitelist,
+//           audit_logging: security.auditLogging,
+//           data_encryption: security.dataEncryption
+//         };
+//       }
+      
+//       console.log('📤 Transformed for backend:', backendSettings);
+      
+//       const response = await api.put('/api/school-settings/school-settings/', backendSettings);
+//       console.log('✅ Backend response:', response);
+      
+//       const transformedResponse = await this.transformBackendToFrontend(response);
+//       console.log('✅ Transformed response:', transformedResponse);
+      
+//       if (typeof window !== 'undefined') {
+//         window.dispatchEvent(new CustomEvent('settings-updated', { detail: transformedResponse }));
+//       }
+      
+//       return transformedResponse;
+//     } catch (error: any) {
+//       console.error('Error updating settings:', error);
+      
+//       const errorData = error.response?.data;
+//       let errorMessage = 'Failed to update school settings';
+      
+//       if (typeof errorData === 'object' && errorData !== null) {
+//         const errors: string[] = [];
+//         for (const [field, messages] of Object.entries(errorData)) {
+//           if (Array.isArray(messages)) {
+//             errors.push(`${field}: ${messages.join(', ')}`);
+//           } else if (typeof messages === 'string') {
+//             errors.push(`${field}: ${messages}`);
+//           } else if (typeof messages === 'object') {
+//             errors.push(`${field}: ${JSON.stringify(messages)}`);
+//           }
+//         }
+//         if (errors.length > 0) {
+//           errorMessage = `Validation errors:\n${errors.join('\n')}`;
+//         }
+//       } else if (typeof errorData === 'string') {
+//         errorMessage = errorData;
+//       } else if (error.message) {
+//         errorMessage = error.message;
+//       }
+      
+//       throw new Error(errorMessage);
+//     }
+//   }
+
+//   private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
+//     return {
+//       site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
+//       school_name: response.school_name ?? 'Gods Treasure Schools',
+//       address: response.school_address ?? '',
+//       phone: response.school_phone ?? '',
+//       email: response.school_email ?? '',
+//       logo: response.logo_url ?? response.logo ?? '',
+//       favicon: response.favicon_url ?? response.favicon ?? '',
+//       academicYear: response.academic_year ?? '',
+//       currentTerm: response.current_term ?? '',
+//       motto: response.school_motto ?? 'Knowledge at its spring',
+//       timezone: response.timezone ?? 'UTC+1',
+//       dateFormat: response.date_format ?? 'DD/MM/YYYY',
+//       language: response.language ?? 'en',
+//       theme: response.theme ?? 'default',
+//       primaryColor: response.primary_color ?? '#3B82F6',
+//       fontFamily: response.typography ?? 'Inter',
+//       fontSize: 'medium',
+//       notifications: response.notifications ?? this.getDefaultSettings().notifications,
+//       paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
+//       allowSelfRegistration: response.allow_self_registration ?? true,
+//       emailVerificationRequired: response.email_verification_required ?? true,
+//       registrationApprovalRequired: response.registration_approval_required ?? false,
+//       defaultUserRole: response.default_user_role ?? 'student',
+//       passwordMinLength: response.password_min_length ?? 8,
+//       passwordResetInterval: response.password_reset_interval ?? 90,
+//       passwordRequireNumbers: response.password_require_numbers ?? true,
+//       passwordRequireSymbols: response.password_require_symbols ?? false,
+//       passwordRequireUppercase: response.password_require_uppercase ?? false,
+//       allowProfileImageUpload: response.allow_profile_image_upload ?? true,
+//       profileImageMaxSize: response.profile_image_max_size ?? 2,
+//       classLevels: response.class_levels ?? [],
+//       subjects: response.subjects ?? [],
+//       sessions: response.sessions ?? [],
+//       grading: response.grading ?? { grades: [], passMark: 40 },
+//       markingScheme: response.marking_scheme ?? {
+//         continuousAssessment: 30,
+//         examination: 70,
+//         components: []
+//       },
+//       messageTemplates: response.message_templates ?? this.getDefaultSettings().messageTemplates,
+//       chatSystem: response.chat_system ?? this.getDefaultSettings().chatSystem,
+//       userRolePaymentAccess: response.user_role_payment_access ?? this.getDefaultSettings().userRolePaymentAccess,
+//       feeStructure: response.fee_structure ?? this.getDefaultSettings().feeStructure,
+//       discountRules: response.discount_rules ?? this.getDefaultSettings().discountRules,
+      
+//       // Security settings transformation
+//       security: response.security_settings ? {
+//         twoFactorAuth: response.security_settings.two_factor_auth ?? true,
+//         passwordPolicy: {
+//           minLength: response.security_settings.password_policy?.min_length ?? 8,
+//           requireUppercase: response.security_settings.password_policy?.require_uppercase ?? true,
+//           requireLowercase: response.security_settings.password_policy?.require_lowercase ?? true,
+//           requireNumbers: response.security_settings.password_policy?.require_numbers ?? true,
+//           requireSpecialChars: response.security_settings.password_policy?.require_special_chars ?? true,
+//           passwordExpiry: response.security_settings.password_policy?.password_expiry ?? 90
+//         },
+//         sessionTimeout: response.security_settings.session_timeout ?? 30,
+//         maxLoginAttempts: response.security_settings.max_login_attempts ?? 5,
+//         lockoutDuration: response.security_settings.lockout_duration ?? 15,
+//         ipWhitelist: response.security_settings.ip_whitelist ?? [],
+//         auditLogging: response.security_settings.audit_logging ?? true,
+//         dataEncryption: response.security_settings.data_encryption ?? true
+//       } : undefined,
+//     };
+//   }
+
+//   // File upload methods
+//   async uploadLogo(file: File): Promise<{ logoUrl: string }> {
+//     const formData = new FormData();
+//     formData.append('logo', file);
+    
+//     const getCsrfToken = () => {
+//       const cookies = document.cookie.split(';');
+//       for (const cookie of cookies) {
+//         const [name, value] = cookie.trim().split('=');
+//         if (name === 'csrftoken') return decodeURIComponent(value);
+//       }
+//       return null;
+//     };
+    
+//     const headers: any = {};
+//     const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+//     const csrfToken = getCsrfToken();
+    
+//     if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+//     if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+    
+//     const response = await fetch(
+//       "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/",
+//       {
+//         method: 'POST',
+//         headers,
+//         body: formData,
+//         credentials: 'include',
+//       }
+//     );
+    
+//     if (!response.ok) {
+//       const contentType = response.headers.get('content-type');
+//       const errorData = contentType?.includes('application/json') 
+//         ? await response.json()
+//         : { error: await response.text() };
+//       throw new Error(`Failed to upload logo: ${response.status} - ${JSON.stringify(errorData)}`);
+//     }
+    
+//     return await response.json();
+//   }
+
+//   async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
+//     const formData = new FormData();
+//     formData.append('favicon', file);
+    
+//     const getCsrfToken = () => {
+//       const cookies = document.cookie.split(';');
+//       for (const cookie of cookies) {
+//         const [name, value] = cookie.trim().split('=');
+//         if (name === 'csrftoken') return decodeURIComponent(value);
+//       }
+//       return null;
+//     };
+    
+//     const headers: any = {};
+//     const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
+//     const csrfToken = getCsrfToken();
+    
+//     if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+//     if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+    
+//     const response = await fetch(
+//       "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/",
+//       {
+//         method: 'POST',
+//         headers,
+//         body: formData,
+//         credentials: 'include',
+//       }
+//     );
+    
+//     if (!response.ok) {
+//       const contentType = response.headers.get('content-type');
+//       const errorData = contentType?.includes('application/json')
+//         ? await response.json()
+//         : { error: await response.text() };
+//       throw new Error(`Failed to upload favicon: ${response.status} - ${JSON.stringify(errorData)}`);
+//     }
+    
+//     return await response.json();
+//   }
+
+//   // Communication settings
+//   async getCommunicationSettings(): Promise<CommunicationSettings> {
+//     const response = await api.get('/api/school-settings/communication-settings/');
+//     return response;
+//   }
+
+//   async updateCommunicationSettings(settings: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
+//     const response = await api.put('/api/school-settings/communication-settings/', settings);
+//     return response;
+//   }
+
+//   // Test connections
+//   async testPaymentGateway(gateway: string, credentials: any): Promise<{ success: boolean; message: string }> {
+//     return await api.post(`/api/school-settings/payment-gateways/${gateway}/test/`, credentials);
+//   }
+
+//   async testEmailConnection(emailConfig: any): Promise<{ success: boolean; message: string }> {
+//     return await api.post('/api/school-settings/notifications/email/test/', emailConfig);
+//   }
+
+//   async testSMSConnection(smsConfig: any): Promise<{ success: boolean; message: string }> {
+//     return await api.post('/api/school-settings/notifications/sms/test/', smsConfig);
+//   }
+
+//   async testBrevoConnection(brevoConfig: any): Promise<{ success: boolean; message: string }> {
+//     return await api.post('/api/school-settings/notifications/brevo/test/', brevoConfig);
+//   }
+
+//   async testTwilioConnection(twilioConfig: any): Promise<{ success: boolean; message: string }> {
+//     return await api.post('/api/school-settings/notifications/twilio/test/', twilioConfig);
+//   }
+
+//   async sendTestEmail(emailData: { to: string; subject: string; content: string }): Promise<{ success: boolean; message: string }> {
+//     return await api.post('/api/school-settings/notifications/brevo/send-test/', emailData);
+//   }
+
+//   async sendTestSMS(smsData: { to: string; message: string }): Promise<{ success: boolean; message: string }> {
+//     return await api.post('/api/school-settings/notifications/twilio/send-test/', smsData);
+//   }
+
+//   // Announcements
+//   async getAnnouncements(filters?: any): Promise<SchoolAnnouncement[]> {
+//     const response = await api.get('/api/school-settings/announcements/', filters);
+//     return Array.isArray(response) ? response : [];
+//   }
+
+//   async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
+//     return await api.get(`/api/school-settings/announcements/${id}/`);
+//   }
+
+//   async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
+//     return await api.post('/api/school-settings/announcements/', data);
+//   }
+
+//   async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
+//     return await api.put(`/api/school-settings/announcements/${id}/`, data);
+//   }
+
+//   async deleteAnnouncement(id: string): Promise<void> {
+//     await api.delete(`/api/school-settings/announcements/${id}/`);
+//   }
+
+//   // Permissions
+//   async getPermissions(): Promise<Permission[]> {
+//     const response = await api.get('/api/school-settings/permissions/');
+//     return Array.isArray(response) ? response : [];
+//   }
+
+//   async getPermission(id: string): Promise<Permission> {
+//     return await api.get(`/api/school-settings/permissions/${id}/`);
+//   }
+
+  
+// async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
+//     try {
+//       const response = await api.get('/api/school-settings/roles/', filters);
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching roles:', error);
+//       return [];
+//     }
+//   }
+
+//   async getRole(id: string): Promise<Role> {
+//     const response = await api.get(`/api/school-settings/roles/${id}/`);
+//     return response;
+//   }
+
+//   async createRole(data: RoleCreateUpdate): Promise<Role> {
+//     const response = await api.post('/api/school-settings/roles/', data);
+//     return response;
+//   }
+
+//   async updateRole(id: string, data: Partial<RoleCreateUpdate>): Promise<Role> {
+//     const response = await api.put(`/api/school-settings/roles/${id}/`, data);
+//     return response;
+//   }
+
+//   async deleteRole(id: string): Promise<void> {
+//     await api.delete(`/api/school-settings/roles/${id}/`);
+//   }
+
+//   async getUserRoles(filters?: { 
+//     user?: string; 
+//     role?: string; 
+//     is_active?: boolean; 
+//   }): Promise<UserRole[]> {
+//     try {
+//       const response = await api.get('/api/school-settings/user-roles/', filters);
+//       return Array.isArray(response) ? response : [];
+//     } catch (error) {
+//       console.error('Error fetching user roles:', error);
+//       return [];
+//     }
+//   }
+
+//   async getUserRole(id: string): Promise<UserRole> {
+//     const response = await api.get(`/api/school-settings/user-roles/${id}/`);
+//     return response;
+//   }
+
+//   async createUserRole(data: UserRoleCreateUpdate): Promise<UserRole> {
+//     const response = await api.post('/api/school-settings/user-roles/', data);
+//     return response;
+//   }
+
+//   async updateUserRole(id: string, data: Partial<UserRoleCreateUpdate>): Promise<UserRole> {
+//     const response = await api.put(`/api/school-settings/user-roles/${id}/`, data);
+//     return response;
+//   }
+
+//   async deleteUserRole(id: string): Promise<void> {
+//     await api.delete(`/api/school-settings/user-roles/${id}/`);
+//   }
+
+//   private getDefaultSettings(): SchoolSettings {
+//     // ... keep your existing default settings implementation
+//     return {
+//       site_name: 'Gods treasure schools',
+//       school_name: 'Gods Treasure Schools',
+//       address: '',
+//       phone: '',
+//       email: '',
+//       logo: '',
+//       favicon: '',
+//       academicYear: '',
+//       motto: 'Knowledge at its spring',
+//       timezone: 'UTC-5',
+//       dateFormat: 'dd/mm/yyyy',
+//       language: 'English',
+//       theme: 'light',
+//       primaryColor: '#3B82F6',
+
+//       fontFamily: 'Inter',
+//       fontSize: 'medium',
+//       notifications: {
+//         email: {
+//           enabled: true,
+//           welcomeEmail: true,
+//           resultReleased: true,
+//           absentNotice: true,
+//           feeReminder: true,
+//           examSchedule: true,
+//           eventAnnouncement: true,
+//           disciplinaryAction: false,
+//           provider: 'smtp',
+//           smtp: {
+//             host: 'smtp.gmail.com',
+//             port: 587,
+//             username: '',
+//             password: '',
+//             encryption: 'TLS',
+//             fromName: 'Springfield Elementary',
+//             fromEmail: 'admin@springfield.edu'
+//           },
+//           brevo: {
+//             apiKey: '',
+//             fromName: 'Springfield Elementary',
+//             fromEmail: 'admin@springfield.edu',
+//             templateId: '',
+//             senderId: 1
+//           }
+//         },
+//         sms: {
+//           enabled: false,
+//           welcomeSMS: false,
+//           resultReleased: true,
+//           absentNotice: true,
+//           feeReminder: true,
+//           examSchedule: false,
+//           eventAnnouncement: false,
+//           disciplinaryAction: false,
+//           provider: 'twilio',
+//           apiKey: '',
+//           apiSecret: '',
+//           senderID: 'SPRINGFIELD'
+//         },
+//         inApp: {
+//           enabled: true,
+//           welcomeMessage: true,
+//           resultReleased: true,
+//           absentNotice: true,
+//           feeReminder: true,
+//           examSchedule: true,
+//           eventAnnouncement: true,
+//           disciplinaryAction: true,
+//           soundEnabled: true,
+//           desktopNotifications: true
+//         }
+//       },
+//       paymentGateways: {
+//         paystack: {
+//           enabled: false,
+//           publicKey: '',
+//           secretKey: '',
+//           testMode: false
+//         },
+//         stripe: {
+//           enabled: false,
+//           publishableKey: '',
+//           secretKey: '',
+//           testMode: false
+//         },
+//         flutterwave: {
+//           enabled: false,
+//           publicKey: '',
+//           secretKey: '',
+//           testMode: true
+//         },
+//         bankTransfer: {
+//           enabled: false,
+//           bankName: '',
+//           accountNumber: '',
+//           accountName: ''
+//         }
+//       },
+//       userRolePaymentAccess: {
+//         teachers: {
+//           paystack: false,
+//           stripe: false,
+//           flutterwave: false,
+//           bankTransfer: false
+//         },
+//         students: {
+//           paystack: false,
+//           stripe: false,
+//           flutterwave: false,
+//           bankTransfer: false
+//         },
+//         parents: {
+//           paystack: false,
+//           stripe: false,
+//           flutterwave: false,
+//           bankTransfer: false
+//         }
+//       },
+//       feeStructure: {
+//         categories: [],
+//         paymentPlans: {
+//           fullPayment: false,
+//           twoInstallments: false,
+//           threeInstallments: false
+//         }
+//       },
+//       discountRules: {
+//         siblingDiscount: {
+//           enabled: false,
+//           secondChild: 0,
+//           thirdChild: 0
+//         }
+//       },
+//       classLevels: [
+//         { id: 1, name: 'Grade 1' },
+//         { id: 2, name: 'Grade 2' },
+//         { id: 3, name: 'Grade 3' }
+//       ],
+//       subjects: [
+//         { id: 1, name: 'Mathematics' },
+//         { id: 2, name: 'English' },
+//         { id: 3, name: 'Science' }
+//       ],
+//       sessions: [
+//         { id: 1, name: '2025/2026', terms: ['First Term', 'Second Term', 'Third Term'] }
+//       ],
+//       grading: {
+//         grades: [
+//           { letter: 'A', min: 70, max: 100 },
+//           { letter: 'B', min: 60, max: 69 },
+//           { letter: 'C', min: 50, max: 59 },
+//           { letter: 'D', min: 45, max: 49 },
+//           { letter: 'E', min: 40, max: 44 },
+//           { letter: 'F', min: 0, max: 39 }
+//         ],
+//         passMark: 40
+//       },
+//       markingScheme: {
+//         continuousAssessment: 30,
+//         examination: 70,
+//         components: [
+//           { name: 'Classwork', weight: 10, color: '#3B82F6' },
+//           { name: 'Homework', weight: 10, color: '#10B981' },
+//           { name: 'Projects', weight: 10, color: '#F59E0B' }
+//         ]
+//       },
+//       allowSelfRegistration: true,
+//       emailVerificationRequired: true,
+//       registrationApprovalRequired: false,
+//       defaultUserRole: 'student',
+//       passwordMinLength: 8,
+//       passwordResetInterval: 90,
+//       passwordRequireNumbers: true,
+//       passwordRequireSymbols: false,
+//       passwordRequireUppercase: false,
+//       allowProfileImageUpload: true,
+//       profileImageMaxSize: 2,
+//       messageTemplates: {
+//         welcomeEmail: {
+//           subject: 'Welcome to Springfield Elementary School',
+//           content: 'Welcome to our school!',
+//           active: true
+//         },
+//         resultReleased: {
+//           subject: 'Academic Results Available',
+//           content: 'Your results are now available.',
+//           active: true
+//         },
+//         absentNotice: {
+//           subject: 'Absence Notice',
+//           content: 'Your child was absent today.',
+//           active: true
+//         },
+//         feeReminder: {
+//           subject: 'Fee Payment Reminder',
+//           content: 'Please pay your fees.',
+//           active: true
+//         }
+//       },
+//       chatSystem: {
+//         enabled: true,
+//         adminToTeacher: {
+//           enabled: true,
+//           allowFileSharing: true,
+//           maxFileSize: 10,
+//           allowedFileTypes: ['pdf', 'doc', 'docx', 'jpg', 'png'],
+//           moderationEnabled: false
+//         },
+//         teacherToParent: {
+//           enabled: true,
+//           allowFileSharing: true,
+//           maxFileSize: 5,
+//           allowedFileTypes: ['pdf', 'jpg', 'png'],
+//           moderationEnabled: true,
+//           requireApproval: false
+//         },
+//         teacherToStudent: {
+//           enabled: false,
+//           allowFileSharing: false,
+//           maxFileSize: 2,
+//           allowedFileTypes: ['pdf'],
+//           moderationEnabled: true,
+//           requireApproval: true
+//         },
+//         parentToParent: {
+//           enabled: false,
+//           allowFileSharing: false,
+//           moderationEnabled: true,
+//           requireApproval: true
+//         },
+//         moderation: {
+//           enabled: true,
+//           profanityFilter: true,
+//           keywordBlacklist: ['inappropriate', 'bad_word_1', 'bad_word_2'],
+//           autoModeration: true,
+//           flaggedContentAction: 'hide',
+//           moderators: ['admin', 'principal'],
+//           businessHoursOnly: false,
+//           businessHours: {
+//             start: '08:00',
+//             end: '16:00'
+//           }
+//         }
+//       }
+//     };
+//   }
+// }
+
+// export default new SettingsService();
+
+class SettingsService {
   
   async getSettings(): Promise<SchoolSettings> {
     try {
       const cacheBuster = `${Date.now()}_${Math.random()}`;
-      const response = await api.get(`/api/school-settings/school-settings/?_=${cacheBuster}`);
+      const response = await api.get(`/api/school-settings/school-settings/?_=${cacheBuster}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       
       if (typeof response === 'string' && response.includes('<!DOCTYPE html>')) {
         console.error('Received HTML instead of JSON - likely a 404 or auth error');
         return this.getDefaultSettings();
       }
       
-      const transformedSettings: SchoolSettings = {
-        site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
-        school_name: response.school_name ?? 'Gods Treasure Schools',
-        address: response.school_address ?? '',
-        phone: response.school_phone ?? '',
-        email: response.school_email ?? '',
-        logo: response.logo_url ?? response.logo ?? '',
-        favicon: response.favicon_url ?? response.favicon ?? '',
-        
-        academicYear: response.academic_year ?? '',
-        currentTerm: response.current_term ?? '',
-        
-        motto: response.school_motto ?? 'Knowledge at its spring',
-        timezone: response.timezone ?? 'UTC+1',
-        dateFormat: response.date_format ?? 'DD/MM/YYYY',
-        language: response.language ?? 'en',
-        theme: response.theme ?? 'default',
-        primaryColor: response.primary_color ?? '#3B82F6',
-        fontFamily: response.typography ?? 'Inter',
-        fontSize: 'medium',
-        
-        notifications: response.notifications ?? this.getDefaultSettings().notifications,
-        paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
-        
-        allowSelfRegistration: response.allow_self_registration ?? true,
-        emailVerificationRequired: response.email_verification_required ?? true,
-        registrationApprovalRequired: response.registration_approval_required ?? false,
-        defaultUserRole: response.default_user_role ?? 'student',
-        passwordMinLength: response.password_min_length ?? 8,
-        passwordResetInterval: response.password_reset_interval ?? 90,
-        passwordRequireNumbers: response.password_require_numbers ?? true,
-        passwordRequireSymbols: response.password_require_symbols ?? false,
-        passwordRequireUppercase: response.password_require_uppercase ?? false,
-        allowProfileImageUpload: response.allow_profile_image_upload ?? true,
-        profileImageMaxSize: response.profile_image_max_size ?? 2,
-        
-        classLevels: response.class_levels ?? [],
-        subjects: response.subjects ?? [],
-        sessions: response.sessions ?? [],
-        grading: response.grading ?? { grades: [], passMark: 40 },
-        markingScheme: response.marking_scheme ?? {
-          continuousAssessment: 30,
-          examination: 70,
-          components: []
-        },
-        messageTemplates: response.message_templates ?? this.getDefaultSettings().messageTemplates,
-        chatSystem: response.chat_system ?? this.getDefaultSettings().chatSystem,
-        userRolePaymentAccess: response.user_role_payment_access ?? this.getDefaultSettings().userRolePaymentAccess,
-        feeStructure: response.fee_structure ?? this.getDefaultSettings().feeStructure,
-        discountRules: response.discount_rules ?? this.getDefaultSettings().discountRules,
-        
-        // Transform security settings from backend
-        security: response.security_settings ? {
-          twoFactorAuth: response.security_settings.two_factor_auth ?? true,
-          passwordPolicy: {
-            minLength: response.security_settings.password_policy?.min_length ?? 8,
-            requireUppercase: response.security_settings.password_policy?.require_uppercase ?? true,
-            requireLowercase: response.security_settings.password_policy?.require_lowercase ?? true,
-            requireNumbers: response.security_settings.password_policy?.require_numbers ?? true,
-            requireSpecialChars: response.security_settings.password_policy?.require_special_chars ?? true,
-            passwordExpiry: response.security_settings.password_policy?.password_expiry ?? 90
-          },
-          sessionTimeout: response.security_settings.session_timeout ?? 30,
-          maxLoginAttempts: response.security_settings.max_login_attempts ?? 5,
-          lockoutDuration: response.security_settings.lockout_duration ?? 15,
-          ipWhitelist: response.security_settings.ip_whitelist ?? [],
-          auditLogging: response.security_settings.audit_logging ?? true,
-          dataEncryption: response.security_settings.data_encryption ?? true
-        } : undefined,
-      };
+      console.log('📥 Raw backend response:', response);
+      console.log('📥 Security settings from backend:', response.security_settings);
       
-      console.log('✅ Transformed settings:', transformedSettings);
-      return transformedSettings;
+      return this.transformBackendToFrontend(response);
     } catch (error) {
       console.error('Error fetching settings:', error);
       return this.getDefaultSettings();
     }
   }
-
-  
 
   async updateSettings(settings: Partial<SchoolSettings>): Promise<SchoolSettings> {
     try {
@@ -1792,7 +2734,7 @@ class SettingsService {
       const response = await api.put('/api/school-settings/school-settings/', backendSettings);
       console.log('✅ Backend response:', response);
       
-      const transformedResponse = await this.transformBackendToFrontend(response);
+      const transformedResponse = this.transformBackendToFrontend(response);
       console.log('✅ Transformed response:', transformedResponse);
       
       if (typeof window !== 'undefined') {
@@ -1830,7 +2772,12 @@ class SettingsService {
     }
   }
 
-  private async transformBackendToFrontend(response: any): Promise<SchoolSettings> {
+  private transformBackendToFrontend(response: any): SchoolSettings {
+    console.log('🔄 Transforming backend response:', response);
+    console.log('🔄 Security settings in response:', response.security_settings);
+    
+    const defaultSettings = this.getDefaultSettings();
+    
     return {
       site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
       school_name: response.school_name ?? 'Gods Treasure Schools',
@@ -1849,8 +2796,8 @@ class SettingsService {
       primaryColor: response.primary_color ?? '#3B82F6',
       fontFamily: response.typography ?? 'Inter',
       fontSize: 'medium',
-      notifications: response.notifications ?? this.getDefaultSettings().notifications,
-      paymentGateways: response.payment_gateways ?? this.getDefaultSettings().paymentGateways,
+      notifications: response.notifications ?? defaultSettings.notifications,
+      paymentGateways: response.payment_gateways ?? defaultSettings.paymentGateways,
       allowSelfRegistration: response.allow_self_registration ?? true,
       emailVerificationRequired: response.email_verification_required ?? true,
       registrationApprovalRequired: response.registration_approval_required ?? false,
@@ -1871,253 +2818,78 @@ class SettingsService {
         examination: 70,
         components: []
       },
-      messageTemplates: response.message_templates ?? this.getDefaultSettings().messageTemplates,
-      chatSystem: response.chat_system ?? this.getDefaultSettings().chatSystem,
-      userRolePaymentAccess: response.user_role_payment_access ?? this.getDefaultSettings().userRolePaymentAccess,
-      feeStructure: response.fee_structure ?? this.getDefaultSettings().feeStructure,
-      discountRules: response.discount_rules ?? this.getDefaultSettings().discountRules,
+      messageTemplates: response.message_templates ?? defaultSettings.messageTemplates,
+      chatSystem: response.chat_system ?? defaultSettings.chatSystem,
+      userRolePaymentAccess: response.user_role_payment_access ?? defaultSettings.userRolePaymentAccess,
+      feeStructure: response.fee_structure ?? defaultSettings.feeStructure,
+      discountRules: response.discount_rules ?? defaultSettings.discountRules,
       
-      // Security settings transformation
+      // 🔥 FIXED: Use explicit undefined checks for security settings
       security: response.security_settings ? {
-        twoFactorAuth: response.security_settings.two_factor_auth ?? true,
+        twoFactorAuth: response.security_settings.two_factor_auth !== undefined 
+          ? response.security_settings.two_factor_auth 
+          : true,
         passwordPolicy: {
-          minLength: response.security_settings.password_policy?.min_length ?? 8,
-          requireUppercase: response.security_settings.password_policy?.require_uppercase ?? true,
-          requireLowercase: response.security_settings.password_policy?.require_lowercase ?? true,
-          requireNumbers: response.security_settings.password_policy?.require_numbers ?? true,
-          requireSpecialChars: response.security_settings.password_policy?.require_special_chars ?? true,
-          passwordExpiry: response.security_settings.password_policy?.password_expiry ?? 90
+          minLength: response.security_settings.password_policy?.min_length !== undefined
+            ? Number(response.security_settings.password_policy.min_length)
+            : 8,
+          requireUppercase: response.security_settings.password_policy?.require_uppercase !== undefined
+            ? Boolean(response.security_settings.password_policy.require_uppercase)
+            : true,
+          requireLowercase: response.security_settings.password_policy?.require_lowercase !== undefined
+            ? Boolean(response.security_settings.password_policy.require_lowercase)
+            : true,
+          requireNumbers: response.security_settings.password_policy?.require_numbers !== undefined
+            ? Boolean(response.security_settings.password_policy.require_numbers)
+            : true,
+          requireSpecialChars: response.security_settings.password_policy?.require_special_chars !== undefined
+            ? Boolean(response.security_settings.password_policy.require_special_chars)
+            : true,
+          passwordExpiry: response.security_settings.password_policy?.password_expiry !== undefined
+            ? Number(response.security_settings.password_policy.password_expiry)
+            : 90
         },
-        sessionTimeout: response.security_settings.session_timeout ?? 30,
-        maxLoginAttempts: response.security_settings.max_login_attempts ?? 5,
-        lockoutDuration: response.security_settings.lockout_duration ?? 15,
-        ipWhitelist: response.security_settings.ip_whitelist ?? [],
-        auditLogging: response.security_settings.audit_logging ?? true,
-        dataEncryption: response.security_settings.data_encryption ?? true
-      } : undefined,
+        sessionTimeout: response.security_settings.session_timeout !== undefined
+          ? Number(response.security_settings.session_timeout)
+          : 30,
+        maxLoginAttempts: response.security_settings.max_login_attempts !== undefined
+          ? Number(response.security_settings.max_login_attempts)
+          : 5,
+        lockoutDuration: response.security_settings.lockout_duration !== undefined
+          ? Number(response.security_settings.lockout_duration)
+          : 15,
+        ipWhitelist: Array.isArray(response.security_settings.ip_whitelist)
+          ? response.security_settings.ip_whitelist
+          : [],
+        auditLogging: response.security_settings.audit_logging !== undefined
+          ? Boolean(response.security_settings.audit_logging)
+          : true,
+        dataEncryption: response.security_settings.data_encryption !== undefined
+          ? Boolean(response.security_settings.data_encryption)
+          : true
+      } : {
+        twoFactorAuth: true,
+        passwordPolicy: {
+          minLength: 8,
+          requireUppercase: true,
+          requireLowercase: true,
+          requireNumbers: true,
+          requireSpecialChars: true,
+          passwordExpiry: 90
+        },
+        sessionTimeout: 30,
+        maxLoginAttempts: 5,
+        lockoutDuration: 15,
+        ipWhitelist: [],
+        auditLogging: true,
+        dataEncryption: true
+      },
     };
   }
 
-  // File upload methods
-  async uploadLogo(file: File): Promise<{ logoUrl: string }> {
-    const formData = new FormData();
-    formData.append('logo', file);
-    
-    const getCsrfToken = () => {
-      const cookies = document.cookie.split(';');
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') return decodeURIComponent(value);
-      }
-      return null;
-    };
-    
-    const headers: any = {};
-    const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
-    const csrfToken = getCsrfToken();
-    
-    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
-    
-    const response = await fetch(
-      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/",
-      {
-        method: 'POST',
-        headers,
-        body: formData,
-        credentials: 'include',
-      }
-    );
-    
-    if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      const errorData = contentType?.includes('application/json') 
-        ? await response.json()
-        : { error: await response.text() };
-      throw new Error(`Failed to upload logo: ${response.status} - ${JSON.stringify(errorData)}`);
-    }
-    
-    return await response.json();
-  }
-
-  async uploadFavicon(file: File): Promise<{ faviconUrl: string }> {
-    const formData = new FormData();
-    formData.append('favicon', file);
-    
-    const getCsrfToken = () => {
-      const cookies = document.cookie.split(';');
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') return decodeURIComponent(value);
-      }
-      return null;
-    };
-    
-    const headers: any = {};
-    const authToken = localStorage.getItem('authToken') || localStorage.getItem('token');
-    const csrfToken = getCsrfToken();
-    
-    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
-    
-    const response = await fetch(
-      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/",
-      {
-        method: 'POST',
-        headers,
-        body: formData,
-        credentials: 'include',
-      }
-    );
-    
-    if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      const errorData = contentType?.includes('application/json')
-        ? await response.json()
-        : { error: await response.text() };
-      throw new Error(`Failed to upload favicon: ${response.status} - ${JSON.stringify(errorData)}`);
-    }
-    
-    return await response.json();
-  }
-
-  // Communication settings
-  async getCommunicationSettings(): Promise<CommunicationSettings> {
-    const response = await api.get('/api/school-settings/communication-settings/');
-    return response;
-  }
-
-  async updateCommunicationSettings(settings: Partial<CommunicationSettings>): Promise<CommunicationSettings> {
-    const response = await api.put('/api/school-settings/communication-settings/', settings);
-    return response;
-  }
-
-  // Test connections
-  async testPaymentGateway(gateway: string, credentials: any): Promise<{ success: boolean; message: string }> {
-    return await api.post(`/api/school-settings/payment-gateways/${gateway}/test/`, credentials);
-  }
-
-  async testEmailConnection(emailConfig: any): Promise<{ success: boolean; message: string }> {
-    return await api.post('/api/school-settings/notifications/email/test/', emailConfig);
-  }
-
-  async testSMSConnection(smsConfig: any): Promise<{ success: boolean; message: string }> {
-    return await api.post('/api/school-settings/notifications/sms/test/', smsConfig);
-  }
-
-  async testBrevoConnection(brevoConfig: any): Promise<{ success: boolean; message: string }> {
-    return await api.post('/api/school-settings/notifications/brevo/test/', brevoConfig);
-  }
-
-  async testTwilioConnection(twilioConfig: any): Promise<{ success: boolean; message: string }> {
-    return await api.post('/api/school-settings/notifications/twilio/test/', twilioConfig);
-  }
-
-  async sendTestEmail(emailData: { to: string; subject: string; content: string }): Promise<{ success: boolean; message: string }> {
-    return await api.post('/api/school-settings/notifications/brevo/send-test/', emailData);
-  }
-
-  async sendTestSMS(smsData: { to: string; message: string }): Promise<{ success: boolean; message: string }> {
-    return await api.post('/api/school-settings/notifications/twilio/send-test/', smsData);
-  }
-
-  // Announcements
-  async getAnnouncements(filters?: any): Promise<SchoolAnnouncement[]> {
-    const response = await api.get('/api/school-settings/announcements/', filters);
-    return Array.isArray(response) ? response : [];
-  }
-
-  async getAnnouncement(id: string): Promise<SchoolAnnouncement> {
-    return await api.get(`/api/school-settings/announcements/${id}/`);
-  }
-
-  async createAnnouncement(data: AnnouncementCreateUpdate): Promise<SchoolAnnouncement> {
-    return await api.post('/api/school-settings/announcements/', data);
-  }
-
-  async updateAnnouncement(id: string, data: Partial<AnnouncementCreateUpdate>): Promise<SchoolAnnouncement> {
-    return await api.put(`/api/school-settings/announcements/${id}/`, data);
-  }
-
-  async deleteAnnouncement(id: string): Promise<void> {
-    await api.delete(`/api/school-settings/announcements/${id}/`);
-  }
-
-  // Permissions
-  async getPermissions(): Promise<Permission[]> {
-    const response = await api.get('/api/school-settings/permissions/');
-    return Array.isArray(response) ? response : [];
-  }
-
-  async getPermission(id: string): Promise<Permission> {
-    return await api.get(`/api/school-settings/permissions/${id}/`);
-  }
-
+  // ... keep all your other methods (uploadLogo, uploadFavicon, etc.)
   
-async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
-    try {
-      const response = await api.get('/api/school-settings/roles/', filters);
-      return Array.isArray(response) ? response : [];
-    } catch (error) {
-      console.error('Error fetching roles:', error);
-      return [];
-    }
-  }
-
-  async getRole(id: string): Promise<Role> {
-    const response = await api.get(`/api/school-settings/roles/${id}/`);
-    return response;
-  }
-
-  async createRole(data: RoleCreateUpdate): Promise<Role> {
-    const response = await api.post('/api/school-settings/roles/', data);
-    return response;
-  }
-
-  async updateRole(id: string, data: Partial<RoleCreateUpdate>): Promise<Role> {
-    const response = await api.put(`/api/school-settings/roles/${id}/`, data);
-    return response;
-  }
-
-  async deleteRole(id: string): Promise<void> {
-    await api.delete(`/api/school-settings/roles/${id}/`);
-  }
-
-  async getUserRoles(filters?: { 
-    user?: string; 
-    role?: string; 
-    is_active?: boolean; 
-  }): Promise<UserRole[]> {
-    try {
-      const response = await api.get('/api/school-settings/user-roles/', filters);
-      return Array.isArray(response) ? response : [];
-    } catch (error) {
-      console.error('Error fetching user roles:', error);
-      return [];
-    }
-  }
-
-  async getUserRole(id: string): Promise<UserRole> {
-    const response = await api.get(`/api/school-settings/user-roles/${id}/`);
-    return response;
-  }
-
-  async createUserRole(data: UserRoleCreateUpdate): Promise<UserRole> {
-    const response = await api.post('/api/school-settings/user-roles/', data);
-    return response;
-  }
-
-  async updateUserRole(id: string, data: Partial<UserRoleCreateUpdate>): Promise<UserRole> {
-    const response = await api.put(`/api/school-settings/user-roles/${id}/`, data);
-    return response;
-  }
-
-  async deleteUserRole(id: string): Promise<void> {
-    await api.delete(`/api/school-settings/user-roles/${id}/`);
-  }
-
   private getDefaultSettings(): SchoolSettings {
-    // ... keep your existing default settings implementation
     return {
       site_name: 'Gods treasure schools',
       school_name: 'Gods Treasure Schools',
@@ -2133,7 +2905,6 @@ async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
       language: 'English',
       theme: 'light',
       primaryColor: '#3B82F6',
-
       fontFamily: 'Inter',
       fontSize: 'medium',
       notifications: {
@@ -2153,13 +2924,13 @@ async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
             username: '',
             password: '',
             encryption: 'TLS',
-            fromName: 'Springfield Elementary',
-            fromEmail: 'admin@springfield.edu'
+            fromName: 'School',
+            fromEmail: 'admin@school.edu'
           },
           brevo: {
             apiKey: '',
-            fromName: 'Springfield Elementary',
-            fromEmail: 'admin@springfield.edu',
+            fromName: 'School',
+            fromEmail: 'admin@school.edu',
             templateId: '',
             senderId: 1
           }
@@ -2176,7 +2947,7 @@ async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
           provider: 'twilio',
           apiKey: '',
           apiSecret: '',
-          senderID: 'SPRINGFIELD'
+          senderID: 'SCHOOL'
         },
         inApp: {
           enabled: true,
@@ -2192,99 +2963,28 @@ async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
         }
       },
       paymentGateways: {
-        paystack: {
-          enabled: false,
-          publicKey: '',
-          secretKey: '',
-          testMode: false
-        },
-        stripe: {
-          enabled: false,
-          publishableKey: '',
-          secretKey: '',
-          testMode: false
-        },
-        flutterwave: {
-          enabled: false,
-          publicKey: '',
-          secretKey: '',
-          testMode: true
-        },
-        bankTransfer: {
-          enabled: false,
-          bankName: '',
-          accountNumber: '',
-          accountName: ''
-        }
+        paystack: { enabled: false, publicKey: '', secretKey: '', testMode: false },
+        stripe: { enabled: false, publishableKey: '', secretKey: '', testMode: false },
+        flutterwave: { enabled: false, publicKey: '', secretKey: '', testMode: true },
+        bankTransfer: { enabled: false, bankName: '', accountNumber: '', accountName: '' }
       },
       userRolePaymentAccess: {
-        teachers: {
-          paystack: false,
-          stripe: false,
-          flutterwave: false,
-          bankTransfer: false
-        },
-        students: {
-          paystack: false,
-          stripe: false,
-          flutterwave: false,
-          bankTransfer: false
-        },
-        parents: {
-          paystack: false,
-          stripe: false,
-          flutterwave: false,
-          bankTransfer: false
-        }
+        teachers: { paystack: false, stripe: false, flutterwave: false, bankTransfer: false },
+        students: { paystack: false, stripe: false, flutterwave: false, bankTransfer: false },
+        parents: { paystack: false, stripe: false, flutterwave: false, bankTransfer: false }
       },
       feeStructure: {
         categories: [],
-        paymentPlans: {
-          fullPayment: false,
-          twoInstallments: false,
-          threeInstallments: false
-        }
+        paymentPlans: { fullPayment: false, twoInstallments: false, threeInstallments: false }
       },
       discountRules: {
-        siblingDiscount: {
-          enabled: false,
-          secondChild: 0,
-          thirdChild: 0
-        }
+        siblingDiscount: { enabled: false, secondChild: 0, thirdChild: 0 }
       },
-      classLevels: [
-        { id: 1, name: 'Grade 1' },
-        { id: 2, name: 'Grade 2' },
-        { id: 3, name: 'Grade 3' }
-      ],
-      subjects: [
-        { id: 1, name: 'Mathematics' },
-        { id: 2, name: 'English' },
-        { id: 3, name: 'Science' }
-      ],
-      sessions: [
-        { id: 1, name: '2025/2026', terms: ['First Term', 'Second Term', 'Third Term'] }
-      ],
-      grading: {
-        grades: [
-          { letter: 'A', min: 70, max: 100 },
-          { letter: 'B', min: 60, max: 69 },
-          { letter: 'C', min: 50, max: 59 },
-          { letter: 'D', min: 45, max: 49 },
-          { letter: 'E', min: 40, max: 44 },
-          { letter: 'F', min: 0, max: 39 }
-        ],
-        passMark: 40
-      },
-      markingScheme: {
-        continuousAssessment: 30,
-        examination: 70,
-        components: [
-          { name: 'Classwork', weight: 10, color: '#3B82F6' },
-          { name: 'Homework', weight: 10, color: '#10B981' },
-          { name: 'Projects', weight: 10, color: '#F59E0B' }
-        ]
-      },
+      classLevels: [],
+      subjects: [],
+      sessions: [],
+      grading: { grades: [], passMark: 40 },
+      markingScheme: { continuousAssessment: 30, examination: 70, components: [] },
       allowSelfRegistration: true,
       emailVerificationRequired: true,
       registrationApprovalRequired: false,
@@ -2297,70 +2997,26 @@ async getRoles(filters?: { is_active?: boolean }): Promise<Role[]> {
       allowProfileImageUpload: true,
       profileImageMaxSize: 2,
       messageTemplates: {
-        welcomeEmail: {
-          subject: 'Welcome to Springfield Elementary School',
-          content: 'Welcome to our school!',
-          active: true
-        },
-        resultReleased: {
-          subject: 'Academic Results Available',
-          content: 'Your results are now available.',
-          active: true
-        },
-        absentNotice: {
-          subject: 'Absence Notice',
-          content: 'Your child was absent today.',
-          active: true
-        },
-        feeReminder: {
-          subject: 'Fee Payment Reminder',
-          content: 'Please pay your fees.',
-          active: true
-        }
+        welcomeEmail: { subject: 'Welcome', content: 'Welcome!', active: true },
+        resultReleased: { subject: 'Results Available', content: 'Results available.', active: true },
+        absentNotice: { subject: 'Absence Notice', content: 'Absent today.', active: true },
+        feeReminder: { subject: 'Fee Reminder', content: 'Pay fees.', active: true }
       },
       chatSystem: {
         enabled: true,
-        adminToTeacher: {
-          enabled: true,
-          allowFileSharing: true,
-          maxFileSize: 10,
-          allowedFileTypes: ['pdf', 'doc', 'docx', 'jpg', 'png'],
-          moderationEnabled: false
-        },
-        teacherToParent: {
-          enabled: true,
-          allowFileSharing: true,
-          maxFileSize: 5,
-          allowedFileTypes: ['pdf', 'jpg', 'png'],
-          moderationEnabled: true,
-          requireApproval: false
-        },
-        teacherToStudent: {
-          enabled: false,
-          allowFileSharing: false,
-          maxFileSize: 2,
-          allowedFileTypes: ['pdf'],
-          moderationEnabled: true,
-          requireApproval: true
-        },
-        parentToParent: {
-          enabled: false,
-          allowFileSharing: false,
-          moderationEnabled: true,
-          requireApproval: true
-        },
+        adminToTeacher: { enabled: true, allowFileSharing: true, maxFileSize: 10, allowedFileTypes: ['pdf'], moderationEnabled: false },
+        teacherToParent: { enabled: true, allowFileSharing: true, maxFileSize: 5, allowedFileTypes: ['pdf'], moderationEnabled: true, requireApproval: false },
+        teacherToStudent: { enabled: false, allowFileSharing: false, maxFileSize: 2, allowedFileTypes: ['pdf'], moderationEnabled: true, requireApproval: true },
+        parentToParent: { enabled: false, allowFileSharing: false, moderationEnabled: true, requireApproval: true },
         moderation: {
           enabled: true,
           profanityFilter: true,
-          keywordBlacklist: ['inappropriate', 'bad_word_1', 'bad_word_2'],
+          keywordBlacklist: [],
           autoModeration: true,
           flaggedContentAction: 'hide',
-          moderators: ['admin', 'principal'],
+          moderators: [],
           businessHoursOnly: false,
-          businessHours: {
-            start: '08:00',
-            end: '16:00'
-          }
+          businessHours: { start: '08:00', end: '16:00' }
         }
       }
     };
