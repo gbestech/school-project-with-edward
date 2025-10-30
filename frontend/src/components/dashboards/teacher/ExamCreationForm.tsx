@@ -1,14 +1,17 @@
+// export default ExamCreationForm;
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
 import { ExamService, ExamCreateData } from '@/services/ExamService';
 import { toast } from 'react-toastify';
-import { X, Plus, Trash2, Save, Clock, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Plus, Trash2, Save, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { 
   normalizeExamDataForSave, 
   normalizeExamDataForEdit 
 } from '@/utils/examDataNormalizer';
+
 
 interface ExamCreationFormProps {
   isOpen: boolean;
@@ -29,8 +32,6 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'questions'>('basic');
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
   
   const [formData, setFormData] = useState<ExamCreateData>({
     title: '',
@@ -110,57 +111,105 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     }
   }, [isOpen, editingExam, prefill]);
 
-  useEffect(() => {
-    if (editingExam) {
-      const normalized = normalizeExamDataForEdit(editingExam);
-      
-      setFormData({
-        title: normalized.title || '',
-        subject: normalized.subject?.id || normalized.subject || 0,
-        grade_level: normalized.grade_level?.id || normalized.grade_level || 0,
-        exam_type: normalized.exam_type || 'test',
-        difficulty_level: normalized.difficulty_level || 'medium',
-        exam_date: normalized.exam_date || '',
-        start_time: normalized.start_time || '',
-        end_time: normalized.end_time || '',
-        duration_minutes: normalized.duration_minutes || 45,
-        total_marks: normalized.total_marks || 100,
-        pass_marks: normalized.pass_marks || 50,
-        venue: normalized.venue || '',
-        instructions: normalized.instructions || '',
-        status: normalized.status || 'scheduled',
-        is_practical: normalized.is_practical || false,
-        requires_computer: normalized.is_requires_computer || false,
-        is_online: normalized.is_online || false,
-        objective_questions: normalized.objective_questions || [],
-        theory_questions: normalized.theory_questions || [],
-        practical_questions: normalized.practical_questions || [],
-        custom_sections: normalized.custom_sections || [],
-        objective_instructions: normalized.objective_instructions || '',
-        theory_instructions: normalized.theory_instructions || '',
-        practical_instructions: normalized.practical_instructions || ''
-      });
+  // useEffect(() => {
+  //   if (editingExam) {
+  //     setFormData({
+  //       title: editingExam.title || '',
+  //       subject: editingExam.subject?.id || editingExam.subject || 0,
+  //       grade_level: editingExam.grade_level?.id || editingExam.grade_level || 0,
+  //       exam_type: editingExam.exam_type || 'test',
+  //       difficulty_level: editingExam.difficulty_level || 'medium',
+  //       exam_date: editingExam.exam_date || '',
+  //       start_time: editingExam.start_time || '',
+  //       end_time: editingExam.end_time || '',
+  //       duration_minutes: editingExam.duration_minutes || 45,
+  //       total_marks: editingExam.total_marks || 100,
+  //       pass_marks: editingExam.pass_marks || 50,
+  //       venue: editingExam.venue || '',
+  //       instructions: editingExam.instructions || '',
+  //       status: editingExam.status || 'scheduled',
+  //       is_practical: editingExam.is_practical || false,
+  //       requires_computer: editingExam.is_requires_computer || false,
+  //       is_online: editingExam.is_online || false,
+  //       objective_questions: editingExam.objective_questions || [],
+  //       theory_questions: editingExam.theory_questions || [],
+  //       practical_questions: editingExam.practical_questions || [],
+  //       custom_sections: editingExam.custom_sections || [],
+  //       objective_instructions: editingExam.objective_instructions || '',
+  //       theory_instructions: editingExam.theory_instructions || '',
+  //       practical_instructions: editingExam.practical_instructions || ''
+  //     });
 
-      setObjectiveQuestions(normalized.objective_questions || []);
-      setTheoryQuestions(normalized.theory_questions || []);
-      setPracticalQuestions(normalized.practical_questions || []);
-      const existingCustom = normalized.custom_sections || [];
-      setCustomSections(existingCustom);
-      setObjectiveInstructions(normalized.objective_instructions || '');
-      setTheoryInstructions(normalized.theory_instructions || '');
-      setPracticalInstructions(normalized.practical_instructions || '');
-      const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
-        { kind: 'objective' },
-        { kind: 'theory' },
-        { kind: 'practical' }
-      ];
-      for (const s of existingCustom) {
-        order.push({ kind: 'custom', id: s.id });
-      }
-      setSectionOrder(order);
+  //     setObjectiveQuestions(editingExam.objective_questions || []);
+  //     setTheoryQuestions(editingExam.theory_questions || []);
+  //     setPracticalQuestions(editingExam.practical_questions || []);
+  //     const existingCustom = editingExam.custom_sections || [];
+  //     setCustomSections(existingCustom);
+  //     setObjectiveInstructions(editingExam.objective_instructions || '');
+  //     setTheoryInstructions(editingExam.theory_instructions || '');
+  //     setPracticalInstructions(editingExam.practical_instructions || '');
+  //     const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
+  //       { kind: 'objective' },
+  //       { kind: 'theory' },
+  //       { kind: 'practical' }
+  //     ];
+  //     for (const s of existingCustom) {
+  //       order.push({ kind: 'custom', id: s.id });
+  //     }
+  //     setSectionOrder(order);
+  //   }
+  // }, [editingExam]);
+useEffect(() => {
+  if (editingExam) {
+    // NORMALIZE DATA FOR EDITING
+    const normalized = normalizeExamDataForEdit(editingExam);
+    
+    setFormData({
+      title: normalized.title || '',
+      subject: normalized.subject?.id || normalized.subject || 0,
+      grade_level: normalized.grade_level?.id || normalized.grade_level || 0,
+      exam_type: normalized.exam_type || 'test',
+      difficulty_level: normalized.difficulty_level || 'medium',
+      exam_date: normalized.exam_date || '',
+      start_time: normalized.start_time || '',
+      end_time: normalized.end_time || '',
+      duration_minutes: normalized.duration_minutes || 45,
+      total_marks: normalized.total_marks || 100,
+      pass_marks: normalized.pass_marks || 50,
+      venue: normalized.venue || '',
+      instructions: normalized.instructions || '',
+      status: normalized.status || 'scheduled',
+      is_practical: normalized.is_practical || false,
+      requires_computer: normalized.is_requires_computer || false,
+      is_online: normalized.is_online || false,
+      objective_questions: normalized.objective_questions || [],
+      theory_questions: normalized.theory_questions || [],
+      practical_questions: normalized.practical_questions || [],
+      custom_sections: normalized.custom_sections || [],
+      objective_instructions: normalized.objective_instructions || '',
+      theory_instructions: normalized.theory_instructions || '',
+      practical_instructions: normalized.practical_instructions || ''
+    });
+
+    setObjectiveQuestions(normalized.objective_questions || []);
+    setTheoryQuestions(normalized.theory_questions || []);
+    setPracticalQuestions(normalized.practical_questions || []);
+    const existingCustom = normalized.custom_sections || [];
+    setCustomSections(existingCustom);
+    setObjectiveInstructions(normalized.objective_instructions || '');
+    setTheoryInstructions(normalized.theory_instructions || '');
+    setPracticalInstructions(normalized.practical_instructions || '');
+    const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
+      { kind: 'objective' },
+      { kind: 'theory' },
+      { kind: 'practical' }
+    ];
+    for (const s of existingCustom) {
+      order.push({ kind: 'custom', id: s.id });
     }
-  }, [editingExam]);
-
+    setSectionOrder(order);
+  }
+}, [editingExam]);
   useEffect(() => {
     if (isOpen && !editingExam) {
       setSectionOrder([
@@ -174,6 +223,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
   const loadTeacherData = async () => {
     try {
       const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
+      console.log('🔍 Loaded Teacher ID:', teacherId);
       
       if (!teacherId) {
         toast.error('Teacher ID not found');
@@ -182,6 +232,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       setCurrentTeacherId(Number(teacherId));
 
       const assignments = await TeacherDashboardService.getTeacherClasses(teacherId);
+      console.log('🔍 Teacher assignments:', assignments);
 
       const uniqueGradeLevels = Array.from(
         new Map(assignments.map((a: any) => [a.grade_level_id, { id: a.grade_level_id, name: a.grade_level_name }])).values()
@@ -198,20 +249,16 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     }
   };
 
-  const handleInputChange = (field: keyof ExamCreateData, value: any) => {
-    const numericFields: (keyof ExamCreateData)[] = ['total_marks', 'pass_marks', 'duration_minutes'];
-    const parsedValue = numericFields.includes(field) ? Number(value) : value;
-    setFormData(prev => ({ ...prev, [field]: parsedValue }));
-  };
+  // const handleInputChange = (field: keyof ExamCreateData, value: any) => {
+  //   setFormData(prev => ({ ...prev, [field]: value }));
+  // };
 
-  const toggleSection = (sectionKey: string) => {
-    setExpandedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
-  };
+const handleInputChange = (field: keyof ExamCreateData, value: any) => {
+  const numericFields: (keyof ExamCreateData)[] = ['total_marks', 'pass_marks', 'duration_minutes'];
+  const parsedValue = numericFields.includes(field) ? Number(value) : value;
 
-  const toggleQuestion = (questionKey: string) => {
-    setExpandedQuestions(prev => ({ ...prev, [questionKey]: !prev[questionKey] }));
-  };
-
+  setFormData(prev => ({ ...prev, [field]: parsedValue }));
+}
   const addObjectiveQuestion = () => {
     const newQuestion = {
       id: Date.now(),
@@ -226,14 +273,13 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       imageAlt: ''
     };
     setObjectiveQuestions(prev => [...prev, newQuestion]);
-    setExpandedQuestions(prev => ({ ...prev, [`obj-${newQuestion.id}`]: true }));
   };
 
   const updateObjectiveQuestion = (index: number, field: string, value: string) => {
-    setObjectiveQuestions(prev => prev.map((q, i) => 
-      i === index ? { ...q, [field]: field === 'marks' ? Number(value) : value } : q
-    ));
-  };
+  setObjectiveQuestions(prev => prev.map((q, i) => 
+    i === index ? { ...q, [field]: field === 'marks' ? Number(value) : value } : q
+  ));
+};
 
   const removeObjectiveQuestion = (index: number) => {
     setObjectiveQuestions(prev => prev.filter((_, i) => i !== index));
@@ -252,7 +298,6 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       table: null as null | { rows: number; cols: number; data: string[][] }
     };
     setTheoryQuestions(prev => [...prev, newQuestion]);
-    setExpandedQuestions(prev => ({ ...prev, [`theory-${newQuestion.id}`]: true }));
   };
 
   const updateTheoryQuestion = (index: number, field: string, value: string | number) => {
@@ -277,7 +322,6 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       imageAlt: ''
     };
     setPracticalQuestions(prev => [...prev, newQuestion]);
-    setExpandedQuestions(prev => ({ ...prev, [`prac-${newQuestion.id}`]: true }));
   };
 
   const updatePracticalQuestion = (index: number, field: string, value: string | number) => {
@@ -299,7 +343,6 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     };
     setCustomSections(prev => [...prev, newSection]);
     setSectionOrder(prev => [...prev, { kind: 'custom', id: newSection.id }]);
-    setExpandedSections(prev => ({ ...prev, [`custom-${newSection.id}`]: true }));
   };
 
   const insertCustomSectionAt = (position: number) => {
@@ -315,7 +358,6 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
       copy.splice(position, 0, { kind: 'custom', id: newSection.id });
       return copy;
     });
-    setExpandedSections(prev => ({ ...prev, [`custom-${newSection.id}`]: true }));
   };
 
   const removeCustomSectionById = (sectionId: number) => {
@@ -333,7 +375,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     const theoryMarks = theoryQuestions.reduce((sum: number, q: any) => {
       const base = sum + (Number(q.marks) || 0);
       const subQ = (q.subQuestions || []).reduce((ss: number, sq: any) => {
-        const baseSq = ss + (Number(sq.marks) || 0);
+      const baseSq = ss + (Number(sq.marks) || 0);
         const subSub = (sq.subSubQuestions || []).reduce((sss: number, s2: any) => sss + (Number(s2.marks) || 0), 0);
         return baseSq + subSub;
       }, 0);
@@ -572,85 +614,106 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     return true;
   };
 
-  const saveAsDraft = async () => {
-    if (!validateForm()) return;
+const saveAsDraft = async () => {
+  if (!validateForm()) return;
 
-    try {
-      setSavingDraft(true);
-      
-      const examData: ExamCreateData = {
-        ...formData,
-        status: 'scheduled',
-        teacher: currentTeacherId!,
-        objective_questions: objectiveQuestions,
-        theory_questions: theoryQuestions,
-        practical_questions: practicalQuestions,
-        custom_sections: getOrderedCustomSections(),
-        objective_instructions: objectiveInstructions,
-        theory_instructions: theoryInstructions,
-        practical_instructions: practicalInstructions,
-        total_marks: calculateTotalMarks()
-      };
+  try {
+    setSavingDraft(true);
+    
+    const examData: ExamCreateData = {
+      ...formData,
+      status: 'scheduled',
+      teacher: currentTeacherId!,
+      objective_questions: objectiveQuestions,
+      theory_questions: theoryQuestions,
+      practical_questions: practicalQuestions,
+      custom_sections: getOrderedCustomSections(),
+      objective_instructions: objectiveInstructions,
+      theory_instructions: theoryInstructions,
+      practical_instructions: practicalInstructions,
+      total_marks: calculateTotalMarks()
+    };
 
-      const normalizedData = normalizeExamDataForSave(examData);
+    // NORMALIZE DATA FOR COMPATIBILITY
+    const normalizedData = normalizeExamDataForSave(examData);
 
-      if (editingExam) {
-        await ExamService.updateExam(editingExam.id, normalizedData);
-        toast.success('Exam updated successfully!');
-      } else {
-        const response = await ExamService.createExam(normalizedData);
-        toast.success(`Exam saved successfully! ID: ${response?.id || 'N/A'}`);
-      }
+    console.log('📝 CREATING EXAM - Full payload:', normalizedData);
+    console.log('📝 Teacher ID being sent:', normalizedData.teacher);
+    console.log('📝 Subject ID being sent:', normalizedData.subject);
+    console.log('📝 Grade Level ID being sent:', normalizedData.grade_level);
 
-      onExamCreated();
-      onClose();
-    } catch (error) {
-      console.error('❌ Error saving exam:', error);
-      toast.error('Failed to save exam. Please try again.');
-    } finally {
-      setSavingDraft(false);
+    if (editingExam) {
+      const response = await ExamService.updateExam(editingExam.id, normalizedData);
+      console.log('✅ EXAM UPDATED - Response:', response);
+      toast.success('Exam updated successfully!');
+    } else {
+      const response = await ExamService.createExam(normalizedData);
+      console.log('✅ EXAM CREATED - Response:', response);
+      console.log('✅ Created exam ID:', response?.id);
+      console.log('✅ Created exam teacher:', response?.teacher);
+      toast.success(`Exam saved successfully! ID: ${response?.id || 'N/A'}`);
     }
-  };
 
-  const submitForApproval = async () => {
-    if (!validateForm()) return;
+    onExamCreated();
+    onClose();
+  } catch (error) {
+    console.error('❌ Error saving exam:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : error);
+    toast.error('Failed to save exam. Please try again.');
+  } finally {
+    setSavingDraft(false);
+  }
+};
 
-    try {
-      setLoading(true);
-      
-      const examData: ExamCreateData = {
-        ...formData,
-        status: 'scheduled',
-        teacher: currentTeacherId!,
-        objective_questions: objectiveQuestions,
-        theory_questions: theoryQuestions,
-        practical_questions: practicalQuestions,
-        custom_sections: getOrderedCustomSections(),
-        objective_instructions: objectiveInstructions,
-        theory_instructions: theoryInstructions,
-        practical_instructions: practicalInstructions,
-        total_marks: calculateTotalMarks()
-      };
+const submitForApproval = async () => {
+  if (!validateForm()) return;
 
-      const normalizedData = normalizeExamDataForSave(examData);
+  try {
+    setLoading(true);
+    
+    const examData: ExamCreateData = {
+      ...formData,
+      status: 'scheduled',
+      teacher: currentTeacherId!,
+      objective_questions: objectiveQuestions,
+      theory_questions: theoryQuestions,
+      practical_questions: practicalQuestions,
+      custom_sections: getOrderedCustomSections(),
+      objective_instructions: objectiveInstructions,
+      theory_instructions: theoryInstructions,
+      practical_instructions: practicalInstructions,
+      total_marks: calculateTotalMarks()
+    };
 
-      if (editingExam) {
-        await ExamService.updateExam(editingExam.id, normalizedData);
-        toast.success('Exam submitted for review successfully!');
-      } else {
-        await ExamService.createExam(normalizedData);
-        toast.success('Exam submitted for review successfully!');
-      }
+    // NORMALIZE DATA FOR COMPATIBILITY
+    const normalizedData = normalizeExamDataForSave(examData);
 
-      onExamCreated();
-      onClose();
-    } catch (error) {
-      console.error('❌ Error submitting exam:', error);
-      toast.error('Failed to submit exam. Please try again.');
-    } finally {
-      setLoading(false);
+    console.log('🔍 Submitting exam for approval with data:', {
+      teacher: normalizedData.teacher,
+      title: normalizedData.title,
+      subject: normalizedData.subject,
+      grade_level: normalizedData.grade_level
+    });
+
+    if (editingExam) {
+      await ExamService.updateExam(editingExam.id, normalizedData);
+      toast.success('Exam submitted for review successfully!');
+    } else {
+      const response = await ExamService.createExam(normalizedData);
+      console.log('🔍 Exam created and submitted successfully:', response);
+      toast.success('Exam submitted for review successfully!');
     }
-  };
+
+    onExamCreated();
+    onClose();
+  } catch (error) {
+    console.error('❌ Error submitting exam:', error);
+    toast.error('Failed to submit exam. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -665,7 +728,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     const Icon = config.icon;
 
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
         <Icon className="w-3 h-3 mr-1" />
         {config.text}
       </span>
@@ -675,80 +738,78 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-6xl my-4 sm:my-8 max-h-[95vh] flex flex-col shadow-2xl">
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between p-3 sm:p-6 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700">
-          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-slate-900 dark:text-white truncate">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center space-x-3">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
               {editingExam ? 'Edit Exam' : 'Create New Exam'}
             </h2>
-            {editingExam && <div className="hidden sm:block">{getStatusBadge(editingExam.status)}</div>}
+            {editingExam && getStatusBadge(editingExam.status)}
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 shrink-0">
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <X className="w-6 h-6" />
           </button>
         </div>
 
         {currentTeacherId && (
-          <div className="px-3 sm:px-6 py-2 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700 border-b dark:border-slate-600">
+          <div className="px-6 pt-2 text-xs text-slate-500">
             Teacher ID: {currentTeacherId}
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="sticky top-[60px] sm:top-[88px] z-10 flex border-b border-slate-200 dark:border-slate-700 overflow-x-auto bg-white dark:bg-slate-800">
+        <div className="flex border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setActiveTab('basic')}
-            className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 text-sm font-medium whitespace-nowrap ${
-              activeTab === 'basic' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            className={`px-6 py-3 text-sm font-medium ${
+              activeTab === 'basic'
+                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            Basic Info
+            Basic Information
           </button>
           <button
             onClick={() => setActiveTab('questions')}
-            className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 text-sm font-medium whitespace-nowrap ${
-              activeTab === 'questions' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+            className={`px-6 py-3 text-sm font-medium ${
+              activeTab === 'questions'
+                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            Questions
+            Questions & Instructions
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
+        <div className="p-6">
           {activeTab === 'basic' ? (
-            <div className="space-y-4 sm:space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Exam Title *</label>
-                  <input type="text" value={formData.title} onChange={(e) => handleInputChange('title', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" placeholder="Enter exam title" />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Exam Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                    placeholder="Enter exam title"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Subject *</label>
-                  <select value={formData.subject} onChange={(e) => handleInputChange('subject', parseInt(e.target.value))} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base">
-                    <option value={0}>Select Subject</option>
-                    {subjects.map((subject: any) => (
-                      <option key={subject.id} value={subject.id}>{subject.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Grade Level *</label>
-                  <select value={formData.grade_level} onChange={(e) => handleInputChange('grade_level', parseInt(e.target.value))} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base">
-                    <option value={0}>Select Grade Level</option>
-                    {gradeLevels.map((gradeLevel: any) => (
-                      <option key={gradeLevel.id} value={gradeLevel.id}>{gradeLevel.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Exam Type *</label>
-                  <select value={formData.exam_type} onChange={(e) => handleInputChange('exam_type', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Exam Type *
+                  </label>
+                  <select
+                    value={formData.exam_type}
+                    onChange={(e) => handleInputChange('exam_type', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
                     <option value="test">Class Test</option>
                     <option value="quiz">Quiz</option>
                     <option value="mid_term">Mid-Term Examination</option>
@@ -759,8 +820,50 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Difficulty Level</label>
-                  <select value={formData.difficulty_level} onChange={(e) => handleInputChange('difficulty_level', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Subject *
+                  </label>
+                  <select
+                    value={formData.subject}
+                    onChange={(e) => handleInputChange('subject', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
+                    <option value={0}>Select Subject</option>
+                    {subjects.map((subject: any) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Grade Level *
+                  </label>
+                  <select
+                    value={formData.grade_level}
+                    onChange={(e) => handleInputChange('grade_level', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
+                    <option value={0}>Select Grade Level</option>
+                    {gradeLevels.map((gradeLevel: any) => (
+                      <option key={gradeLevel.id} value={gradeLevel.id}>
+                        {gradeLevel.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Difficulty Level
+                  </label>
+                  <select
+                    value={formData.difficulty_level}
+                    onChange={(e) => handleInputChange('difficulty_level', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  >
                     <option value="easy">Easy</option>
                     <option value="medium">Medium</option>
                     <option value="hard">Hard</option>
@@ -768,460 +871,466 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Exam Date *</label>
-                  <input type="date" value={formData.exam_date} onChange={(e) => handleInputChange('exam_date', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Time *</label>
-                  <input type="time" value={formData.start_time} onChange={(e) => handleInputChange('start_time', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">End Time *</label>
-                  <input type="time" value={formData.end_time} onChange={(e) => handleInputChange('end_time', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Duration (minutes)</label>
-                  <input type="number" value={formData.duration_minutes} onChange={(e) => handleInputChange('duration_minutes', parseInt(e.target.value))} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" min="15" max="300" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Total Marks</label>
-                  <input type="number" value={formData.total_marks} onChange={(e) => handleInputChange('total_marks', parseInt(e.target.value))} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" min="1" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Pass Marks</label>
-                  <input type="number" value={formData.pass_marks} onChange={(e) => handleInputChange('pass_marks', parseInt(e.target.value))} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" min="1" />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Venue</label>
-                  <input type="text" value={formData.venue} onChange={(e) => handleInputChange('venue', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" placeholder="e.g., Room 101, Computer Lab" />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Instructions</label>
-                  <textarea value={formData.instructions} onChange={(e) => handleInputChange('instructions', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm sm:text-base" rows={3} placeholder="General instructions for students" />
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Duration (minutes)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.duration_minutes}
+                    onChange={(e) => handleInputChange('duration_minutes', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                    min="15"
+                    max="300"
+                  />
                 </div>
               </div>
 
-              <div className="space-y-3 bg-slate-50 dark:bg-slate-700 p-3 sm:p-4 rounded-lg">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Exam Settings</h3>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" checked={formData.is_practical} onChange={(e) => handleInputChange('is_practical', e.target.checked)} className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Exam Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.exam_date}
+                    onChange={(e) => handleInputChange('exam_date', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Start Time *
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.start_time}
+                    onChange={(e) => handleInputChange('start_time', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    End Time *
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.end_time}
+                    onChange={(e) => handleInputChange('end_time', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Venue
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.venue}
+                    onChange={(e) => handleInputChange('venue', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                    placeholder="e.g., Room 101, Computer Lab"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Instructions
+                  </label>
+                  <textarea
+                    value={formData.instructions}
+                    onChange={(e) => handleInputChange('instructions', e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                    rows={3}
+                    placeholder="General instructions for students"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_practical}
+                    onChange={(e) => handleInputChange('is_practical', e.target.checked)}
+                    className="mr-2"
+                  />
                   <span className="text-sm text-slate-700 dark:text-slate-300">Practical Exam</span>
                 </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" checked={formData.requires_computer} onChange={(e) => handleInputChange('requires_computer', e.target.checked)} className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" />
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.requires_computer}
+                    onChange={(e) => handleInputChange('requires_computer', e.target.checked)}
+                    className="mr-2"
+                  />
                   <span className="text-sm text-slate-700 dark:text-slate-300">Requires Computer</span>
                 </label>
-                <label className="flex items-center space-x-2">
-                  <input type="checkbox" checked={formData.is_online} onChange={(e) => handleInputChange('is_online', e.target.checked)} className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" />
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_online}
+                    onChange={(e) => handleInputChange('is_online', e.target.checked)}
+                    className="mr-2"
+                  />
                   <span className="text-sm text-slate-700 dark:text-slate-300">Online Exam</span>
                 </label>
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {sectionOrder.map((section, orderIndex) => {
-                const sectionKey = `${section.kind}-${section.id ?? 'builtin'}`;
-                const isExpanded = expandedSections[sectionKey] !== false;
-
-                return (
-                  <div key={sectionKey} className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-between p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 cursor-pointer" onClick={() => toggleSection(sectionKey)}>
-                      <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-                        <span className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 shrink-0">Section {String.fromCharCode(65 + orderIndex)}:</span>
-                        <h3 className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-white truncate">
-                          {section.kind === 'objective' && 'Objective Questions'}
-                          {section.kind === 'theory' && 'Theory Questions'}
-                          {section.kind === 'practical' && 'Practical Questions'}
-                          {section.kind === 'custom' && (customSections.find(s => s.id === section.id)?.name || 'Custom Section')}
-                        </h3>
-                      </div>
-                      <div className="flex items-center space-x-2 shrink-0">
-                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                      </div>
+            <div className="space-y-6">
+              {sectionOrder.map((section, orderIndex) => (
+                <div key={`${section.kind}-${section.id ?? 'builtin'}`} className="border border-slate-200 dark:border-slate-600 rounded-lg">
+                  <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Section {String.fromCharCode(65 + orderIndex)}:</span>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                        {section.kind === 'objective' && 'Objective Questions'}
+                        {section.kind === 'theory' && 'Theory Questions'}
+                        {section.kind === 'practical' && 'Practical Questions'}
+                        {section.kind === 'custom' && (customSections.find(s => s.id === section.id)?.name || 'Custom Section')}
+                      </h3>
                     </div>
+                    <div className="flex items-center space-x-2">
+                      <button onClick={() => insertCustomSectionAt(orderIndex)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">Add Section Before</button>
+                      <button onClick={() => insertCustomSectionAt(orderIndex + 1)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">Add Section After</button>
+                      {section.kind === 'custom' && (
+                        <button onClick={() => section.id && removeCustomSectionById(section.id)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 dark:hover:bg-slate-700">Remove Section</button>
+                      )}
+                    </div>
+                  </div>
 
-                    {isExpanded && (
-                      <div className="p-3 sm:p-4">
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <button onClick={() => insertCustomSectionAt(orderIndex)} className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Add Before</button>
-                          <button onClick={() => insertCustomSectionAt(orderIndex + 1)} className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Add After</button>
-                          {section.kind === 'custom' && (
-                            <button onClick={() => section.id && removeCustomSectionById(section.id)} className="px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-red-600 border border-red-300 rounded hover:bg-red-50 dark:hover:bg-slate-700 transition-colors">Remove Section</button>
-                          )}
+                  <div className="p-4">
+                    {section.kind === 'objective' && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions (Objective)</label>
+                          <textarea value={objectiveInstructions} onChange={(e) => setObjectiveInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter instructions for this section" />
                         </div>
-
-                        {section.kind === 'objective' && (
+                        <div className="flex items-center justify-between">
+                          <button onClick={addObjectiveQuestion} className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <Plus className="w-4 h-4" />
+                            <span>Add Question</span>
+                          </button>
+                        </div>
+                        {objectiveQuestions.length > 0 && (
                           <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions</label>
-                              <textarea value={objectiveInstructions} onChange={(e) => setObjectiveInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={2} placeholder="Enter instructions for this section" />
-                            </div>
-
-                            <button onClick={addObjectiveQuestion} className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
-                              <Plus className="w-4 h-4" />
-                              <span>Add Question</span>
-                            </button>
-
-                            {objectiveQuestions.length > 0 && (
-                              <div className="space-y-3">
-                                {objectiveQuestions.map((question, index) => {
-                                  const questionKey = `obj-${question.id}`;
-                                  const isQuestionExpanded = expandedQuestions[questionKey] !== false;
-
-                                  return (
-                                    <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-slate-700 cursor-pointer" onClick={() => toggleQuestion(questionKey)}>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
-                                        <div className="flex items-center space-x-2">
-                                          <button onClick={(e) => { e.stopPropagation(); removeObjectiveQuestion(index); }} className="text-red-500 hover:text-red-700 p-1">
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                          {isQuestionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                        </div>
-                                      </div>
-
-                                      {isQuestionExpanded && (
-                                        <div className="p-3 space-y-3">
-                                          <textarea value={question.question} onChange={(e) => updateObjectiveQuestion(index, 'question', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={2} placeholder="Enter question" />
-
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            <input type="text" value={question.optionA} onChange={(e) => updateObjectiveQuestion(index, 'optionA', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Option A" />
-                                            <input type="text" value={question.optionB} onChange={(e) => updateObjectiveQuestion(index, 'optionB', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Option B" />
-                                            <input type="text" value={question.optionC} onChange={(e) => updateObjectiveQuestion(index, 'optionC', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Option C" />
-                                            <input type="text" value={question.optionD} onChange={(e) => updateObjectiveQuestion(index, 'optionD', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Option D" />
-                                          </div>
-
-                                          <div className="grid grid-cols-2 gap-2">
-                                            <select value={question.correctAnswer} onChange={(e) => updateObjectiveQuestion(index, 'correctAnswer', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm">
-                                              <option value="">Correct Answer</option>
-                                              <option value="A">A</option>
-                                              <option value="B">B</option>
-                                              <option value="C">C</option>
-                                              <option value="D">D</option>
-                                            </select>
-                                            <input type="number" value={question.marks} onChange={(e) => updateObjectiveQuestion(index, 'marks', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Marks" min="1" />
-                                          </div>
-
-                                          <div className="grid grid-cols-1 gap-2">
-                                            <input type="text" value={question.imageUrl || ''} onChange={(e) => updateObjectiveQuestion(index, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Image URL (optional)" />
-                                            <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
-                                              <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                                const file = e.target.files && e.target.files[0];
-                                                if (!file) return;
-                                                const url = await uploadImage(file);
-                                                if (url) updateObjectiveQuestion(index, 'imageUrl', url);
-                                              }} />
-                                              Upload Image
-                                            </label>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {section.kind === 'theory' && (
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions</label>
-                              <textarea value={theoryInstructions} onChange={(e) => setTheoryInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={2} placeholder="Enter instructions for this section" />
-                            </div>
-
-                            <button onClick={addTheoryQuestion} className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
-                              <Plus className="w-4 h-4" />
-                              <span>Add Question</span>
-                            </button>
-
-                            {theoryQuestions.length > 0 && (
-                              <div className="space-y-3">
-                                {theoryQuestions.map((question, index) => {
-                                  const questionKey = `theory-${question.id}`;
-                                  const isQuestionExpanded = expandedQuestions[questionKey] !== false;
-
-                                  return (
-                                    <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                                      <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-slate-700 cursor-pointer" onClick={() => toggleQuestion(questionKey)}>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {getQuestionNumber(index)}</span>
-                                        <div className="flex items-center space-x-2">
-                                          <button onClick={(e) => { e.stopPropagation(); removeTheoryQuestion(index); }} className="text-red-500 hover:text-red-700 p-1">
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                          {isQuestionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                        </div>
-                                      </div>
-
-                                      {isQuestionExpanded && (
-                                        <div className="p-3 space-y-3">
-                                          <textarea value={question.question} onChange={(e) => updateTheoryQuestion(index, 'question', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={3} placeholder="Enter question" />
-
-                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                            <input type="text" value={question.expectedPoints} onChange={(e) => updateTheoryQuestion(index, 'expectedPoints', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Expected points" />
-                                            <input type="number" value={question.marks} onChange={(e) => updateTheoryQuestion(index, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Marks" min="1" />
-                                            <input type="text" value={question.wordLimit} onChange={(e) => updateTheoryQuestion(index, 'wordLimit', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Word limit" />
-                                          </div>
-
-                                          <div className="flex flex-wrap gap-2">
-                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => setTheoryTable(index, 2, 2)}>Add 2x2 Table</button>
-                                            <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => setTheoryTable(index, 3, 3)}>Add 3x3 Table</button>
-                                            {question.table && (
-                                              <>
-                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => addTheoryTableRow(index)}>+ Row</button>
-                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => addTheoryTableCol(index)}>+ Col</button>
-                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => removeTheoryTableRow(index)}>- Row</button>
-                                                <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => removeTheoryTableCol(index)}>- Col</button>
-                                              </>
-                                            )}
-                                          </div>
-
-                                          {question.table && (
-                                            <div className="overflow-x-auto -mx-3 px-3">
-                                              <table className="min-w-full border border-slate-300 dark:border-slate-600">
-                                                <tbody>
-                                                  {question.table.data.map((row: string[], r: number) => (
-                                                    <tr key={r}>
-                                                      {row.map((cell: string, c: number) => (
-                                                        <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">
-                                                          <input type="text" value={cell} onChange={(e) => updateTheoryTableCell(index, r, c, e.target.value)} className="w-full px-2 py-1 bg-transparent focus:outline-none text-sm" />
-                                                        </td>
-                                                      ))}
-                                                    </tr>
-                                                  ))}
-                                                </tbody>
-                                              </table>
-                                            </div>
-                                          )}
-
-                                          <div>
-                                            <button onClick={() => addSubQuestion(index)} className="px-3 py-1.5 text-xs sm:text-sm bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">Add Sub-question</button>
-                                          </div>
-
-                                          {(question.subQuestions || []).map((sq: any, sqi: number) => (
-                                            <div key={sq.id} className="border border-slate-200 dark:border-slate-600 rounded p-2 sm:p-3 bg-slate-50 dark:bg-slate-800">
-                                              <div className="flex items-center justify-between mb-2">
-                                                <span className="text-xs sm:text-sm font-medium">{getQuestionNumber(index, sqi)}</span>
-                                                <div className="flex items-center space-x-2">
-                                                  <button onClick={() => addSubSubQuestion(index, sqi)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">Add Sub-Sub</button>
-                                                  <button onClick={() => removeSubQuestion(index, sqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 dark:hover:bg-slate-700">Remove</button>
-                                                </div>
-                                              </div>
-                                              <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
-                                                <textarea value={sq.question} onChange={(e) => updateSubQuestion(index, sqi, 'question', e.target.value)} className="sm:col-span-5 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter sub-question" />
-                                                <input type="number" value={sq.marks || 0} onChange={(e) => updateSubQuestion(index, sqi, 'marks', parseInt(e.target.value))} className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white" placeholder="Marks" />
-                                              </div>
-
-                                              {(sq.subSubQuestions || []).map((ssq: any, ssqi: number) => (
-                                                <div key={ssq.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 mt-2 pl-2 sm:pl-4 border-l-2 border-slate-300 dark:border-slate-600">
-                                                  <span className="text-xs col-span-1 pt-2">{getQuestionNumber(index, sqi, ssqi)}</span>
-                                                  <textarea value={ssq.question} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'question', e.target.value)} className="col-span-12 sm:col-span-8 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter sub-sub-question" />
-                                                  <input type="number" value={ssq.marks || 0} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'marks', parseInt(e.target.value))} className="col-span-6 sm:col-span-2 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded text-sm dark:bg-slate-700 dark:text-white" placeholder="Marks" />
-                                                  <button onClick={() => removeSubSubQuestion(index, sqi, ssqi)} className="col-span-6 sm:col-span-1 px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 dark:hover:bg-slate-700">
-                                                    <Trash2 className="w-3 h-3 mx-auto" />
-                                                  </button>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {section.kind === 'practical' && (
-                          <div className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions</label>
-                              <textarea value={practicalInstructions} onChange={(e) => setPracticalInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={2} placeholder="Enter instructions for this section" />
-                            </div>
-
-                            <button onClick={addPracticalQuestion} className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
-                              <Plus className="w-4 h-4" />
-                              <span>Add Question</span>
-                            </button>
-
-                            {practicalQuestions.length > 0 && (
-                              <div className="space-y-3">
-                                {practicalQuestions.map((question, index) => {
-                                  const questionKey = `prac-${question.id}`;
-                                  const isQuestionExpanded = expandedQuestions[questionKey] !== false;
-
-                                  return (
-                                    <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                                      <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-slate-700 cursor-pointer" onClick={() => toggleQuestion(questionKey)}>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
-                                        <div className="flex items-center space-x-2">
-                                          <button onClick={(e) => { e.stopPropagation(); removePracticalQuestion(index); }} className="text-red-500 hover:text-red-700 p-1">
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                          {isQuestionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                        </div>
-                                      </div>
-
-                                      {isQuestionExpanded && (
-                                        <div className="p-3 space-y-3">
-                                          <textarea value={question.task} onChange={(e) => updatePracticalQuestion(index, 'task', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={2} placeholder="Task description" />
-
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            <input type="text" value={question.materials} onChange={(e) => updatePracticalQuestion(index, 'materials', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Required materials" />
-                                            <input type="text" value={question.expectedOutcome} onChange={(e) => updatePracticalQuestion(index, 'expectedOutcome', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Expected outcome" />
-                                          </div>
-
-                                          <div className="grid grid-cols-2 gap-2">
-                                            <input type="number" value={question.marks} onChange={(e) => updatePracticalQuestion(index, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Marks" min="1" />
-                                            <input type="text" value={question.timeLimit} onChange={(e) => updatePracticalQuestion(index, 'timeLimit', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Time limit" />
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {section.kind === 'custom' && (
-                          <div className="space-y-4">
-                            {(() => {
-                              const custom = customSections.find(s => s.id === section.id);
-                              if (!custom) return null;
-
-                              const updateCustomField = (field: string, value: any) => {
-                                setCustomSections(prev => prev.map(s => s.id === custom.id ? { ...s, [field]: value } : s));
-                              };
-
-                              const addQuestionToCustom = () => {
-                                const newQ = { id: Date.now(), question: '', marks: 1, imageUrl: '', imageAlt: '' };
-                                setCustomSections(prev => prev.map(s => s.id === custom.id ? { ...s, questions: [...(s.questions || []), newQ] } : s));
-                                setExpandedQuestions(prev => ({ ...prev, [`custom-${custom.id}-q-${newQ.id}`]: true }));
-                              };
-
-                              const updateCustomQuestion = (qIndex: number, field: string, value: any) => {
-                                setCustomSections(prev => prev.map(s => {
-                                  if (s.id !== custom.id) return s;
-                                  const qs = [...(s.questions || [])];
-                                  qs[qIndex] = { ...qs[qIndex], [field]: value };
-                                  return { ...s, questions: qs };
-                                }));
-                              };
-
-                              const removeCustomQuestion = (qIndex: number) => {
-                                setCustomSections(prev => prev.map(s => {
-                                  if (s.id !== custom.id) return s;
-                                  return { ...s, questions: (s.questions || []).filter((_: any, i: number) => i !== qIndex) };
-                                }));
-                              };
-
-                              return (
-                                <div className="space-y-4">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <input type="text" value={custom.name} onChange={(e) => updateCustomField('name', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Section name (e.g., Comprehension)" />
-                                    <input type="text" value={custom.instructions} onChange={(e) => updateCustomField('instructions', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Section instructions" />
-                                  </div>
-
-                                  <button onClick={addQuestionToCustom} className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm sm:text-base w-full sm:w-auto justify-center sm:justify-start">
-                                    <Plus className="w-4 h-4" />
-                                    <span>Add Question</span>
-                                  </button>
-
-                                  {(custom.questions || []).length > 0 && (
-                                    <div className="space-y-3">
-                                      {custom.questions.map((q: any, qi: number) => {
-                                        const questionKey = `custom-${custom.id}-q-${q.id}`;
-                                        const isQuestionExpanded = expandedQuestions[questionKey] !== false;
-
-                                        return (
-                                          <div key={q.id} className="border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
-                                            <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 cursor-pointer" onClick={() => toggleQuestion(questionKey)}>
-                                              <span className="text-sm text-slate-600 dark:text-slate-300">Question {qi + 1}</span>
-                                              <div className="flex items-center space-x-2">
-                                                <button onClick={(e) => { e.stopPropagation(); removeCustomQuestion(qi); }} className="text-red-500 hover:text-red-700 p-1">
-                                                  <Trash2 className="w-4 h-4" />
-                                                </button>
-                                                {isQuestionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                              </div>
-                                            </div>
-
-                                            {isQuestionExpanded && (
-                                              <div className="p-3">
-                                                <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
-                                                  <textarea value={q.question} onChange={(e) => updateCustomQuestion(qi, 'question', e.target.value)} className="sm:col-span-5 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" rows={2} placeholder="Enter question" />
-                                                  <input type="number" value={q.marks} onChange={(e) => updateCustomQuestion(qi, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white text-sm" placeholder="Marks" min="0" />
-                                                </div>
-
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                  <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => setCustomTable(custom.id, qi, 2, 2)}>Add 2x2 Table</button>
-                                                  <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => setCustomTable(custom.id, qi, 3, 3)}>Add 3x3 Table</button>
-                                                  {q.table && (
-                                                    <>
-                                                      <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => addCustomTableRow(custom.id, qi)}>+ Row</button>
-                                                      <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => addCustomTableCol(custom.id, qi)}>+ Col</button>
-                                                      <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => removeCustomTableRow(custom.id, qi)}>- Row</button>
-                                                      <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600" onClick={() => removeCustomTableCol(custom.id, qi)}>- Col</button>
-                                                    </>
-                                                  )}
-                                                </div>
-
-                                                {q.table && (
-                                                  <div className="mt-3 overflow-x-auto -mx-3 px-3">
-                                                    <table className="min-w-full border border-slate-300 dark:border-slate-600">
-                                                      <tbody>
-                                                        {q.table.data.map((row: string[], r: number) => (
-                                                          <tr key={r}>
-                                                            {row.map((cell: string, c: number) => (
-                                                              <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">
-                                                                <input type="text" value={cell} onChange={(e) => updateCustomTableCell(custom.id, qi, r, c, e.target.value)} className="w-full px-2 py-1 bg-transparent focus:outline-none text-sm" />
-                                                              </td>
-                                                            ))}
-                                                          </tr>
-                                                        ))}
-                                                      </tbody>
-                                                    </table>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
+                            {objectiveQuestions.map((question, index) => (
+                              <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
+                                  <button onClick={() => removeObjectiveQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
                                 </div>
-                              );
-                            })()}
+                                <div className="space-y-3">
+                                  <input type="text" value={question.question} onChange={(e) => updateObjectiveQuestion(index, 'question', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Enter question" />
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <input type="text" value={question.imageUrl || ''} onChange={(e) => updateObjectiveQuestion(index, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Image URL (optional)" />
+                                    <input type="text" value={question.imageAlt || ''} onChange={(e) => updateObjectiveQuestion(index, 'imageAlt', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Alt text" />
+                                    <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+                                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                        const file = e.target.files && e.target.files[0];
+                                        if (!file) return;
+                                        const url = await uploadImage(file);
+                                        if (url) updateObjectiveQuestion(index, 'imageUrl', url);
+                                      }} />
+                                      Upload Image
+                                    </label>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <input type="text" value={question.optionA} onChange={(e) => updateObjectiveQuestion(index, 'optionA', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option A" />
+                                    <input type="text" value={question.optionB} onChange={(e) => updateObjectiveQuestion(index, 'optionB', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option B" />
+                                    <input type="text" value={question.optionC} onChange={(e) => updateObjectiveQuestion(index, 'optionC', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option C" />
+                                    <input type="text" value={question.optionD} onChange={(e) => updateObjectiveQuestion(index, 'optionD', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Option D" />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <select value={question.correctAnswer} onChange={(e) => updateObjectiveQuestion(index, 'correctAnswer', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white">
+                                      <option value="">Select correct answer</option>
+                                      <option value="A">A</option>
+                                      <option value="B">B</option>
+                                      <option value="C">C</option>
+                                      <option value="D">D</option>
+                                    </select>
+                                    <input type="number" value={question.marks} onChange={(e) => updateObjectiveQuestion(index, 'marks', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="1" />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
-                );
-              })}
 
-              <div className="flex justify-center">
-                <button onClick={addCustomSection} className="flex items-center space-x-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors w-full sm:w-auto justify-center">
+                    {section.kind === 'theory' && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions (Theory)</label>
+                          <textarea value={theoryInstructions} onChange={(e) => setTheoryInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter instructions for this section" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button onClick={addTheoryQuestion} className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            <Plus className="w-4 h-4" />
+                            <span>Add Question</span>
+                          </button>
+                        </div>
+                        {theoryQuestions.length > 0 && (
+                          <div className="space-y-4">
+                            {theoryQuestions.map((question, index) => (
+                              <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {getQuestionNumber(index)}</span>
+                                  <button onClick={() => removeTheoryQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                                <div className="space-y-3">
+                                  <textarea value={question.question} onChange={(e) => updateTheoryQuestion(index, 'question', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={3} placeholder="Enter question" />
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <input type="text" value={question.imageUrl || ''} onChange={(e) => updateTheoryQuestion(index, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Image URL (optional)" />
+                                    <input type="text" value={question.imageAlt || ''} onChange={(e) => updateTheoryQuestion(index, 'imageAlt', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Alt text" />
+                                    <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+                                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                        const file = e.target.files && e.target.files[0];
+                                        if (!file) return;
+                                        const url = await uploadImage(file);
+                                        if (url) updateTheoryQuestion(index, 'imageUrl', url);
+                                      }} />
+                                      Upload Image
+                                    </label>
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <input type="text" value={question.expectedPoints} onChange={(e) => updateTheoryQuestion(index, 'expectedPoints', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Expected points" />
+                                    <input type="number" value={question.marks} onChange={(e) => updateTheoryQuestion(index, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="1" />
+                                    <input type="text" value={question.wordLimit} onChange={(e) => updateTheoryQuestion(index, 'wordLimit', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Word limit" />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center space-x-2">
+                                      <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setTheoryTable(index, 2, 2)}>Add 2x2 Table</button>
+                                      <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setTheoryTable(index, 3, 3)}>Add 3x3 Table</button>
+                                      {question.table && (
+                                        <>
+                                          <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addTheoryTableRow(index)}>+ Row</button>
+                                          <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addTheoryTableCol(index)}>+ Col</button>
+                                          <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeTheoryTableRow(index)}>- Row</button>
+                                          <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeTheoryTableCol(index)}>- Col</button>
+                                        </>
+                                      )}
+                                    </div>
+                                    {question.table && (
+                                      <div className="overflow-auto">
+                                        <table className="min-w-[300px] border border-slate-300 dark:border-slate-600">
+                                          <tbody>
+                                            {question.table.data.map((row: string[], r: number) => (
+                                              <tr key={r}>
+                                                {row.map((cell: string, c: number) => (
+                                                  <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">
+                                                    <input type="text" value={cell} onChange={(e) => updateTheoryTableCell(index, r, c, e.target.value)} className="w-full px-2 py-1 bg-transparent focus:outline-none" />
+                                                  </td>
+                                                ))}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div>
+                                      <button onClick={() => addSubQuestion(index)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded">Add Sub-question</button>
+                                    </div>
+                                    {(question.subQuestions || []).map((sq: any, sqi: number) => (
+                                      <div key={sq.id} className="border border-slate-200 dark:border-slate-600 rounded p-2">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm">{getQuestionNumber(index, sqi)}</span>
+                                          <div className="space-x-2">
+                                            <button onClick={() => addSubSubQuestion(index, sqi)} className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded">Add Sub-Sub</button>
+                                            <button onClick={() => removeSubQuestion(index, sqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded">Remove</button>
+                                          </div>
+                                        </div>
+                                        <div className="grid grid-cols-6 gap-2 mt-2">
+                                          <textarea value={sq.question} onChange={(e) => updateSubQuestion(index, sqi, 'question', e.target.value)} className="col-span-5 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" rows={2} placeholder="Enter sub-question" />
+                                          <input type="number" value={sq.marks || 0} onChange={(e) => updateSubQuestion(index, sqi, 'marks', parseInt(e.target.value))} className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" placeholder="Marks" />
+                                        </div>
+                                        {(sq.subSubQuestions || []).map((ssq: any, ssqi: number) => (
+                                          <div key={ssq.id} className="grid grid-cols-6 gap-2 mt-2">
+                                            <span className="text-sm col-span-1">{getQuestionNumber(index, sqi, ssqi)}</span>
+                                            <textarea value={ssq.question} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'question', e.target.value)} className="col-span-4 px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" rows={2} placeholder="Enter sub-sub-question" />
+                                            <input type="number" value={ssq.marks || 0} onChange={(e) => updateSubSubQuestion(index, sqi, ssqi, 'marks', parseInt(e.target.value))} className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded" placeholder="Marks" />
+                                            <button onClick={() => removeSubSubQuestion(index, sqi, ssqi)} className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded">Remove</button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {section.kind === 'practical' && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Section Instructions (Practical)</label>
+                          <textarea value={practicalInstructions} onChange={(e) => setPracticalInstructions(e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter instructions for this section" />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button onClick={addPracticalQuestion} className="flex items-center space-x-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            <Plus className="w-4 h-4" />
+                            <span>Add Question</span>
+                          </button>
+                        </div>
+                        {practicalQuestions.length > 0 && (
+                          <div className="space-y-4">
+                            {practicalQuestions.map((question, index) => (
+                              <div key={question.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Question {index + 1}</span>
+                                  <button onClick={() => removePracticalQuestion(index)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                                <div className="space-y-3">
+                                  <textarea value={question.task} onChange={(e) => updatePracticalQuestion(index, 'task', e.target.value)} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Task description" />
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <input type="text" value={question.materials} onChange={(e) => updatePracticalQuestion(index, 'materials', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Required materials" />
+                                    <input type="text" value={question.expectedOutcome} onChange={(e) => updatePracticalQuestion(index, 'expectedOutcome', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Expected outcome" />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <input type="number" value={question.marks} onChange={(e) => updatePracticalQuestion(index, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="1" />
+                                    <input type="text" value={question.timeLimit} onChange={(e) => updatePracticalQuestion(index, 'timeLimit', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Time limit" />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {section.kind === 'custom' && (
+                      <div className="space-y-4">
+                        {(() => {
+                          const custom = customSections.find(s => s.id === section.id);
+                          if (!custom) return null;
+                          const updateCustomField = (field: string, value: any) => {
+                            setCustomSections(prev => prev.map(s => s.id === custom.id ? { ...s, [field]: value } : s));
+                          };
+                          const addQuestionToCustom = () => {
+                            const newQ = { id: Date.now(), question: '', marks: 1, imageUrl: '', imageAlt: '' };
+                            setCustomSections(prev => prev.map(s => s.id === custom.id ? { ...s, questions: [...(s.questions || []), newQ] } : s));
+                          };
+                          const updateCustomQuestion = (qIndex: number, field: string, value: any) => {
+                            setCustomSections(prev => prev.map(s => {
+                              if (s.id !== custom.id) return s;
+                              const qs = [...(s.questions || [])];
+                              qs[qIndex] = { ...qs[qIndex], [field]: value };
+                              return { ...s, questions: qs };
+                            }));
+                          };
+                          const removeCustomQuestion = (qIndex: number) => {
+                            setCustomSections(prev => prev.map(s => {
+                              if (s.id !== custom.id) return s;
+                              return { ...s, questions: (s.questions || []).filter((_: any, i: number) => i !== qIndex) };
+                            }));
+                          };
+                          return (
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                <input type="text" value={custom.name} onChange={(e) => updateCustomField('name', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Section name (e.g., Comprehension)" />
+                                <input type="text" value={custom.instructions} onChange={(e) => updateCustomField('instructions', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Section instructions" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <button onClick={addQuestionToCustom} className="flex items-center space-x-2 px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
+                                  <Plus className="w-4 h-4" />
+                                  <span>Add Question</span>
+                                </button>
+                              </div>
+                              {(custom.questions || []).length > 0 && (
+                                <div className="space-y-3">
+                                  {custom.questions.map((q: any, qi: number) => (
+                                    <div key={q.id} className="border border-slate-200 dark:border-slate-600 rounded-lg p-3">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm text-slate-600 dark:text-slate-300">Question {qi + 1}</span>
+                                        <button onClick={() => removeCustomQuestion(qi)} className="text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                                      </div>
+                                      <div className="grid grid-cols-6 gap-3">
+                                        <textarea value={q.question} onChange={(e) => updateCustomQuestion(qi, 'question', e.target.value)} className="col-span-5 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" rows={2} placeholder="Enter question" />
+                                        <input type="number" value={q.marks} onChange={(e) => updateCustomQuestion(qi, 'marks', parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Marks" min="0" />
+                                      </div>
+                                      <div className="grid grid-cols-3 gap-3 mt-2">
+                                        <input type="text" value={q.imageUrl || ''} onChange={(e) => updateCustomQuestion(qi, 'imageUrl', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Image URL (optional)" />
+                                        <input type="text" value={q.imageAlt || ''} onChange={(e) => updateCustomQuestion(qi, 'imageAlt', e.target.value)} className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white" placeholder="Alt text" />
+                                        <label className="flex items-center justify-center px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+                                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                            const file = e.target.files && e.target.files[0];
+                                            if (!file) return;
+                                            const url = await uploadImage(file);
+                                            if (url) updateCustomQuestion(qi, 'imageUrl', url);
+                                          }} />
+                                          Upload Image
+                                        </label>
+                                      </div>
+                                      <div className="space-y-2 mt-2">
+                                        <div className="flex items-center space-x-2">
+                                          <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setCustomTable(custom.id, qi, 2, 2)}>Add 2x2 Table</button>
+                                          <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => setCustomTable(custom.id, qi, 3, 3)}>Add 3x3 Table</button>
+                                          {q.table && (
+                                            <>
+                                              <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addCustomTableRow(custom.id, qi)}>+ Row</button>
+                                              <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => addCustomTableCol(custom.id, qi)}>+ Col</button>
+                                              <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeCustomTableRow(custom.id, qi)}>- Row</button>
+                                              <button className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 rounded" onClick={() => removeCustomTableCol(custom.id, qi)}>- Col</button>
+                                            </>
+                                          )}
+                                        </div>
+                                        {q.table && (
+                                          <div className="overflow-auto">
+                                            <table className="min-w-[300px] border border-slate-300 dark:border-slate-600">
+                                              <tbody>
+                                                {q.table.data.map((row: string[], r: number) => (
+                                                  <tr key={r}>
+                                                    {row.map((cell: string, c: number) => (
+                                                      <td key={c} className="border border-slate-300 dark:border-slate-600 p-1">
+                                                        <input type="text" value={cell} onChange={(e) => updateCustomTableCell(custom.id, qi, r, c, e.target.value)} className="w-full px-2 py-1 bg-transparent focus:outline-none" />
+                                                      </td>
+                                                    ))}
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              <div>
+                <button onClick={addCustomSection} className="flex items-center space-x-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded hover:bg-slate-200 dark:hover:bg-slate-600">
                   <Plus className="w-4 h-4" />
-                  <span className="text-sm">Add Section at End</span>
+                  <span>Add Section at End</span>
                 </button>
               </div>
 
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-600 rounded-lg p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <span className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white">Total Marks: {calculateTotalMarks()}</span>
+              <div className="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-slate-900 dark:text-white">Total Marks: {calculateTotalMarks()}</span>
                   <span className="text-sm text-slate-600 dark:text-slate-400">Pass Marks: {formData.pass_marks || 0}</span>
                 </div>
               </div>
@@ -1229,22 +1338,33 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
           )}
         </div>
 
-        <div className="sticky bottom-0 z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 sm:p-6 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 text-center sm:text-left hidden sm:block">
+        <div className="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-sm text-slate-600 dark:text-slate-400">
             {editingExam ? 'Update exam details and save changes' : 'Fill in exam details and add questions to submit for admin review'}
           </div>
           
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <button onClick={onClose} className="px-4 py-2.5 sm:py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm font-medium">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            >
               Cancel
             </button>
             
-            <button onClick={saveAsDraft} disabled={savingDraft || !currentTeacherId} className="flex items-center justify-center space-x-2 px-4 py-2.5 sm:py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
+            <button
+              onClick={saveAsDraft}
+              disabled={savingDraft || !currentTeacherId}
+              className="flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+            >
               <Save className="w-4 h-4" />
               <span>{savingDraft ? 'Saving...' : 'Save Exam'}</span>
             </button>
             
-            <button onClick={submitForApproval} disabled={loading || !currentTeacherId} className="flex items-center justify-center space-x-2 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
+            <button
+              onClick={submitForApproval}
+              disabled={loading || !currentTeacherId}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
               <CheckCircle className="w-4 h-4" />
               <span>{loading ? 'Submitting...' : 'Submit for Review'}</span>
             </button>
