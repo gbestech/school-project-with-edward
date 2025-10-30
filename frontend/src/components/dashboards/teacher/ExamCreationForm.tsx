@@ -1338,33 +1338,22 @@ const submitForApproval = async () => {
           )}
         </div>
 
-        <div className="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-700">
-          <div className="text-sm text-slate-600 dark:text-slate-400">
+ <div className="sticky bottom-0 z-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 sm:p-6 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 text-center sm:text-left hidden sm:block">
             {editingExam ? 'Update exam details and save changes' : 'Fill in exam details and add questions to submit for admin review'}
           </div>
           
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-            >
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <button onClick={onClose} className="px-4 py-2.5 sm:py-2 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm font-medium">
               Cancel
             </button>
             
-            <button
-              onClick={saveAsDraft}
-              disabled={savingDraft || !currentTeacherId}
-              className="flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-            >
+            <button onClick={saveAsDraft} disabled={savingDraft || !currentTeacherId} className="flex items-center justify-center space-x-2 px-4 py-2.5 sm:py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
               <Save className="w-4 h-4" />
               <span>{savingDraft ? 'Saving...' : 'Save Exam'}</span>
             </button>
             
-            <button
-              onClick={submitForApproval}
-              disabled={loading || !currentTeacherId}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
+            <button onClick={submitForApproval} disabled={loading || !currentTeacherId} className="flex items-center justify-center space-x-2 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium">
               <CheckCircle className="w-4 h-4" />
               <span>{loading ? 'Submitting...' : 'Submit for Review'}</span>
             </button>
