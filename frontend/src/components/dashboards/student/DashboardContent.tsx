@@ -83,6 +83,7 @@ const DashboardContent = () => {
       try {
         setLoading(true);
         const data = await StudentService.getDashboardData();
+        console.log("Dashboard API response:", data);
         setDashboardData(data);
         setError(null);
       } catch (err) {
