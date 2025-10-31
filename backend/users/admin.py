@@ -94,7 +94,13 @@ class CustomUserAdmin(UserAdmin):
     full_name.short_description = "Full Name"
 
     def save_model(self, request, obj, form, change):
-        """Sync custom role field with Django Groups"""
+        """Sync custom role field with Django Groups and auto-verify admin-created users"""
+
+        # Auto-verify new users created by admins
+        if not change:  # This is a new user being created
+            obj.email_verified = True
+            obj.is_active = True
+
         super().save_model(request, obj, form, change)
 
         if obj.role:

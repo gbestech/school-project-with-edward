@@ -79,6 +79,11 @@ class SchoolSettings(models.Model):
     # Notifications
     notifications_enabled = models.BooleanField(default=True)
 
+    # Portal Access Control
+    student_portal_enabled = models.BooleanField(default=True)
+    teacher_portal_enabled = models.BooleanField(default=True)
+    parent_portal_enabled = models.BooleanField(default=True)
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -18,6 +18,9 @@ export interface SchoolSettings {
   primaryColor: string;
   fontFamily: string;
   fontSize: string;
+  student_portal_enabled: boolean;
+  teacher_portal_enabled: boolean;  // 🔥 ADD THIS
+  parent_portal_enabled: boolean;   // 🔥 ADD THIS
   notifications: any;
   paymentGateways: any;
   userRolePaymentAccess: any;
@@ -102,7 +105,9 @@ class SettingsService {
       if (settings.timezone !== undefined) backendSettings.timezone = settings.timezone;
       if (settings.dateFormat !== undefined) backendSettings.date_format = settings.dateFormat;
       if (settings.language !== undefined) backendSettings.language = settings.language;
-      
+      if (settings.student_portal_enabled !== undefined) backendSettings.student_portal_enabled = settings.student_portal_enabled;
+      if (settings.teacher_portal_enabled !== undefined) backendSettings.teacher_portal_enabled = settings.teacher_portal_enabled;  // 🔥 ADD THIS
+      if (settings.parent_portal_enabled !== undefined) backendSettings.parent_portal_enabled = settings.parent_portal_enabled;    // 🔥 ADD THIS
       // Design settings
       if (settings.theme !== undefined) backendSettings.theme = settings.theme;
       if (settings.primaryColor !== undefined) backendSettings.primary_color = settings.primaryColor;
@@ -239,10 +244,14 @@ class SettingsService {
       timezone: response.timezone ?? 'UTC+1',
       dateFormat: response.date_format ?? 'DD/MM/YYYY',
       language: response.language ?? 'en',
+      
       theme: response.theme ?? 'default',
       primaryColor: response.primary_color ?? '#3B82F6',
       fontFamily: response.typography ?? 'Inter',
       fontSize: 'medium',
+      student_portal_enabled: response.student_portal_enabled ?? true,
+      teacher_portal_enabled: response.teacher_portal_enabled ?? true, 
+      parent_portal_enabled: response.parent_portal_enabled ?? true,  
       notifications: response.notifications ?? defaultSettings.notifications,
       paymentGateways: response.payment_gateways ?? defaultSettings.paymentGateways,
       allowSelfRegistration: response.allow_self_registration ?? true,
@@ -394,6 +403,9 @@ class SettingsService {
       primaryColor: '#3B82F6',
       fontFamily: 'Inter',
       fontSize: 'medium',
+      student_portal_enabled: true,
+      teacher_portal_enabled: true, 
+      parent_portal_enabled: true, 
       notifications: {
         email: {
           enabled: true,

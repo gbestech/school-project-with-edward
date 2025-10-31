@@ -51,6 +51,9 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "allow_profile_image_upload",
             "profile_image_max_size",
             "notifications_enabled",
+            "student_portal_enabled",
+            "teacher_portal_enabled",
+            "parent_portal_enabled",
             "created_at",
             "updated_at",
         ]
