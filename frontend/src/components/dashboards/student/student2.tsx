@@ -271,8 +271,8 @@ const StudentPortal = () => {
             )
           )}
           {isStudentPortalEnabled && activeSection === 'dashboard' && <DashboardContent />}
-          {activeSection === 'profile' && <ProfileTab />}
-          {activeSection === 'schedule' && (<StudentLessons/>)}
+          {isStudentPortalEnabled && activeSection === 'profile' && <ProfileTab />}
+          {isStudentPortalEnabled && activeSection === 'schedule' && (<StudentLessons/>)}
           {activeSection !== 'portal' && activeSection !== 'dashboard' && activeSection !== 'profile' && activeSection !== 'schedule' && (
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-slate-700 text-center transition-colors duration-300">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
