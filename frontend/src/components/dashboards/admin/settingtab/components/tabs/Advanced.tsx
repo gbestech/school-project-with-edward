@@ -1430,7 +1430,6 @@
 // export default Advanced;
 
 
-
 import React, { useState, useEffect } from 'react';
 import { 
   Zap, 
@@ -1456,25 +1455,65 @@ import {
   ChevronRight,
   Play,
   Globe,
+  GripVertical,
   Loader2,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  Calendar,
+  Target,
+  Clock,
+  Image as ImageIcon
 } from 'lucide-react';
 
-// ==================== API SERVICE (Using same pattern as other tabs) ====================
+// ==================== TYPE DEFINITIONS ====================
+type EventType = 'achievement' | 'admission' | 'exam' | 'holiday' | 'announcement' | 'custom';
+type DisplayType = 'banner' | 'carousel' | 'ribbon';
+type ThemeType = 'default' | 'celebration' | 'urgent' | 'academic' | 'sports';
+type RibbonSpeed = 'slow' | 'medium' | 'fast';
+
+interface EnhancedEvent {
+  id: string;
+  title: string;
+  description: string;
+  eventType: EventType;
+  displayType: DisplayType;
+  isActive: boolean;
+  startDate?: string;
+  endDate?: string;
+  theme?: ThemeType;
+  ribbonSpeed?: RibbonSpeed;
+  imageUrl?: string;
+  priority?: number;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  target_audience: string[];
+  is_active: boolean;
+  created_at: string;
+  expires_at?: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+interface CreateAnnouncementData {
+  title: string;
+  content: string;
+  target_audience: string[];
+  expires_at?: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+// ==================== API SERVICE ====================
 const API_BASE_URL = 'https://school-management-project-qpox.onrender.com';
 
 const api = {
   get: async (url: string) => {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-    const headers: any = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'GET',
@@ -1482,15 +1521,12 @@ const api = {
       credentials: 'include'
     });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return await response.json();
   },
 
   put: async (url: string, data: any) => {
-    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
     const getCsrfToken = () => {
       const cookies = document.cookie.split(';');
       for (const cookie of cookies) {
@@ -1500,18 +1536,10 @@ const api = {
       return null;
     };
 
-    const headers: any = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const csrfToken = getCsrfToken();
-    if (csrfToken) {
-      headers['X-CSRFToken'] = csrfToken;
-    }
+    if (csrfToken) headers['X-CSRFToken'] = csrfToken;
     
     const response = await fetch(`${API_BASE_URL}${url}`, {
       method: 'PUT',
@@ -1526,42 +1554,55 @@ const api = {
     }
     
     return await response.json();
+  },
+
+  post: async (url: string, data: any) => {
+    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return await response.json();
+  },
+
+  delete: async (url: string) => {
+    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'DELETE',
+      headers,
+      credentials: 'include'
+    });
+    
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.status === 204 ? null : await response.json();
   }
 };
 
-// ==================== TYPES ====================
-interface ToggleSwitchProps {
+// ==================== TOGGLE SWITCH ====================
+const ToggleSwitch: React.FC<{
   id: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
   description?: string;
   disabled?: boolean;
-}
-
-interface SchoolSettings {
-  student_portal_enabled: boolean;
-  teacher_portal_enabled: boolean;
-  parent_portal_enabled: boolean;
-}
-
-// ==================== TOGGLE SWITCH COMPONENT ====================
-const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ 
-  id, 
-  checked, 
-  onChange, 
-  label, 
-  description, 
-  disabled = false 
-}) => (
+}> = ({ id, checked, onChange, label, description, disabled = false }) => (
   <div className="flex items-center justify-between py-2">
     <div className="flex-1">
       <label htmlFor={id} className={`text-sm font-medium ${disabled ? 'text-slate-400' : 'text-slate-700'} cursor-pointer`}>
         {label}
       </label>
-      {description && (
-        <p className="text-xs text-slate-500 mt-1">{description}</p>
-      )}
+      {description && <p className="text-xs text-slate-500 mt-1">{description}</p>}
     </div>
     <button
       type="button"
@@ -1572,49 +1613,34 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
       } ${checked ? 'bg-blue-600' : 'bg-gray-300'}`}
     >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+        checked ? 'translate-x-6' : 'translate-x-1'
+      }`} />
     </button>
   </div>
 );
 
-// ==================== PORTAL SETTINGS SECTION ====================
-const PortalSettingsSection: React.FC<{
-  currentSettings: SchoolSettings;
-  onSettingsChange: (settings: SchoolSettings) => void;
+// ==================== PORTAL SETTINGS ====================
+const PortalSettings: React.FC<{
+  settings: any;
+  onUpdate: (settings: any) => void;
   hasChanges: boolean;
-}> = ({ currentSettings, onSettingsChange, hasChanges }) => {
-  const [localSettings, setLocalSettings] = useState(currentSettings);
-
-  useEffect(() => {
-    setLocalSettings(currentSettings);
-  }, [currentSettings]);
-
-  const handleToggleChange = (field: keyof SchoolSettings, value: boolean) => {
-    const newSettings = {
-      ...localSettings,
-      [field]: value
-    };
-    setLocalSettings(newSettings);
-    onSettingsChange(newSettings);
+}> = ({ settings, onUpdate, hasChanges }) => {
+  const handleChange = (field: string, value: boolean) => {
+    onUpdate({ ...settings, [field]: value });
   };
 
-  const getPortalStatus = (enabled: boolean) => {
-    return enabled ? (
+  const getPortalStatus = (enabled: boolean) => (
+    enabled ? (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-        <CheckCircle className="w-3 h-3 mr-1" />
-        Active
+        <CheckCircle className="w-3 h-3 mr-1" />Active
       </span>
     ) : (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-        <X className="w-3 h-3 mr-1" />
-        Disabled
+        <X className="w-3 h-3 mr-1" />Disabled
       </span>
-    );
-  };
+    )
+  );
 
   return (
     <div className="space-y-6">
@@ -1631,145 +1657,52 @@ const PortalSettingsSection: React.FC<{
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Student Portal */}
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200 transition-all hover:shadow-md">
           <div className="flex items-center justify-between mb-4">
             <h5 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" />
-              Student Portal
+              <Users className="w-5 h-5 text-blue-600" />Student Portal
             </h5>
-            {getPortalStatus(localSettings.student_portal_enabled)}
+            {getPortalStatus(settings.student_portal_enabled)}
           </div>
-          
-          <div className="space-y-4">
-            <ToggleSwitch
-              id="student-portal-enabled"
-              checked={localSettings.student_portal_enabled}
-              onChange={(checked) => handleToggleChange('student_portal_enabled', checked)}
-              label="Enable Student Portal"
-              description="Allow students to access their portal"
-            />
-
-            <div className="mt-4 pt-4 border-t border-blue-200">
-              <p className="text-xs text-slate-600 mb-2 font-medium">Features:</p>
-              <ul className="text-xs text-slate-600 space-y-1">
-                <li className="flex items-start gap-1">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>View results and grades</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Check attendance records</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Access class schedule</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Submit assignments</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-blue-600 mt-0.5">•</span>
-                  <span>Pay school fees</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+          <ToggleSwitch
+            id="student-portal"
+            checked={settings.student_portal_enabled}
+            onChange={(checked) => handleChange('student_portal_enabled', checked)}
+            label="Enable Student Portal"
+            description="Students can view grades, attendance & pay fees"
+          />
         </div>
 
-        {/* Teacher Portal */}
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200 transition-all hover:shadow-md">
           <div className="flex items-center justify-between mb-4">
             <h5 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-purple-600" />
-              Teacher Portal
+              <Shield className="w-5 h-5 text-purple-600" />Teacher Portal
             </h5>
-            {getPortalStatus(localSettings.teacher_portal_enabled)}
+            {getPortalStatus(settings.teacher_portal_enabled)}
           </div>
-          
-          <div className="space-y-4">
-            <ToggleSwitch
-              id="teacher-portal-enabled"
-              checked={localSettings.teacher_portal_enabled}
-              onChange={(checked) => handleToggleChange('teacher_portal_enabled', checked)}
-              label="Enable Teacher Portal"
-              description="Allow teachers to access their portal"
-            />
-
-            <div className="mt-4 pt-4 border-t border-purple-200">
-              <p className="text-xs text-slate-600 mb-2 font-medium">Features:</p>
-              <ul className="text-xs text-slate-600 space-y-1">
-                <li className="flex items-start gap-1">
-                  <span className="text-purple-600 mt-0.5">•</span>
-                  <span>Manage class roster</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-purple-600 mt-0.5">•</span>
-                  <span>Record attendance</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-purple-600 mt-0.5">•</span>
-                  <span>Enter grades</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-purple-600 mt-0.5">•</span>
-                  <span>Create assignments</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-purple-600 mt-0.5">•</span>
-                  <span>View analytics</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+          <ToggleSwitch
+            id="teacher-portal"
+            checked={settings.teacher_portal_enabled}
+            onChange={(checked) => handleChange('teacher_portal_enabled', checked)}
+            label="Enable Teacher Portal"
+            description="Teachers can manage classes & enter grades"
+          />
         </div>
 
-        {/* Parent Portal */}
         <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200 transition-all hover:shadow-md">
           <div className="flex items-center justify-between mb-4">
             <h5 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Users className="w-5 h-5 text-green-600" />
-              Parent Portal
+              <Users className="w-5 h-5 text-green-600" />Parent Portal
             </h5>
-            {getPortalStatus(localSettings.parent_portal_enabled)}
+            {getPortalStatus(settings.parent_portal_enabled)}
           </div>
-          
-          <div className="space-y-4">
-            <ToggleSwitch
-              id="parent-portal-enabled"
-              checked={localSettings.parent_portal_enabled}
-              onChange={(checked) => handleToggleChange('parent_portal_enabled', checked)}
-              label="Enable Parent Portal"
-              description="Allow parents to access their portal"
-            />
-
-            <div className="mt-4 pt-4 border-t border-green-200">
-              <p className="text-xs text-slate-600 mb-2 font-medium">Features:</p>
-              <ul className="text-xs text-slate-600 space-y-1">
-                <li className="flex items-start gap-1">
-                  <span className="text-green-600 mt-0.5">•</span>
-                  <span>Monitor child's progress</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-green-600 mt-0.5">•</span>
-                  <span>View attendance</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-green-600 mt-0.5">•</span>
-                  <span>Check grades & results</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-green-600 mt-0.5">•</span>
-                  <span>Pay fees online</span>
-                </li>
-                <li className="flex items-start gap-1">
-                  <span className="text-green-600 mt-0.5">•</span>
-                  <span>Communicate with teachers</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+          <ToggleSwitch
+            id="parent-portal"
+            checked={settings.parent_portal_enabled}
+            onChange={(checked) => handleChange('parent_portal_enabled', checked)}
+            label="Enable Parent Portal"
+            description="Parents can monitor child progress & pay fees"
+          />
         </div>
       </div>
 
@@ -1779,33 +1712,8 @@ const PortalSettingsSection: React.FC<{
           <div>
             <h6 className="font-semibold text-amber-900 mb-1">Security Notice</h6>
             <p className="text-sm text-amber-800">
-              Disabling a portal will immediately prevent all users of that type from accessing their accounts. 
-              Existing sessions will be terminated on their next request. Re-enabling will restore access instantly.
+              Changes take effect immediately after saving. Disabled portals will prevent user access and terminate existing sessions.
             </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-        <h6 className="font-semibold text-slate-800 mb-3">Portal Status Summary</h6>
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="p-3 bg-white rounded-lg border border-slate-200">
-            <p className={`text-3xl font-bold ${localSettings.student_portal_enabled ? 'text-blue-600' : 'text-slate-400'}`}>
-              {localSettings.student_portal_enabled ? 'ON' : 'OFF'}
-            </p>
-            <p className="text-xs text-slate-600 mt-1">Student Portal</p>
-          </div>
-          <div className="p-3 bg-white rounded-lg border border-slate-200">
-            <p className={`text-3xl font-bold ${localSettings.teacher_portal_enabled ? 'text-purple-600' : 'text-slate-400'}`}>
-              {localSettings.teacher_portal_enabled ? 'ON' : 'OFF'}
-            </p>
-            <p className="text-xs text-slate-600 mt-1">Teacher Portal</p>
-          </div>
-          <div className="p-3 bg-white rounded-lg border border-slate-200">
-            <p className={`text-3xl font-bold ${localSettings.parent_portal_enabled ? 'text-green-600' : 'text-slate-400'}`}>
-              {localSettings.parent_portal_enabled ? 'ON' : 'OFF'}
-            </p>
-            <p className="text-xs text-slate-600 mt-1">Parent Portal</p>
           </div>
         </div>
       </div>
@@ -1813,15 +1721,305 @@ const PortalSettingsSection: React.FC<{
   );
 };
 
+// ==================== CAROUSEL MANAGER ====================
+const CarouselManager: React.FC = () => {
+  const [images, setImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    setUploading(true);
+    // Simulate upload
+    setTimeout(() => {
+      const newImages = Array.from(files).map(file => URL.createObjectURL(file));
+      setImages([...images, ...newImages]);
+      setUploading(false);
+    }, 1000);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">Manage homepage carousel images (max 5 images)</p>
+        <label className="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2">
+          <Upload className="w-4 h-4" />
+          Upload Image
+          <input type="file" accept="image/*" multiple onChange={handleUpload} className="hidden" />
+        </label>
+      </div>
+
+      {uploading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+        </div>
+      )}
+
+      {images.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {images.map((img, idx) => (
+            <div key={idx} className="relative group">
+              <img src={img} alt={`Carousel ${idx + 1}`} className="w-full h-40 object-cover rounded-lg" />
+              <button
+                onClick={() => setImages(images.filter((_, i) => i !== idx))}
+                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-slate-50 rounded-lg p-12 border-2 border-dashed border-slate-200 text-center">
+          <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <p className="text-slate-600 mb-2">No carousel images yet</p>
+          <p className="text-sm text-slate-500">Upload images to display on the homepage</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==================== EVENT MANAGEMENT ====================
+const EventManagement: React.FC = () => {
+  const [events, setEvents] = useState<EnhancedEvent[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<EnhancedEvent | null>(null);
+
+  const eventTypeIcons = {
+    achievement: Trophy,
+    admission: School,
+    exam: BookOpen,
+    holiday: Calendar,
+    announcement: Megaphone,
+    custom: Star
+  };
+
+  const handleCreateEvent = () => {
+    const newEvent: EnhancedEvent = {
+      id: Date.now().toString(),
+      title: 'New Event',
+      description: 'Event description',
+      eventType: 'announcement',
+      displayType: 'banner',
+      isActive: true,
+      theme: 'default',
+      priority: 1
+    };
+    setEvents([...events, newEvent]);
+    setShowForm(false);
+  };
+
+  const handleToggleActive = (id: string) => {
+    setEvents(events.map(e => e.id === id ? { ...e, isActive: !e.isActive } : e));
+  };
+
+  const handleDelete = (id: string) => {
+    setEvents(events.filter(e => e.id !== id));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">Create and manage events, banners, and special announcements</p>
+        <button
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors inline-flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Create Event
+        </button>
+      </div>
+
+      {events.length > 0 ? (
+        <div className="space-y-3">
+          {events.map(event => {
+            const Icon = eventTypeIcons[event.eventType];
+            return (
+              <div key={event.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      event.isActive ? 'bg-violet-100' : 'bg-slate-100'
+                    }`}>
+                      <Icon className={`w-5 h-5 ${event.isActive ? 'text-violet-600' : 'text-slate-400'}`} />
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-slate-800">{event.title}</h5>
+                      <p className="text-sm text-slate-600">{event.description}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                          {event.displayType}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                          {event.eventType}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleActive(event.id)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        event.isActive ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'
+                      }`}
+                    >
+                      {event.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                    <button className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="bg-slate-50 rounded-lg p-12 border-2 border-dashed border-slate-200 text-center">
+          <Sparkles className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <p className="text-slate-600 mb-2">No events created yet</p>
+          <p className="text-sm text-slate-500">Create your first event to display on the homepage</p>
+          <button
+            onClick={handleCreateEvent}
+            className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Your First Event
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ==================== ANNOUNCEMENTS ====================
+const AnnouncementsManager: React.FC = () => {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [showForm, setShowForm] = useState(false);
+
+  const priorityColors = {
+    low: 'bg-blue-100 text-blue-700',
+    medium: 'bg-yellow-100 text-yellow-700',
+    high: 'bg-red-100 text-red-700'
+  };
+
+  const handleCreate = () => {
+    const newAnnouncement: Announcement = {
+      id: Date.now().toString(),
+      title: 'New Announcement',
+      content: 'Announcement content',
+      target_audience: ['all'],
+      is_active: true,
+      created_at: new Date().toISOString(),
+      priority: 'medium'
+    };
+    setAnnouncements([...announcements, newAnnouncement]);
+    setShowForm(false);
+  };
+
+  const handleToggle = (id: string) => {
+    setAnnouncements(announcements.map(a => a.id === id ? { ...a, is_active: !a.is_active } : a));
+  };
+
+  const handleDelete = (id: string) => {
+    setAnnouncements(announcements.filter(a => a.id !== id));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-600">Manage system-wide announcements and notices</p>
+        <button
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          New Announcement
+        </button>
+      </div>
+
+      {announcements.length > 0 ? (
+        <div className="space-y-3">
+          {announcements.map(announcement => (
+            <div key={announcement.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h5 className="font-semibold text-slate-800">{announcement.title}</h5>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${priorityColors[announcement.priority]}`}>
+                      {announcement.priority}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-2">{announcement.content}</p>
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Target className="w-3 h-3" />
+                      {announcement.target_audience.join(', ')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(announcement.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggle(announcement.id)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      announcement.is_active ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'
+                    }`}
+                  >
+                    {announcement.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                  <button className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(announcement.id)}
+                    className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-slate-50 rounded-lg p-12 border-2 border-dashed border-slate-200 text-center">
+          <Megaphone className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <p className="text-slate-600 mb-2">No announcements yet</p>
+          <p className="text-sm text-slate-500">Create announcements to notify users about important updates</p>
+          <button
+            onClick={handleCreate}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Your First Announcement
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ==================== MAIN COMPONENT ====================
 const Advanced: React.FC = () => {
-  const [originalSettings, setOriginalSettings] = useState<SchoolSettings>({
+  const [originalPortalSettings, setOriginalPortalSettings] = useState({
     student_portal_enabled: true,
     teacher_portal_enabled: true,
     parent_portal_enabled: true
   });
-
-  const [currentSettings, setCurrentSettings] = useState<SchoolSettings>({
+  
+  const [currentPortalSettings, setCurrentPortalSettings] = useState({
     student_portal_enabled: true,
     teacher_portal_enabled: true,
     parent_portal_enabled: true
@@ -1829,11 +2027,10 @@ const Advanced: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const hasChanges = JSON.stringify(originalSettings) !== JSON.stringify(currentSettings);
+  const hasPortalChanges = JSON.stringify(originalPortalSettings) !== JSON.stringify(currentPortalSettings);
 
   useEffect(() => {
     loadSettings();
@@ -1842,12 +2039,9 @@ const Advanced: React.FC = () => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      setLoadError(null);
+      setError(null);
       
-      console.log('Loading settings from API...');
       const response = await api.get('/api/school-settings/school-settings/');
-      
-      console.log('Settings loaded successfully:', response);
       
       const settings = {
         student_portal_enabled: response.student_portal_enabled ?? true,
@@ -1855,52 +2049,46 @@ const Advanced: React.FC = () => {
         parent_portal_enabled: response.parent_portal_enabled ?? true
       };
       
-      setOriginalSettings(settings);
-      setCurrentSettings(settings);
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      setLoadError(error instanceof Error ? error.message : 'Failed to load settings');
+      setOriginalPortalSettings(settings);
+      setCurrentPortalSettings(settings);
+    } catch (err) {
+      console.error('Error loading settings:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveSettings = async () => {
+  const handleSavePortalSettings = async () => {
     try {
       setSaving(true);
-      setSaveError(null);
-      setSaveSuccess(false);
+      setError(null);
+      setSuccess(false);
       
-      console.log('Saving portal settings:', currentSettings);
+      await api.put('/api/school-settings/school-settings/', currentPortalSettings);
       
-      const response = await api.put('/api/school-settings/school-settings/', currentSettings);
+      setOriginalPortalSettings(currentPortalSettings);
+      setSuccess(true);
       
-      console.log('Settings saved successfully:', response);
-      
-      setOriginalSettings(currentSettings);
-      setSaveSuccess(true);
-      
-      // Dispatch event for other components
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('settings-updated', { 
-          detail: currentSettings 
+          detail: currentPortalSettings 
         }));
       }
       
-      // Auto-hide success message
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      setSaveError(error instanceof Error ? error.message : 'Failed to save settings');
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDiscardChanges = () => {
-    setCurrentSettings(originalSettings);
-    setSaveError(null);
-    setSaveSuccess(false);
+    setCurrentPortalSettings(originalPortalSettings);
+    setError(null);
+    setSuccess(false);
   };
 
   if (loading) {
@@ -1909,24 +2097,6 @@ const Advanced: React.FC = () => {
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-slate-600">Loading settings...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Failed to Load Settings</h2>
-          <p className="text-slate-600 mb-4">{loadError}</p>
-          <button
-            onClick={loadSettings}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Retry
-          </button>
         </div>
       </div>
     );
@@ -1943,24 +2113,23 @@ const Advanced: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Advanced Settings</h1>
-              <p className="text-slate-600">Manage portal access, events, and system-wide configurations</p>
+              <p className="text-slate-600">Manage portal access, events, announcements, and UI configurations</p>
             </div>
           </div>
           
-          {/* Save/Discard Buttons */}
-          {hasChanges && (
+          {hasPortalChanges && (
             <div className="flex items-center gap-3">
               <button
                 onClick={handleDiscardChanges}
                 disabled={saving}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Discard Changes
               </button>
               <button
-                onClick={handleSaveSettings}
+                onClick={handleSavePortalSettings}
                 disabled={saving}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 flex items-center gap-2"
               >
                 {saving ? (
                   <>
@@ -1970,7 +2139,7 @@ const Advanced: React.FC = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    Save Changes
+                    Save Portal Settings
                   </>
                 )}
               </button>
@@ -1979,8 +2148,8 @@ const Advanced: React.FC = () => {
         </div>
       </div>
 
-      {/* Success/Error Messages */}
-      {saveSuccess && (
+      {/* Messages */}
+      {success && (
         <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-start gap-2">
           <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
           <div>
@@ -1990,23 +2159,65 @@ const Advanced: React.FC = () => {
         </div>
       )}
 
-      {saveError && (
+      {error && (
         <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-start gap-2">
           <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-medium">Failed to Save Settings</p>
-            <p className="text-sm">{saveError}</p>
+            <p className="text-sm">{error}</p>
           </div>
         </div>
       )}
 
       {/* Portal Settings */}
       <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
-        <PortalSettingsSection 
-          currentSettings={currentSettings}
-          onSettingsChange={setCurrentSettings}
-          hasChanges={hasChanges}
+        <PortalSettings 
+          settings={currentPortalSettings}
+          onUpdate={setCurrentPortalSettings}
+          hasChanges={hasPortalChanges}
         />
+      </div>
+
+      {/* Carousel Management */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+            <Globe className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-slate-900">Default Carousel Management</h3>
+            <p className="text-sm text-slate-600">Upload and manage homepage carousel images</p>
+          </div>
+        </div>
+        <CarouselManager />
+      </div>
+
+      {/* Event Management */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <Star className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-slate-900">Event Management</h3>
+            <p className="text-sm text-slate-600">Create and manage special events, banners, and announcements</p>
+          </div>
+        </div>
+        <EventManagement />
+      </div>
+
+      {/* Announcements */}
+      <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
+            <Megaphone className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-slate-900">Announcements & Bulletin Board</h3>
+            <p className="text-sm text-slate-600">Manage system-wide announcements and notices</p>
+          </div>
+        </div>
+        <AnnouncementsManager />
       </div>
 
       {/* Info Card */}
@@ -2016,11 +2227,28 @@ const Advanced: React.FC = () => {
             <Lightbulb className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-900 mb-2">Pro Tip: Portal Management</h3>
-            <p className="text-sm text-slate-700">
-              Toggle portal access as needed, then click "Save Changes" to apply. Changes take effect immediately after saving 
-              and are logged for security auditing. Use this during maintenance, emergencies, or special events.
+            <h3 className="font-semibold text-slate-900 mb-2">About Advanced Settings</h3>
+            <p className="text-sm text-slate-700 mb-3">
+              This dashboard provides comprehensive control over your school management system's UI and access controls.
             </p>
+            <ul className="text-sm text-slate-700 space-y-1">
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                <span><strong>Portal Settings:</strong> Control access to student, teacher, and parent portals</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                <span><strong>Carousel Manager:</strong> Upload and manage homepage slideshow images</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                <span><strong>Event Management:</strong> Create dynamic banners, ribbons, and event displays</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <ChevronRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                <span><strong>Announcements:</strong> Broadcast important notices to targeted user groups</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
