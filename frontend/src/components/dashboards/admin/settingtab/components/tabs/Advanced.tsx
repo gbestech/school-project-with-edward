@@ -1462,35 +1462,25 @@ import {
   Info
 } from 'lucide-react';
 
-// ==================== API SERVICE ====================
+// ==================== API SERVICE (Using same pattern as other tabs) ====================
 const API_BASE_URL = 'https://school-management-project-qpox.onrender.com';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-  const headers: any = {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache'
-  };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  return headers;
-};
-
-const SettingsAPI = {
-  async getSettings() {
-    const cacheBuster = `${Date.now()}_${Math.random()}`;
-    const response = await fetch(
-      `${API_BASE_URL}/api/school-settings/school-settings/?_=${cacheBuster}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-        credentials: 'include'
-      }
-    );
+const api = {
+  get: async (url: string) => {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    const headers: any = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'GET',
+      headers,
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -1499,16 +1489,36 @@ const SettingsAPI = {
     return await response.json();
   },
 
-  async updateSettings(settings: any) {
-    const response = await fetch(
-      `${API_BASE_URL}/api/school-settings/school-settings/`,
-      {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        credentials: 'include',
-        body: JSON.stringify(settings)
+  put: async (url: string, data: any) => {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    const getCsrfToken = () => {
+      const cookies = document.cookie.split(';');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') return decodeURIComponent(value);
       }
-    );
+      return null;
+    };
+
+    const headers: any = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: 'PUT',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify(data)
+    });
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -1533,19 +1543,6 @@ interface SchoolSettings {
   student_portal_enabled: boolean;
   teacher_portal_enabled: boolean;
   parent_portal_enabled: boolean;
-}
-
-interface Announcement {
-  id: number;
-  title: string;
-  content: string;
-  announcement_type: 'general' | 'academic' | 'event' | 'emergency';
-  start_date: string;
-  end_date?: string;
-  target_audience: string[];
-  is_pinned: boolean;
-  is_active: boolean;
-  created_by_name: string;
 }
 
 // ==================== TOGGLE SWITCH COMPONENT ====================
@@ -1587,47 +1584,22 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 // ==================== PORTAL SETTINGS SECTION ====================
 const PortalSettingsSection: React.FC<{
   currentSettings: SchoolSettings;
-  onSettingsChange: (settings: Partial<SchoolSettings>) => Promise<void>;
-}> = ({ currentSettings, onSettingsChange }) => {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  onSettingsChange: (settings: SchoolSettings) => void;
+  hasChanges: boolean;
+}> = ({ currentSettings, onSettingsChange, hasChanges }) => {
   const [localSettings, setLocalSettings] = useState(currentSettings);
 
   useEffect(() => {
     setLocalSettings(currentSettings);
   }, [currentSettings]);
 
-  const handleToggleChange = async (field: keyof SchoolSettings, value: boolean) => {
-    try {
-      setSaving(true);
-      setError(null);
-      setSuccess(null);
-
-      // Optimistically update UI
-      setLocalSettings(prev => ({
-        ...prev,
-        [field]: value
-      }));
-
-      // Call parent handler which makes API call
-      await onSettingsChange({ [field]: value });
-
-      const fieldName = field.replace(/_/g, ' ').replace('portal enabled', 'Portal');
-      setSuccess(`${fieldName} updated successfully`);
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      console.error('Error updating portal setting:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update setting');
-      
-      // Revert on error
-      setLocalSettings(prev => ({
-        ...prev,
-        [field]: !value
-      }));
-    } finally {
-      setSaving(false);
-    }
+  const handleToggleChange = (field: keyof SchoolSettings, value: boolean) => {
+    const newSettings = {
+      ...localSettings,
+      [field]: value
+    };
+    setLocalSettings(newSettings);
+    onSettingsChange(newSettings);
   };
 
   const getPortalStatus = (enabled: boolean) => {
@@ -1651,27 +1623,12 @@ const PortalSettingsSection: React.FC<{
           <Users className="w-3 h-3 text-white" />
         </div>
         <h4 className="text-lg font-semibold text-slate-800">Portal Access Control</h4>
+        {hasChanges && (
+          <span className="ml-auto text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-medium">
+            Unsaved Changes
+          </span>
+        )}
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-start gap-2">
-          <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Success</p>
-            <p className="text-sm capitalize">{success}</p>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Student Portal */}
@@ -1691,15 +1648,7 @@ const PortalSettingsSection: React.FC<{
               onChange={(checked) => handleToggleChange('student_portal_enabled', checked)}
               label="Enable Student Portal"
               description="Allow students to access their portal"
-              disabled={saving}
             />
-            
-            {saving && (
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
 
             <div className="mt-4 pt-4 border-t border-blue-200">
               <p className="text-xs text-slate-600 mb-2 font-medium">Features:</p>
@@ -1746,15 +1695,7 @@ const PortalSettingsSection: React.FC<{
               onChange={(checked) => handleToggleChange('teacher_portal_enabled', checked)}
               label="Enable Teacher Portal"
               description="Allow teachers to access their portal"
-              disabled={saving}
             />
-
-            {saving && (
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
 
             <div className="mt-4 pt-4 border-t border-purple-200">
               <p className="text-xs text-slate-600 mb-2 font-medium">Features:</p>
@@ -1801,15 +1742,7 @@ const PortalSettingsSection: React.FC<{
               onChange={(checked) => handleToggleChange('parent_portal_enabled', checked)}
               label="Enable Parent Portal"
               description="Allow parents to access their portal"
-              disabled={saving}
             />
-
-            {saving && (
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
 
             <div className="mt-4 pt-4 border-t border-green-200">
               <p className="text-xs text-slate-600 mb-2 font-medium">Features:</p>
@@ -1882,14 +1815,25 @@ const PortalSettingsSection: React.FC<{
 
 // ==================== MAIN COMPONENT ====================
 const Advanced: React.FC = () => {
-  const [portalSettings, setPortalSettings] = useState<SchoolSettings>({
+  const [originalSettings, setOriginalSettings] = useState<SchoolSettings>({
+    student_portal_enabled: true,
+    teacher_portal_enabled: true,
+    parent_portal_enabled: true
+  });
+
+  const [currentSettings, setCurrentSettings] = useState<SchoolSettings>({
     student_portal_enabled: true,
     teacher_portal_enabled: true,
     parent_portal_enabled: true
   });
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const hasChanges = JSON.stringify(originalSettings) !== JSON.stringify(currentSettings);
 
   useEffect(() => {
     loadSettings();
@@ -1900,15 +1844,19 @@ const Advanced: React.FC = () => {
       setLoading(true);
       setLoadError(null);
       
-      const response = await SettingsAPI.getSettings();
+      console.log('Loading settings from API...');
+      const response = await api.get('/api/school-settings/school-settings/');
       
-      console.log('Loaded settings from API:', response);
+      console.log('Settings loaded successfully:', response);
       
-      setPortalSettings({
+      const settings = {
         student_portal_enabled: response.student_portal_enabled ?? true,
         teacher_portal_enabled: response.teacher_portal_enabled ?? true,
         parent_portal_enabled: response.parent_portal_enabled ?? true
-      });
+      };
+      
+      setOriginalSettings(settings);
+      setCurrentSettings(settings);
     } catch (error) {
       console.error('Error loading settings:', error);
       setLoadError(error instanceof Error ? error.message : 'Failed to load settings');
@@ -1917,28 +1865,42 @@ const Advanced: React.FC = () => {
     }
   };
 
-  const handlePortalSettingsChange = async (settings: Partial<SchoolSettings>) => {
+  const handleSaveSettings = async () => {
     try {
-      console.log('Updating portal settings:', settings);
+      setSaving(true);
+      setSaveError(null);
+      setSaveSuccess(false);
       
-      // Make API call
-      const response = await SettingsAPI.updateSettings(settings);
+      console.log('Saving portal settings:', currentSettings);
       
-      console.log('Settings updated successfully:', response);
+      const response = await api.put('/api/school-settings/school-settings/', currentSettings);
       
-      // Update local state
-      setPortalSettings(prev => ({ ...prev, ...settings }));
+      console.log('Settings saved successfully:', response);
+      
+      setOriginalSettings(currentSettings);
+      setSaveSuccess(true);
       
       // Dispatch event for other components
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('settings-updated', { 
-          detail: { ...portalSettings, ...settings } 
+          detail: currentSettings 
         }));
       }
+      
+      // Auto-hide success message
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      console.error('Error updating portal settings:', error);
-      throw error;
+      console.error('Error saving settings:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to save settings');
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const handleDiscardChanges = () => {
+    setCurrentSettings(originalSettings);
+    setSaveError(null);
+    setSaveSuccess(false);
   };
 
   if (loading) {
@@ -1974,22 +1936,76 @@ const Advanced: React.FC = () => {
     <div className="space-y-8 p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
-            <Settings className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <Settings className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Advanced Settings</h1>
+              <p className="text-slate-600">Manage portal access, events, and system-wide configurations</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Advanced Settings</h1>
-            <p className="text-slate-600">Manage portal access, events, and system-wide configurations</p>
-          </div>
+          
+          {/* Save/Discard Buttons */}
+          {hasChanges && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDiscardChanges}
+                disabled={saving}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Discard Changes
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                disabled={saving}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Success/Error Messages */}
+      {saveSuccess && (
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-start gap-2">
+          <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Settings Saved Successfully</p>
+            <p className="text-sm">Portal access controls have been updated.</p>
+          </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Failed to Save Settings</p>
+            <p className="text-sm">{saveError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Portal Settings */}
       <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100">
         <PortalSettingsSection 
-          currentSettings={portalSettings}
-          onSettingsChange={handlePortalSettingsChange}
+          currentSettings={currentSettings}
+          onSettingsChange={setCurrentSettings}
+          hasChanges={hasChanges}
         />
       </div>
 
@@ -2002,8 +2018,8 @@ const Advanced: React.FC = () => {
           <div>
             <h3 className="font-semibold text-slate-900 mb-2">Pro Tip: Portal Management</h3>
             <p className="text-sm text-slate-700">
-              Use portal toggles to control access during maintenance, emergencies, or special events. 
-              All changes take effect immediately and are logged for security auditing.
+              Toggle portal access as needed, then click "Save Changes" to apply. Changes take effect immediately after saving 
+              and are logged for security auditing. Use this during maintenance, emergencies, or special events.
             </p>
           </div>
         </div>
