@@ -1509,9 +1509,17 @@ interface CreateAnnouncementData {
 // ==================== API SERVICE ====================
 const API_BASE_URL = 'https://school-management-project-qpox.onrender.com';
 
+const getAuthToken = () => {
+  // Check multiple possible token locations
+  return localStorage.getItem('authToken') || 
+         localStorage.getItem('token') || 
+         sessionStorage.getItem('authToken') || 
+         sessionStorage.getItem('token');
+};
+
 const api = {
   get: async (url: string) => {
-    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const token = getAuthToken();
     const headers: any = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
@@ -1521,12 +1529,15 @@ const api = {
       credentials: 'include'
     });
     
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP error! status: ${response.status}`);
+    }
     return await response.json();
   },
 
   put: async (url: string, data: any) => {
-    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const token = getAuthToken();
     const getCsrfToken = () => {
       const cookies = document.cookie.split(';');
       for (const cookie of cookies) {
@@ -1537,7 +1548,9 @@ const api = {
     };
 
     const headers: any = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     const csrfToken = getCsrfToken();
     if (csrfToken) headers['X-CSRFToken'] = csrfToken;
     
@@ -1550,14 +1563,14 @@ const api = {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      throw new Error(errorData.detail || errorData.message || `HTTP error! status: ${response.status}`);
     }
     
     return await response.json();
   },
 
   post: async (url: string, data: any) => {
-    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const token = getAuthToken();
     const headers: any = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
@@ -1568,12 +1581,15 @@ const api = {
       body: JSON.stringify(data)
     });
     
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP error! status: ${response.status}`);
+    }
     return await response.json();
   },
 
   delete: async (url: string) => {
-    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('token');
+    const token = getAuthToken();
     const headers: any = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     
@@ -1583,7 +1599,10 @@ const api = {
       credentials: 'include'
     });
     
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP error! status: ${response.status}`);
+    }
     return response.status === 204 ? null : await response.json();
   }
 };
@@ -1784,8 +1803,6 @@ const CarouselManager: React.FC = () => {
 // ==================== EVENT MANAGEMENT ====================
 const EventManagement: React.FC = () => {
   const [events, setEvents] = useState<EnhancedEvent[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<EnhancedEvent | null>(null);
 
   const eventTypeIcons = {
     achievement: Trophy,
@@ -1808,7 +1825,6 @@ const EventManagement: React.FC = () => {
       priority: 1
     };
     setEvents([...events, newEvent]);
-    setShowForm(false);
   };
 
   const handleToggleActive = (id: string) => {
@@ -1824,7 +1840,7 @@ const EventManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-600">Create and manage events, banners, and special announcements</p>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={handleCreateEvent}
           className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors inline-flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -1903,7 +1919,6 @@ const EventManagement: React.FC = () => {
 // ==================== ANNOUNCEMENTS ====================
 const AnnouncementsManager: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [showForm, setShowForm] = useState(false);
 
   const priorityColors = {
     low: 'bg-blue-100 text-blue-700',
@@ -1922,7 +1937,6 @@ const AnnouncementsManager: React.FC = () => {
       priority: 'medium'
     };
     setAnnouncements([...announcements, newAnnouncement]);
-    setShowForm(false);
   };
 
   const handleToggle = (id: string) => {
@@ -1938,7 +1952,7 @@ const AnnouncementsManager: React.FC = () => {
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-600">Manage system-wide announcements and notices</p>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={handleCreate}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
