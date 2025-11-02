@@ -39,6 +39,11 @@ import json
 from utils import generate_unique_username
 import secrets
 from django.db import transaction
+from users.permissions import (
+    IsSuperAdminOnly,
+    CanViewAdminList,
+    CanManagePasswordRecovery,
+)
 
 from .serializers import (
     RegisterSerializer,
@@ -400,7 +405,7 @@ def user_profile(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([CanViewAdminList])
 def list_admins(request):
     """List all admin users"""
     try:
@@ -466,7 +471,7 @@ def logout_view(request):
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([CanManagePasswordRecovery])
 def password_reset_request(request):
     """Request password reset link"""
     email = request.data.get("email")
@@ -1034,7 +1039,7 @@ def activate_user(request, user_id):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([CanManagePasswordRecovery])
 def admin_reset_password(request):
     """Reset user password (admin only)"""
     try:
@@ -1082,7 +1087,7 @@ def generate_temp_password(length=12):
 
 
 @api_view(["POST"])
-@permission_classes([IsAdminUser])
+@permission_classes([IsSuperAdminOnly])
 def create_admin(request):
     """Create a new admin with auto-generated username and password"""
     email = request.data.get("email")
