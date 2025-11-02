@@ -22,7 +22,6 @@ from .serializers import (
     LessonResourceSerializer,
     LessonAssessmentSerializer,
 )
-
 from teacher.models import Teacher, TeacherSchedule
 from parent.models import (
     ParentProfile as Parent,
@@ -201,10 +200,9 @@ class LessonViewSet(viewsets.ModelViewSet):
         # Unknown role
         return ("unknown", None, {})
 
-    # +++++++++++++++++++
     def get_queryset(self):
         """
-        Multi-role queryset filtering with section-based access for admins.
+        Multi-role queryset filtering with optimized prefetching.
         """
         # Base queryset with optimized prefetching
         queryset = Lesson.objects.select_related(
@@ -217,48 +215,17 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         # Get user role information
         role, instance, additional_info = self.get_user_role_info()
-        user = self.request.user
 
-        # ✅ UPDATED: Section-based filtering for admins
+        # Apply role-based filtering
         if role == "admin":
-            # Superadmin can see all lessons
-            if user.role == "superadmin" or user.is_superuser:
-                logger.info(f"Superadmin {user.email} accessing all lessons")
-                # queryset remains unchanged - shows all lessons
-
-            # ✅ Section admins can only see lessons for their section
-            elif user.is_section_admin and user.section:
-                # Filter lessons by classroom section
-                queryset = queryset.filter(
-                    classroom__section__grade_level__section=user.section
-                ).distinct()
-
-                logger.info(
-                    f"Section admin {user.email} ({user.section}) accessing "
-                    f"lessons for their section only - {queryset.count()} lessons"
-                )
-            else:
-                # Other admin types with no section
-                logger.warning(
-                    f"Admin {user.email} with role {user.role} has no section access"
-                )
-                queryset = queryset.none()
+            # Admin can see all lessons
+            logger.info(f"Admin user {self.request.user} accessing all lessons")
+            # queryset remains unchanged - shows all lessons
 
         elif role == "teacher":
-            # ✅ Section-aware teacher filtering
-            # Teachers can only see lessons they created
+            # Teacher can only see lessons they created
             queryset = queryset.filter(teacher=instance)
-
-            # Additional check: if teacher has a section, verify lessons are in their section
-            if hasattr(instance.user, "section") and instance.user.section:
-                queryset = queryset.filter(
-                    classroom__section__grade_level__section=instance.user.section
-                )
-
-            logger.info(
-                f"Teacher {user.email} accessing their lessons only - "
-                f"{queryset.count()} lessons"
-            )
+            logger.info(f"Teacher {self.request.user} accessing their lessons only")
 
         elif role == "student":
             # Student can see lessons for their enrolled classrooms
@@ -266,12 +233,11 @@ class LessonViewSet(viewsets.ModelViewSet):
             if enrolled_classrooms:
                 queryset = queryset.filter(classroom__in=enrolled_classrooms)
                 logger.info(
-                    f"Student {user.email} accessing lessons for "
-                    f"{len(enrolled_classrooms)} classrooms"
+                    f"Student {self.request.user} accessing lessons for {len(enrolled_classrooms)} classrooms"
                 )
             else:
                 queryset = queryset.none()
-                logger.warning(f"Student {user.email} has no active enrollments")
+                logger.warning(f"Student {self.request.user} has no active enrollments")
 
         elif role == "parent":
             # Parent can see lessons for their children's classrooms
@@ -279,19 +245,18 @@ class LessonViewSet(viewsets.ModelViewSet):
             if children_classrooms:
                 queryset = queryset.filter(classroom__in=children_classrooms)
                 logger.info(
-                    f"Parent {user.email} accessing lessons for "
-                    f"{len(children_classrooms)} children's classrooms"
+                    f"Parent {self.request.user} accessing lessons for {len(children_classrooms)} children's classrooms"
                 )
             else:
                 queryset = queryset.none()
                 logger.warning(
-                    f"Parent {user.email} has no active children or enrollments"
+                    f"Parent {self.request.user} has no active children or enrollments"
                 )
 
         else:
             # Unknown role - no access
             logger.warning(
-                f"User {user.email} has unknown role {role}, returning empty queryset"
+                f"User {self.request.user} has unknown role, returning empty queryset"
             )
             queryset = queryset.none()
 
@@ -339,9 +304,9 @@ class LessonViewSet(viewsets.ModelViewSet):
                 elif status_filter == "cancelled":
                     queryset = queryset.filter(status="cancelled")
 
-            # Teacher filtering (only for superadmin users)
+            # Teacher filtering (only for admin users)
             teacher_id = self.request.query_params.get("teacher_id")
-            if teacher_id and (user.role == "superadmin" or user.is_superuser):
+            if teacher_id and role == "admin":
                 queryset = queryset.filter(teacher_id=teacher_id)
 
             # Classroom filtering
@@ -362,46 +327,21 @@ class LessonViewSet(viewsets.ModelViewSet):
         return queryset
 
     def can_modify_lesson(self, lesson):
-        """
-        Check if user can modify a specific lesson.
-        ✅ Updated with section-based access control.
-        """
+        """Check if user can modify a specific lesson"""
         role, instance, _ = self.get_user_role_info()
-        user = self.request.user
 
-        # Superadmin can modify all lessons
-        if user.role == "superadmin" or user.is_superuser:
+        if role == "admin":
             return True
-
-        # Section admins can modify lessons in their section only
-        if user.is_section_admin and user.section:
-            # Check if lesson's classroom is in the admin's section
-            if hasattr(lesson.classroom, "section") and hasattr(
-                lesson.classroom.section, "grade_level"
-            ):
-                lesson_section = lesson.classroom.section.grade_level.section
-                return lesson_section == user.section
+        elif role == "teacher" and lesson.teacher == instance:
+            return True
+        else:
             return False
-
-        # Teachers can modify their own lessons
-        if role == "teacher" and lesson.teacher == instance:
-            # Additional check: verify lesson is in teacher's section (if applicable)
-            if hasattr(instance.user, "section") and instance.user.section:
-                if hasattr(lesson.classroom, "section") and hasattr(
-                    lesson.classroom.section, "grade_level"
-                ):
-                    lesson_section = lesson.classroom.section.grade_level.section
-                    return lesson_section == instance.user.section
-            return True
-
-        return False
 
     def perform_create(self, serializer):
         """
-        Create with role-based validation and section-based restrictions.
+        Create with role-based validation and automatic assignments.
         """
         role, instance, _ = self.get_user_role_info()
-        user = self.request.user
 
         # Only admins and teachers can create lessons
         if role not in ["admin", "teacher"]:
@@ -416,204 +356,11 @@ class LessonViewSet(viewsets.ModelViewSet):
             if role == "teacher":
                 serializer.validated_data["teacher"] = instance
 
-                # ✅ Verify teacher is creating lesson in their section
-                if hasattr(instance.user, "section") and instance.user.section:
-                    classroom = serializer.validated_data.get("classroom")
-                    if classroom:
-                        if hasattr(classroom, "section") and hasattr(
-                            classroom.section, "grade_level"
-                        ):
-                            classroom_section = classroom.section.grade_level.section
-                            if classroom_section != instance.user.section:
-                                from rest_framework.exceptions import PermissionDenied
-
-                                raise PermissionDenied(
-                                    f"You can only create lessons for classrooms in your section ({instance.user.section})"
-                                )
-
-            # ✅ For section admins, verify classroom is in their section
-            elif user.is_section_admin and user.section:
-                classroom = serializer.validated_data.get("classroom")
-                if classroom:
-                    if hasattr(classroom, "section") and hasattr(
-                        classroom.section, "grade_level"
-                    ):
-                        classroom_section = classroom.section.grade_level.section
-                        if classroom_section != user.section:
-                            from rest_framework.exceptions import PermissionDenied
-
-                            raise PermissionDenied(
-                                f"You can only create lessons for classrooms in your section ({user.section})"
-                            )
-
             lesson = serializer.save()
             logger.info(
-                f"Lesson '{lesson.title}' created by {user.email} ({role}) "
+                f"Lesson '{lesson.title}' created by {self.request.user} ({role}) "
                 f"for {lesson.classroom} on {lesson.date} at {lesson.start_time}"
             )
-
-    # +++=================
-    # def get_queryset(self):
-    #     """
-    #     Multi-role queryset filtering with optimized prefetching.
-    #     """
-    #     # Base queryset with optimized prefetching
-    #     queryset = Lesson.objects.select_related(
-    #         "teacher__user",
-    #         "classroom__section__grade_level",
-    #         "subject",
-    #         "created_by",
-    #         "last_modified_by",
-    #     ).prefetch_related("attendances__student__user")
-
-    #     # Get user role information
-    #     role, instance, additional_info = self.get_user_role_info()
-
-    #     # Apply role-based filtering
-    #     if role == "admin":
-    #         # Admin can see all lessons
-    #         logger.info(f"Admin user {self.request.user} accessing all lessons")
-    #         # queryset remains unchanged - shows all lessons
-
-    #     elif role == "teacher":
-    #         # Teacher can only see lessons they created
-    #         queryset = queryset.filter(teacher=instance)
-    #         logger.info(f"Teacher {self.request.user} accessing their lessons only")
-
-    #     elif role == "student":
-    #         # Student can see lessons for their enrolled classrooms
-    #         enrolled_classrooms = additional_info.get("enrolled_classrooms", [])
-    #         if enrolled_classrooms:
-    #             queryset = queryset.filter(classroom__in=enrolled_classrooms)
-    #             logger.info(
-    #                 f"Student {self.request.user} accessing lessons for {len(enrolled_classrooms)} classrooms"
-    #             )
-    #         else:
-    #             queryset = queryset.none()
-    #             logger.warning(f"Student {self.request.user} has no active enrollments")
-
-    #     elif role == "parent":
-    #         # Parent can see lessons for their children's classrooms
-    #         children_classrooms = additional_info.get("children_classrooms", [])
-    #         if children_classrooms:
-    #             queryset = queryset.filter(classroom__in=children_classrooms)
-    #             logger.info(
-    #                 f"Parent {self.request.user} accessing lessons for {len(children_classrooms)} children's classrooms"
-    #             )
-    #         else:
-    #             queryset = queryset.none()
-    #             logger.warning(
-    #                 f"Parent {self.request.user} has no active children or enrollments"
-    #             )
-
-    #     else:
-    #         # Unknown role - no access
-    #         logger.warning(
-    #             f"User {self.request.user} has unknown role, returning empty queryset"
-    #         )
-    #         queryset = queryset.none()
-
-    #     # Apply additional filters if request has query_params
-    #     if hasattr(self.request, "query_params"):
-    #         # Support date_from/date_to as aliases for date__gte/date__lte
-    #         date_from = self.request.query_params.get("date_from")
-    #         date_to = self.request.query_params.get("date_to")
-    #         if date_from:
-    #             queryset = queryset.filter(date__gte=date_from)
-    #         if date_to:
-    #             queryset = queryset.filter(date__lte=date_to)
-
-    #         # Date filtering
-    #         date_filter = self.request.query_params.get("date_filter")
-    #         if date_filter:
-    #             today = timezone.now().date()
-    #             if date_filter == "today":
-    #                 queryset = queryset.filter(date=today)
-    #             elif date_filter == "tomorrow":
-    #                 tomorrow = today + timedelta(days=1)
-    #                 queryset = queryset.filter(date=tomorrow)
-    #             elif date_filter == "this_week":
-    #                 week_start = today - timedelta(days=today.weekday())
-    #                 week_end = week_start + timedelta(days=6)
-    #                 queryset = queryset.filter(date__range=[week_start, week_end])
-    #             elif date_filter == "next_week":
-    #                 next_week_start = today + timedelta(days=7 - today.weekday())
-    #                 next_week_end = next_week_start + timedelta(days=6)
-    #                 queryset = queryset.filter(
-    #                     date__range=[next_week_start, next_week_end]
-    #                 )
-    #             elif date_filter == "overdue":
-    #                 queryset = queryset.filter(
-    #                     date__lt=today, status__in=["scheduled", "in_progress"]
-    #                 )
-
-    #         # Status filtering
-    #         status_filter = self.request.query_params.get("status_filter")
-    #         if status_filter:
-    #             if status_filter == "active":
-    #                 queryset = queryset.filter(status__in=["scheduled", "in_progress"])
-    #             elif status_filter == "completed":
-    #                 queryset = queryset.filter(status="completed")
-    #             elif status_filter == "cancelled":
-    #                 queryset = queryset.filter(status="cancelled")
-
-    #         # Teacher filtering (only for admin users)
-    #         teacher_id = self.request.query_params.get("teacher_id")
-    #         if teacher_id and role == "admin":
-    #             queryset = queryset.filter(teacher_id=teacher_id)
-
-    #         # Classroom filtering
-    #         classroom_id = self.request.query_params.get("classroom_id")
-    #         if classroom_id:
-    #             queryset = queryset.filter(classroom_id=classroom_id)
-
-    #         # Subject filtering
-    #         subject_id = self.request.query_params.get("subject_id")
-    #         if subject_id:
-    #             queryset = queryset.filter(subject_id=subject_id)
-
-    #         # Stream filtering
-    #         stream_filter = self.request.query_params.get("stream_filter")
-    #         if stream_filter:
-    #             queryset = queryset.filter(classroom__stream__name=stream_filter)
-
-    #     return queryset
-
-    # def can_modify_lesson(self, lesson):
-    #     """Check if user can modify a specific lesson"""
-    #     role, instance, _ = self.get_user_role_info()
-
-    #     if role == "admin":
-    #         return True
-    #     elif role == "teacher" and lesson.teacher == instance:
-    #         return True
-    #     else:
-    #         return False
-
-    # def perform_create(self, serializer):
-    #     """
-    #     Create with role-based validation and automatic assignments.
-    #     """
-    #     role, instance, _ = self.get_user_role_info()
-
-    #     # Only admins and teachers can create lessons
-    #     if role not in ["admin", "teacher"]:
-    #         from rest_framework.exceptions import PermissionDenied
-
-    #         raise PermissionDenied(
-    #             "Only administrators and teachers can create lessons"
-    #         )
-
-    #     with transaction.atomic():
-    #         # For teachers, automatically set the teacher to the current user's teacher profile
-    #         if role == "teacher":
-    #             serializer.validated_data["teacher"] = instance
-
-    #         lesson = serializer.save()
-    #         logger.info(
-    #             f"Lesson '{lesson.title}' created by {self.request.user} ({role}) "
-    #             f"for {lesson.classroom} on {lesson.date} at {lesson.start_time}"
-    #         )
 
     def perform_update(self, serializer):
         """Update with role-based restrictions"""
