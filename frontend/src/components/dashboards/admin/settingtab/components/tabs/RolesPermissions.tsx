@@ -158,6 +158,16 @@ const RolesPermissions = () => {
     }
   }, [currentUser]);
 
+  // Clear messages after timeout
+  useEffect(() => {
+    if (successMessage) {
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+    if (errorMessage) {
+      setTimeout(() => setErrorMessage(null), 5000);
+    }
+  }, [successMessage, errorMessage]);
+
   // ✅ Load current user
   const loadCurrentUser = async () => {
     try {
@@ -186,39 +196,6 @@ const RolesPermissions = () => {
       setErrorMessage('Failed to verify user permissions.');
     }
   };
-
-  // ✅ Early return if not authorized
-  if (currentUser && !canManageRolesPermissions(currentUser)) {
-    return (
-      <div className="space-y-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="w-8 h-8 text-red-600" />
-            <h3 className="text-xl font-semibold text-red-900">Access Denied</h3>
-          </div>
-          <p className="text-red-800 mb-4">
-            You do not have permission to access the Roles & Permissions management system.
-          </p>
-          <p className="text-red-700 text-sm">
-            This feature is restricted to superadmins only. As a <strong>{currentUser.role}</strong> admin for the{' '}
-            <strong>{currentUser.section}</strong> section, you can manage:
-          </p>
-          <ul className="list-disc list-inside text-red-700 text-sm mt-2 space-y-1">
-            <li>Teachers in your section</li>
-            <li>Students in your section</li>
-            <li>Parents with children in your section</li>
-            <li>Lesson schedules for your section</li>
-          </ul>
-          <button
-            onClick={() => window.location.href = '/admin/dashboard'}
-            className="mt-6 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const loadRoles = async () => {
     try {
