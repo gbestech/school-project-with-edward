@@ -1187,25 +1187,27 @@ class LessonViewSet(viewsets.ModelViewSet):
         Returns a list of education levels the user can access
         """
         SECTION_TO_EDUCATION_LEVEL = {
-            'nursery': ['NURSERY'],
-            'primary': ['PRIMARY'],
-            'junior_secondary': ['JUNIOR_SECONDARY'],
-            'senior_secondary': ['SENIOR_SECONDARY'],
-            'secondary': ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'],  # Both JSS and SSS
+            "nursery": ["NURSERY"],
+            "primary": ["PRIMARY"],
+            "junior_secondary": ["JUNIOR_SECONDARY"],
+            "senior_secondary": ["SENIOR_SECONDARY"],
+            "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
         }
-        
+
         ROLE_TO_SECTION = {
-            'nursery_admin': 'nursery',
-            'primary_admin': 'primary',
-            'junior_secondary_admin': 'junior_secondary',
-            'senior_secondary_admin': 'senior_secondary',
-            'secondary_admin': 'secondary',
+            "nursery_admin": "nursery",
+            "primary_admin": "primary",
+            "junior_secondary_admin": "junior_secondary",
+            "senior_secondary_admin": "senior_secondary",
+            "secondary_admin": "secondary",
         }
-        
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
-            user_section = ROLE_TO_SECTION[user.role]
-        
+
+        user_section = getattr(user, "section", None)
+        user_role = getattr(user, "role", None)
+
+        if not user_section and user_role in ROLE_TO_SECTION:
+            user_section = ROLE_TO_SECTION[user_role]
+
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_user_role_info(self):
@@ -1220,7 +1222,7 @@ class LessonViewSet(viewsets.ModelViewSet):
             return ("superadmin", None, {})
 
         # Check Section Admin role
-        if user.is_staff and user.is_section_admin:
+        if user.is_staff and getattr(user, "is_section_admin", False):
             education_levels = self._get_section_education_levels(user)
             return ("section_admin", None, {"education_levels": education_levels})
 
@@ -1255,16 +1257,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                     "enrollments": enrollments,
                 },
             )
-        except:
+        except Exception:
             pass
 
         # Check Parent role
         try:
-            from parent.models import (
-                ParentProfile as Parent,
-                ParentStudentRelationship as StudentParentRelationship,
-            )
-
             parent = Parent.objects.get(user=user, is_active=True)
 
             relationships = StudentParentRelationship.objects.filter(
@@ -1297,7 +1294,7 @@ class LessonViewSet(viewsets.ModelViewSet):
                     "children_enrollments": children_enrollments,
                 },
             )
-        except:
+        except Exception:
             pass
 
         return ("unknown", None, {})
@@ -1318,39 +1315,38 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         # Apply role-based filtering
         if role == "superadmin":
-            logger.info(f"Superadmin {self.request.user.username} accessing all lessons")
-            # queryset remains unchanged - shows all lessons
+            logger.info(
+                f"Superadmin {self.request.user.username} accessing all lessons"
+            )
 
         elif role == "section_admin":
-            # Section admin can only see lessons in their section's education levels
             education_levels = additional_info.get("education_levels", [])
             if education_levels:
                 queryset = queryset.filter(
                     classroom__section__grade_level__education_level__in=education_levels
                 )
                 logger.info(
-                    f"Section admin {self.request.user.username} ({self.request.user.role}) "
+                    f"Section admin {self.request.user.username} "
                     f"accessing lessons for education levels: {education_levels}"
                 )
             else:
                 queryset = queryset.none()
                 logger.warning(
-                    f"Section admin {self.request.user.username} has no valid section, "
-                    "returning empty queryset"
+                    f"Section admin {self.request.user.username} has no valid section"
                 )
 
         elif role == "admin":
-            # Regular admin/staff can see all lessons
-            logger.info(f"Admin/Staff {self.request.user.username} accessing all lessons")
-            # queryset remains unchanged
+            logger.info(
+                f"Admin/Staff {self.request.user.username} accessing all lessons"
+            )
 
         elif role == "teacher":
-            # Teacher can only see lessons they created
             queryset = queryset.filter(teacher=instance)
-            logger.info(f"Teacher {self.request.user.username} accessing their lessons only")
+            logger.info(
+                f"Teacher {self.request.user.username} accessing their lessons only"
+            )
 
         elif role == "student":
-            # Student can see lessons for their enrolled classrooms
             enrolled_classrooms = additional_info.get("enrolled_classrooms", [])
             if enrolled_classrooms:
                 queryset = queryset.filter(classroom__in=enrolled_classrooms)
@@ -1360,10 +1356,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                 )
             else:
                 queryset = queryset.none()
-                logger.warning(f"Student {self.request.user.username} has no active enrollments")
+                logger.warning(
+                    f"Student {self.request.user.username} has no active enrollments"
+                )
 
         elif role == "parent":
-            # Parent can see lessons for their children's classrooms
             children_classrooms = additional_info.get("children_classrooms", [])
             if children_classrooms:
                 queryset = queryset.filter(classroom__in=children_classrooms)
@@ -1378,13 +1375,12 @@ class LessonViewSet(viewsets.ModelViewSet):
                 )
 
         else:
-            # Unknown role - no access
             logger.warning(
                 f"User {self.request.user.username} has unknown role, returning empty queryset"
             )
             queryset = queryset.none()
 
-        # Apply additional filters if request has query_params
+        # Apply additional filters
         if hasattr(self.request, "query_params"):
             date_from = self.request.query_params.get("date_from")
             date_to = self.request.query_params.get("date_to")
@@ -1393,7 +1389,6 @@ class LessonViewSet(viewsets.ModelViewSet):
             if date_to:
                 queryset = queryset.filter(date__lte=date_to)
 
-            # Date filtering
             date_filter = self.request.query_params.get("date_filter")
             if date_filter:
                 today = timezone.now().date()
@@ -1417,7 +1412,6 @@ class LessonViewSet(viewsets.ModelViewSet):
                         date__lt=today, status__in=["scheduled", "in_progress"]
                     )
 
-            # Status filtering
             status_filter = self.request.query_params.get("status_filter")
             if status_filter:
                 if status_filter == "active":
@@ -1427,22 +1421,18 @@ class LessonViewSet(viewsets.ModelViewSet):
                 elif status_filter == "cancelled":
                     queryset = queryset.filter(status="cancelled")
 
-            # Teacher filtering (only for admin users)
             teacher_id = self.request.query_params.get("teacher_id")
             if teacher_id and role in ["superadmin", "admin", "section_admin"]:
                 queryset = queryset.filter(teacher_id=teacher_id)
 
-            # Classroom filtering
             classroom_id = self.request.query_params.get("classroom_id")
             if classroom_id:
                 queryset = queryset.filter(classroom_id=classroom_id)
 
-            # Subject filtering
             subject_id = self.request.query_params.get("subject_id")
             if subject_id:
                 queryset = queryset.filter(subject_id=subject_id)
 
-            # Stream filtering
             stream_filter = self.request.query_params.get("stream_filter")
             if stream_filter:
                 queryset = queryset.filter(classroom__stream__name=stream_filter)
@@ -1456,22 +1446,22 @@ class LessonViewSet(viewsets.ModelViewSet):
         if role in ["superadmin", "admin"]:
             return True
         elif role == "section_admin":
-            # Section admin can modify lessons in their section
             education_levels = additional_info.get("education_levels", [])
-            lesson_education_level = lesson.classroom.section.grade_level.education_level
-            return lesson_education_level in education_levels
+            if hasattr(lesson, "classroom") and hasattr(lesson.classroom, "section"):
+                lesson_education_level = (
+                    lesson.classroom.section.grade_level.education_level
+                )
+                return lesson_education_level in education_levels
+            return False
         elif role == "teacher" and lesson.teacher == instance:
             return True
         else:
             return False
 
     def perform_create(self, serializer):
-        """
-        Create with role-based validation and automatic assignments.
-        """
+        """Create with role-based validation and automatic assignments"""
         role, instance, _ = self.get_user_role_info()
 
-        # Only admins and teachers can create lessons
         if role not in ["superadmin", "admin", "section_admin", "teacher"]:
             from rest_framework.exceptions import PermissionDenied
 
@@ -1480,14 +1470,12 @@ class LessonViewSet(viewsets.ModelViewSet):
             )
 
         with transaction.atomic():
-            # For teachers, automatically set the teacher to the current user's teacher profile
             if role == "teacher":
                 serializer.validated_data["teacher"] = instance
 
             lesson = serializer.save()
             logger.info(
-                f"Lesson '{lesson.title}' created by {self.request.user.username} ({role}) "
-                f"for {lesson.classroom} on {lesson.date} at {lesson.start_time}"
+                f"Lesson '{lesson.title}' created by {self.request.user.username} ({role})"
             )
 
     def perform_update(self, serializer):
@@ -1515,15 +1503,17 @@ class LessonViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You can only delete lessons you have access to")
 
         try:
-            logger.info(f"Lesson '{instance.title}' deleted by {self.request.user.username}")
+            logger.info(
+                f"Lesson '{instance.title}' deleted by {self.request.user.username}"
+            )
             super().perform_destroy(instance)
         except Exception as e:
             logger.error(f"Failed to delete lesson '{instance.title}': {e}")
-            raise Exception(f"Lesson cannot be deleted: {e}")
+            raise
 
     @action(detail=True, methods=["post"])
     def start_lesson(self, request, pk=None):
-        """Start a lesson (role-restricted)"""
+        """Start a lesson"""
         lesson = self.get_object()
 
         if not self.can_modify_lesson(lesson):
@@ -1545,7 +1535,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def complete_lesson(self, request, pk=None):
-        """Complete a lesson (role-restricted)"""
+        """Complete a lesson"""
         lesson = self.get_object()
 
         if not self.can_modify_lesson(lesson):
@@ -1567,7 +1557,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def cancel_lesson(self, request, pk=None):
-        """Cancel a lesson (role-restricted)"""
+        """Cancel a lesson"""
         lesson = self.get_object()
 
         if not self.can_modify_lesson(lesson):
@@ -1600,7 +1590,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def update_progress(self, request, pk=None):
-        """Manually update lesson progress and return latest state"""
+        """Manually update lesson progress"""
         lesson = self.get_object()
         progress = lesson.update_progress()
         serializer = self.get_serializer(lesson)
@@ -1614,7 +1604,7 @@ class LessonViewSet(viewsets.ModelViewSet):
         if role in ["superadmin", "admin", "section_admin"]:
             return Response(
                 {
-                    "message": "Admins can use the main lesson list endpoint to see lessons",
+                    "message": "Admins can use the main lesson list endpoint",
                     "role": role,
                 }
             )
@@ -1664,8 +1654,8 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         if role == "section_admin":
             response_data["section_admin_info"] = {
-                "section": request.user.section,
-                "section_display": request.user.section_display,
+                "section": getattr(request.user, "section", None),
+                "section_display": getattr(request.user, "section_display", None),
                 "education_levels": additional_info.get("education_levels", []),
             }
         elif role == "teacher":
@@ -1675,14 +1665,11 @@ class LessonViewSet(viewsets.ModelViewSet):
                 teacher=instance, is_active=True
             ).select_related("subject", "classroom")
 
-            subjects_taught = sorted({a.subject.name for a in assignments})
-            classrooms_taught = sorted({a.classroom.name for a in assignments})
-
             response_data["teacher_info"] = {
                 "teacher_id": instance.id,
                 "teacher_name": f"{instance.user.first_name} {instance.user.last_name}",
-                "subjects_taught": subjects_taught,
-                "classrooms_taught": classrooms_taught,
+                "subjects_taught": sorted({a.subject.name for a in assignments}),
+                "classrooms_taught": sorted({a.classroom.name for a in assignments}),
             }
         elif role == "student":
             response_data["student_info"] = {
@@ -1713,7 +1700,7 @@ class LessonViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def statistics(self, request):
         """Get role-based lesson statistics"""
-        role, instance, additional_info = self.get_user_role_info()
+        role, _, _ = self.get_user_role_info()
         queryset = self.get_queryset()
 
         total_lessons = queryset.count()
@@ -1760,7 +1747,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def update_status(self, request, pk=None):
-        """Update lesson status with role-based access"""
+        """Update lesson status"""
         lesson = self.get_object()
 
         if not self.can_modify_lesson(lesson):
@@ -1784,7 +1771,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def calendar(self, request):
-        """Get lessons for calendar view with role-based filtering"""
+        """Get lessons for calendar view"""
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
 
@@ -1800,7 +1787,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def teacher_subjects(self, request):
-        """Get subjects for a selected teacher using ClassroomTeacherAssignment"""
+        """Get subjects for a selected teacher"""
         teacher_id = request.query_params.get("teacher_id")
         if not teacher_id:
             return Response(
@@ -1819,7 +1806,96 @@ class LessonViewSet(viewsets.ModelViewSet):
 
         assignments = ClassroomTeacherAssignment.objects.filter(
             teacher=teacher, is_active=True
+        ).select_related("subject")
+
+        subjects = {a.subject for a in assignments}
+        filtered_subjects = set()
+
+        for subj in subjects:
+            try:
+                if (
+                    hasattr(subj, "component_subjects")
+                    and subj.component_subjects.exists()
+                ):
+                    components = subj.component_subjects.filter(
+                        education_levels=["JUNIOR_SECONDARY"]
+                    )
+                    if components.exists():
+                        filtered_subjects.update(list(components))
+                        continue
+                filtered_subjects.add(subj)
+            except Exception:
+                filtered_subjects.add(subj)
+
+        subjects_list = (
+            list(filtered_subjects)
+            if filtered_subjects
+            else list(Subject.objects.filter(is_active=True))
+        )
+        serializer = SubjectSerializer(subjects_list, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def subject_teachers(self, request):
+        """Get teachers for a selected subject"""
+        subject_id = request.query_params.get("subject_id")
+        if not subject_id:
+            return Response(
+                {"error": "subject_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            subject = Subject.objects.get(id=subject_id)
+        except Subject.DoesNotExist:
+            return Response(
+                {"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        from classroom.models import ClassroomTeacherAssignment
+
+        assignments = ClassroomTeacherAssignment.objects.filter(
+            subject=subject, is_active=True
+        ).select_related("teacher__user")
+        teachers = {a.teacher for a in assignments}
+
+        if getattr(subject, "parent_subject", None):
+            parent_assignments = ClassroomTeacherAssignment.objects.filter(
+                subject=subject.parent_subject, is_active=True
+            )
+            teachers.update({a.teacher for a in parent_assignments})
+
+        if not teachers:
+            teachers = set(Teacher.objects.filter(is_active=True))
+
+        serializer = TeacherSerializer(list(teachers), many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def teacher_classrooms(self, request):
+        """Get classrooms for a selected teacher"""
+        teacher_id = request.query_params.get("teacher_id")
+        subject_id = request.query_params.get("subject_id")
+
+        if not teacher_id:
+            return Response(
+                {"error": "teacher_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            teacher = Teacher.objects.get(id=teacher_id)
+        except Teacher.DoesNotExist:
+            return Response(
+                {"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        from classroom.models import ClassroomTeacherAssignment
+
+        assignments = ClassroomTeacherAssignment.objects.filter(
+            teacher=teacher, is_active=True
         ).select_related("classroom")
+
         if subject_id:
             assignments = assignments.filter(subject_id=subject_id)
 
@@ -1832,7 +1908,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def classroom_sections(self, request):
-        """Get all classroom sections for filtering"""
+        """Get all classroom sections"""
         from classroom.models import Section
 
         sections = Section.objects.filter(is_active=True)
@@ -1841,7 +1917,7 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def subjects_by_level(self, request):
-        """Get subjects filtered by education level, grade level, and stream"""
+        """Get subjects filtered by education level"""
         education_level = request.query_params.get("education_level")
         grade_level_id = request.query_params.get("grade_level_id")
         stream = request.query_params.get("stream")
@@ -1918,25 +1994,27 @@ class LessonAttendanceViewSet(viewsets.ModelViewSet):
     def _get_section_education_levels(self, user):
         """Helper method to get education levels based on user's section/role"""
         SECTION_TO_EDUCATION_LEVEL = {
-            'nursery': ['NURSERY'],
-            'primary': ['PRIMARY'],
-            'junior_secondary': ['JUNIOR_SECONDARY'],
-            'senior_secondary': ['SENIOR_SECONDARY'],
-            'secondary': ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'],
+            "nursery": ["NURSERY"],
+            "primary": ["PRIMARY"],
+            "junior_secondary": ["JUNIOR_SECONDARY"],
+            "senior_secondary": ["SENIOR_SECONDARY"],
+            "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
         }
-        
+
         ROLE_TO_SECTION = {
-            'nursery_admin': 'nursery',
-            'primary_admin': 'primary',
-            'junior_secondary_admin': 'junior_secondary',
-            'senior_secondary_admin': 'senior_secondary',
-            'secondary_admin': 'secondary',
+            "nursery_admin": "nursery",
+            "primary_admin": "primary",
+            "junior_secondary_admin": "junior_secondary",
+            "senior_secondary_admin": "senior_secondary",
+            "secondary_admin": "secondary",
         }
-        
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
-            user_section = ROLE_TO_SECTION[user.role]
-        
+
+        user_section = getattr(user, "section", None)
+        user_role = getattr(user, "role", None)
+
+        if not user_section and user_role in ROLE_TO_SECTION:
+            user_section = ROLE_TO_SECTION[user_role]
+
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
@@ -1950,7 +2028,7 @@ class LessonAttendanceViewSet(viewsets.ModelViewSet):
             return queryset
 
         # Section Admin - see only their section's attendance
-        if user.is_staff and user.is_section_admin:
+        if user.is_staff and getattr(user, "is_section_admin", False):
             education_levels = self._get_section_education_levels(user)
             if not education_levels:
                 return queryset.none()
@@ -1975,27 +2053,20 @@ class LessonAttendanceViewSet(viewsets.ModelViewSet):
 
             student = Student.objects.get(user=user, is_active=True)
             return queryset.filter(student=student)
-        except:
+        except Exception:
             pass
 
         # Parent - see attendance for their children
         try:
-            from parent.models import (
-                ParentProfile as Parent,
-                ParentStudentRelationship as StudentParentRelationship,
-            )
-
             parent = Parent.objects.get(user=user, is_active=True)
-
             relationships = StudentParentRelationship.objects.filter(
                 parent=parent, is_active=True
             )
             children_ids = [
                 rel.student.id for rel in relationships if rel.student.is_active
             ]
-
             return queryset.filter(student_id__in=children_ids)
-        except:
+        except Exception:
             pass
 
         return queryset.none()
@@ -2014,25 +2085,27 @@ class LessonResourceViewSet(viewsets.ModelViewSet):
     def _get_section_education_levels(self, user):
         """Helper method to get education levels based on user's section/role"""
         SECTION_TO_EDUCATION_LEVEL = {
-            'nursery': ['NURSERY'],
-            'primary': ['PRIMARY'],
-            'junior_secondary': ['JUNIOR_SECONDARY'],
-            'senior_secondary': ['SENIOR_SECONDARY'],
-            'secondary': ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'],
+            "nursery": ["NURSERY"],
+            "primary": ["PRIMARY"],
+            "junior_secondary": ["JUNIOR_SECONDARY"],
+            "senior_secondary": ["SENIOR_SECONDARY"],
+            "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
         }
-        
+
         ROLE_TO_SECTION = {
-            'nursery_admin': 'nursery',
-            'primary_admin': 'primary',
-            'junior_secondary_admin': 'junior_secondary',
-            'senior_secondary_admin': 'senior_secondary',
-            'secondary_admin': 'secondary',
+            "nursery_admin": "nursery",
+            "primary_admin": "primary",
+            "junior_secondary_admin": "junior_secondary",
+            "senior_secondary_admin": "senior_secondary",
+            "secondary_admin": "secondary",
         }
-        
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
-            user_section = ROLE_TO_SECTION[user.role]
-        
+
+        user_section = getattr(user, "section", None)
+        user_role = getattr(user, "role", None)
+
+        if not user_section and user_role in ROLE_TO_SECTION:
+            user_section = ROLE_TO_SECTION[user_role]
+
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
@@ -2045,7 +2118,7 @@ class LessonResourceViewSet(viewsets.ModelViewSet):
             return queryset
 
         # Section Admin - see only their section's resources
-        if user.is_staff and user.is_section_admin:
+        if user.is_staff and getattr(user, "is_section_admin", False):
             education_levels = self._get_section_education_levels(user)
             if not education_levels:
                 return queryset.none()
@@ -2079,17 +2152,13 @@ class LessonResourceViewSet(viewsets.ModelViewSet):
 
         # Parent - see resources for their children's classrooms
         try:
-            from parent.models import (
-                ParentProfile as Parent,
-                ParentStudentRelationship as StudentParentRelationship,
-            )
-            from students.models import StudentEnrollment
-
             parent = Parent.objects.get(user=user)
             relationships = StudentParentRelationship.objects.filter(parent=parent)
             children = [rel.student for rel in relationships]
             classrooms = []
             for child in children:
+                from students.models import StudentEnrollment
+
                 classrooms.extend(
                     [
                         e.classroom
@@ -2120,25 +2189,27 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
     def _get_section_education_levels(self, user):
         """Helper method to get education levels based on user's section/role"""
         SECTION_TO_EDUCATION_LEVEL = {
-            'nursery': ['NURSERY'],
-            'primary': ['PRIMARY'],
-            'junior_secondary': ['JUNIOR_SECONDARY'],
-            'senior_secondary': ['SENIOR_SECONDARY'],
-            'secondary': ['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'],
+            "nursery": ["NURSERY"],
+            "primary": ["PRIMARY"],
+            "junior_secondary": ["JUNIOR_SECONDARY"],
+            "senior_secondary": ["SENIOR_SECONDARY"],
+            "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
         }
-        
+
         ROLE_TO_SECTION = {
-            'nursery_admin': 'nursery',
-            'primary_admin': 'primary',
-            'junior_secondary_admin': 'junior_secondary',
-            'senior_secondary_admin': 'senior_secondary',
-            'secondary_admin': 'secondary',
+            "nursery_admin": "nursery",
+            "primary_admin": "primary",
+            "junior_secondary_admin": "junior_secondary",
+            "senior_secondary_admin": "senior_secondary",
+            "secondary_admin": "secondary",
         }
-        
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
-            user_section = ROLE_TO_SECTION[user.role]
-        
+
+        user_section = getattr(user, "section", None)
+        user_role = getattr(user, "role", None)
+
+        if not user_section and user_role in ROLE_TO_SECTION:
+            user_section = ROLE_TO_SECTION[user_role]
+
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
@@ -2151,7 +2222,7 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
             return queryset
 
         # Section Admin - see only their section's assessments
-        if user.is_staff and user.is_section_admin:
+        if user.is_staff and getattr(user, "is_section_admin", False):
             education_levels = self._get_section_education_levels(user)
             if not education_levels:
                 return queryset.none()
@@ -2185,17 +2256,13 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
 
         # Parent - see assessments for their children's classrooms
         try:
-            from parent.models import (
-                ParentProfile as Parent,
-                ParentStudentRelationship as StudentParentRelationship,
-            )
-            from students.models import StudentEnrollment
-
             parent = Parent.objects.get(user=user)
             relationships = StudentParentRelationship.objects.filter(parent=parent)
             children = [rel.student for rel in relationships]
             classrooms = []
             for child in children:
+                from students.models import StudentEnrollment
+
                 classrooms.extend(
                     [
                         e.classroom
@@ -2208,88 +2275,4 @@ class LessonAssessmentViewSet(viewsets.ModelViewSet):
         except Exception:
             pass
 
-        return queryset.none()_related("subject")
-
-        subjects = {a.subject for a in assignments}
-        filtered_subjects = set()
-        for subj in subjects:
-            try:
-                if (
-                    hasattr(subj, "component_subjects")
-                    and subj.component_subjects.exists()
-                ):
-                    components = subj.component_subjects.filter(education_levels=["JUNIOR_SECONDARY"])
-                    if components.exists():
-                        filtered_subjects.update(list(components))
-                        continue
-                filtered_subjects.add(subj)
-            except Exception:
-                filtered_subjects.add(subj)
-
-        subjects_list = (
-            list(filtered_subjects)
-            if filtered_subjects
-            else list(Subject.objects.filter(is_active=True))
-        )
-        serializer = SubjectSerializer(subjects_list, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def subject_teachers(self, request):
-        """Get teachers for a selected subject using ClassroomTeacherAssignment"""
-        subject_id = request.query_params.get("subject_id")
-        if not subject_id:
-            return Response(
-                {"error": "subject_id parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            subject = Subject.objects.get(id=subject_id)
-        except Subject.DoesNotExist:
-            return Response(
-                {"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        from classroom.models import ClassroomTeacherAssignment
-
-        assignments = ClassroomTeacherAssignment.objects.filter(
-            subject=subject, is_active=True
-        ).select_related("teacher__user")
-        teachers = {a.teacher for a in assignments}
-
-        if getattr(subject, "parent_subject", None):
-            parent_assignments = ClassroomTeacherAssignment.objects.filter(
-                subject=subject.parent_subject, is_active=True
-            )
-            teachers.update({a.teacher for a in parent_assignments})
-
-        if not teachers:
-            teachers = set(Teacher.objects.filter(is_active=True))
-
-        serializer = TeacherSerializer(list(teachers), many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=["get"])
-    def teacher_classrooms(self, request):
-        """Get classrooms for a selected teacher, optionally filtered by subject"""
-        teacher_id = request.query_params.get("teacher_id")
-        subject_id = request.query_params.get("subject_id")
-        if not teacher_id:
-            return Response(
-                {"error": "teacher_id parameter is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            teacher = Teacher.objects.get(id=teacher_id)
-        except Teacher.DoesNotExist:
-            return Response(
-                {"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        from classroom.models import ClassroomTeacherAssignment
-
-        assignments = ClassroomTeacherAssignment.objects.filter(
-            teacher=teacher, is_active=True
-        ).select
+        return queryset.none()

@@ -26,7 +26,7 @@ from .serializers import (
 )
 from .utils import clear_subject_caches
 
-# from classroom.models import GradeLevel  # Commented out to avoid circular import
+from classroom.models import GradeLevel  # Commented out to avoid circular import
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ def filter_subjects_by_education_level(queryset, education_level):
     """Filter subjects by education level using Python-based filtering."""
     subject_ids = []
     for subject in queryset:
-        if education_level in getattr(subject, 'education_levels', []):
+        if education_level in getattr(subject, "education_levels", []):
             subject_ids.append(subject.id)
     return queryset.filter(id__in=subject_ids)
 
@@ -65,7 +65,7 @@ def filter_subjects_by_nursery_level(queryset, nursery_level):
     """Filter subjects by nursery level using Python-based filtering."""
     subject_ids = []
     for subject in queryset:
-        if nursery_level in getattr(subject, 'nursery_levels', []):
+        if nursery_level in getattr(subject, "nursery_levels", []):
             subject_ids.append(subject.id)
     return queryset.filter(id__in=subject_ids)
 
@@ -136,20 +136,6 @@ class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         }
         return serializer_map.get(self.action, SubjectSerializer)
 
-    # def get_permissions(self):
-    #     """Set permissions based on action"""
-    #     # Temporarily allow unauthenticated access for testing
-    #     if self.action in [
-    #         "list",
-    #         "statistics",
-    #         "destroy",
-    #         "create",
-    #         "update",
-    #         "partial_update",
-    #     ]:
-    #         return []  # Allow unauthenticated access for CRUD operations during testing
-    #     return [IsAuthenticated()]
-
     def get_permissions(self):
         """Set permissions based on action"""
         if self.action in ["list", "retrieve", "statistics"]:
@@ -160,6 +146,110 @@ class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         else:
             return [IsAuthenticated()]
 
+    def filter_subjects_by_section_access(self, queryset):
+        """
+        Filter subjects based on user's section access permissions
+        """
+        user = self.request.user
+
+        # Superadmins see everything
+        if user.is_superuser and user.is_staff:
+            return queryset
+
+        # Check if user is a section admin
+        section_admin_roles = [
+            "secondary_admin",
+            "senior_secondary_admin",
+            "junior_secondary_admin",
+            "primary_admin",
+            "nursery_admin",
+        ]
+
+        user_role = getattr(user, "role", None)
+
+        if user_role in section_admin_roles:
+            # Determine which education levels this admin can access
+            if user_role == "primary_admin":
+                # Filter subjects that include PRIMARY in education_levels array
+                subject_ids = []
+                for subject in queryset:
+                    education_levels = getattr(subject, "education_levels", [])
+                    if "PRIMARY" in education_levels or "ALL" in education_levels:
+                        subject_ids.append(subject.id)
+                return queryset.filter(id__in=subject_ids)
+
+            elif user_role == "nursery_admin":
+                # Filter subjects that include NURSERY in education_levels array
+                subject_ids = []
+                for subject in queryset:
+                    education_levels = getattr(subject, "education_levels", [])
+                    if "NURSERY" in education_levels or "ALL" in education_levels:
+                        subject_ids.append(subject.id)
+                return queryset.filter(id__in=subject_ids)
+
+            elif user_role in [
+                "secondary_admin",
+                "senior_secondary_admin",
+                "junior_secondary_admin",
+            ]:
+                # Filter subjects for secondary levels (both JSS and SSS)
+                subject_ids = []
+                for subject in queryset:
+                    education_levels = getattr(subject, "education_levels", [])
+                    if any(
+                        level in education_levels
+                        for level in ["JUNIOR_SECONDARY", "SENIOR_SECONDARY", "ALL"]
+                    ):
+                        subject_ids.append(subject.id)
+                return queryset.filter(id__in=subject_ids)
+        # Check for role assignments from permissions system
+        try:
+            from school_settings.models import UserRole
+
+            user_roles = UserRole.objects.filter(
+                user=user, is_active=True
+            ).select_related("role")
+
+            if user_roles.exists():
+                # Build list of accessible education levels
+                accessible_levels = set()
+
+                for user_role_obj in user_roles:
+                    if user_role_obj.primary_section_access:
+                        accessible_levels.add("PRIMARY")
+                    if user_role_obj.secondary_section_access:
+                        accessible_levels.add("JUNIOR_SECONDARY")
+                        accessible_levels.add("SENIOR_SECONDARY")
+                    if user_role_obj.nursery_section_access:
+                        accessible_levels.add("NURSERY")
+
+                if accessible_levels:
+                    accessible_levels.add(
+                        "ALL"
+                    )  # Always include subjects marked as ALL
+
+                    # Filter subjects by accessible education levels
+                    subject_ids = []
+                    for subject in queryset:
+                        education_levels = getattr(subject, "education_levels", [])
+                        if any(
+                            level in education_levels for level in accessible_levels
+                        ):
+                            subject_ids.append(subject.id)
+                    return queryset.filter(id__in=subject_ids)
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error checking role assignments: {e}")
+        # Default: return all active subjects for regular admins and teachers
+        if user.is_staff or user_role in ["admin", "teacher"]:
+            return queryset
+
+        # For other users, return all active subjects
+        return queryset.filter(is_active=True)
+
     def get_queryset(self):
         """Enhanced queryset with smart prefetching and filtering"""
         queryset = Subject.objects.select_related().prefetch_related(
@@ -169,7 +259,7 @@ class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 queryset=Subject.objects.only("id", "name", "short_name", "code"),
             ),
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             queryset = self.filter_subjects_by_section_access(queryset)
@@ -249,6 +339,94 @@ class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
         return queryset
 
+    # def get_queryset(self):
+    #     """Enhanced queryset with smart prefetching and filtering"""
+    #     queryset = Subject.objects.select_related().prefetch_related(
+    #         "grade_levels",
+    #         Prefetch(
+    #             "prerequisites",
+    #             queryset=Subject.objects.only("id", "name", "short_name", "code"),
+    #         ),
+    #     )
+
+    #     # Apply section-based filtering for authenticated users
+    #     if self.request.user.is_authenticated:
+    #         queryset = self.filter_subjects_by_section_access(queryset)
+
+    #     # Education level filtering
+    #     education_level = self.request.query_params.get("education_level")
+    #     if education_level:
+    #         queryset = filter_by_json_field(
+    #             queryset, "education_levels", education_level
+    #         )
+
+    #     # Nursery level filtering
+    #     nursery_level = self.request.query_params.get("nursery_level")
+    #     if nursery_level:
+    #         queryset = filter_by_json_field(queryset, "nursery_levels", nursery_level)
+
+    #     # Grade level filtering (integration with GradeLevel model)
+    #     grade_level = self.request.query_params.get("grade_level")
+    #     if grade_level:
+    #         try:
+    #             grade_id = int(grade_level)
+    #             queryset = queryset.filter(grade_levels__id=grade_id)
+    #         except ValueError:
+    #             pass
+
+    #     # Active only filtering (default behavior)
+    #     available_only = self.request.query_params.get("available_only", "true").lower()
+    #     if available_only == "true":
+    #         queryset = queryset.filter(is_active=True)
+
+    #     # Cross-cutting subjects filtering
+    #     cross_cutting_only = self.request.query_params.get("cross_cutting_only")
+    #     if cross_cutting_only == "true":
+    #         queryset = queryset.filter(is_cross_cutting=True)
+
+    #     # Activity-based filtering (for nursery)
+    #     activity_based = self.request.query_params.get("activity_based")
+    #     if activity_based == "true":
+    #         queryset = queryset.filter(is_activity_based=True)
+
+    #     # Specialist teacher requirement filtering
+    #     requires_specialist = self.request.query_params.get("requires_specialist")
+    #     if requires_specialist == "true":
+    #         queryset = queryset.filter(requires_specialist_teacher=True)
+
+    #     # Teacher filtering - filter subjects by assigned teacher
+    #     teacher_id = self.request.query_params.get("teacher_id")
+    #     if teacher_id:
+    #         try:
+    #             from teacher.models import TeacherAssignment
+
+    #             teacher_assignments = TeacherAssignment.objects.filter(
+    #                 teacher_id=teacher_id
+    #             ).values_list("subject_id", flat=True)
+    #             queryset = queryset.filter(id__in=teacher_assignments)
+    #         except (ValueError, ImportError):
+    #             pass
+
+    #     # Teacher specialization filtering
+    #     teacher_specialization = self.request.query_params.get("teacher_specialization")
+    #     if teacher_specialization:
+    #         try:
+    #             from teacher.models import Teacher
+
+    #             teachers_with_specialization = Teacher.objects.filter(
+    #                 specialization__icontains=teacher_specialization, is_active=True
+    #             ).values_list("id", flat=True)
+
+    #             from teacher.models import TeacherAssignment
+
+    #             teacher_assignments = TeacherAssignment.objects.filter(
+    #                 teacher_id__in=teachers_with_specialization
+    #             ).values_list("subject_id", flat=True)
+    #             queryset = queryset.filter(id__in=teacher_assignments)
+    #         except (ValueError, ImportError):
+    #             pass
+
+    #     return queryset
     def list(self, request, *args, **kwargs):
         """Enhanced list with comprehensive metadata"""
         response = super().list(request, *args, **kwargs)
@@ -296,43 +474,6 @@ class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 f"Subject '{old_name}' updated to '{subject.name}' by {self.request.user} "
                 f"(Levels: {old_levels} -> {subject.education_levels_display})"
             )
-
-    # def perform_destroy(self, instance):
-    #     """Smart delete with enhanced soft-delete logic"""
-    #     with transaction.atomic():
-    #         # Check for dependencies across different relationships
-    #         has_student_subjects = (
-    #             hasattr(instance, "student_subjects")
-    #             and instance.student_subjects.exists()
-    #         )
-    #         has_dependent_subjects = instance.unlocks_subjects.exists()
-    #         has_grade_assignments = instance.grade_levels.exists()
-
-    #         # Get user info safely
-    #         user_info = getattr(self.request, 'user', None)
-    #         user_name = getattr(user_info, 'username', 'unknown') if user_info else 'unknown'
-
-    #         logger.info(f"🗑️ Deleting subject '{instance.name}' ({instance.code}) by {user_name}")
-    #         logger.info(f"📊 Dependencies check: student_subjects={has_student_subjects}, dependent_subjects={has_dependent_subjects}, grade_assignments={has_grade_assignments}")
-
-    #         if has_student_subjects or has_dependent_subjects or has_grade_assignments:
-    #             # Soft delete for subjects with dependencies
-    #             instance.is_active = False
-    #             instance.save()
-    #             logger.info(
-    #                 f"✅ Subject '{instance.name}' ({instance.code}) soft deleted by {user_name} "
-    #                 f"due to existing dependencies"
-    #             )
-    #         else:
-    #             # Hard delete if no dependencies
-    #             super().perform_destroy(instance)
-    #             logger.info(
-    #                 f"✅ Subject '{instance.name}' ({instance.code}) permanently deleted by {user_name}"
-    #             )
-
-    #         logger.info("🧹 Clearing subject caches...")
-    #         self._clear_subject_caches()
-    #         logger.info("✅ Subject caches cleared successfully")
 
     def destroy(self, request, *args, **kwargs):
         """Override destroy method to ensure proper JSON response"""
@@ -530,7 +671,9 @@ class SubjectViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
             # Breakdown by nursery levels
             for level_code, level_name in NURSERY_LEVELS:
-                level_subjects = filter_subjects_by_nursery_level(base_query, level_code)
+                level_subjects = filter_subjects_by_nursery_level(
+                    base_query, level_code
+                )
                 result["by_nursery_level"][level_code] = {
                     "name": level_name,
                     "count": level_subjects.count(),
