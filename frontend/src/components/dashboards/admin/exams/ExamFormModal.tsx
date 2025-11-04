@@ -563,10 +563,33 @@ const safeArrayFromResponse = (data: any): any[] => {
   return [];
 };
 
-const getInitialState = (exam?: Exam | null): ExamCreateData => {
-  // Extract IDs properly handling both flat and nested structures
-  const subjectId = exam?.subject?.id || exam?.subject || 0;
-  const gradeLevelId = exam?.grade_level?.id || exam?.grade_level || 0;
+const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any[]): ExamCreateData => {
+  let subjectId = 0;
+  let gradeLevelId = 0;
+
+  // Try to extract IDs from the exam object
+  if (exam) {
+    // First try direct ID access
+    subjectId = exam?.subject?.id || exam?.subject || 0;
+    gradeLevelId = exam?.grade_level?.id || exam?.grade_level || 0;
+
+    // If IDs are still 0 or null, try to look them up by name
+    if ((!subjectId || subjectId === 0) && exam.subject_name && subjects) {
+      const foundSubject = subjects.find(s => s.name === exam.subject_name || s.code === exam.subject_code);
+      if (foundSubject) {
+        subjectId = foundSubject.id;
+        console.log('✅ Found subject ID by name:', subjectId, foundSubject.name);
+      }
+    }
+
+    if ((!gradeLevelId || gradeLevelId === 0) && exam.grade_level_name && gradeLevels) {
+      const foundGrade = gradeLevels.find(g => g.name === exam.grade_level_name);
+      if (foundGrade) {
+        gradeLevelId = foundGrade.id;
+        console.log('✅ Found grade level ID by name:', gradeLevelId, foundGrade.name);
+      }
+    }
+  }
   
   console.log('🔄 Initializing form with exam:', exam);
   console.log('📊 Extracted IDs:', { subjectId, gradeLevelId });

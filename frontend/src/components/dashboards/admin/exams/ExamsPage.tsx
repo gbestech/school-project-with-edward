@@ -154,7 +154,9 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
   //     return;
   //   }
 
-  const handleEditExam = useCallback((exam: Exam) => {
+  // Update the handleEditExam function in ExamsPage.tsx
+
+const handleEditExam = useCallback((exam: Exam) => {
   console.log("📝 Editing exam:", exam);
   
   if (!exam.id) {
@@ -163,11 +165,10 @@ const ExamsPage: React.FC<ExamsPageProps> = ({
     fetchExams();
     return;
   }
-    
-     const normalizedForEdit = normalizeExamDataForEdit(exam);
-    console.log("✅ Normalized exam for editing:", normalizedForEdit);
-    
- // CRITICAL FIX: Ensure all required fields are properly mapped
+  
+  const normalizedForEdit = normalizeExamDataForEdit(exam);
+  
+  // CRITICAL FIX: Ensure all required fields are properly mapped
   const examWithAllFields = {
     ...normalizedForEdit,
     // Ensure grade_level is set (using correct snake_case field names)
