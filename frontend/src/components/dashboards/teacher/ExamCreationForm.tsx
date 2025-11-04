@@ -111,54 +111,7 @@ const ExamCreationForm: React.FC<ExamCreationFormProps> = ({
     }
   }, [isOpen, editingExam, prefill]);
 
-  // useEffect(() => {
-  //   if (editingExam) {
-  //     setFormData({
-  //       title: editingExam.title || '',
-  //       subject: editingExam.subject?.id || editingExam.subject || 0,
-  //       grade_level: editingExam.grade_level?.id || editingExam.grade_level || 0,
-  //       exam_type: editingExam.exam_type || 'test',
-  //       difficulty_level: editingExam.difficulty_level || 'medium',
-  //       exam_date: editingExam.exam_date || '',
-  //       start_time: editingExam.start_time || '',
-  //       end_time: editingExam.end_time || '',
-  //       duration_minutes: editingExam.duration_minutes || 45,
-  //       total_marks: editingExam.total_marks || 100,
-  //       pass_marks: editingExam.pass_marks || 50,
-  //       venue: editingExam.venue || '',
-  //       instructions: editingExam.instructions || '',
-  //       status: editingExam.status || 'scheduled',
-  //       is_practical: editingExam.is_practical || false,
-  //       requires_computer: editingExam.is_requires_computer || false,
-  //       is_online: editingExam.is_online || false,
-  //       objective_questions: editingExam.objective_questions || [],
-  //       theory_questions: editingExam.theory_questions || [],
-  //       practical_questions: editingExam.practical_questions || [],
-  //       custom_sections: editingExam.custom_sections || [],
-  //       objective_instructions: editingExam.objective_instructions || '',
-  //       theory_instructions: editingExam.theory_instructions || '',
-  //       practical_instructions: editingExam.practical_instructions || ''
-  //     });
-
-  //     setObjectiveQuestions(editingExam.objective_questions || []);
-  //     setTheoryQuestions(editingExam.theory_questions || []);
-  //     setPracticalQuestions(editingExam.practical_questions || []);
-  //     const existingCustom = editingExam.custom_sections || [];
-  //     setCustomSections(existingCustom);
-  //     setObjectiveInstructions(editingExam.objective_instructions || '');
-  //     setTheoryInstructions(editingExam.theory_instructions || '');
-  //     setPracticalInstructions(editingExam.practical_instructions || '');
-  //     const order: Array<{ kind: 'objective' | 'theory' | 'practical' | 'custom'; id?: number }> = [
-  //       { kind: 'objective' },
-  //       { kind: 'theory' },
-  //       { kind: 'practical' }
-  //     ];
-  //     for (const s of existingCustom) {
-  //       order.push({ kind: 'custom', id: s.id });
-  //     }
-  //     setSectionOrder(order);
-  //   }
-  // }, [editingExam]);
+  
 useEffect(() => {
   if (editingExam) {
     // NORMALIZE DATA FOR EDITING
