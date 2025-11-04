@@ -574,19 +574,23 @@ const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any
     gradeLevelId = exam?.grade_level?.id || exam?.grade_level || 0;
 
     // If IDs are still 0 or null, try to look them up by name
-    if ((!subjectId || subjectId === 0) && exam.subject_name && subjects) {
+    if ((!subjectId || subjectId === 0) && exam.subject_name && subjects && subjects.length > 0) {
       const foundSubject = subjects.find(s => s.name === exam.subject_name || s.code === exam.subject_code);
       if (foundSubject) {
         subjectId = foundSubject.id;
         console.log('✅ Found subject ID by name:', subjectId, foundSubject.name);
+      } else {
+        console.log('⚠️ Could not find subject:', exam.subject_name);
       }
     }
 
-    if ((!gradeLevelId || gradeLevelId === 0) && exam.grade_level_name && gradeLevels) {
+    if ((!gradeLevelId || gradeLevelId === 0) && exam.grade_level_name && gradeLevels && gradeLevels.length > 0) {
       const foundGrade = gradeLevels.find(g => g.name === exam.grade_level_name);
       if (foundGrade) {
         gradeLevelId = foundGrade.id;
         console.log('✅ Found grade level ID by name:', gradeLevelId, foundGrade.name);
+      } else {
+        console.log('⚠️ Could not find grade level:', exam.grade_level_name);
       }
     }
   }
@@ -627,14 +631,15 @@ const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any
 };
 
 const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSubmit }) => {
-  const [form, setForm] = useState<ExamCreateData>(getInitialState(exam));
-  const [activeTab, setActiveTab] = useState<"general" | "objectives" | "theory" | "practical" | "custom">("general");
-  
-  // Backend data states
+  // Backend data states - declare FIRST
   const [gradeLevels, setGradeLevels] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<any[]>([]);
   const [backendDataLoading, setBackendDataLoading] = useState(true);
+  
+  // Form state - initialize with empty defaults
+  const [form, setForm] = useState<ExamCreateData>(() => getInitialState(null, [], []));
+  const [activeTab, setActiveTab] = useState<"general" | "objectives" | "theory" | "practical" | "custom">("general");
 
   // Load backend data
   useEffect(() => {
@@ -665,29 +670,7 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
 
         setGradeLevels(gradeLevels);
         setSubjects(subjects);
-
-        // CRITICAL: Filter subjects based on exam's grade level if editing
-        if (exam && exam.grade_level) {
-          const gradeLevelId = exam.grade_level?.id || exam.grade_level;
-          console.log('🔍 Filtering subjects for grade level:', gradeLevelId);
-          
-          const selectedGradeLevel = gradeLevels.find(gl => gl?.id === gradeLevelId);
-          
-          if (selectedGradeLevel) {
-            const filtered = subjects.filter(subject => {
-              const subjectEducationLevels = subject?.education_levels || [];
-              const gradeEducationLevel = selectedGradeLevel?.education_level;
-              return subjectEducationLevels.includes(gradeEducationLevel);
-            });
-            console.log('✅ Filtered subjects:', filtered);
-            setFilteredSubjects(filtered);
-          } else {
-            console.log('⚠️ Grade level not found, showing all subjects');
-            setFilteredSubjects(subjects);
-          }
-        } else {
-          setFilteredSubjects(subjects);
-        }
+        setFilteredSubjects(subjects);
       } catch (err) {
         console.error('Error loading backend data:', err);
       } finally {
@@ -696,20 +679,37 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
     };
 
     loadBackendData();
-  }, [open, exam]);
+  }, [open]);
 
-  // Initialize form when modal opens or exam changes
+  // Initialize form when backend data is loaded
   useEffect(() => {
-    if (open) {
+    if (open && !backendDataLoading && subjects.length > 0 && gradeLevels.length > 0) {
       console.log('📝 Resetting form with exam:', exam);
-      const initialState = getInitialState(exam);
+      console.log('📚 Available subjects:', subjects.length);
+      console.log('📊 Available grade levels:', gradeLevels.length);
+      
+      const initialState = getInitialState(exam, subjects, gradeLevels);
       console.log('✅ Initial state:', initialState);
       setForm(initialState);
       setActiveTab("general");
+      
+      // Filter subjects for the loaded exam
+      if (exam && initialState.grade_level) {
+        const selectedGradeLevel = gradeLevels.find(gl => gl?.id === initialState.grade_level);
+        if (selectedGradeLevel) {
+          const filtered = subjects.filter(subject => {
+            const subjectEducationLevels = subject?.education_levels || [];
+            const gradeEducationLevel = selectedGradeLevel?.education_level;
+            return subjectEducationLevels.includes(gradeEducationLevel);
+          });
+          console.log('🔍 Filtered subjects for editing:', filtered.length);
+          setFilteredSubjects(filtered);
+        }
+      }
     }
-  }, [open, exam]);
+  }, [open, exam, backendDataLoading, subjects, gradeLevels]);
 
-  // Filter subjects based on selected grade level
+  // Filter subjects based on selected grade level (for user changes)
   useEffect(() => {
     if (form.grade_level && subjects.length > 0 && gradeLevels.length > 0) {
       const selectedGradeLevel = gradeLevels.find(gl => gl?.id === form.grade_level);
@@ -719,13 +719,11 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
           const gradeEducationLevel = selectedGradeLevel?.education_level;
           return subjectEducationLevels.includes(gradeEducationLevel);
         });
-        console.log('🔄 Updated filtered subjects:', filtered);
+        console.log('🔄 Updated filtered subjects:', filtered.length);
         setFilteredSubjects(filtered);
       } else {
         setFilteredSubjects(subjects);
       }
-    } else {
-      setFilteredSubjects(subjects);
     }
   }, [form.grade_level, subjects, gradeLevels]);
 
@@ -935,8 +933,8 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
                 <div className="form-group">
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
                     Grade Level * 
-                    {exam && <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>
-                      (Current: {form.grade_level})
+                    {exam && form.grade_level > 0 && <span style={{ fontSize: 12, color: '#10b981', marginLeft: 8 }}>
+                      ✓ Loaded: ID {form.grade_level}
                     </span>}
                   </label>
                   <select
@@ -959,8 +957,8 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
                 <div className="form-group">
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
                     Subject *
-                    {exam && <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>
-                      (Current: {form.subject})
+                    {exam && form.subject > 0 && <span style={{ fontSize: 12, color: '#10b981', marginLeft: 8 }}>
+                      ✓ Loaded: ID {form.subject}
                     </span>}
                   </label>
                   <select
@@ -1241,7 +1239,7 @@ const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSu
           )}
 
           <div className="modal-footer" style={{ 
-            display: "flex", 
+            display: "flex",
             gap: 12, 
             justifyContent: "flex-end", 
             marginTop: 24, 
