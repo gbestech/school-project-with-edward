@@ -88,10 +88,173 @@ export const normalizeExamDataForSave = (examData: any) => {
  * Normalize exam data after loading from API
  * Converts unified format to teacher format for editing
  */
+// export const normalizeExamDataForEdit = (examData: any) => {
+//   const normalized = { ...examData };
+
+//   console.log('🔄 Normalizing exam data for edit:', examData);
+
+//   // Normalize objective questions
+//   if (normalized.objective_questions?.length > 0) {
+//     normalized.objective_questions = normalized.objective_questions.map((q: any) => {
+//       let parsedTable = null;
+//       if (q.table) {
+//         try {
+//           parsedTable = typeof q.table === 'string' ? JSON.parse(q.table) : q.table;
+//         } catch (e) {
+//           console.error('Failed to parse table for objective question:', q, e);
+//         }
+//       }
+
+//       return {
+//         ...q,
+//         imageUrl: q.imageUrl || q.image || '',
+//         imageAlt: q.imageAlt || q.image_alt || '',
+//         table: parsedTable
+//       };
+//     });
+//   }
+
+//   // Normalize theory questions
+//   if (normalized.theory_questions?.length > 0) {
+//     normalized.theory_questions = normalized.theory_questions.map((q: any) => {
+//       let parsedTable = null;
+//       if (q.table) {
+//         try {
+//           parsedTable = typeof q.table === 'string' ? JSON.parse(q.table) : q.table;
+//         } catch (e) {
+//           console.error('Failed to parse table for theory question:', q, e);
+//         }
+//       }
+
+//       return {
+//         ...q,
+//         imageUrl: q.imageUrl || q.image || '',
+//         imageAlt: q.imageAlt || q.image_alt || '',
+//         table: parsedTable,
+//         // Normalize sub-questions
+//         subQuestions: (q.subQuestions || []).map((sq: any) => {
+//           let sqParsedTable = null;
+//           if (sq.table) {
+//             try {
+//               sqParsedTable = typeof sq.table === 'string' ? JSON.parse(sq.table) : sq.table;
+//             } catch (e) {
+//               console.error('Failed to parse table for sub-question:', sq, e);
+//             }
+//           }
+
+//           return {
+//             ...sq,
+//             imageUrl: sq.imageUrl || sq.image || '',
+//             imageAlt: sq.imageAlt || sq.image_alt || '',
+//             table: sqParsedTable,
+//             // Normalize sub-sub-questions
+//             subSubQuestions: (sq.subSubQuestions || []).map((ssq: any) => ({
+//               ...ssq,
+//               imageUrl: ssq.imageUrl || ssq.image || '',
+//               imageAlt: ssq.imageAlt || ssq.image_alt || ''
+//             }))
+//           };
+//         })
+//       };
+//     });
+//   }
+
+//   // Normalize practical questions
+//   if (normalized.practical_questions?.length > 0) {
+//     normalized.practical_questions = normalized.practical_questions.map((q: any) => {
+//       let parsedTable = null;
+//       if (q.table) {
+//         try {
+//           parsedTable = typeof q.table === 'string' ? JSON.parse(q.table) : q.table;
+//         } catch (e) {
+//           console.error('Failed to parse table for practical question:', q, e);
+//         }
+//       }
+
+//       return {
+//         ...q,
+//         imageUrl: q.imageUrl || q.image || '',
+//         imageAlt: q.imageAlt || q.image_alt || '',
+//         table: parsedTable
+//       };
+//     });
+//   }
+
+//   // Normalize custom sections
+//   if (normalized.custom_sections?.length > 0) {
+//     normalized.custom_sections = normalized.custom_sections.map((section: any) => ({
+//       ...section,
+//       questions: (section.questions || []).map((q: any) => {
+//         let parsedTable = null;
+//         if (q.table) {
+//           try {
+//             parsedTable = typeof q.table === 'string' ? JSON.parse(q.table) : q.table;
+//           } catch (e) {
+//             console.error('Failed to parse table for custom section question:', q, e);
+//           }
+//         }
+
+//         return {
+//           ...q,
+//           imageUrl: q.imageUrl || q.image || '',
+//           imageAlt: q.imageAlt || q.image_alt || '',
+//           table: parsedTable
+//         };
+//       })
+//     }));
+//   }
+
+//   console.log('✅ Normalized exam data for edit complete');
+
+//   return normalized;
+// };
+
+/**
+ * Normalize exam data after loading from API
+ * Converts unified format to teacher format for editing
+ */
 export const normalizeExamDataForEdit = (examData: any) => {
   const normalized = { ...examData };
 
   console.log('🔄 Normalizing exam data for edit:', examData);
+
+  // CRITICAL FIX: Preserve all essential fields with multiple fallbacks
+  normalized.grade_level = examData.grade_level || 
+                          examData.gradeLevel || 
+                          examData.grade_level_id ||
+                          null;
+  
+  normalized.subject = examData.subject || 
+                       examData.subject_id ||
+                       null;
+  
+  normalized.max_students = examData.max_students || 
+                           examData.maxStudents ||
+                           null;
+
+  // Preserve display names
+  normalized.grade_level_name = examData.grade_level_name || 
+                               examData.gradeLevelName || 
+                               '';
+  
+  normalized.subject_name = examData.subject_name || 
+                           examData.subjectName || 
+                           '';
+
+  // Preserve other essential fields
+  normalized.exam_type = examData.exam_type || examData.examType || '';
+  normalized.exam_date = examData.exam_date || examData.examDate || '';
+  normalized.duration = examData.duration || 0;
+  normalized.total_marks = examData.total_marks || examData.totalMarks || 0;
+  normalized.instructions = examData.instructions || '';
+
+  console.log('✅ Essential fields after normalization:', {
+    grade_level: normalized.grade_level,
+    subject: normalized.subject,
+    max_students: normalized.max_students,
+    grade_level_name: normalized.grade_level_name,
+    subject_name: normalized.subject_name
+  });
 
   // Normalize objective questions
   if (normalized.objective_questions?.length > 0) {
