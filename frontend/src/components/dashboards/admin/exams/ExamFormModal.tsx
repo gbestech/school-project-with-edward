@@ -596,25 +596,18 @@ const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any
     }
   }
   
-  // Normalize difficulty level to match dropdown options
-  // Only set if it's a valid non-empty value
-  let difficultyLevel = "";
-  if (exam?.difficulty_level && exam.difficulty_level.trim() !== "") {
-    difficultyLevel = String(exam.difficulty_level).toLowerCase().trim();
-    console.log('✅ Difficulty level loaded:', difficultyLevel);
-  } else {
-    console.log('⚠️ Difficulty level is empty or null:', exam?.difficulty_level);
-  }
+   const difficultyLevel = exam?.difficulty_level 
+    ? String(exam.difficulty_level).toLowerCase().trim()
+    : "";
   
-  // Handle max_students - must be a positive number
-  // Only set if it's greater than 0
-  let maxStudents = 0;
-  if (exam?.max_students && Number(exam.max_students) > 0) {
-    maxStudents = Number(exam.max_students);
-    console.log('✅ Max students loaded:', maxStudents);
-  } else {
-    console.log('⚠️ Max students is 0 or null:', exam?.max_students);
-  }
+  console.log('📊 Difficulty level:', difficultyLevel || '(empty)');
+  
+  // Handle max_students - preserve the value even if 0
+  const maxStudents = exam?.max_students !== undefined && exam?.max_students !== null
+    ? Number(exam.max_students)
+    : 0;
+  
+  console.log('👥 Max students:', maxStudents);
   
   console.log('🔄 Initializing form with exam:', exam);
   console.log('📊 Extracted IDs:', { subjectId, gradeLevelId });
