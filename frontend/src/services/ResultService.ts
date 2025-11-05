@@ -526,12 +526,15 @@ class ResultService {
   async getExamSessions(params?: FilterParams): Promise<ExamSessionInfo[]> {
     try {
       const response = await api.get(`${this.baseURL}/exam-sessions/`, { params });
+        console.log("Here is the session", response)
       return Array.isArray(response) ? response : (response?.results || []);
     } catch (error) {
       console.error('Error fetching exam sessions:', error);
       return [];
     }
+    
   }
+
 
   // CRUD operations - UPDATED to use hierarchical endpoints
   async createStudentResult(data: any, educationLevel: string) {
