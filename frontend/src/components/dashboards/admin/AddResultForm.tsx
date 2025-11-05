@@ -272,7 +272,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
       // Only load exam sessions initially, students will be loaded based on filters
       const examSessionsResponse = await ResultService.getExamSessions();
       setExamSessions(examSessionsResponse);
-      
+      console.log("Here is exam response", examSessionsResponse)
       // Load some default subjects for all education levels as fallback
       try {
         console.log('🔍 [AddResultForm] Loading fallback subjects...');
