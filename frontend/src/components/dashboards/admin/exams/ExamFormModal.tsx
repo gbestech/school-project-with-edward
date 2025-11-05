@@ -563,6 +563,7 @@ const safeArrayFromResponse = (data: any): any[] => {
   return [];
 };
 
+
 const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any[]): ExamCreateData => {
   let subjectId = 0;
   let gradeLevelId = 0;
@@ -594,51 +595,138 @@ const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any
       }
     }
   }
-  // Normalize difficulty level to match dropdown options
-  const difficultyLevel = exam?.difficulty_level 
-    ? String(exam.difficulty_level).toLowerCase() 
-    : "";
   
-  // Handle max_students - ensure it's a number or 0
-  const maxStudents = exam?.max_students != null 
-    ? Number(exam.max_students) 
-    : 0;
+  // Normalize difficulty level to match dropdown options
+  // Only set if it's a valid non-empty value
+  let difficultyLevel = "";
+  if (exam?.difficulty_level && exam.difficulty_level.trim() !== "") {
+    difficultyLevel = String(exam.difficulty_level).toLowerCase().trim();
+    console.log('✅ Difficulty level loaded:', difficultyLevel);
+  } else {
+    console.log('⚠️ Difficulty level is empty or null:', exam?.difficulty_level);
+  }
+  
+  // Handle max_students - must be a positive number
+  // Only set if it's greater than 0
+  let maxStudents = 0;
+  if (exam?.max_students && Number(exam.max_students) > 0) {
+    maxStudents = Number(exam.max_students);
+    console.log('✅ Max students loaded:', maxStudents);
+  } else {
+    console.log('⚠️ Max students is 0 or null:', exam?.max_students);
+  }
   
   console.log('🔄 Initializing form with exam:', exam);
   console.log('📊 Extracted IDs:', { subjectId, gradeLevelId });
   console.log('📋 Other fields:', { difficultyLevel, maxStudents });
-    
+  
   return {
-    title: exam?.title ?? "",
-    description: exam?.description ?? "",
+    title: exam?.title || "",
+    description: exam?.description || "",
     subject: subjectId,
     grade_level: gradeLevelId,
-    exam_type: exam?.exam_type ?? "",
-    difficulty_level: exam?.difficulty_level ?? "",
-    exam_date: exam?.exam_date ?? "",
-    start_time: exam?.start_time ?? "",
-    end_time: exam?.end_time ?? "",
-    duration_minutes: exam?.duration_minutes ?? 0,
-    total_marks: exam?.total_marks ?? 0,
-    pass_marks: exam?.pass_marks ?? 0,
-    venue: exam?.venue ?? "",
-    max_students: exam?.max_students ?? 0,
-    instructions: exam?.instructions ?? "",
-    materials_allowed: exam?.materials_allowed ?? "",
-    materials_provided: exam?.materials_provided ?? "",
-    status: exam?.status ?? "draft",
-    is_practical: exam?.is_practical ?? false,
-    requires_computer: exam?.requires_computer ?? false,
-    is_online: exam?.is_online ?? false,
-    objective_questions: exam?.objective_questions ?? [],
-    theory_questions: exam?.theory_questions ?? [],
-    practical_questions: exam?.practical_questions ?? [],
-    custom_sections: exam?.custom_sections ?? [],
-    objective_instructions: exam?.objective_instructions ?? "",
-    theory_instructions: exam?.theory_instructions ?? "",
-    practical_instructions: exam?.practical_instructions ?? "",
+    exam_type: exam?.exam_type || "",
+    difficulty_level: difficultyLevel,
+    exam_date: exam?.exam_date || "",
+    start_time: exam?.start_time || "",
+    end_time: exam?.end_time || "",
+    duration_minutes: exam?.duration_minutes || 0,
+    total_marks: exam?.total_marks || 0,
+    pass_marks: exam?.pass_marks || 0,
+    venue: exam?.venue || "",
+    max_students: maxStudents,
+    instructions: exam?.instructions || "",
+    materials_allowed: exam?.materials_allowed || "",
+    materials_provided: exam?.materials_provided || "",
+    status: exam?.status || "draft",
+    is_practical: exam?.is_practical || false,
+    requires_computer: exam?.requires_computer || false,
+    is_online: exam?.is_online || false,
+    objective_questions: exam?.objective_questions || [],
+    theory_questions: exam?.theory_questions || [],
+    practical_questions: exam?.practical_questions || [],
+    custom_sections: exam?.custom_sections || [],
+    objective_instructions: exam?.objective_instructions || "",
+    theory_instructions: exam?.theory_instructions || "",
+    practical_instructions: exam?.practical_instructions || "",
   };
 };
+// const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any[]): ExamCreateData => {
+//   let subjectId = 0;
+//   let gradeLevelId = 0;
+
+//   // Try to extract IDs from the exam object
+//   if (exam) {
+//     // First try direct ID access
+//     subjectId = exam?.subject?.id || exam?.subject || 0;
+//     gradeLevelId = exam?.grade_level?.id || exam?.grade_level || 0;
+
+//     // If IDs are still 0 or null, try to look them up by name
+//     if ((!subjectId || subjectId === 0) && exam.subject_name && subjects && subjects.length > 0) {
+//       const foundSubject = subjects.find(s => s.name === exam.subject_name || s.code === exam.subject_code);
+//       if (foundSubject) {
+//         subjectId = foundSubject.id;
+//         console.log('✅ Found subject ID by name:', subjectId, foundSubject.name);
+//       } else {
+//         console.log('⚠️ Could not find subject:', exam.subject_name);
+//       }
+//     }
+
+//     if ((!gradeLevelId || gradeLevelId === 0) && exam.grade_level_name && gradeLevels && gradeLevels.length > 0) {
+//       const foundGrade = gradeLevels.find(g => g.name === exam.grade_level_name);
+//       if (foundGrade) {
+//         gradeLevelId = foundGrade.id;
+//         console.log('✅ Found grade level ID by name:', gradeLevelId, foundGrade.name);
+//       } else {
+//         console.log('⚠️ Could not find grade level:', exam.grade_level_name);
+//       }
+//     }
+//   }
+//   // Normalize difficulty level to match dropdown options
+//   const difficultyLevel = exam?.difficulty_level 
+//     ? String(exam.difficulty_level).toLowerCase() 
+//     : "";
+  
+//   // Handle max_students - ensure it's a number or 0
+//   const maxStudents = exam?.max_students != null 
+//     ? Number(exam.max_students) 
+//     : 0;
+  
+//   console.log('🔄 Initializing form with exam:', exam);
+//   console.log('📊 Extracted IDs:', { subjectId, gradeLevelId });
+//   console.log('📋 Other fields:', { difficultyLevel, maxStudents });
+    
+//   return {
+//     title: exam?.title ?? "",
+//     description: exam?.description ?? "",
+//     subject: subjectId,
+//     grade_level: gradeLevelId,
+//     exam_type: exam?.exam_type ?? "",
+//     difficulty_level: exam?.difficulty_level ?? "",
+//     exam_date: exam?.exam_date ?? "",
+//     start_time: exam?.start_time ?? "",
+//     end_time: exam?.end_time ?? "",
+//     duration_minutes: exam?.duration_minutes ?? 0,
+//     total_marks: exam?.total_marks ?? 0,
+//     pass_marks: exam?.pass_marks ?? 0,
+//     venue: exam?.venue ?? "",
+//     max_students: exam?.max_students ?? 0,
+//     instructions: exam?.instructions ?? "",
+//     materials_allowed: exam?.materials_allowed ?? "",
+//     materials_provided: exam?.materials_provided ?? "",
+//     status: exam?.status ?? "draft",
+//     is_practical: exam?.is_practical ?? false,
+//     requires_computer: exam?.requires_computer ?? false,
+//     is_online: exam?.is_online ?? false,
+//     objective_questions: exam?.objective_questions ?? [],
+//     theory_questions: exam?.theory_questions ?? [],
+//     practical_questions: exam?.practical_questions ?? [],
+//     custom_sections: exam?.custom_sections ?? [],
+//     objective_instructions: exam?.objective_instructions ?? "",
+//     theory_instructions: exam?.theory_instructions ?? "",
+//     practical_instructions: exam?.practical_instructions ?? "",
+//   };
+// };
 
 const ExamFormModal: React.FC<ExamFormModalProps> = ({ open, exam, onClose, onSubmit }) => {
   // Backend data states - declare FIRST
