@@ -692,14 +692,14 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
       return;
     }
 
-    // Convert academic_session to integer and prepare payload
+    // Convert academic_session to string and prepare payload
     const payload = {
       ...examSessionForm,
-      academic_session: parseInt(examSessionForm.academic_session)
+      academic_session: String(examSessionForm.academic_session)
     };
     
     console.log('Creating exam session with payload:', payload);
-      await resultSettingsService.createExamSession(examSessionForm);
+      await resultSettingsService.createExamSession(payload);
       toast.success('Exam session created successfully');
       setShowExamSessionForm(false);
       resetExamSessionForm();
@@ -735,14 +735,14 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
       return;
     }
     
-    // Convert academic_session to integer and prepare payload
+    // Convert academic_session to string and prepare payload
     const payload = {
       ...examSessionForm,
-      academic_session: parseInt(examSessionForm.academic_session)
+      academic_session: String(examSessionForm.academic_session)
     };
     
     console.log('Updating exam session with payload:', payload);
-      await resultSettingsService.updateExamSession(id, examSessionForm);
+      await resultSettingsService.updateExamSession(id, payload);
       toast.success('Exam session updated successfully');
       setShowExamSessionForm(false);
       resetExamSessionForm();
