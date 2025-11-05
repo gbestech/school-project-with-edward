@@ -36,7 +36,7 @@ interface ExamSession {
   name: string;
   exam_type: string;
   term: string;
-  academic_session?: AcademicSession;
+   academic_session?: AcademicSession | string | number;
 }
 
 interface GradingSystem {
@@ -1340,7 +1340,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                   <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
                     Exam Session *
                   </label>
-                  <select
+                    <select
                     value={formData.exam_session}
                     onChange={(e) => handleInputChange('exam_session', e.target.value)}
                     className={`w-full px-3 py-2 rounded-lg border ${
@@ -1351,7 +1351,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                     <option value="">Select Exam Session</option>
                     {examSessions.map(session => (
                       <option key={session.id} value={session.id}>
-                        {session.name} - {session.academic_session?.name || 'No Session'}
+                        {session.name} - {typeof session.academic_session === 'object' && session.academic_session !== null ? (session.academic_session as AcademicSession).name : (session.academic_session ? String(session.academic_session) : 'No Session')}
                       </option>
                     ))}
                   </select>

@@ -49,7 +49,7 @@ export interface ExamSession {
   academic_session: AcademicSession | string | number;
   start_date: string;
   end_date: string;
-  result_release_date: string;
+  result_release_date?: string;
   is_published: boolean;
   is_active: boolean;
 }
