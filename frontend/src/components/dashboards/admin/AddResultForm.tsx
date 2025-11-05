@@ -1351,7 +1351,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
                     <option value="">Select Exam Session</option>
                     {examSessions.map(session => (
                       <option key={session.id} value={session.id}>
-                        {session.name} - {typeof session.academic_session === 'object' && session.academic_session !== null ? (session.academic_session as AcademicSession).name : (session.academic_session ? String(session.academic_session) : 'No Session')}
+                        {session.name} - {typeof session.academic_session === 'object' && session.academic_session.name !== null ? (session.academic_session as AcademicSession).name : (session.academic_session ? String(session.academic_session) : 'No Session')}
                       </option>
                     ))}
                   </select>
