@@ -702,7 +702,7 @@ class ResultService {
   }
 
   async getAvailableStreams(classLevel?: string) {
-    return api.get('academic/streams/', { class_level: classLevel });
+    return api.get(`${this.baseURL}/academic/streams/`, { class_level: classLevel });
   }
 
   // NEW: Configuration methods - UPDATED endpoints
