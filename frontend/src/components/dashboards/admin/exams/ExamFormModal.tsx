@@ -594,39 +594,49 @@ const getInitialState = (exam?: Exam | null, subjects?: any[], gradeLevels?: any
       }
     }
   }
+  // Normalize difficulty level to match dropdown options
+  const difficultyLevel = exam?.difficulty_level 
+    ? String(exam.difficulty_level).toLowerCase() 
+    : "";
+  
+  // Handle max_students - ensure it's a number or 0
+  const maxStudents = exam?.max_students != null 
+    ? Number(exam.max_students) 
+    : 0;
   
   console.log('🔄 Initializing form with exam:', exam);
   console.log('📊 Extracted IDs:', { subjectId, gradeLevelId });
-  
+  console.log('📋 Other fields:', { difficultyLevel, maxStudents });
+    
   return {
-    title: exam?.title || "",
-    description: exam?.description || "",
+    title: exam?.title ?? "",
+    description: exam?.description ?? "",
     subject: subjectId,
     grade_level: gradeLevelId,
-    exam_type: exam?.exam_type || "",
-    difficulty_level: exam?.difficulty_level || "",
-    exam_date: exam?.exam_date || "",
-    start_time: exam?.start_time || "",
-    end_time: exam?.end_time || "",
-    duration_minutes: exam?.duration_minutes || 0,
-    total_marks: exam?.total_marks || 0,
-    pass_marks: exam?.pass_marks || 0,
-    venue: exam?.venue || "",
-    max_students: exam?.max_students || 0,
-    instructions: exam?.instructions || "",
-    materials_allowed: exam?.materials_allowed || "",
-    materials_provided: exam?.materials_provided || "",
-    status: exam?.status || "draft",
-    is_practical: exam?.is_practical || false,
-    requires_computer: exam?.requires_computer || false,
-    is_online: exam?.is_online || false,
-    objective_questions: exam?.objective_questions || [],
-    theory_questions: exam?.theory_questions || [],
-    practical_questions: exam?.practical_questions || [],
-    custom_sections: exam?.custom_sections || [],
-    objective_instructions: exam?.objective_instructions || "",
-    theory_instructions: exam?.theory_instructions || "",
-    practical_instructions: exam?.practical_instructions || "",
+    exam_type: exam?.exam_type ?? "",
+    difficulty_level: exam?.difficulty_level ?? "",
+    exam_date: exam?.exam_date ?? "",
+    start_time: exam?.start_time ?? "",
+    end_time: exam?.end_time ?? "",
+    duration_minutes: exam?.duration_minutes ?? 0,
+    total_marks: exam?.total_marks ?? 0,
+    pass_marks: exam?.pass_marks ?? 0,
+    venue: exam?.venue ?? "",
+    max_students: exam?.max_students ?? 0,
+    instructions: exam?.instructions ?? "",
+    materials_allowed: exam?.materials_allowed ?? "",
+    materials_provided: exam?.materials_provided ?? "",
+    status: exam?.status ?? "draft",
+    is_practical: exam?.is_practical ?? false,
+    requires_computer: exam?.requires_computer ?? false,
+    is_online: exam?.is_online ?? false,
+    objective_questions: exam?.objective_questions ?? [],
+    theory_questions: exam?.theory_questions ?? [],
+    practical_questions: exam?.practical_questions ?? [],
+    custom_sections: exam?.custom_sections ?? [],
+    objective_instructions: exam?.objective_instructions ?? "",
+    theory_instructions: exam?.theory_instructions ?? "",
+    practical_instructions: exam?.practical_instructions ?? "",
   };
 };
 
