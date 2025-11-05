@@ -46,10 +46,7 @@ export interface ExamSession {
   name: string;
   exam_type: string;
   term: string;
-  academic_session: {
-    id: string;
-    name: string;
-  };
+  academic_session: AcademicSession
   start_date: string;
   end_date: string;
   result_release_date: string;
