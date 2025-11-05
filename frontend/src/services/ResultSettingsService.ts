@@ -408,11 +408,16 @@ class ResultSettingsService {
   async getAcademicSessions(): Promise<AcademicSession[]> {
     try {
       const response = await api.get('/api/academics/sessions/');
+
+       console.log("Response for academic session", response)
+
+       
       return this.handleApiResponse<AcademicSession>(response);
     } catch (error) {
       console.error('Error fetching academic sessions:', error);
       throw error;
     }
+   
   }
 
   async getAcademicSession(id: string): Promise<AcademicSession> {
