@@ -2117,6 +2117,8 @@ export interface CustomSection {
  export interface AcademicSession {
   id: string;        // Django uses AutoField (int), but DRF usually serializes as string or number.
   name: string;
+  academic_session?: string;
+  academic_session_name?: string 
   start_date: string;  // "YYYY-MM-DD"
   end_date: string;    // "YYYY-MM-DD"
   is_current: boolean;

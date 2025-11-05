@@ -2471,9 +2471,9 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
 >
   <option value="">Select Academic Session</option>
   {academicSessions?.map(session => (
-    <option key={session.id} value={session.id}>
-      {session.name}
-    </option>
+   <option key={session.academic_session} value={session.academic_session}>
+    {session.academic_session_name}
+  </option>
   ))}
 </select>
   </div>
