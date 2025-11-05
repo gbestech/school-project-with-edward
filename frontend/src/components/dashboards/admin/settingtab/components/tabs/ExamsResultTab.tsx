@@ -1560,25 +1560,53 @@ const handleUpdateExamSession = async (id: string) => {
                     <div key={session.id} className="bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-200">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">{session.name}</h3>
-                            {session.is_published && (
-                              <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full flex items-center">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Published
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="text-lg font-semibold text-gray-900">{session.name}</h3>
+                              {session.is_published && (
+                                <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full flex items-center">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Published
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-600 text-sm mb-3">
+                              {/* {typeof session.academic_session === 'object'
+                                ? (session.academic_session as AcademicSession).name ?? 'No session'
+                                : (
+                                    // try to resolve id/string to a name from loaded academicSessions,
+                                    // otherwise show the raw value or fallback to 'No session'
+                                    academicSessions.find(s => s.id === session.academic_session)?.name
+                                    ?? (session.academic_session !== undefined && session.academic_session !== null ? String(session.academic_session) : 'No session')
+                                  )
+                              } */}
+
+                              {(() => {
+            // If it's an object with name property
+            if (typeof session.academic_session === 'object' && session.academic_session?.name) {
+              return session.academic_session.name;
+            }
+            
+            // If it's an ID (number or string), look it up
+            if (session.academic_session) {
+              const foundSession = academicSessions.find(
+                s => String(s.id) === String(session.academic_session)
+              );
+              return foundSession?.name || 'Unknown session';
+            }
+            
+            // Fallback
+            return 'No session';
+          })()}
+                            </p>
+                            <div className="flex items-center space-x-3">
+                              <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-3 py-1 rounded-full">
+                                {session.exam_type}
                               </span>
-                            )}
+                              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
+                                {session.term}
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-gray-600 text-sm mb-3">{session.academic_session?.name || 'No session'}</p>
-                          <div className="flex items-center space-x-3">
-                            <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-3 py-1 rounded-full">
-                              {session.exam_type}
-                            </span>
-                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
-                              {session.term}
-                            </span>
-                          </div>
-                        </div>
                         <div className="flex items-center space-x-2">
                           <button
                             className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all duration-200"
