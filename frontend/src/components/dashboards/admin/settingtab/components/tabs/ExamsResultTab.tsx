@@ -791,7 +791,7 @@ const handleCreateExamSession = async () => {
     // ✅ Convert academic_session to integer before sending
     const payload = {
       ...examSessionForm,
-      academic_session: Number(examSessionForm.academic_session),
+      academic_session: (examSessionForm.academic_session),
     };
 
     console.log("Creating exam session with payload:", payload);
@@ -834,7 +834,7 @@ const handleUpdateExamSession = async (id: string) => {
     // ✅ Convert academic_session to integer before sending
     const payload = {
       ...examSessionForm,
-      academic_session: Number(examSessionForm.academic_session),
+      academic_session: (examSessionForm.academic_session),
     };
 
     console.log("Updating exam session with payload:", payload);
