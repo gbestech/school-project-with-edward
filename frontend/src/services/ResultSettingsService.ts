@@ -249,18 +249,29 @@ export interface GradeCreateUpdate {
   is_passing: boolean;
 }
 
+// export interface ExamSessionCreateUpdate {
+//   name: string;
+//   exam_type: string;
+//   term: string;
+//   academic_session: string;
+//   start_date: string;
+//   end_date: string;
+//   result_release_date: string;
+//   is_published: boolean;
+//   is_active: boolean;
+// }
+
 export interface ExamSessionCreateUpdate {
+  academic_session: string | number;
   name: string;
   exam_type: string;
   term: string;
-  academic_session: string;
   start_date: string;
   end_date: string;
   result_release_date: string;
   is_published: boolean;
   is_active: boolean;
 }
-
 // Education level specific result interfaces
 export interface NurseryResult {
   id: string;
@@ -411,7 +422,7 @@ class ResultSettingsService {
 
        console.log("Response for academic session", response)
 
-       
+
       return this.handleApiResponse<AcademicSession>(response);
     } catch (error) {
       console.error('Error fetching academic sessions:', error);
