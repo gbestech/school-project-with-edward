@@ -1472,7 +1472,7 @@ const ExamsResultTab: React.FC<ExamsResultTabProps> = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-600 text-sm mb-3">{session.academic_session?.name || session.name || 'No session'}</p>
+                          <p className="text-gray-600 text-sm mb-3">{session.academic_session?.name || 'No session'}</p>
                           <div className="flex items-center space-x-3">
                             <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-3 py-1 rounded-full">
                               {session.exam_type}
