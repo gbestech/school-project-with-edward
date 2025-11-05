@@ -46,7 +46,7 @@ export interface ExamSession {
   name: string;
   exam_type: string;
   term: string;
-  academic_session: AcademicSession
+  academic_session: AcademicSession | string | number;
   start_date: string;
   end_date: string;
   result_release_date: string;
