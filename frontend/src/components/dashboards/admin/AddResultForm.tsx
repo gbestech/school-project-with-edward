@@ -358,25 +358,6 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     }
   };
 
-//   const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
-//     try {
-//       const gradingSystemsResponse = await api.get('/api/results/grading-systems/', {
-        
-//         params: { education_level: educationLevel }
-//       });
-//       setGradingSystems(
-//   Array.isArray(gradingSystemsResponse.data)
-//     ? gradingSystemsResponse.data
-//     : gradingSystemsResponse.data?.results || []
-// );
-
-//       console.log("This is Grading System Response", gradingSystemsResponse)
-//       console.log("This is Grading System", gradingSystems)
-//     } catch (error) {
-//       console.error('Error loading grading systems:', error);
-//       toast.error('Failed to load grading systems');
-//     }
-//   };
 
 const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     try {
@@ -469,48 +450,37 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     
     // Define remark templates based on grade ranges
     const remarkTemplates = {
-      'A+': [
+      'A': [
         'Excellent performance! Outstanding work and dedication.',
         'Exceptional achievement. Keep up the excellent work!',
         'Outstanding performance. You are a model student.',
         'Brilliant work! Your dedication is commendable.'
       ],
-      'A': [
+      'B': [
         'Very good performance. Well done!',
         'Excellent work. Keep maintaining this standard.',
         'Great achievement. Continue to excel.',
         'Very good performance. You should be proud.'
       ],
-      'B+': [
+      'C': [
         'Good performance. Keep up the good work.',
         'Well done! Continue to improve.',
         'Good effort. You are making progress.',
         'Satisfactory performance. Keep working hard.'
       ],
-      'B': [
+      'D': [
         'Fair performance. Room for improvement.',
         'Average work. Try to do better next time.',
         'Satisfactory performance. Keep working hard.',
         'Fair effort. Focus on areas that need improvement.'
       ],
-      'C+': [
+      'E': [
         'Below average performance. More effort needed.',
         'Needs improvement. Focus on your studies.',
         'Below expectations. Work harder next time.',
         'Room for improvement. Keep working hard.'
       ],
-      'C': [
-        'Below average performance. More effort needed.',
-        'Needs improvement. Focus on your studies.',
-        'Below expectations. Work harder next time.',
-        'Room for improvement. Keep working hard.'
-      ],
-      'D': [
-        'Very poor performance. Immediate intervention required.',
-        'Failing grade. Urgent attention needed.',
-        'Unsatisfactory performance. Parent meeting required.',
-        'Critical performance. Seek academic support.'
-      ],
+     
       'F': [
         'Failed. Immediate remedial action required.',
         'Complete failure. Urgent academic intervention needed.',
@@ -524,14 +494,12 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     
     // If no grade provided, determine based on score
     if (!grade && score > 0) {
-      if (score >= 90) gradeRemarks = remarkTemplates['A+'];
-      else if (score >= 80) gradeRemarks = remarkTemplates['A'];
-      else if (score >= 70) gradeRemarks = remarkTemplates['B+'];
+      if (score >= 70) gradeRemarks = remarkTemplates['A'];
       else if (score >= 60) gradeRemarks = remarkTemplates['B'];
-      else if (score >= 50) gradeRemarks = remarkTemplates['B+']; // Good remarks for 50+
-      else if (score >= 40) gradeRemarks = remarkTemplates['B']; // Fair remarks for 40-49
-      else if (score >= 30) gradeRemarks = remarkTemplates['C+']; // Below average for 30-39
-      else gradeRemarks = remarkTemplates['C']; // Poor remarks only below 30
+      else if (score >= 50) gradeRemarks = remarkTemplates['C'];
+      else if (score >= 45) gradeRemarks = remarkTemplates['D'];
+      else if (score >= 39) gradeRemarks = remarkTemplates['E']; // Fair remarks for 40-49
+      else gradeRemarks = remarkTemplates['F']; // Poor remarks only below 30
     }
 
     // Return a random remark from the appropriate category
@@ -558,8 +526,6 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
         newFormData.grade = generateGrade(totalScore);
       }
       
-      // Note: Position, Class Average, Highest/Lowest will be calculated later
-      // when all students' results are recorded for the same subject/exam session
     }
 
     setFormData(newFormData);
@@ -736,11 +702,11 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
   // Generate grade based on total score
   const generateGrade = (totalScore: number): string => {
     // Default grading system (can be enhanced to use actual grading system data)
-    if (totalScore >= 90) return 'A';
-    if (totalScore >= 80) return 'B';
-    if (totalScore >= 70) return 'C';
-    if (totalScore >= 60) return 'D';
-    if (totalScore >= 50) return 'E';
+    if (totalScore >= 70) return 'A';
+    if (totalScore >= 60) return 'B';
+    if (totalScore >= 50) return 'C';
+    if (totalScore >= 45) return 'D';
+    if (totalScore >= 39) return 'E';
     return 'F';
   };
 
