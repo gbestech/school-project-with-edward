@@ -358,23 +358,56 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     }
   };
 
-  const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
+//   const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
+//     try {
+//       const gradingSystemsResponse = await api.get('/api/results/grading-systems/', {
+        
+//         params: { education_level: educationLevel }
+//       });
+//       setGradingSystems(
+//   Array.isArray(gradingSystemsResponse.data)
+//     ? gradingSystemsResponse.data
+//     : gradingSystemsResponse.data?.results || []
+// );
+
+//       console.log("This is Grading System Response", gradingSystemsResponse)
+//       console.log("This is Grading System", gradingSystems)
+//     } catch (error) {
+//       console.error('Error loading grading systems:', error);
+//       toast.error('Failed to load grading systems');
+//     }
+//   };
+
+const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     try {
       const gradingSystemsResponse = await api.get('/api/results/grading-systems/', {
-        
         params: { education_level: educationLevel }
       });
-      setGradingSystems(
-  Array.isArray(gradingSystemsResponse.data)
-    ? gradingSystemsResponse.data
-    : gradingSystemsResponse.data?.results || []
-);
-
-      console.log("This is Grading System Response", gradingSystemsResponse)
-      console.log("This is Grading System", gradingSystems)
+      
+      console.log("This is Grading System Response", gradingSystemsResponse);
+      
+      // Handle different response formats
+      let systemsData = [];
+      if (Array.isArray(gradingSystemsResponse)) {
+        // Direct array response
+        systemsData = gradingSystemsResponse;
+      } else if (Array.isArray(gradingSystemsResponse.data)) {
+        // Response wrapped in .data
+        systemsData = gradingSystemsResponse.data;
+      } else if (gradingSystemsResponse.data?.results) {
+        // Paginated response
+        systemsData = gradingSystemsResponse.data.results;
+      } else if (gradingSystemsResponse.results) {
+        // Results at root level
+        systemsData = gradingSystemsResponse.results;
+      }
+      
+      setGradingSystems(systemsData);
+      console.log("This is Grading System", systemsData);
     } catch (error) {
       console.error('Error loading grading systems:', error);
       toast.error('Failed to load grading systems');
+      setGradingSystems([]);
     }
   };
 
@@ -399,10 +432,6 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
         params.append('student_class', studentClass);
       }
       
-      // Note: classroom filtering might not be supported by the backend API
-      // if (classSection) {
-      //   params.append('classroom', classSection);
-      // }
       
       const response = await api.get(`/api/students/students/?${params.toString()}`);
       const studentsData = response?.results || response || [];

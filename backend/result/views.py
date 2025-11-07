@@ -79,62 +79,80 @@ def get_next_term_begins_date(exam_session):
     """Get the next term begins date for the given exam session"""
     try:
         # Ensure we have the academic_session relationship loaded
-        if not hasattr(exam_session, 'academic_session') or not exam_session.academic_session:
-            logger.error(f"Exam session {exam_session.id} does not have academic_session relationship loaded")
+        if (
+            not hasattr(exam_session, "academic_session")
+            or not exam_session.academic_session
+        ):
+            logger.error(
+                f"Exam session {exam_session.id} does not have academic_session relationship loaded"
+            )
             return None
-            
+
         # Get the current term from the exam session
         current_term_name = exam_session.term
         current_academic_session = exam_session.academic_session
-        
-        logger.info(f"Getting next term begins date for term: {current_term_name}, academic_session: {current_academic_session.name}")
-        
+
+        logger.info(
+            f"Getting next term begins date for term: {current_term_name}, academic_session: {current_academic_session.name}"
+        )
+
         # Define term order
         term_order = ["FIRST", "SECOND", "THIRD"]
-        
+
         # Find current term index
         if current_term_name not in term_order:
             logger.error(f"Invalid term name: {current_term_name}")
             return None
-            
+
         current_index = term_order.index(current_term_name)
-        
+
         # If it's not the last term, get the next term
         if current_index < len(term_order) - 1:
             next_term_name = term_order[current_index + 1]
             next_term = Term.objects.filter(
                 academic_session=current_academic_session,
                 name=next_term_name,
-                is_active=True
+                is_active=True,
             ).first()
-            
+
             if next_term and next_term.next_term_begins:
-                logger.info(f"Found next term {next_term_name} with next_term_begins: {next_term.next_term_begins}")
+                logger.info(
+                    f"Found next term {next_term_name} with next_term_begins: {next_term.next_term_begins}"
+                )
                 return next_term.next_term_begins
             else:
-                logger.warning(f"Next term {next_term_name} not found or has no next_term_begins date")
+                logger.warning(
+                    f"Next term {next_term_name} not found or has no next_term_begins date"
+                )
         else:
             # If it's the last term, get the first term of the next academic session
-            next_academic_session = AcademicSession.objects.filter(
-                start_date__gt=current_academic_session.end_date,
-                is_active=True
-            ).order_by('start_date').first()
-            
+            next_academic_session = (
+                AcademicSession.objects.filter(
+                    start_date__gt=current_academic_session.end_date, is_active=True
+                )
+                .order_by("start_date")
+                .first()
+            )
+
             if next_academic_session:
                 next_term = Term.objects.filter(
-                    academic_session=next_academic_session,
-                    name="FIRST",
-                    is_active=True
+                    academic_session=next_academic_session, name="FIRST", is_active=True
                 ).first()
-                
+
                 if next_term and next_term.next_term_begins:
-                    logger.info(f"Found first term of next academic session with next_term_begins: {next_term.next_term_begins}")
+                    logger.info(
+                        f"Found first term of next academic session with next_term_begins: {next_term.next_term_begins}"
+                    )
                     return next_term.next_term_begins
                 else:
-                    logger.warning(f"First term of next academic session not found or has no next_term_begins date")
+                    logger.warning(
+                        f"First term of next academic session not found or has no next_term_begins date"
+                    )
             else:
-                logger.warning(f"No next academic session found after {current_academic_session.name}")
-        
+                logger.warning(
+                    f"No next academic session found after {current_academic_session.name}"
+                )
+
         return None
     except Exception as e:
         logger.error(f"Error getting next term begins date: {e}")
@@ -361,18 +379,18 @@ class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         queryset = queryset.select_related(
             "student", "subject", "exam_session", "grading_system", "stream"
         ).prefetch_related("assessment_scores", "comments")
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -512,21 +530,21 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        queryset = queryset.select_related("student", "academic_session").prefetch_related(
-            "comments"
-        )
-        
+        queryset = queryset.select_related(
+            "student", "academic_session"
+        ).prefetch_related("comments")
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     @action(detail=False, methods=["get"])
@@ -564,7 +582,9 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
         try:
             student = Student.objects.get(id=student_id)
-            exam_session = ExamSession.objects.select_related('academic_session').get(id=exam_session_id)
+            exam_session = ExamSession.objects.select_related("academic_session").get(
+                id=exam_session_id
+            )
 
             # Create or get term result based on education level
             education_level = student.education_level
@@ -572,7 +592,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             if education_level == "SENIOR_SECONDARY":
                 # Get next term begins date
                 next_term_begins = get_next_term_begins_date(exam_session)
-                
+
                 term_result, created = SeniorSecondaryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
@@ -586,7 +606,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 if not term_result.next_term_begins and next_term_begins:
                     term_result.next_term_begins = next_term_begins
                     term_result.save()
-                
+
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
@@ -595,7 +615,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             elif education_level == "JUNIOR_SECONDARY":
                 # Get next term begins date
                 next_term_begins = get_next_term_begins_date(exam_session)
-                
+
                 term_result, created = JuniorSecondaryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
@@ -608,7 +628,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 if not term_result.next_term_begins and next_term_begins:
                     term_result.next_term_begins = next_term_begins
                     term_result.save()
-                
+
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
@@ -617,7 +637,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             elif education_level == "PRIMARY":
                 # Get next term begins date
                 next_term_begins = get_next_term_begins_date(exam_session)
-                
+
                 term_result, created = PrimaryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
@@ -630,7 +650,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 if not term_result.next_term_begins and next_term_begins:
                     term_result.next_term_begins = next_term_begins
                     term_result.save()
-                
+
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
@@ -639,7 +659,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             elif education_level == "NURSERY":
                 # Get next term begins date
                 next_term_begins = get_next_term_begins_date(exam_session)
-                
+
                 term_result, created = NurseryTermReport.objects.get_or_create(
                     student=student,
                     exam_session=exam_session,
@@ -652,7 +672,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 if not term_result.next_term_begins and next_term_begins:
                     term_result.next_term_begins = next_term_begins
                     term_result.save()
-                
+
                 if created:
                     term_result.calculate_metrics()
                     term_result.calculate_class_position()
@@ -662,7 +682,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 # Fallback to base StudentTermResult
                 # Get next term begins date
                 next_term_begins = get_next_term_begins_date(exam_session)
-                
+
                 term_result, created = StudentTermResult.objects.get_or_create(
                     student=student,
                     academic_session=exam_session.academic_session,
@@ -676,7 +696,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 if not term_result.next_term_begins and next_term_begins:
                     term_result.next_term_begins = next_term_begins
                     term_result.save()
-                    
+
                 serializer = StudentTermResultSerializer(term_result)
 
             return Response(
@@ -704,7 +724,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 term_result = self.get_object()
                 term_result.status = "APPROVED"
                 term_result.save()
-                
+
                 serializer = StudentTermResultSerializer(term_result)
                 return Response(serializer.data)
         except Exception as e:
@@ -722,7 +742,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 term_result = self.get_object()
                 term_result.status = "PUBLISHED"
                 term_result.save()
-                
+
                 serializer = StudentTermResultSerializer(term_result)
                 return Response(serializer.data)
         except Exception as e:
@@ -753,18 +773,18 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
             .select_related("student", "exam_session", "stream", "published_by")
             .prefetch_related("subject_results")
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     @action(detail=True, methods=["post"])
@@ -863,18 +883,18 @@ class SeniorSecondarySessionReportViewSet(SectionFilterMixin, viewsets.ModelView
             .select_related("student", "academic_session", "stream")
             .prefetch_related("subject_results")
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     @action(detail=True, methods=["post"])
@@ -981,18 +1001,18 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -1180,18 +1200,18 @@ class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelView
             .get_queryset()
             .select_related("student", "subject", "academic_session", "stream")
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -1234,18 +1254,18 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
             .select_related("student", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     @action(detail=True, methods=["post"])
@@ -1316,18 +1336,18 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -1437,18 +1457,18 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             .select_related("student", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     @action(detail=True, methods=["post"])
@@ -1519,18 +1539,18 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -1638,18 +1658,18 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             .select_related("student", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     @action(detail=True, methods=["post"])
@@ -1720,18 +1740,18 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "last_edited_by",
             )
         )
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
             # Filter results by student's education level
             section_access = self.get_user_section_access()
             education_levels = self.get_education_levels_for_sections(section_access)
-            
+
             if not education_levels:
                 return queryset.none()
-            
+
             queryset = queryset.filter(student__education_level__in=education_levels)
-        
+
         return queryset
 
     def create(self, request, *args, **kwargs):
