@@ -361,9 +361,13 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     try {
       const gradingSystemsResponse = await api.get('/api/results/grading-systems/', {
+        
         params: { education_level: educationLevel }
       });
       setGradingSystems(gradingSystemsResponse.data?.results || gradingSystemsResponse.data || []);
+
+      console.log("This is Grading System Response", gradingSystemsResponse)
+      console.log("This is Grading System", gradingSystems)
     } catch (error) {
       console.error('Error loading grading systems:', error);
       toast.error('Failed to load grading systems');
