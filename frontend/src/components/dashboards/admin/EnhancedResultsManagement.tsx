@@ -305,10 +305,11 @@ const EnhancedResultsManagement: React.FC = () => {
     const avg = student.average_score;
     if (!avg || typeof avg !== 'number' || isNaN(avg)) return 'N/A';
     
-    if (avg >= 80) return 'A';
-    if (avg >= 70) return 'B';
-    if (avg >= 60) return 'C';
-    if (avg >= 50) return 'D';
+    if (avg >= 70) return 'A';
+    if (avg >= 60) return 'B';
+    if (avg >= 50) return 'C';
+    if (avg >= 45) return 'D';
+    if (avg >= 39) return 'E';
     return 'F';
   };
 
