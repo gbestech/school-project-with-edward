@@ -364,7 +364,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
         
         params: { education_level: educationLevel }
       });
-      setGradingSystems(gradingSystemsResponse.data?.results || gradingSystemsResponse.data || []);
+      setGradingSystems(gradingSystemsResponse.data?.results || gradingSystemsResponse.grades || []);
 
       console.log("This is Grading System Response", gradingSystemsResponse)
       console.log("This is Grading System", gradingSystems)
