@@ -15,7 +15,7 @@ import GeneralTab from '@/components/dashboards/admin/settingtab/components/tabs
 import DesignTab from '@/components/dashboards/admin/settingtab/components/tabs/DesignTab';
 import CommunicationTab from '@/components/dashboards/admin/settingtab/components/tabs/CommunicationTab';
 import RolesPermissionsTab from '@/components/dashboards/admin/settingtab/components/tabs/RolesPermissions';
-import ExamsResult2 from '@/components/dashboards/admin/settingtab/components/tabs/ExamsResult2';
+import ExamsResultTab from '@/components/dashboards/admin/settingtab/components/tabs/ExamsResultTab';
 import AcademicTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicTab';
 import AcademicCalendarTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicCalendarTab';
 import FinanceTab from '@/components/dashboards/admin/settingtab/components/tabs/Finance';
@@ -62,7 +62,7 @@ const SettingsDashboard = () => {
     { id: 'communication', label: 'Communication', icon: MessageSquare, component: CommunicationTab },
     { id: 'roles', label: 'Roles & Permissions', icon: Shield, component: RolesPermissionsTab },
     { id: 'academic', label: 'Academic', icon: GraduationCap, component: AcademicTab },
-    { id: 'exams', label: 'Exams & Result', icon: FileText, component: ExamsResult2 },
+    { id: 'exams', label: 'Exams & Result', icon: FileText, component: ExamsResultTab },
     { id: 'calendar', label: 'Academic Calendar', icon: Calendar, component: AcademicCalendarTab },
     { id: 'finance', label: 'Finance', icon: CreditCard, component: FinanceTab },
     { id: 'security', label: 'Security', icon: Lock, component: SecurityTab },

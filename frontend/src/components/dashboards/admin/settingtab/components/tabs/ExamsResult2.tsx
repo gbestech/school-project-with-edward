@@ -183,16 +183,7 @@ const [gradeForm, setGradeForm] = useState<GradeCreateUpdate & { id?: string }>(
     setActiveSections(newSections);
   };
 
-  // Add the missing handleManageGrades function
-//   const handleManageGrades = (system: GradingSystem) => {
-//     // Navigate to grades management page or show grades modal
-//     // For now, we'll show a toast message
-//     toast.success(`Manage grades for ${system.name} - Feature to be implemented`);
-//     // TODO: Implement grades management functionality
-//   };
-
-
-  
+   
   const handleManageGrades = (system: GradingSystem) => {
   setSelectedGradingSystem(system);
   console.log("This is System", system)
