@@ -15,7 +15,7 @@ import GeneralTab from '@/components/dashboards/admin/settingtab/components/tabs
 import DesignTab from '@/components/dashboards/admin/settingtab/components/tabs/DesignTab';
 import CommunicationTab from '@/components/dashboards/admin/settingtab/components/tabs/CommunicationTab';
 import RolesPermissionsTab from '@/components/dashboards/admin/settingtab/components/tabs/RolesPermissions';
-import ExamsResult2 from '@/components/dashboards/admin/settingtab/components/tabs/ExamsResultTab';
+import ExamsResult2 from '@/components/dashboards/admin/settingtab/components/tabs/ExamsResult2';
 import AcademicTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicTab';
 import AcademicCalendarTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicCalendarTab';
 import FinanceTab from '@/components/dashboards/admin/settingtab/components/tabs/Finance';
