@@ -195,6 +195,7 @@ const [gradeForm, setGradeForm] = useState<GradeCreateUpdate & { id?: string }>(
   
   const handleManageGrades = (system: GradingSystem) => {
   setSelectedGradingSystem(system);
+  console.log("This is System", system)
   setShowGradesManagementModal(true);
 };
 
@@ -1483,7 +1484,7 @@ const handleUpdateExamSession = async (id: string) => {
                             }}
                             title="Manage Grades"
                           >
-                            <Users className="h-4 w-4" />
+                           Manage Grades <Users className="h-4 w-4" />
                           </button>
                           <button
                             className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
