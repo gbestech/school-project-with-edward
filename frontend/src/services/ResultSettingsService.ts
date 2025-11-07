@@ -242,6 +242,7 @@ export interface AssessmentTypeCreateUpdate {
 export interface GradeCreateUpdate {
   grading_system: string;
   grade: string;
+  remark: string;
   min_score: number;
   max_score: number;
   grade_point?: number;
