@@ -1475,7 +1475,13 @@ const handleUpdateExamSession = async (id: string) => {
                         <div className="flex items-center space-x-2">
                           <button
                             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                            onClick={() => handleManageGrades(system)}
+                            onClick={(e) => {
+                                e.preventDefault();
+                              e.stopPropagation();
+                              console.log('Manage grades clicked for system:', system);
+                              handleManageGrades(system);
+                                handleManageGrades(system)}}
+                            
                             title="Manage Grades"
                           >
                             <Users className="h-4 w-4" />
