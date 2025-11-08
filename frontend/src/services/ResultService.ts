@@ -415,6 +415,129 @@ class ResultService {
     }
   }
 
+  // Add this method to your ResultService class
+
+/**
+ * Get ALL term results across all education levels
+ * This fetches from education-level-specific term report endpoints
+ */
+async getTermResults(params?: FilterParams) {
+  try {
+    console.log('Fetching term results with params:', params);
+    
+    // Fetch from all education-level-specific term report endpoints
+    const [nurseryReports, primaryReports, juniorReports, seniorReports] = await Promise.all([
+      api.get(`${this.baseURL}/nursery/term-reports/`, { params }).catch(() => ({ results: [] })),
+      api.get(`${this.baseURL}/primary/term-reports/`, { params }).catch(() => ({ results: [] })),
+      api.get(`${this.baseURL}/junior-secondary/term-reports/`, { params }).catch(() => ({ results: [] })),
+      api.get(`${this.baseURL}/senior-secondary/term-reports/`, { params }).catch(() => ({ results: [] })),
+    ]);
+
+    // Extract arrays from responses
+    const nursery = Array.isArray(nurseryReports) ? nurseryReports : (nurseryReports?.results || []);
+    const primary = Array.isArray(primaryReports) ? primaryReports : (primaryReports?.results || []);
+    const junior = Array.isArray(juniorReports) ? juniorReports : (juniorReports?.results || []);
+    const senior = Array.isArray(seniorReports) ? seniorReports : (seniorReports?.results || []);
+
+    // Normalize all reports to a common structure
+    const allReports = [
+      ...nursery.map((report: any) => ({
+        ...report,
+        education_level: 'NURSERY',
+        term: report.exam_session?.term || 'N/A',
+        academic_session: report.exam_session?.academic_session || {},
+      })),
+      ...primary.map((report: any) => ({
+        ...report,
+        education_level: 'PRIMARY',
+        term: report.exam_session?.term || 'N/A',
+        academic_session: report.exam_session?.academic_session || {},
+      })),
+      ...junior.map((report: any) => ({
+        ...report,
+        education_level: 'JUNIOR_SECONDARY',
+        term: report.exam_session?.term || 'N/A',
+        academic_session: report.exam_session?.academic_session || {},
+      })),
+      ...senior.map((report: any) => ({
+        ...report,
+        education_level: 'SENIOR_SECONDARY',
+        term: report.exam_session?.term || 'N/A',
+        academic_session: report.exam_session?.academic_session || {},
+        stream: report.stream || null,
+      })),
+    ];
+
+    console.log(`Fetched ${allReports.length} term reports across all education levels`);
+    return allReports;
+  } catch (error) {
+    console.error('Error fetching term results:', error);
+    return [];
+  }
+}
+
+/**
+ * Get term results for a specific education level
+ */
+async getTermResultsByEducationLevel(educationLevel: string, params?: FilterParams) {
+  try {
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/term-reports/`,
+      'PRIMARY': `${this.baseURL}/primary/term-reports/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/`,
+    };
+
+    const endpoint = endpoints[educationLevel.toUpperCase()];
+    if (!endpoint) {
+      console.warn(`Unsupported education level: ${educationLevel}`);
+      return [];
+    }
+
+    const response = await api.get(endpoint, { params });
+    return Array.isArray(response) ? response : (response?.results || []);
+  } catch (error) {
+    console.error(`Error fetching ${educationLevel} term results:`, error);
+    return [];
+  }
+}
+
+/**
+ * Trigger term report generation for a specific student
+ * This should be called after all subject results for a term are published
+ */
+async generateTermReport(studentId: string, examSessionId: string) {
+  try {
+    const response = await api.post(`${this.baseURL}/student-term-results/generate_report/`, {
+      student_id: studentId,
+      exam_session_id: examSessionId,
+    });
+    return response;
+  } catch (error) {
+    console.error('Error generating term report:', error);
+    throw error;
+  }
+}
+
+// Add to ResultService
+async debugTermReports() {
+  console.log('=== Debugging Term Reports ===');
+  
+  const nursery = await this.getNurseryTermReports();
+  console.log('Nursery Reports:', nursery.length);
+  
+  const primary = await this.getPrimaryTermReports();
+  console.log('Primary Reports:', primary.length);
+  
+  const junior = await this.getJuniorSecondaryTermReports();
+  console.log('Junior Secondary Reports:', junior.length);
+  
+  const senior = await this.getSeniorSecondaryTermReports();
+  console.log('Senior Secondary Reports:', senior.length);
+  
+  console.log('=== End Debug ===');
+}
+
   // Fixed method to get all results without education level requirement
   async getAllResults(): Promise<StandardResult[]> {
     try {
@@ -478,15 +601,15 @@ class ResultService {
   }
 
   // Term results - UPDATED for backward compatibility
-  async getTermResults(params?: FilterParams) {
-    try {
-      const response = await api.get(`${this.baseURL}/student-term-results/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
-    } catch (error) {
-      console.error('Error fetching term results:', error);
-      return [];
-    }
-  }
+  // async getTermResults(params?: FilterParams) {
+  //   try {
+  //     const response = await api.get(`${this.baseURL}/student-term-results/`, { params });
+  //     return Array.isArray(response) ? response : (response?.results || []);
+  //   } catch (error) {
+  //     console.error('Error fetching term results:', error);
+  //     return [];
+  //   }
+  // }
 
   async getDetailedTermResult(termResultId: string): Promise<StudentTermResult> {
     return api.get(`${this.baseURL}/student-term-results/${termResultId}/detailed/`);
