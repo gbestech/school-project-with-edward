@@ -1,7 +1,4 @@
 from django.contrib import admin
-
-# Register your models here.
-from django.contrib import admin
 from .models import SeniorSecondaryResult
 from classroom.models import Section
 
@@ -56,13 +53,11 @@ class SeniorSecondaryResultAdmin(admin.ModelAdmin):
         return qs.none()
 
     def has_view_permission(self, request, obj=None):
-        """Check view permission"""
         if request.user.is_superuser or request.user.role == "superadmin":
             return True
         return super().has_view_permission(request, obj)
 
     def has_change_permission(self, request, obj=None):
-        """Check change permission"""
         if request.user.is_superuser or request.user.role == "superadmin":
             return True
         if request.user.role in ["principal", "teacher"]:
@@ -70,7 +65,6 @@ class SeniorSecondaryResultAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        """Check delete permission"""
         if request.user.is_superuser or request.user.role == "superadmin":
             return True
         if request.user.role == "principal":
@@ -78,7 +72,6 @@ class SeniorSecondaryResultAdmin(admin.ModelAdmin):
         return False
 
     def has_add_permission(self, request):
-        """Check add permission"""
         if request.user.is_superuser or request.user.role == "superadmin":
             return True
         if request.user.role in ["principal", "teacher"]:
