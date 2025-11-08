@@ -8,19 +8,31 @@ class SeniorSecondaryResultAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "student",
-        "session",
-        "term",
+        "subject",
+        "exam_session",
         "total_score",
-        "average",
+        "grade",
+        "status",
         "created_at",
     ]
-    list_filter = ["session", "term", "student__section"]
+    list_filter = ["exam_session", "subject", "grade", "status", "is_passed"]
     search_fields = [
         "student__user__username",
         "student__user__first_name",
         "student__user__last_name",
+        "subject__name",
     ]
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "entered_by",
+        "approved_by",
+        "approved_date",
+        "published_by",
+        "published_date",
+        "last_edited_by",
+        "last_edited_at",
+    ]
 
     def get_queryset(self, request):
         """Filter results based on user role"""
@@ -77,3 +89,11 @@ class SeniorSecondaryResultAdmin(admin.ModelAdmin):
         if request.user.role in ["principal", "teacher"]:
             return True
         return False
+
+    def save_model(self, request, obj, form, change):
+        """Track who created/edited the result"""
+        if not change:  # Creating new result
+            obj.entered_by = request.user
+        else:  # Editing existing result
+            obj.last_edited_by = request.user
+        super().save_model(request, obj, form, change)
