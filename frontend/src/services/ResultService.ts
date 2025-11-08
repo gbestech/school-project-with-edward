@@ -439,36 +439,112 @@ async getTermResults(params?: FilterParams) {
     const junior = Array.isArray(juniorReports) ? juniorReports : (juniorReports?.results || []);
     const senior = Array.isArray(seniorReports) ? seniorReports : (seniorReports?.results || []);
 
-    // Normalize all reports to a common structure
+    // Helper function to calculate overall grade from average score
+    const calculateGrade = (averageScore: number) => {
+      if (!averageScore || isNaN(averageScore)) return 'N/A';
+      if (averageScore >= 80) return 'A';
+      if (averageScore >= 70) return 'B+';
+      if (averageScore >= 60) return 'B';
+      if (averageScore >= 50) return 'C';
+      if (averageScore >= 40) return 'D';
+      return 'E';
+    };
+
+    // Normalize all reports to a common structure matching the UI interface
     const allReports = [
       ...nursery.map((report: any) => ({
-        ...report,
-        education_level: 'NURSERY',
-        term: report.exam_session?.term || 'N/A',
+        id: report.id,
+        student: report.student || {},
         academic_session: report.exam_session?.academic_session || {},
+        term: report.exam_session?.term || 'N/A',
+        total_subjects: report.total_subjects || 0,
+        subjects_passed: 0, // Nursery doesn't track this separately
+        subjects_failed: 0,
+        total_score: report.total_marks_obtained || 0,
+        average_score: report.overall_percentage || 0,
+        gpa: 0, // Nursery doesn't use GPA
+        class_position: report.class_position || null,
+        total_students: report.total_students_in_class || 0,
+        status: report.status || 'DRAFT',
+        remarks: '',
+        next_term_begins: report.next_term_begins || null,
+        subject_results: report.subject_results || [],
+        created_at: report.created_at,
+        updated_at: report.updated_at,
+        overall_grade: calculateGrade(report.overall_percentage),
+        education_level: 'NURSERY',
       })),
       ...primary.map((report: any) => ({
-        ...report,
-        education_level: 'PRIMARY',
-        term: report.exam_session?.term || 'N/A',
+        id: report.id,
+        student: report.student || {},
         academic_session: report.exam_session?.academic_session || {},
+        term: report.exam_session?.term || 'N/A',
+        total_subjects: report.total_subjects || 0,
+        subjects_passed: 0, // Calculated from subject_results if needed
+        subjects_failed: 0,
+        total_score: report.total_score || 0,
+        average_score: report.average_score || 0,
+        gpa: 0,
+        class_position: report.class_position || null,
+        total_students: report.total_students || 0,
+        status: report.status || 'DRAFT',
+        remarks: '',
+        next_term_begins: report.next_term_begins || null,
+        subject_results: report.subject_results || [],
+        created_at: report.created_at,
+        updated_at: report.updated_at,
+        overall_grade: report.overall_grade || calculateGrade(report.average_score),
+        education_level: 'PRIMARY',
       })),
       ...junior.map((report: any) => ({
-        ...report,
-        education_level: 'JUNIOR_SECONDARY',
-        term: report.exam_session?.term || 'N/A',
+        id: report.id,
+        student: report.student || {},
         academic_session: report.exam_session?.academic_session || {},
+        term: report.exam_session?.term || 'N/A',
+        total_subjects: report.total_subjects || 0,
+        subjects_passed: 0,
+        subjects_failed: 0,
+        total_score: report.total_score || 0,
+        average_score: report.average_score || 0,
+        gpa: 0,
+        class_position: report.class_position || null,
+        total_students: report.total_students || 0,
+        status: report.status || 'DRAFT',
+        remarks: '',
+        next_term_begins: report.next_term_begins || null,
+        subject_results: report.subject_results || [],
+        created_at: report.created_at,
+        updated_at: report.updated_at,
+        overall_grade: report.overall_grade || calculateGrade(report.average_score),
+        education_level: 'JUNIOR_SECONDARY',
       })),
       ...senior.map((report: any) => ({
-        ...report,
-        education_level: 'SENIOR_SECONDARY',
-        term: report.exam_session?.term || 'N/A',
+        id: report.id,
+        student: report.student || {},
         academic_session: report.exam_session?.academic_session || {},
+        term: report.exam_session?.term || 'N/A',
+        total_subjects: 0, // Calculate from subject_results
+        subjects_passed: 0,
+        subjects_failed: 0,
+        total_score: report.total_score || 0,
+        average_score: report.average_score || 0,
+        gpa: 0,
+        class_position: report.class_position || null,
+        total_students: report.total_students || 0,
+        status: report.status || 'DRAFT',
+        remarks: '',
+        next_term_begins: report.next_term_begins || null,
+        subject_results: report.subject_results || [],
+        created_at: report.created_at,
+        updated_at: report.updated_at,
+        overall_grade: report.overall_grade || calculateGrade(report.average_score),
+        education_level: 'SENIOR_SECONDARY',
         stream: report.stream || null,
       })),
     ];
 
     console.log(`Fetched ${allReports.length} term reports across all education levels`);
+    console.log('Sample report:', allReports[0]); // Debug log
     return allReports;
   } catch (error) {
     console.error('Error fetching term results:', error);
@@ -518,7 +594,6 @@ async generateTermReport(studentId: string, examSessionId: string) {
     throw error;
   }
 }
-
 // Add to ResultService
 async debugTermReports() {
   console.log('=== Debugging Term Reports ===');
@@ -626,24 +701,24 @@ async debugTermReports() {
   }
 
   // Delete term result
-  async deleteTermResult(termResultId: string): Promise<void> {
-    try {
-      // First check if the term result exists
-      try {
-        await api.get(`${this.baseURL}/student-term-results/${termResultId}/`);
-      } catch (checkError: any) {
-        if (checkError.response?.status === 404) {
-          throw new Error(`Term result with ID ${termResultId} not found.`);
-        }
-        throw checkError;
-      }
+  // async deleteTermResult(termResultId: string): Promise<void> {
+  //   try {
+  //     // First check if the term result exists
+  //     try {
+  //       await api.get(`${this.baseURL}/student-term-results/${termResultId}/`);
+  //     } catch (checkError: any) {
+  //       if (checkError.response?.status === 404) {
+  //         throw new Error(`Term result with ID ${termResultId} not found.`);
+  //       }
+  //       throw checkError;
+  //     }
       
-      await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
-    } catch (error) {
-      console.error('Error deleting term result:', error);
-      throw error;
-    }
-  }
+  //     await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
+  //   } catch (error) {
+  //     console.error('Error deleting term result:', error);
+  //     throw error;
+  //   }
+  // }
 
   // Exam sessions - UPDATED
   async getExamSessions(params?: FilterParams): Promise<ExamSessionInfo[]> {
@@ -736,16 +811,117 @@ async debugTermReports() {
   }
 
   // NEW: Result approval and publishing
-  async approveResult(resultId: string, educationLevel: string) {
-    // Use the student-term-results endpoint for term reports
-    return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
-  }
+  // async approveResult(resultId: string, educationLevel: string) {
+  //   // Use the student-term-results endpoint for term reports
+  //   return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
+  // }
 
-  async publishResult(resultId: string, educationLevel: string) {
-    // Use the student-term-results endpoint for term reports
-    return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
-  }
+  // async publishResult(resultId: string, educationLevel: string) {
+  //   // Use the student-term-results endpoint for term reports
+  //   return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
+  // }
 
+// Add these updated methods to your ResultService class
+
+/**
+ * Approve a term result (education-level aware)
+ */
+async approveResult(resultId: string, educationLevel: string) {
+  try {
+    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+    
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/term-reports/${resultId}/approve/`,
+      'PRIMARY': `${this.baseURL}/primary/term-reports/${resultId}/approve/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${resultId}/approve/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${resultId}/approve/`,
+    };
+    
+    const endpoint = endpoints[normalizedLevel];
+    if (!endpoint) {
+      console.warn(`Unsupported education level for approve: ${normalizedLevel}`);
+      // Fallback to base endpoint
+      return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
+    }
+    
+    return api.post(endpoint, {});
+  } catch (error) {
+    console.error('Error approving result:', error);
+    throw error;
+  }
+}
+
+/**
+ * Publish a term result (education-level aware)
+ */
+async publishResult(resultId: string, educationLevel: string) {
+  try {
+    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+    
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/term-reports/${resultId}/publish/`,
+      'PRIMARY': `${this.baseURL}/primary/term-reports/${resultId}/publish/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${resultId}/publish/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${resultId}/publish/`,
+    };
+    
+    const endpoint = endpoints[normalizedLevel];
+    if (!endpoint) {
+      console.warn(`Unsupported education level for publish: ${normalizedLevel}`);
+      // Fallback to base endpoint
+      return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
+    }
+    
+    return api.post(endpoint, {});
+  } catch (error) {
+    console.error('Error publishing result:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a term result (education-level aware)
+ */
+async deleteTermResult(termResultId: string, educationLevel?: string): Promise<void> {
+  try {
+    if (!educationLevel) {
+      // Try to delete from base endpoint first
+      try {
+        await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
+        return;
+      } catch (baseError: any) {
+        console.log('Base endpoint delete failed, trying education-level specific endpoints');
+      }
+    }
+    
+    const normalizedLevel = educationLevel?.toUpperCase().replace(/\s+/g, '_');
+    
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/term-reports/${termResultId}/`,
+      'PRIMARY': `${this.baseURL}/primary/term-reports/${termResultId}/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${termResultId}/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${termResultId}/`,
+    };
+    
+    if (normalizedLevel && endpoints[normalizedLevel]) {
+      await api.delete(endpoints[normalizedLevel]);
+    } else {
+      // Try all endpoints
+      for (const endpoint of Object.values(endpoints)) {
+        try {
+          await api.delete(endpoint);
+          return;
+        } catch (err) {
+          // Continue to next endpoint
+        }
+      }
+      throw new Error(`Term result with ID ${termResultId} not found in any education level.`);
+    }
+  } catch (error) {
+    console.error('Error deleting term result:', error);
+    throw error;
+  }
+}
   // NEW: Class statistics
   async getClassStatistics(educationLevel: string, params?: {
     exam_session?: string;
