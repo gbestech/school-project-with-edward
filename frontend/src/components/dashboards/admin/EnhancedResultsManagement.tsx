@@ -113,6 +113,13 @@ const EnhancedResultsManagement: React.FC = () => {
   const [termFilter, setTermFilter] = useState<string>('all');
   const [sessionFilter, setSessionFilter] = useState<string>('all');
 
+
+  useEffect(() => {
+  loadResults();
+  // Uncomment to test API directly
+  ResultService.testTermReports();
+}, []);
+
   // Status actions configuration - Only essential actions for admin workflow
   const statusActions: StatusAction[] = [
     {
@@ -144,6 +151,28 @@ const EnhancedResultsManagement: React.FC = () => {
       setError(null);
       
       const termResultsData = await ResultService.getTermResults();
+
+      console.log('=== RESULTS DEBUG ===');
+    console.log('📊 Total results loaded:', termResultsData.length);
+    console.log('📊 First result (full):', termResultsData[0]);
+
+
+    if (termResultsData.length > 0) {
+      const sample = termResultsData[0];
+      console.log('📊 Sample result breakdown:');
+      console.log('  - ID:', sample.id);
+      console.log('  - Student:', sample.student);
+      console.log('  - Academic Session:', sample.academic_session);
+      console.log('  - Term:', sample.term);
+      console.log('  - Status:', sample.status);
+      console.log('  - Average Score:', sample.average_score);
+      console.log('  - Overall Grade:', (sample as any).overall_grade);
+      console.log('  - Education Level:', (sample as any).education_level);
+      console.log('  - Created At:', sample.created_at);
+      console.log('  - Updated At:', sample.updated_at);
+    }
+    
+    console.log('=== END DEBUG ===');
       setStudentResults(termResultsData || []);
     } catch (err) {
       console.error('Error loading results:', err);
@@ -255,24 +284,25 @@ const EnhancedResultsManagement: React.FC = () => {
   };
 
   // Delete function
-  const deleteResult = async (result: StudentResult) => {
-    try {
-      setActionLoading('delete');
-      // Use the correct delete method for term results since we're loading term report data
-      await ResultService.deleteTermResult(result.id);
-      
-      setStudentResults(prev => prev.filter(r => r.id !== result.id));
-      setShowDeleteModal(false);
-      setResultToDelete(null);
-      toast.success('Result deleted successfully');
-    } catch (error) {
-      console.error('Error deleting result:', error);
-      toast.error('Failed to delete result');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
+  // Delete function
+const deleteResult = async (result: StudentResult) => {
+  try {
+    setActionLoading('delete');
+    // Pass education level to delete the correct term report
+    const educationLevel = (result as any).education_level || result.student?.education_level;
+    await ResultService.deleteTermResult(result.id, educationLevel);
+    
+    setStudentResults(prev => prev.filter(r => r.id !== result.id));
+    setShowDeleteModal(false);
+    setResultToDelete(null);
+    toast.success('Result deleted successfully');
+  } catch (error) {
+    console.error('Error deleting result:', error);
+    toast.error('Failed to delete result');
+  } finally {
+    setActionLoading(null);
+  }
+};
   // Utility functions
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -300,18 +330,24 @@ const EnhancedResultsManagement: React.FC = () => {
   };
 
   const getOverallGrade = (student: StudentResult): string => {
-    if (!student.subject_results || student.subject_results.length === 0) return 'N/A';
-    
-    const avg = student.average_score;
-    if (!avg || typeof avg !== 'number' || isNaN(avg)) return 'N/A';
-    
-    if (avg >= 70) return 'A';
-    if (avg >= 60) return 'B';
-    if (avg >= 50) return 'C';
-    if (avg >= 45) return 'D';
-    if (avg >= 39) return 'E';
-    return 'F';
-  };
+  // Use overall_grade from backend if available
+  if ((student as any).overall_grade) {
+    return (student as any).overall_grade;
+  }
+  
+  // Fallback to calculation
+  if (!student.average_score || typeof student.average_score !== 'number' || isNaN(student.average_score)) {
+    return 'N/A';
+  }
+  
+  const avg = student.average_score;
+  if (avg >= 70) return 'A';
+  if (avg >= 60) return 'B';
+  if (avg >= 50) return 'C';
+  if (avg >= 45) return 'D';
+  if (avg >= 39) return 'E';
+  return 'F';
+};
 
   const formatScore = (score: any): string => {
     if (score === null || score === undefined) return 'N/A';

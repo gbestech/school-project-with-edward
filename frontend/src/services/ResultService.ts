@@ -810,6 +810,32 @@ async debugTermReports() {
     return api.post(endpoint, { results: data });
   }
 
+  
+  // Add to ResultService
+async testTermReports() {
+  console.log('=== TESTING TERM REPORTS API ===');
+  
+  try {
+    // Test each endpoint individually
+    const seniorResults = await api.get(`${this.baseURL}/senior-secondary/term-reports/`);
+    console.log('Senior Secondary Reports:', seniorResults);
+    console.log('Count:', Array.isArray(seniorResults) ? seniorResults.length : seniorResults?.results?.length);
+    
+    const juniorResults = await api.get(`${this.baseURL}/junior-secondary/term-reports/`);
+    console.log('Junior Secondary Reports:', juniorResults);
+    
+    const primaryResults = await api.get(`${this.baseURL}/primary/term-reports/`);
+    console.log('Primary Reports:', primaryResults);
+    
+    const nurseryResults = await api.get(`${this.baseURL}/nursery/term-reports/`);
+    console.log('Nursery Reports:', nurseryResults);
+    
+  } catch (error) {
+    console.error('Test failed:', error);
+  }
+  
+  console.log('=== END TEST ===');
+}
   // NEW: Result approval and publishing
   // async approveResult(resultId: string, educationLevel: string) {
   //   // Use the student-term-results endpoint for term reports
