@@ -628,6 +628,7 @@ class StudentTermResult(models.Model):
 
     RESULT_STATUS = [
         ("DRAFT", "Draft"),
+        ("SUBMITTED", "Submitted"),
         ("APPROVED", "Approved"),
         ("PUBLISHED", "Published"),
     ]
@@ -909,17 +910,17 @@ class SeniorSecondaryTermReport(models.Model):
 
     def _get_default_grade(self, percentage):
         """Fallback grading system"""
-        if percentage >= 80:
-            return "A"
         if percentage >= 70:
-            return "B+"
+            return "A"
         if percentage >= 60:
             return "B"
         if percentage >= 50:
             return "C"
-        if percentage >= 40:
+        if percentage >= 45:
             return "D"
-        return "E"
+        if percentage >= 39:
+            return "E"
+        return "F"
 
     def calculate_class_position(self):
         """Calculate class position among peers"""
@@ -943,12 +944,44 @@ class SeniorSecondaryTermReport(models.Model):
 
         self.save()
 
+    def sync_status_with_subjects(self):
+        """Sync term report status with individual subject results.
+        Logic:
+        - If ANY subject is DRAFT → Term report stays DRAFT
+        - If ALL subjects are SUBMITTED/APPROVED/PUBLISHED → Term report can be SUBMITTED
+        - Keep APPROVED and PUBLISHED if already set by admin
+        """
+        # Don't downgrade if already approved or published
+        if self.status in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get all subject results for this term report
+        subject_results = self.subject_results.all()
+
+        if not subject_results.exists():
+            self.status = "DRAFT"
+            self.save()
+            return
+
+        # Check status of all subjects
+        statuses = subject_results.values_list("status", flat=True)
+
+        if "DRAFT" in statuses:
+            # If any subject is still DRAFT, keep term report as DRAFT
+            self.status = "DRAFT"
+        else:
+            # All subjects are at least SUBMITTED, so term report can be SUBMITTED
+            self.status = "SUBMITTED"
+
+        self.save()
+
 
 class SeniorSecondarySessionReport(models.Model):
     """Consolidated senior secondary session report with TAA"""
 
     RESULT_STATUS = [
         ("DRAFT", "Draft"),
+        ("SUBMITTED", "Submitted"),
         ("APPROVED", "Approved"),
         ("PUBLISHED", "Published"),
     ]
@@ -1113,17 +1146,17 @@ class SeniorSecondarySessionReport(models.Model):
 
     def _get_default_grade(self, percentage):
         """Fallback grading system"""
-        if percentage >= 80:
-            return "A"
         if percentage >= 70:
-            return "B+"
+            return "A"
         if percentage >= 60:
             return "B"
         if percentage >= 50:
             return "C"
-        if percentage >= 40:
+        if percentage >= 45:
             return "D"
-        return "E"
+        if percentage >= 39:
+            return "E"
+        return "F"
 
     def calculate_class_position(self):
         """Calculate class position for session results"""
@@ -1409,9 +1442,7 @@ class SeniorSecondaryResult(models.Model):
 
     def update_term_report(self):
         """Update or create the consolidated term report"""
-        if self.status not in ["APPROVED", "PUBLISHED"]:
-            return
-
+        # Always update term report, even for DRAFT status
         # Get or create the term report
         term_report, created = SeniorSecondaryTermReport.objects.get_or_create(
             student=self.student,
@@ -1428,6 +1459,9 @@ class SeniorSecondaryResult(models.Model):
         # Recalculate term report metrics
         term_report.calculate_metrics()
         term_report.calculate_class_position()
+
+        # Auto-update term report status based on individual results
+        term_report.sync_status_with_subjects()
 
     # Properties to match frontend interface expectations
     @property
@@ -1473,6 +1507,7 @@ class SeniorSecondarySessionResult(models.Model):
 
     RESULT_STATUS = [
         ("DRAFT", "Draft"),
+        ("SUBMITTED", "Submitted"),
         ("APPROVED", "Approved"),
         ("PUBLISHED", "Published"),
     ]
@@ -1744,6 +1779,7 @@ class JuniorSecondaryTermReport(models.Model):
 
     RESULT_STATUS = [
         ("DRAFT", "Draft"),
+        ("SUBMITTED", "Submitted"),
         ("APPROVED", "Approved"),
         ("PUBLISHED", "Published"),
     ]
@@ -1869,17 +1905,17 @@ class JuniorSecondaryTermReport(models.Model):
 
     def _get_default_grade(self, percentage):
         """Fallback grading system if no grading system is available"""
-        if percentage >= 80:
-            return "A"
         if percentage >= 70:
-            return "B+"
+            return "A"
         if percentage >= 60:
             return "B"
         if percentage >= 50:
             return "C"
-        if percentage >= 40:
+        if percentage >= 45:
             return "D"
-        return "E"
+        if percentage >= 39:
+            return "E"
+        return "F"
 
     def calculate_class_position(self):
         """Calculate class position among peers"""
@@ -1902,6 +1938,37 @@ class JuniorSecondaryTermReport(models.Model):
         else:
             self.class_position = 1
             self.total_students = 1
+
+        self.save()
+
+    def sync_status_with_subjects(self):
+        """Sync term report status with individual subject results.
+        Logic:
+        - If ANY subject is DRAFT → Term report stays DRAFT
+        - If ALL subjects are SUBMITTED/APPROVED/PUBLISHED → Term report can be SUBMITTED
+        - Keep APPROVED and PUBLISHED if already set by admin
+        """
+        # Don't downgrade if already approved or published
+        if self.status in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get all subject results for this term report
+        subject_results = self.subject_results.all()
+
+        if not subject_results.exists():
+            self.status = "DRAFT"
+            self.save()
+            return
+
+        # Check status of all subjects
+        statuses = subject_results.values_list("status", flat=True)
+
+        if "DRAFT" in statuses:
+            # If any subject is still DRAFT, keep term report as DRAFT
+            self.status = "DRAFT"
+        else:
+            # All subjects are at least SUBMITTED, so term report can be SUBMITTED
+            self.status = "SUBMITTED"
 
         self.save()
 
@@ -2208,8 +2275,6 @@ class JuniorSecondaryResult(models.Model):
 
     def update_term_report(self):
         """Update or create the consolidated term report"""
-        if self.status not in ["APPROVED", "PUBLISHED"]:
-            return
 
         # Get or create the term report
         term_report, created = JuniorSecondaryTermReport.objects.get_or_create(
@@ -2227,6 +2292,9 @@ class JuniorSecondaryResult(models.Model):
         # Recalculate term report metrics
         term_report.calculate_metrics()
         term_report.calculate_class_position()
+
+        # Auto-update term report status based on individual results
+        term_report.sync_status_with_subjects()
 
     # Properties to match frontend interface expectations
     @property
@@ -2417,17 +2485,17 @@ class PrimaryTermReport(models.Model):
 
     def _get_default_grade(self, percentage):
         """Fallback grading system if no grading system is available"""
-        if percentage >= 80:
-            return "A"
         if percentage >= 70:
-            return "B+"
+            return "A"
         if percentage >= 60:
             return "B"
         if percentage >= 50:
             return "C"
-        if percentage >= 40:
+        if percentage >= 45:
             return "D"
-        return "E"
+        if percentage >= 39:
+            return "E"
+        return "F"
 
     def calculate_class_position(self):
         """Calculate class position among peers"""
@@ -2450,6 +2518,37 @@ class PrimaryTermReport(models.Model):
         else:
             self.class_position = 1
             self.total_students = 1
+
+        self.save()
+
+    def sync_status_with_subjects(self):
+        """Sync term report status with individual subject results.
+        Logic:
+        - If ANY subject is DRAFT → Term report stays DRAFT
+        - If ALL subjects are SUBMITTED/APPROVED/PUBLISHED → Term report can be SUBMITTED
+        - Keep APPROVED and PUBLISHED if already set by admin
+        """
+        # Don't downgrade if already approved or published
+        if self.status in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get all subject results for this term report
+        subject_results = self.subject_results.all()
+
+        if not subject_results.exists():
+            self.status = "DRAFT"
+            self.save()
+            return
+
+        # Check status of all subjects
+        statuses = subject_results.values_list("status", flat=True)
+
+        if "DRAFT" in statuses:
+            # If any subject is still DRAFT, keep term report as DRAFT
+            self.status = "DRAFT"
+        else:
+            # All subjects are at least SUBMITTED, so term report can be SUBMITTED
+            self.status = "SUBMITTED"
 
         self.save()
 
@@ -2756,8 +2855,6 @@ class PrimaryResult(models.Model):
 
     def update_term_report(self):
         """Update or create the consolidated term report"""
-        if self.status not in ["APPROVED", "PUBLISHED"]:
-            return
 
         # Get or create the term report
         term_report, created = PrimaryTermReport.objects.get_or_create(
@@ -2773,6 +2870,9 @@ class PrimaryResult(models.Model):
         # Recalculate term report metrics
         term_report.calculate_metrics()
         term_report.calculate_class_position()
+
+        # Auto-update term report status based on individual results
+        term_report.sync_status_with_subjects()
 
     # Properties to match frontend interface expectations
     @property
@@ -2837,6 +2937,7 @@ class NurseryTermReport(models.Model):
 
     RESULT_STATUS = [
         ("DRAFT", "Draft"),
+        ("SUBMITTED", "Submitted"),
         ("APPROVED", "Approved"),
         ("PUBLISHED", "Published"),
     ]
@@ -3008,6 +3109,37 @@ class NurseryTermReport(models.Model):
         else:
             self.class_position = 1
             self.total_students_in_class = 1
+
+        self.save()
+
+    def sync_status_with_subjects(self):
+        """Sync term report status with individual subject results.
+        Logic:
+        - If ANY subject is DRAFT → Term report stays DRAFT
+        - If ALL subjects are SUBMITTED/APPROVED/PUBLISHED → Term report can be SUBMITTED
+        - Keep APPROVED and PUBLISHED if already set by admin
+        """
+        # Don't downgrade if already approved or published
+        if self.status in ["APPROVED", "PUBLISHED"]:
+            return
+
+        # Get all subject results for this term report
+        subject_results = self.subject_results.all()
+
+        if not subject_results.exists():
+            self.status = "DRAFT"
+            self.save()
+            return
+
+        # Check status of all subjects
+        statuses = subject_results.values_list("status", flat=True)
+
+        if "DRAFT" in statuses:
+            # If any subject is still DRAFT, keep term report as DRAFT
+            self.status = "DRAFT"
+        else:
+            # All subjects are at least SUBMITTED, so term report can be SUBMITTED
+            self.status = "SUBMITTED"
 
         self.save()
 
@@ -3199,8 +3331,6 @@ class NurseryResult(models.Model):
 
     def update_term_report(self):
         """Update or create the consolidated term report"""
-        if self.status not in ["APPROVED", "PUBLISHED"]:
-            return
 
         # Get or create the term report
         term_report, created = NurseryTermReport.objects.get_or_create(
@@ -3218,6 +3348,9 @@ class NurseryResult(models.Model):
         # Recalculate term report metrics
         term_report.calculate_metrics()
         term_report.calculate_class_position()
+
+        # Auto-update term report status based on individual results
+        term_report.sync_status_with_subjects()
 
     # Signal handlers to maintain data consistency
 

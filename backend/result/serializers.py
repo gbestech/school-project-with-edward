@@ -581,6 +581,49 @@ class SeniorSecondarySessionReportSerializer(serializers.ModelSerializer):
             obj.subject_results.all(), many=True
         ).data
 
+    def validate_status(self, value):
+        """
+        Validate status transitions:
+        DRAFT -> SUBMITTED (by teacher)
+        SUBMITTED -> APPROVED (by admin)
+        APPROVED -> PUBLISHED (by admin)
+
+        Cannot go backwards or skip steps
+        """
+        instance = self.instance
+        if not instance:
+            # Creating new record, only allow DRAFT
+            if value not in ["DRAFT", "SUBMITTED"]:
+                raise serializers.ValidationError(
+                    "New term reports must start as DRAFT or SUBMITTED"
+                )
+            return value
+
+        current_status = instance.status
+
+        # Define valid transitions
+        valid_transitions = {
+            "DRAFT": ["SUBMITTED", "APPROVED"],  # Can skip to APPROVED for admin
+            "SUBMITTED": ["APPROVED", "DRAFT"],  # Can go back to DRAFT if needed
+            "APPROVED": [
+                "PUBLISHED",
+                "SUBMITTED",
+            ],  # Can go back to SUBMITTED if needed
+            "PUBLISHED": [],  # Cannot change once published
+        }
+
+        if current_status == value:
+            # Same status is always valid
+            return value
+
+        if value not in valid_transitions.get(current_status, []):
+            raise serializers.ValidationError(
+                f"Cannot change status from {current_status} to {value}. "
+                f"Valid transitions: {', '.join(valid_transitions.get(current_status, []))}"
+            )
+
+        return value
+
 
 class SeniorSecondaryResultSerializer(serializers.ModelSerializer):
     """Serializer for Senior Secondary specific results"""
@@ -849,6 +892,49 @@ class JuniorSecondaryTermReportSerializer(serializers.ModelSerializer):
             obj.subject_results.all(), many=True
         ).data
 
+    def validate_status(self, value):
+        """
+        Validate status transitions:
+        DRAFT -> SUBMITTED (by teacher)
+        SUBMITTED -> APPROVED (by admin)
+        APPROVED -> PUBLISHED (by admin)
+
+        Cannot go backwards or skip steps
+        """
+        instance = self.instance
+        if not instance:
+            # Creating new record, only allow DRAFT
+            if value not in ["DRAFT", "SUBMITTED"]:
+                raise serializers.ValidationError(
+                    "New term reports must start as DRAFT or SUBMITTED"
+                )
+            return value
+
+        current_status = instance.status
+
+        # Define valid transitions
+        valid_transitions = {
+            "DRAFT": ["SUBMITTED", "APPROVED"],  # Can skip to APPROVED for admin
+            "SUBMITTED": ["APPROVED", "DRAFT"],  # Can go back to DRAFT if needed
+            "APPROVED": [
+                "PUBLISHED",
+                "SUBMITTED",
+            ],  # Can go back to SUBMITTED if needed
+            "PUBLISHED": [],  # Cannot change once published
+        }
+
+        if current_status == value:
+            # Same status is always valid
+            return value
+
+        if value not in valid_transitions.get(current_status, []):
+            raise serializers.ValidationError(
+                f"Cannot change status from {current_status} to {value}. "
+                f"Valid transitions: {', '.join(valid_transitions.get(current_status, []))}"
+            )
+
+        return value
+
 
 class JuniorSecondaryResultSerializer(serializers.ModelSerializer):
     """Serializer for Junior Secondary specific results"""
@@ -1007,6 +1093,49 @@ class PrimaryTermReportSerializer(serializers.ModelSerializer):
     def get_subject_results(self, obj):
         """Get all subject results linked to this term report"""
         return PrimaryResultSerializer(obj.subject_results.all(), many=True).data
+
+    def validate_status(self, value):
+        """
+        Validate status transitions:
+        DRAFT -> SUBMITTED (by teacher)
+        SUBMITTED -> APPROVED (by admin)
+        APPROVED -> PUBLISHED (by admin)
+
+        Cannot go backwards or skip steps
+        """
+        instance = self.instance
+        if not instance:
+            # Creating new record, only allow DRAFT
+            if value not in ["DRAFT", "SUBMITTED"]:
+                raise serializers.ValidationError(
+                    "New term reports must start as DRAFT or SUBMITTED"
+                )
+            return value
+
+        current_status = instance.status
+
+        # Define valid transitions
+        valid_transitions = {
+            "DRAFT": ["SUBMITTED", "APPROVED"],  # Can skip to APPROVED for admin
+            "SUBMITTED": ["APPROVED", "DRAFT"],  # Can go back to DRAFT if needed
+            "APPROVED": [
+                "PUBLISHED",
+                "SUBMITTED",
+            ],  # Can go back to SUBMITTED if needed
+            "PUBLISHED": [],  # Cannot change once published
+        }
+
+        if current_status == value:
+            # Same status is always valid
+            return value
+
+        if value not in valid_transitions.get(current_status, []):
+            raise serializers.ValidationError(
+                f"Cannot change status from {current_status} to {value}. "
+                f"Valid transitions: {', '.join(valid_transitions.get(current_status, []))}"
+            )
+
+        return value
 
 
 class PrimaryResultSerializer(serializers.ModelSerializer):
@@ -1178,6 +1307,49 @@ class NurseryTermReportSerializer(serializers.ModelSerializer):
     def get_subject_results(self, obj):
         """Get all subject results linked to this term report"""
         return NurseryResultSerializer(obj.subject_results.all(), many=True).data
+
+    def validate_status(self, value):
+        """
+        Validate status transitions:
+        DRAFT -> SUBMITTED (by teacher)
+        SUBMITTED -> APPROVED (by admin)
+        APPROVED -> PUBLISHED (by admin)
+
+        Cannot go backwards or skip steps
+        """
+        instance = self.instance
+        if not instance:
+            # Creating new record, only allow DRAFT
+            if value not in ["DRAFT", "SUBMITTED"]:
+                raise serializers.ValidationError(
+                    "New term reports must start as DRAFT or SUBMITTED"
+                )
+            return value
+
+        current_status = instance.status
+
+        # Define valid transitions
+        valid_transitions = {
+            "DRAFT": ["SUBMITTED", "APPROVED"],  # Can skip to APPROVED for admin
+            "SUBMITTED": ["APPROVED", "DRAFT"],  # Can go back to DRAFT if needed
+            "APPROVED": [
+                "PUBLISHED",
+                "SUBMITTED",
+            ],  # Can go back to SUBMITTED if needed
+            "PUBLISHED": [],  # Cannot change once published
+        }
+
+        if current_status == value:
+            # Same status is always valid
+            return value
+
+        if value not in valid_transitions.get(current_status, []):
+            raise serializers.ValidationError(
+                f"Cannot change status from {current_status} to {value}. "
+                f"Valid transitions: {', '.join(valid_transitions.get(current_status, []))}"
+            )
+
+        return value
 
 
 class NurseryResultSerializer(serializers.ModelSerializer):
@@ -1697,3 +1869,46 @@ class SeniorSecondaryTermReportSerializer(serializers.ModelSerializer):
         return SeniorSecondaryResultSerializer(
             obj.subject_results.all(), many=True
         ).data
+
+    def validate_status(self, value):
+        """
+        Validate status transitions:
+        DRAFT -> SUBMITTED (by teacher)
+        SUBMITTED -> APPROVED (by admin)
+        APPROVED -> PUBLISHED (by admin)
+
+        Cannot go backwards or skip steps
+        """
+        instance = self.instance
+        if not instance:
+            # Creating new record, only allow DRAFT
+            if value not in ["DRAFT", "SUBMITTED"]:
+                raise serializers.ValidationError(
+                    "New term reports must start as DRAFT or SUBMITTED"
+                )
+            return value
+
+        current_status = instance.status
+
+        # Define valid transitions
+        valid_transitions = {
+            "DRAFT": ["SUBMITTED", "APPROVED"],  # Can skip to APPROVED for admin
+            "SUBMITTED": ["APPROVED", "DRAFT"],  # Can go back to DRAFT if needed
+            "APPROVED": [
+                "PUBLISHED",
+                "SUBMITTED",
+            ],  # Can go back to SUBMITTED if needed
+            "PUBLISHED": [],  # Cannot change once published
+        }
+
+        if current_status == value:
+            # Same status is always valid
+            return value
+
+        if value not in valid_transitions.get(current_status, []):
+            raise serializers.ValidationError(
+                f"Cannot change status from {current_status} to {value}. "
+                f"Valid transitions: {', '.join(valid_transitions.get(current_status, []))}"
+            )
+
+        return value
