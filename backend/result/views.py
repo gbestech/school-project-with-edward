@@ -2429,7 +2429,7 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializerr(result)
+                detailed_serializer = JuniorSecondaryResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
@@ -3197,7 +3197,7 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializerr(result)
+                detailed_serializer = JuniorSecondaryResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
@@ -3746,7 +3746,7 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializerr(result)
+                detailed_serializer = JuniorSecondaryResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
@@ -4293,7 +4293,7 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializerr(result)
+                detailed_serializer = JuniorSecondaryResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
