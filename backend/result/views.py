@@ -2322,8 +2322,6 @@ class ScoringConfigurationViewSet(viewsets.ModelViewSet):
 
         return Response(ScoringConfigurationSerializer(config).data)
 
-    # ====================================================================================
-
 
 # SENIOR SECONDARY VIEWSETS
 # ====================================================================================
@@ -2731,18 +2729,155 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
         return queryset.filter(student__education_level__in=education_levels)
 
     @action(detail=True, methods=["post"])
-    def publish(self, request, pk=None):
+    def submit_for_approval(self, request, pk=None):
+        """
+        Teacher submits term report for admin approval.
+        Validates that all required subjects have results before submitting.
+        Changes status from DRAFT to SUBMITTED.
+        """
         try:
             with transaction.atomic():
                 report = self.get_object()
+
+                # Validate that report has subject results
+                if not report.subject_results.exists():
+                    return Response(
+                        {
+                            "error": "Cannot submit empty report",
+                            "detail": "Please add subject results before submitting for approval.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Validate current status allows submission
+                if report.status not in ["DRAFT", "APPROVED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot submit report with status '{report.status}'. Only DRAFT reports can be submitted.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update status to SUBMITTED
+                report.status = "SUBMITTED"
+                report.save()
+
+                logger.info(
+                    f"Term report {report.id} submitted for approval by {request.user.username}"
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": "Term report submitted for approval successfully",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to submit term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to submit term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """
+        Admin approves term report.
+        Changes status from SUBMITTED to APPROVED.
+        Cascades APPROVED status to all individual subject results.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows approval
+                if report.status not in ["SUBMITTED", "DRAFT"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot approve report with status '{report.status}'. Only SUBMITTED or DRAFT reports can be approved.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status
+                report.status = "APPROVED"
+                report.save()
+
+                # Cascade approval to all subject results
+                updated_count = report.subject_results.update(
+                    status="APPROVED",
+                    approved_by=request.user,
+                    approved_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} approved by {request.user.username}. {updated_count} subject results also approved."
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": f"Term report approved successfully. {updated_count} subject result(s) also approved.",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to approve term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to approve term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        """
+        Admin publishes term report.
+        Changes status from APPROVED to PUBLISHED.
+        Cascades PUBLISHED status to all individual subject results.
+        Published results become visible to students and parents.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows publishing
+                if report.status not in ["APPROVED", "SUBMITTED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot publish report with status '{report.status}'. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status and metadata
                 report.is_published = True
                 report.published_by = request.user
                 report.published_date = timezone.now()
                 report.status = "PUBLISHED"
                 report.save()
 
+                # Cascade publish to all subject results
+                updated_count = report.subject_results.update(
+                    status="PUBLISHED",
+                    published_by=request.user,
+                    published_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} published by {request.user.username}. {updated_count} subject results also published."
+                )
+
                 serializer = self.get_serializer(report)
-                return Response(serializer.data)
+                return Response(
+                    {
+                        "message": f"Term report published successfully. {updated_count} subject result(s) also published and are now visible to students.",
+                        "data": serializer.data,
+                    }
+                )
         except Exception as e:
             logger.error(f"Failed to publish report: {str(e)}")
             return Response(
@@ -2752,6 +2887,7 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
 
     @action(detail=True, methods=["post"])
     def calculate_metrics(self, request, pk=None):
+        """Recalculate term report metrics and class position"""
         try:
             report = self.get_object()
             report.calculate_metrics()
@@ -2768,6 +2904,10 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
 
     @action(detail=False, methods=["post"])
     def bulk_publish(self, request):
+        """
+        Bulk publish multiple term reports at once.
+        Cascades PUBLISHED status to all associated subject results.
+        """
         report_ids = request.data.get("report_ids", [])
         if not report_ids:
             return Response(
@@ -2777,6 +2917,19 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
         try:
             with transaction.atomic():
                 reports = self.get_queryset().filter(id__in=report_ids)
+
+                # Validate all reports can be published
+                invalid_reports = reports.exclude(status__in=["APPROVED", "SUBMITTED"])
+                if invalid_reports.exists():
+                    return Response(
+                        {
+                            "error": "Some reports cannot be published",
+                            "detail": f"{invalid_reports.count()} report(s) have invalid status. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update all reports
                 updated_count = reports.update(
                     is_published=True,
                     published_by=request.user,
@@ -2784,10 +2937,25 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
                     status="PUBLISHED",
                 )
 
+                # Cascade publish to all subject results for these reports
+                total_subjects_updated = 0
+                for report in reports:
+                    subjects_updated = report.subject_results.update(
+                        status="PUBLISHED",
+                        published_by=request.user,
+                        published_date=timezone.now(),
+                    )
+                    total_subjects_updated += subjects_updated
+
+                logger.info(
+                    f"Bulk published {updated_count} term reports by {request.user.username}. {total_subjects_updated} subject results also published."
+                )
+
                 return Response(
                     {
-                        "message": f"Successfully published {updated_count} reports",
-                        "updated_count": updated_count,
+                        "message": f"Successfully published {updated_count} term report(s)",
+                        "reports_published": updated_count,
+                        "subjects_published": total_subjects_updated,
                     }
                 )
         except Exception as e:
@@ -2939,7 +3107,6 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         "exam_session",
         "status",
         "is_passed",
-        "stream",
     ]
     search_fields = [
         "student__user__first_name",
@@ -2962,7 +3129,6 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "subject",
                 "exam_session",
                 "grading_system",
-                "stream",
                 "entered_by",
                 "approved_by",
                 "published_by",
@@ -3186,7 +3352,7 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
     queryset = JuniorSecondaryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["student", "exam_session", "status", "is_published", "stream"]
+    filterset_fields = ["student", "exam_session", "status", "is_published"]
     search_fields = ["student__user__first_name", "student__user__last_name"]
 
     def get_serializer_class(self):
@@ -3196,9 +3362,7 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
         queryset = (
             super(viewsets.ModelViewSet, self)
             .get_queryset()
-            .select_related(
-                "student", "student__user", "exam_session", "stream", "published_by"
-            )
+            .select_related("student", "student__user", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
 
@@ -3245,18 +3409,155 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
         return queryset.filter(student__education_level__in=education_levels)
 
     @action(detail=True, methods=["post"])
-    def publish(self, request, pk=None):
+    def submit_for_approval(self, request, pk=None):
+        """
+        Teacher submits term report for admin approval.
+        Validates that all required subjects have results before submitting.
+        Changes status from DRAFT to SUBMITTED.
+        """
         try:
             with transaction.atomic():
                 report = self.get_object()
+
+                # Validate that report has subject results
+                if not report.subject_results.exists():
+                    return Response(
+                        {
+                            "error": "Cannot submit empty report",
+                            "detail": "Please add subject results before submitting for approval.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Validate current status allows submission
+                if report.status not in ["DRAFT", "APPROVED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot submit report with status '{report.status}'. Only DRAFT reports can be submitted.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update status to SUBMITTED
+                report.status = "SUBMITTED"
+                report.save()
+
+                logger.info(
+                    f"Term report {report.id} submitted for approval by {request.user.username}"
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": "Term report submitted for approval successfully",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to submit term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to submit term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """
+        Admin approves term report.
+        Changes status from SUBMITTED to APPROVED.
+        Cascades APPROVED status to all individual subject results.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows approval
+                if report.status not in ["SUBMITTED", "DRAFT"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot approve report with status '{report.status}'. Only SUBMITTED or DRAFT reports can be approved.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status
+                report.status = "APPROVED"
+                report.save()
+
+                # Cascade approval to all subject results
+                updated_count = report.subject_results.update(
+                    status="APPROVED",
+                    approved_by=request.user,
+                    approved_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} approved by {request.user.username}. {updated_count} subject results also approved."
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": f"Term report approved successfully. {updated_count} subject result(s) also approved.",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to approve term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to approve term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        """
+        Admin publishes term report.
+        Changes status from APPROVED to PUBLISHED.
+        Cascades PUBLISHED status to all individual subject results.
+        Published results become visible to students and parents.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows publishing
+                if report.status not in ["APPROVED", "SUBMITTED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot publish report with status '{report.status}'. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status and metadata
                 report.is_published = True
                 report.published_by = request.user
                 report.published_date = timezone.now()
                 report.status = "PUBLISHED"
                 report.save()
 
+                # Cascade publish to all subject results
+                updated_count = report.subject_results.update(
+                    status="PUBLISHED",
+                    published_by=request.user,
+                    published_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} published by {request.user.username}. {updated_count} subject results also published."
+                )
+
                 serializer = self.get_serializer(report)
-                return Response(serializer.data)
+                return Response(
+                    {
+                        "message": f"Term report published successfully. {updated_count} subject result(s) also published and are now visible to students.",
+                        "data": serializer.data,
+                    }
+                )
         except Exception as e:
             logger.error(f"Failed to publish report: {str(e)}")
             return Response(
@@ -3266,6 +3567,7 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
 
     @action(detail=True, methods=["post"])
     def calculate_metrics(self, request, pk=None):
+        """Recalculate term report metrics and class position"""
         try:
             report = self.get_object()
             report.calculate_metrics()
@@ -3282,6 +3584,10 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
 
     @action(detail=False, methods=["post"])
     def bulk_publish(self, request):
+        """
+        Bulk publish multiple term reports at once.
+        Cascades PUBLISHED status to all associated subject results.
+        """
         report_ids = request.data.get("report_ids", [])
         if not report_ids:
             return Response(
@@ -3291,6 +3597,19 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
         try:
             with transaction.atomic():
                 reports = self.get_queryset().filter(id__in=report_ids)
+
+                # Validate all reports can be published
+                invalid_reports = reports.exclude(status__in=["APPROVED", "SUBMITTED"])
+                if invalid_reports.exists():
+                    return Response(
+                        {
+                            "error": "Some reports cannot be published",
+                            "detail": f"{invalid_reports.count()} report(s) have invalid status. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update all reports
                 updated_count = reports.update(
                     is_published=True,
                     published_by=request.user,
@@ -3298,10 +3617,25 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
                     status="PUBLISHED",
                 )
 
+                # Cascade publish to all subject results for these reports
+                total_subjects_updated = 0
+                for report in reports:
+                    subjects_updated = report.subject_results.update(
+                        status="PUBLISHED",
+                        published_by=request.user,
+                        published_date=timezone.now(),
+                    )
+                    total_subjects_updated += subjects_updated
+
+                logger.info(
+                    f"Bulk published {updated_count} term reports by {request.user.username}. {total_subjects_updated} subject results also published."
+                )
+
                 return Response(
                     {
-                        "message": f"Successfully published {updated_count} reports",
-                        "updated_count": updated_count,
+                        "message": f"Successfully published {updated_count} term report(s)",
+                        "reports_published": updated_count,
+                        "subjects_published": total_subjects_updated,
                     }
                 )
         except Exception as e:
@@ -3322,7 +3656,6 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         "exam_session",
         "status",
         "is_passed",
-        "stream",
     ]
     search_fields = [
         "student__user__first_name",
@@ -3345,7 +3678,6 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "subject",
                 "exam_session",
                 "grading_system",
-                "stream",
                 "entered_by",
                 "approved_by",
                 "published_by",
@@ -3567,7 +3899,7 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     queryset = PrimaryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["student", "exam_session", "status", "is_published", "stream"]
+    filterset_fields = ["student", "exam_session", "status", "is_published"]
     search_fields = ["student__user__first_name", "student__user__last_name"]
 
     def get_serializer_class(self):
@@ -3577,9 +3909,7 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         queryset = (
             super(viewsets.ModelViewSet, self)
             .get_queryset()
-            .select_related(
-                "student", "student__user", "exam_session", "stream", "published_by"
-            )
+            .select_related("student", "student__user", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
 
@@ -3626,18 +3956,155 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return queryset.filter(student__education_level__in=education_levels)
 
     @action(detail=True, methods=["post"])
-    def publish(self, request, pk=None):
+    def submit_for_approval(self, request, pk=None):
+        """
+        Teacher submits term report for admin approval.
+        Validates that all required subjects have results before submitting.
+        Changes status from DRAFT to SUBMITTED.
+        """
         try:
             with transaction.atomic():
                 report = self.get_object()
+
+                # Validate that report has subject results
+                if not report.subject_results.exists():
+                    return Response(
+                        {
+                            "error": "Cannot submit empty report",
+                            "detail": "Please add subject results before submitting for approval.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Validate current status allows submission
+                if report.status not in ["DRAFT", "APPROVED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot submit report with status '{report.status}'. Only DRAFT reports can be submitted.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update status to SUBMITTED
+                report.status = "SUBMITTED"
+                report.save()
+
+                logger.info(
+                    f"Term report {report.id} submitted for approval by {request.user.username}"
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": "Term report submitted for approval successfully",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to submit term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to submit term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """
+        Admin approves term report.
+        Changes status from SUBMITTED to APPROVED.
+        Cascades APPROVED status to all individual subject results.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows approval
+                if report.status not in ["SUBMITTED", "DRAFT"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot approve report with status '{report.status}'. Only SUBMITTED or DRAFT reports can be approved.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status
+                report.status = "APPROVED"
+                report.save()
+
+                # Cascade approval to all subject results
+                updated_count = report.subject_results.update(
+                    status="APPROVED",
+                    approved_by=request.user,
+                    approved_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} approved by {request.user.username}. {updated_count} subject results also approved."
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": f"Term report approved successfully. {updated_count} subject result(s) also approved.",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to approve term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to approve term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        """
+        Admin publishes term report.
+        Changes status from APPROVED to PUBLISHED.
+        Cascades PUBLISHED status to all individual subject results.
+        Published results become visible to students and parents.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows publishing
+                if report.status not in ["APPROVED", "SUBMITTED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot publish report with status '{report.status}'. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status and metadata
                 report.is_published = True
                 report.published_by = request.user
                 report.published_date = timezone.now()
                 report.status = "PUBLISHED"
                 report.save()
 
+                # Cascade publish to all subject results
+                updated_count = report.subject_results.update(
+                    status="PUBLISHED",
+                    published_by=request.user,
+                    published_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} published by {request.user.username}. {updated_count} subject results also published."
+                )
+
                 serializer = self.get_serializer(report)
-                return Response(serializer.data)
+                return Response(
+                    {
+                        "message": f"Term report published successfully. {updated_count} subject result(s) also published and are now visible to students.",
+                        "data": serializer.data,
+                    }
+                )
         except Exception as e:
             logger.error(f"Failed to publish report: {str(e)}")
             return Response(
@@ -3647,6 +4114,7 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def calculate_metrics(self, request, pk=None):
+        """Recalculate term report metrics and class position"""
         try:
             report = self.get_object()
             report.calculate_metrics()
@@ -3663,6 +4131,10 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def bulk_publish(self, request):
+        """
+        Bulk publish multiple term reports at once.
+        Cascades PUBLISHED status to all associated subject results.
+        """
         report_ids = request.data.get("report_ids", [])
         if not report_ids:
             return Response(
@@ -3672,6 +4144,19 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 reports = self.get_queryset().filter(id__in=report_ids)
+
+                # Validate all reports can be published
+                invalid_reports = reports.exclude(status__in=["APPROVED", "SUBMITTED"])
+                if invalid_reports.exists():
+                    return Response(
+                        {
+                            "error": "Some reports cannot be published",
+                            "detail": f"{invalid_reports.count()} report(s) have invalid status. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update all reports
                 updated_count = reports.update(
                     is_published=True,
                     published_by=request.user,
@@ -3679,10 +4164,25 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     status="PUBLISHED",
                 )
 
+                # Cascade publish to all subject results for these reports
+                total_subjects_updated = 0
+                for report in reports:
+                    subjects_updated = report.subject_results.update(
+                        status="PUBLISHED",
+                        published_by=request.user,
+                        published_date=timezone.now(),
+                    )
+                    total_subjects_updated += subjects_updated
+
+                logger.info(
+                    f"Bulk published {updated_count} term reports by {request.user.username}. {total_subjects_updated} subject results also published."
+                )
+
                 return Response(
                     {
-                        "message": f"Successfully published {updated_count} reports",
-                        "updated_count": updated_count,
+                        "message": f"Successfully published {updated_count} term report(s)",
+                        "reports_published": updated_count,
+                        "subjects_published": total_subjects_updated,
                     }
                 )
         except Exception as e:
@@ -3703,7 +4203,6 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         "exam_session",
         "status",
         "is_passed",
-        "stream",
     ]
     search_fields = [
         "student__user__first_name",
@@ -3726,7 +4225,6 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "subject",
                 "exam_session",
                 "grading_system",
-                "stream",
                 "entered_by",
                 "approved_by",
                 "published_by",
@@ -3948,7 +4446,7 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     queryset = NurseryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["student", "exam_session", "status", "is_published", "stream"]
+    filterset_fields = ["student", "exam_session", "status", "is_published"]
     search_fields = ["student__user__first_name", "student__user__last_name"]
 
     def get_serializer_class(self):
@@ -3958,9 +4456,7 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         queryset = (
             super(viewsets.ModelViewSet, self)
             .get_queryset()
-            .select_related(
-                "student", "student__user", "exam_session", "stream", "published_by"
-            )
+            .select_related("student", "student__user", "exam_session", "published_by")
             .prefetch_related("subject_results")
         )
 
@@ -4007,18 +4503,155 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return queryset.filter(student__education_level__in=education_levels)
 
     @action(detail=True, methods=["post"])
-    def publish(self, request, pk=None):
+    def submit_for_approval(self, request, pk=None):
+        """
+        Teacher submits term report for admin approval.
+        Validates that all required subjects have results before submitting.
+        Changes status from DRAFT to SUBMITTED.
+        """
         try:
             with transaction.atomic():
                 report = self.get_object()
+
+                # Validate that report has subject results
+                if not report.subject_results.exists():
+                    return Response(
+                        {
+                            "error": "Cannot submit empty report",
+                            "detail": "Please add subject results before submitting for approval.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Validate current status allows submission
+                if report.status not in ["DRAFT", "APPROVED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot submit report with status '{report.status}'. Only DRAFT reports can be submitted.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update status to SUBMITTED
+                report.status = "SUBMITTED"
+                report.save()
+
+                logger.info(
+                    f"Term report {report.id} submitted for approval by {request.user.username}"
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": "Term report submitted for approval successfully",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to submit term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to submit term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """
+        Admin approves term report.
+        Changes status from SUBMITTED to APPROVED.
+        Cascades APPROVED status to all individual subject results.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows approval
+                if report.status not in ["SUBMITTED", "DRAFT"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot approve report with status '{report.status}'. Only SUBMITTED or DRAFT reports can be approved.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status
+                report.status = "APPROVED"
+                report.save()
+
+                # Cascade approval to all subject results
+                updated_count = report.subject_results.update(
+                    status="APPROVED",
+                    approved_by=request.user,
+                    approved_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} approved by {request.user.username}. {updated_count} subject results also approved."
+                )
+
+                serializer = self.get_serializer(report)
+                return Response(
+                    {
+                        "message": f"Term report approved successfully. {updated_count} subject result(s) also approved.",
+                        "data": serializer.data,
+                    }
+                )
+        except Exception as e:
+            logger.error(f"Failed to approve term report: {str(e)}")
+            return Response(
+                {"error": f"Failed to approve term report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def publish(self, request, pk=None):
+        """
+        Admin publishes term report.
+        Changes status from APPROVED to PUBLISHED.
+        Cascades PUBLISHED status to all individual subject results.
+        Published results become visible to students and parents.
+        """
+        try:
+            with transaction.atomic():
+                report = self.get_object()
+
+                # Validate current status allows publishing
+                if report.status not in ["APPROVED", "SUBMITTED"]:
+                    return Response(
+                        {
+                            "error": "Invalid status transition",
+                            "detail": f"Cannot publish report with status '{report.status}'. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update report status and metadata
                 report.is_published = True
                 report.published_by = request.user
                 report.published_date = timezone.now()
                 report.status = "PUBLISHED"
                 report.save()
 
+                # Cascade publish to all subject results
+                updated_count = report.subject_results.update(
+                    status="PUBLISHED",
+                    published_by=request.user,
+                    published_date=timezone.now(),
+                )
+
+                logger.info(
+                    f"Term report {report.id} published by {request.user.username}. {updated_count} subject results also published."
+                )
+
                 serializer = self.get_serializer(report)
-                return Response(serializer.data)
+                return Response(
+                    {
+                        "message": f"Term report published successfully. {updated_count} subject result(s) also published and are now visible to students.",
+                        "data": serializer.data,
+                    }
+                )
         except Exception as e:
             logger.error(f"Failed to publish report: {str(e)}")
             return Response(
@@ -4028,6 +4661,7 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def calculate_metrics(self, request, pk=None):
+        """Recalculate term report metrics and class position"""
         try:
             report = self.get_object()
             report.calculate_metrics()
@@ -4044,6 +4678,10 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def bulk_publish(self, request):
+        """
+        Bulk publish multiple term reports at once.
+        Cascades PUBLISHED status to all associated subject results.
+        """
         report_ids = request.data.get("report_ids", [])
         if not report_ids:
             return Response(
@@ -4053,6 +4691,19 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 reports = self.get_queryset().filter(id__in=report_ids)
+
+                # Validate all reports can be published
+                invalid_reports = reports.exclude(status__in=["APPROVED", "SUBMITTED"])
+                if invalid_reports.exists():
+                    return Response(
+                        {
+                            "error": "Some reports cannot be published",
+                            "detail": f"{invalid_reports.count()} report(s) have invalid status. Only APPROVED or SUBMITTED reports can be published.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Update all reports
                 updated_count = reports.update(
                     is_published=True,
                     published_by=request.user,
@@ -4060,10 +4711,25 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                     status="PUBLISHED",
                 )
 
+                # Cascade publish to all subject results for these reports
+                total_subjects_updated = 0
+                for report in reports:
+                    subjects_updated = report.subject_results.update(
+                        status="PUBLISHED",
+                        published_by=request.user,
+                        published_date=timezone.now(),
+                    )
+                    total_subjects_updated += subjects_updated
+
+                logger.info(
+                    f"Bulk published {updated_count} term reports by {request.user.username}. {total_subjects_updated} subject results also published."
+                )
+
                 return Response(
                     {
-                        "message": f"Successfully published {updated_count} reports",
-                        "updated_count": updated_count,
+                        "message": f"Successfully published {updated_count} term report(s)",
+                        "reports_published": updated_count,
+                        "subjects_published": total_subjects_updated,
                     }
                 )
         except Exception as e:
