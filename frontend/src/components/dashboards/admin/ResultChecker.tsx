@@ -52,31 +52,70 @@ const ResultChecker: React.FC = () => {
     }
   }, [filters, resultType]);
 
+  // Update the loadFilterOptions method in ResultChecker.tsx
+
   const loadFilterOptions = async () => {
     try {
-      const promises = [
+      console.log('🔄 Loading filter options...');
+      
+      // Load filter options with proper error handling
+      const results = await Promise.allSettled([
         ResultCheckerService.getAvailableTerms(),
         ResultCheckerService.getAvailableSessions(),
         ResultCheckerService.getExamSessions(),
-      ];
+        // Only load classes for admin/teacher roles
+        ...(userRole.role === 'admin' || userRole.role === 'teacher' 
+          ? [ResultCheckerService.getAvailableClasses()] 
+          : []
+        )
+      ]);
 
-      // Add classes for admin/teacher roles
-      if (userRole.role === 'admin' || userRole.role === 'teacher') {
-        promises.push(ResultCheckerService.getAvailableClasses());
+      // Process terms
+      if (results[0].status === 'fulfilled') {
+        const termsData = results[0].value || [];
+        console.log('✅ Loaded terms:', termsData.length);
+        setTerms(termsData);
+      } else {
+        console.warn('⚠️ Failed to load terms:', results[0].reason);
+        setTerms([]);
       }
 
-      const results = await Promise.all(promises);
-      
-      setTerms(results[0] || []);
-      setSessions(results[1] || []);
-      setExamSessions(results[2] || []);
-      
-      if (results[3]) {
-        setClasses(results[3]);
+      // Process sessions
+      if (results[1].status === 'fulfilled') {
+        const sessionsData = results[1].value || [];
+        console.log('✅ Loaded sessions:', sessionsData.length);
+        setSessions(sessionsData);
+      } else {
+        console.warn('⚠️ Failed to load sessions:', results[1].reason);
+        setSessions([]);
       }
+
+      // Process exam sessions
+      if (results[2].status === 'fulfilled') {
+        const examSessionsData = results[2].value || [];
+        console.log('✅ Loaded exam sessions:', examSessionsData.length);
+        setExamSessions(examSessionsData);
+      } else {
+        console.warn('⚠️ Failed to load exam sessions:', results[2].reason);
+        setExamSessions([]);
+      }
+
+      // Process classes (if requested)
+      if (results[3] && results[3].status === 'fulfilled') {
+        const classesData = results[3].value || [];
+        console.log('✅ Loaded classes:', classesData.length);
+        setClasses(classesData);
+      } else if (results[3]) {
+        console.warn('⚠️ Failed to load classes:', results[3].reason);
+        setClasses([]);
+      }
+
+      console.log('✅ Filter options loaded successfully');
+      
     } catch (error) {
-      console.error('Error loading filter options:', error);
-      toast.error('Failed to load filter options');
+      console.error('❌ Error loading filter options:', error);
+      // Don't show error toast - the app should still work with empty filters
+      // toast.error('Failed to load filter options');
     }
   };
 

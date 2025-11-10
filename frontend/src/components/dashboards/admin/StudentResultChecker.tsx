@@ -402,7 +402,8 @@ const StudentResultChecker: React.FC<StudentResultCheckerProps> = ({ onClose }) 
            classLower.includes('junior') ||
            classLower.includes('senior') ||
            classLower.includes('js ') ||
-           classLower.includes('ss ');
+           classLower.includes('ss ') ||
+           classLower.includes('sss ');;
   };
 
   const getNextStep = () => {

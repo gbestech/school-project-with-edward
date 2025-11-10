@@ -293,7 +293,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/senior-secondary/session-results/?${params.toString()}`);
+    const response = await api.get(`/api/results/senior-secondary/session-results/?${params.toString()}`);
     return response.results || response;
   }
 
@@ -337,7 +337,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/senior-secondary/session-reports/?${params.toString()}`);
+    const response = await api.get(`/api/results/senior-secondary/session-reports/?${params.toString()}`);
     return response.results || response;
   }
 
@@ -350,7 +350,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/student-term-results/?${params.toString()}`);
+    const response = await api.get(`/api/results/student-term-results/?${params.toString()}`);
     return response.results || response;
   }
 
@@ -363,7 +363,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/student-results/?${params.toString()}`);
+    const response = await api.get(`/api/results/student-results/?${params.toString()}`);
     return response.results || response;
   }
 
@@ -423,7 +423,7 @@ class ResultCheckerService {
 
   // Get session report by ID - NEW
   async getSessionReportById(reportId: string): Promise<any> {
-    const response = await api.get(`results/senior-secondary/session-reports/${reportId}/`);
+    const response = await api.get(`/api/results/senior-secondary/session-reports/${reportId}/`);
     return response;
   }
 
@@ -477,7 +477,7 @@ class ResultCheckerService {
     
     // Only Senior Secondary has grade distribution endpoint based on the views
     if (educationLevel.toUpperCase() === 'SENIOR_SECONDARY') {
-      const response = await api.get(`results/senior-secondary/results/grade_distribution/?${params.toString()}`);
+      const response = await api.get(`/api/results/senior-secondary/results/grade_distribution/?${params.toString()}`);
       return response;
     }
     
@@ -485,62 +485,145 @@ class ResultCheckerService {
   }
 
   // Get exam sessions - UPDATED
-  async getExamSessions(): Promise<any[]> {
-    const response = await api.get('results/exam-sessions/');
-    return response.results || response;
+   async getExamSessions(): Promise<any[]> {
+    try {
+      // Try the hierarchical endpoint first
+      const response = await api.get('/api/results/exam-sessions/');
+      return response.results || response;
+    } catch (error) {
+      console.warn('Failed to fetch from /api/results/exam-sessions/, trying alternative');
+      try {
+        // Fallback to academic sessions
+        const sessionsResponse = await api.get('/api/fee/academic-sessions/');
+        const sessions = sessionsResponse.results || sessionsResponse;
+        
+        if (!sessions || sessions.length === 0) {
+          console.warn('No exam sessions found');
+          return [];
+        }
+        
+        // Transform academic sessions to exam sessions format
+        return sessions.map((session: any) => ({
+          id: session.id,
+          name: session.name || `${session.start_year}/${session.end_year}`,
+          academic_session: session.id,
+          is_current: session.is_current,
+          is_active: session.is_active,
+          start_date: session.start_date,
+          end_date: session.end_date
+        }));
+      } catch (fallbackError) {
+        console.error('Failed to fetch exam sessions from fallback:', fallbackError);
+        return [];
+      }
+    }
   }
 
   // Get grading systems - UPDATED
   async getGradingSystems(): Promise<any[]> {
-    const response = await api.get('results/grading-systems/');
+    const response = await api.get('/api/results/grading-systems/');
     return response.results || response;
   }
 
   // Get assessment types - UPDATED
   async getAssessmentTypes(): Promise<any[]> {
-    const response = await api.get('results/assessment-types/');
+    const response = await api.get('/api/results/assessment-types/');
     return response.results || response;
   }
 
   // Get scoring configurations - UPDATED
   async getScoringConfigurations(): Promise<any[]> {
-    const response = await api.get('results/scoring-configurations/');
+    const response = await api.get('/api/results/scoring-configurations/');
     return response.results || response;
   }
 
   // Get scoring configurations by education level - NEW
   async getScoringConfigurationsByEducationLevel(educationLevel: string): Promise<any[]> {
-    const response = await api.get(`results/scoring-configurations/by_education_level/?education_level=${educationLevel}`);
+    const response = await api.get(`/api/results/scoring-configurations/by_education_level/?education_level=${educationLevel}`);
     return response;
   }
 
   // Get default scoring configurations - NEW
   async getDefaultScoringConfigurations(): Promise<any[]> {
-    const response = await api.get('results/scoring-configurations/defaults/');
+    const response = await api.get('/api/results/scoring-configurations/defaults/');
     return response;
   }
 
   // Get available terms for filtering
   async getAvailableTerms(): Promise<TermInfo[]> {
-    const response = await api.get('fee/terms/');
-    return response.results || response;
+    try {
+      // Try the new endpoint structure first
+      const response = await api.get('/api/fee/terms/');
+      return response.results || response;
+    } catch (error) {
+      console.warn('Failed to fetch from /api/fee/terms/, trying alternative endpoint');
+      try {
+        // Fallback to academic sessions endpoint
+        const sessionsResponse = await api.get('/api/fee/academic-sessions/');
+        const sessions = sessionsResponse.results || sessionsResponse;
+        
+        // Return empty array if no sessions, frontend will handle gracefully
+        if (!sessions || sessions.length === 0) {
+          console.warn('No academic sessions found');
+          return [];
+        }
+        
+        // Generate term data from sessions
+        const terms: TermInfo[] = [];
+        sessions.forEach((session: any) => {
+          ['First Term', 'Second Term', 'Third Term'].forEach((termName, index) => {
+            terms.push({
+              id: `${session.id}-term-${index + 1}`,
+              name: termName,
+              academic_session: {
+                id: session.id,
+                name: session.name,
+                start_date: session.start_date,
+                end_date: session.end_date,
+                is_current: session.is_current,
+                is_active: session.is_active,
+                created_at: session.created_at,
+                updated_at: session.updated_at
+              },
+              start_date: session.start_date,
+              end_date: session.end_date
+            });
+          });
+        });
+        
+        return terms;
+      } catch (fallbackError) {
+        console.error('Failed to fetch terms from fallback endpoint:', fallbackError);
+        return [];
+      }
+    }
   }
 
   // Get available academic sessions for filtering
   async getAvailableSessions(): Promise<AcademicSession[]> {
-    const response = await api.get('/api/fee/academic-sessions/');
-     const data = response.results || response;
-    
-     return data.map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      start_date: s.start_date ?? `${s.start_year}-01-01`,
-      end_date: s.end_date ?? `${s.end_year}-12-31`,
-      is_current: s.is_current ?? false,
-      is_active: s.is_active ?? false,
-      created_at: s.created_at ?? new Date().toISOString(),
-      updated_at: s.upated_at ?? new Date().toISOString()
-     })).results || response;
+    try {
+      const response = await api.get('/api/fee/academic-sessions/');
+      const data = response.results || response;
+      
+      if (!data || data.length === 0) {
+        console.warn('No academic sessions found');
+        return [];
+      }
+      
+      return data.map((s: any) => ({
+        id: s.id,
+        name: s.name || `${s.start_year}/${s.end_year}`,
+        start_date: s.start_date ?? `${s.start_year}-01-01`,
+        end_date: s.end_date ?? `${s.end_year}-12-31`,
+        is_current: s.is_current ?? false,
+        is_active: s.is_active ?? false,
+        created_at: s.created_at ?? new Date().toISOString(),
+        updated_at: s.updated_at ?? new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('Error fetching academic sessions:', error);
+      return [];
+    }
   }
 
   // Get available classes for filtering
@@ -691,7 +774,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/result-sheets/?${params.toString()}`);
+    const response = await api.get(`/api/results/result-sheets/?${params.toString()}`);
     return response.results || response;
   }
 
@@ -709,7 +792,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/assessment-scores/?${params.toString()}`);
+    const response = await api.get(`/api/results/assessment-scores/?${params.toString()}`);
     return response.results || response;
   }
 
@@ -726,7 +809,7 @@ class ResultCheckerService {
       }
     });
     
-    const response = await api.get(`results/result-comments/?${params.toString()}`);
+    const response = await api.get(`/api/results/result-comments/?${params.toString()}`);
     return response.results || response;
   }
 
