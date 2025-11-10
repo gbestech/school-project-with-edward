@@ -57,6 +57,8 @@ interface StudentResult {
   };
   approved_date?: string;
   published_date?: string;
+  subject_name?: string; // For individual subject results
+  education_level?: string;
 }
 
 interface SubjectResult {
@@ -65,7 +67,7 @@ interface SubjectResult {
     name: string;
     code: string;
   };
-  total_ca_score: number; // Changed from ca_score to match backend
+  total_ca_score: number;
   exam_score: number;
   total_score: number;
   percentage: number;
@@ -91,6 +93,7 @@ const EnhancedResultsManagement: React.FC = () => {
   const [studentResults, setStudentResults] = useState<StudentResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'term-reports' | 'subject-results'>('subject-results');
   
   // UI State
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
@@ -113,14 +116,7 @@ const EnhancedResultsManagement: React.FC = () => {
   const [termFilter, setTermFilter] = useState<string>('all');
   const [sessionFilter, setSessionFilter] = useState<string>('all');
 
-
-  useEffect(() => {
-  loadResults();
-  // Uncomment to test API directly
-  ResultService.testTermReports();
-}, []);
-
-  // Status actions configuration - Only essential actions for admin workflow
+  // Status actions configuration
   const statusActions: StatusAction[] = [
     {
       id: 'APPROVED',
@@ -140,46 +136,107 @@ const EnhancedResultsManagement: React.FC = () => {
     }
   ];
 
-  // Load data
   useEffect(() => {
     loadResults();
-  }, []);
+  }, [viewMode]);
 
   const loadResults = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const termResultsData = await ResultService.getTermResults();
+      let data;
+      if (viewMode === 'term-reports') {
+        // Load consolidated term reports
+        data = await ResultService.getTermResults();
+      } else {
+        // Load individual subject results
+        const [nursery, primary, junior, senior] = await Promise.all([
+          ResultService.getNurseryResults(),
+          ResultService.getPrimaryResults(),
+          ResultService.getJuniorSecondaryResults(),
+          ResultService.getSeniorSecondaryResults()
+        ]);
+        
+        // Transform to common format
+        data = [
+          ...nursery.map(r => transformSubjectResult(r, 'NURSERY')),
+          ...primary.map(r => transformSubjectResult(r, 'PRIMARY')),
+          ...junior.map(r => transformSubjectResult(r, 'JUNIOR_SECONDARY')),
+          ...senior.map(r => transformSubjectResult(r, 'SENIOR_SECONDARY'))
+        ];
+      }
 
       console.log('=== RESULTS DEBUG ===');
-    console.log('📊 Total results loaded:', termResultsData.length);
-    console.log('📊 First result (full):', termResultsData[0]);
-
-
-    if (termResultsData.length > 0) {
-      const sample = termResultsData[0];
-      console.log('📊 Sample result breakdown:');
-      console.log('  - ID:', sample.id);
-      console.log('  - Student:', sample.student);
-      console.log('  - Academic Session:', sample.academic_session);
-      console.log('  - Term:', sample.term);
-      console.log('  - Status:', sample.status);
-      console.log('  - Average Score:', sample.average_score);
-      console.log('  - Overall Grade:', (sample as any).overall_grade);
-      console.log('  - Education Level:', (sample as any).education_level);
-      console.log('  - Created At:', sample.created_at);
-      console.log('  - Updated At:', sample.updated_at);
-    }
-    
-    console.log('=== END DEBUG ===');
-      setStudentResults(termResultsData || []);
+      console.log(`📊 View Mode: ${viewMode}`);
+      console.log('📊 Total results loaded:', data.length);
+      
+      if (data.length > 0) {
+        console.log('📊 First result (full):', data[0]);
+        
+        // Check all statuses
+        const statuses = data.map((r: any) => r.status);
+        const uniqueStatuses = Array.from(new Set(statuses));
+        console.log('📊 Unique statuses in data:', uniqueStatuses);
+        console.log('📊 Status counts:', {
+          DRAFT: statuses.filter(s => s === 'DRAFT').length,
+          APPROVED: statuses.filter(s => s === 'APPROVED').length,
+          PUBLISHED: statuses.filter(s => s === 'PUBLISHED').length,
+          other: statuses.filter(s => !['DRAFT', 'APPROVED', 'PUBLISHED'].includes(s)).length
+        });
+        
+        // Log sample results with their statuses
+        console.log('📊 Sample results with statuses:');
+        data.slice(0, 5).forEach((result: any, index: number) => {
+          console.log(`  ${index + 1}. ${result.student?.full_name} - ${viewMode === 'subject-results' ? result.subject_name : 'All Subjects'} - Status: ${result.status}`);
+        });
+      }
+      
+      console.log('=== END DEBUG ===');
+      
+      setStudentResults(data || []);
     } catch (err) {
       console.error('Error loading results:', err);
       setError('Failed to load results. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Transform individual subject result to match interface
+  const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
+    return {
+      id: result.id,
+      student: result.student,
+      academic_session: result.exam_session?.academic_session || {},
+      term: result.exam_session?.term || 'N/A',
+      total_subjects: 1,
+      subjects_passed: result.is_passed ? 1 : 0,
+      subjects_failed: result.is_passed ? 0 : 1,
+      total_score: result.total_score || 0,
+      average_score: result.percentage || 0,
+      gpa: result.grade_point || 0,
+      class_position: null,
+      total_students: 0,
+      status: result.status,
+      remarks: result.teacher_remark || '',
+      subject_results: [{
+        id: result.id,
+        subject: result.subject,
+        total_ca_score: result.continuous_assessment_score || result.ca_total || 0,
+        exam_score: result.exam_score || 0,
+        total_score: result.total_score || 0,
+        percentage: result.percentage || 0,
+        grade: result.grade || 'N/A',
+        grade_point: result.grade_point || 0,
+        is_passed: result.is_passed,
+        status: result.status
+      }],
+      created_at: result.created_at,
+      updated_at: result.updated_at,
+      education_level: educationLevel,
+      subject_name: result.subject?.name || 'N/A',
+    } as any;
   };
 
   // Filter and search logic
@@ -240,7 +297,6 @@ const EnhancedResultsManagement: React.FC = () => {
           throw new Error(`Unsupported status change: ${newStatus}`);
       }
       
-      // Update local state
       setStudentResults(prev => prev.map(result => 
         result.id === resultId 
           ? { ...result, status: newStatus as any, ...response }
@@ -256,10 +312,9 @@ const EnhancedResultsManagement: React.FC = () => {
     }
   };
 
-  // Handle result added callback
   const handleResultAdded = () => {
     setShowAddForm(false);
-    loadResults(); // Reload the results list
+    loadResults();
     toast.success('Result recorded successfully!');
   };
 
@@ -283,31 +338,28 @@ const EnhancedResultsManagement: React.FC = () => {
     }
   };
 
-  // Delete function
-  // Delete function
-const deleteResult = async (result: StudentResult) => {
-  try {
-    setActionLoading('delete');
-    // Pass education level to delete the correct term report
-    const educationLevel = (result as any).education_level || result.student?.education_level;
-    await ResultService.deleteTermResult(result.id, educationLevel);
-    
-    setStudentResults(prev => prev.filter(r => r.id !== result.id));
-    setShowDeleteModal(false);
-    setResultToDelete(null);
-    toast.success('Result deleted successfully');
-  } catch (error) {
-    console.error('Error deleting result:', error);
-    toast.error('Failed to delete result');
-  } finally {
-    setActionLoading(null);
-  }
-};
+  const deleteResult = async (result: StudentResult) => {
+    try {
+      setActionLoading('delete');
+      const educationLevel = (result as any).education_level || result.student?.education_level;
+      await ResultService.deleteTermResult(result.id, educationLevel);
+      
+      setStudentResults(prev => prev.filter(r => r.id !== result.id));
+      setShowDeleteModal(false);
+      setResultToDelete(null);
+      toast.success('Result deleted successfully');
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      toast.error('Failed to delete result');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Utility functions
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       DRAFT: { color: 'bg-gray-100 text-gray-800', icon: <Edit className="w-3 h-3" /> },
-      // SUBMITTED status removed as it's not used in StudentTermResult
       APPROVED: { color: 'bg-green-100 text-green-800', icon: <CheckCircle className="w-3 h-3" /> },
       PUBLISHED: { color: 'bg-purple-100 text-purple-800', icon: <Award className="w-3 h-3" /> }
     };
@@ -330,24 +382,22 @@ const deleteResult = async (result: StudentResult) => {
   };
 
   const getOverallGrade = (student: StudentResult): string => {
-  // Use overall_grade from backend if available
-  if ((student as any).overall_grade) {
-    return (student as any).overall_grade;
-  }
-  
-  // Fallback to calculation
-  if (!student.average_score || typeof student.average_score !== 'number' || isNaN(student.average_score)) {
-    return 'N/A';
-  }
-  
-  const avg = student.average_score;
-  if (avg >= 70) return 'A';
-  if (avg >= 60) return 'B';
-  if (avg >= 50) return 'C';
-  if (avg >= 45) return 'D';
-  if (avg >= 39) return 'E';
-  return 'F';
-};
+    if ((student as any).overall_grade) {
+      return (student as any).overall_grade;
+    }
+    
+    if (!student.average_score || typeof student.average_score !== 'number' || isNaN(student.average_score)) {
+      return 'N/A';
+    }
+    
+    const avg = student.average_score;
+    if (avg >= 70) return 'A';
+    if (avg >= 60) return 'B';
+    if (avg >= 50) return 'C';
+    if (avg >= 45) return 'D';
+    if (avg >= 39) return 'E';
+    return 'F';
+  };
 
   const formatScore = (score: any): string => {
     if (score === null || score === undefined) return 'N/A';
@@ -448,9 +498,42 @@ const deleteResult = async (result: StudentResult) => {
               <p className="text-gray-600 mt-2">
                 Manage student results, approve, and publish for report cards
               </p>
+              <p className="text-sm text-blue-600 mt-1">
+                Currently viewing: <strong>{viewMode === 'subject-results' ? 'Individual Subject Results' : 'Consolidated Term Reports'}</strong>
+              </p>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap items-center">
+              {/* View Mode Toggle - Made more prominent */}
+              <div className="flex bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-1.5 shadow-md">
+                <button
+                  onClick={() => {
+                    console.log('Switching to subject-results view');
+                    setViewMode('subject-results');
+                  }}
+                  className={`px-6 py-2.5 rounded-md text-sm font-bold transition-all duration-200 ${
+                    viewMode === 'subject-results'
+                      ? 'bg-blue-600 text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-102'
+                  }`}
+                >
+                  📝 Subject Results
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Switching to term-reports view');
+                    setViewMode('term-reports');
+                  }}
+                  className={`px-6 py-2.5 rounded-md text-sm font-bold transition-all duration-200 ${
+                    viewMode === 'term-reports'
+                      ? 'bg-purple-600 text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-102'
+                  }`}
+                >
+                  📊 Term Reports
+                </button>
+              </div>
+              
               <button
                 onClick={() => setShowAddForm(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -482,6 +565,55 @@ const deleteResult = async (result: StudentResult) => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+          
+          {/* Status Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Results</p>
+                  <p className="text-2xl font-bold text-gray-900">{studentResults.length}</p>
+                </div>
+                <FileText className="w-8 h-8 text-blue-500" />
+              </div>
+            </div>
+            
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Draft</p>
+                  <p className="text-2xl font-bold text-gray-700">
+                    {studentResults.filter(r => r.status === 'DRAFT').length}
+                  </p>
+                </div>
+                <Edit className="w-8 h-8 text-gray-500" />
+              </div>
+            </div>
+            
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Approved</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    {studentResults.filter(r => r.status === 'APPROVED').length}
+                  </p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+            </div>
+            
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Published</p>
+                  <p className="text-2xl font-bold text-purple-700">
+                    {studentResults.filter(r => r.status === 'PUBLISHED').length}
+                  </p>
+                </div>
+                <Award className="w-8 h-8 text-purple-500" />
+              </div>
             </div>
           </div>
         </div>
@@ -638,9 +770,16 @@ const deleteResult = async (result: StudentResult) => {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {activeTab === 'ALL' ? 'All Results' : `${formatTermDisplay(activeTab)} Results`} ({filteredResults.length})
-              </h2>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {activeTab === 'ALL' ? 'All Results' : `${formatTermDisplay(activeTab)} Results`} ({filteredResults.length})
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {viewMode === 'subject-results' 
+                    ? '📝 Showing individual subject results with all statuses' 
+                    : '📊 Showing consolidated term reports'}
+                </p>
+              </div>
               {selectedResults.length > 0 && (
                 <span className="text-sm text-gray-600">
                   {selectedResults.length} selected
@@ -664,6 +803,11 @@ const deleteResult = async (result: StudentResult) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Student
                   </th>
+                  {viewMode === 'subject-results' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Subject
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Class
                   </th>
@@ -690,7 +834,7 @@ const deleteResult = async (result: StudentResult) => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredResults.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={viewMode === 'subject-results' ? 10 : 9} className="px-6 py-12 text-center text-gray-500">
                       <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                       <p>No results found</p>
                       {searchTerm && (
@@ -734,6 +878,16 @@ const deleteResult = async (result: StudentResult) => {
                           </div>
                         </div>
                       </td>
+                      {viewMode === 'subject-results' && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {(result as any).subject_name || result.subject_results?.[0]?.subject?.name || 'N/A'}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {result.subject_results?.[0]?.subject?.code || ''}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {result.student?.student_class || 'N/A'}
@@ -788,7 +942,6 @@ const deleteResult = async (result: StudentResult) => {
                             <Eye className="w-4 h-4" />
                           </button>
                           
-                          {/* Edit Button */}
                           <button
                             onClick={() => {
                               setEditingResult(result);
@@ -800,7 +953,6 @@ const deleteResult = async (result: StudentResult) => {
                             <Edit className="w-4 h-4" />
                           </button>
                           
-                          {/* Status Actions */}
                           {statusActions.map(action => (
                             <button
                               key={action.id}
@@ -878,7 +1030,6 @@ const deleteResult = async (result: StudentResult) => {
               </div>
               
               <div className="p-6">
-                {/* Student Info */}
                 <div className="grid grid-cols-2 gap-6 mb-6">
                   <div>
                     <h4 className="text-lg font-medium text-gray-900 mb-3">Student Information</h4>
@@ -905,7 +1056,6 @@ const deleteResult = async (result: StudentResult) => {
                   </div>
                 </div>
                 
-                {/* Subject Results */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-lg font-medium text-gray-900">Subject Results</h4>
@@ -977,7 +1127,7 @@ const deleteResult = async (result: StudentResult) => {
                   onSuccess={() => {
                     setShowEditModal(false);
                     setEditingResult(null);
-                    loadResults(); // Reload results to show updated data
+                    loadResults();
                   }}
                 />
               </div>
