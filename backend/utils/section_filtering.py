@@ -334,3 +334,87 @@ class SectionFilterMixin:
         # Default: no access
         logger.warning(f"No classroom access for user {user.username} with role {role}")
         return queryset.none()
+
+    def get_user_education_level_access(self):
+        """Returns the specific education levels the user has access to.
+        More granular than section access.
+        """
+        user = self.request.user
+        role = self.get_user_role()
+
+        logger.info(
+            f"Getting education level access for {user.username} with role {role}"
+        )
+
+        # Super Admin sees everything
+        if role == "superadmin" or user.is_superuser or user.is_staff:
+            logger.info("Super admin - all education levels")
+            return ["NURSERY", "PRIMARY", "JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
+
+        # General Admin/Principal sees everything
+        if role in ["admin", "principal"]:
+            logger.info("Admin/Principal - all education levels")
+            return ["NURSERY", "PRIMARY", "JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
+
+        # Secondary Admin sees both JSS and SSS
+        if role == "secondary_admin":
+            logger.info("Secondary admin - JSS and SSS")
+            return ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
+
+        # Check for section-specific admin roles
+        if hasattr(user, "is_section_admin") and user.is_section_admin:
+            if hasattr(user, "section"):
+                section_name = (
+                    user.section.lower()
+                    if isinstance(user.section, str)
+                    else str(user.section).lower()
+                )
+
+                section_mapping = {
+                    "nursery": ["NURSERY"],
+                    "nursery_admin": ["NURSERY"],
+                    "primary": ["PRIMARY"],
+                    "primary_admin": ["PRIMARY"],
+                    "junior_secondary": ["JUNIOR_SECONDARY"],
+                    "junior_secondary_admin": ["JUNIOR_SECONDARY"],
+                    "senior_secondary": ["SENIOR_SECONDARY"],
+                    "senior_secondary_admin": ["SENIOR_SECONDARY"],
+                    "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
+                    "secondary_admin": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
+                }
+
+                levels = section_mapping.get(section_name, [])
+                logger.info(f"Section admin for {section_name} - access: {levels}")
+                return levels
+
+        # For teachers, get from their assigned classrooms/subjects
+        if role == "teacher":
+            try:
+                from teacher.models import Teacher
+                from classroom.models import Classroom
+
+                teacher = Teacher.objects.get(user=user)
+
+                # Get education levels from assigned classrooms
+                classroom_edu_levels = (
+                    Classroom.objects.filter(
+                        Q(class_teacher=teacher)
+                        | Q(classroomteacherassignment__teacher=teacher)
+                    )
+                    .values_list("grade_level__education_level", flat=True)
+                    .distinct()
+                )
+
+                levels = list(set(classroom_edu_levels))
+                logger.info(f"Teacher education level access: {levels}")
+                return levels
+
+            except Teacher.DoesNotExist:
+                logger.warning(f"Teacher not found for user {user.username}")
+                return []
+            except Exception as e:
+                logger.error(f"Error getting teacher education levels: {str(e)}")
+                return []
+
+        logger.warning(f"No education level access for user {user.username}")
+        return []
