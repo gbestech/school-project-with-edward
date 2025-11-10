@@ -265,16 +265,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/results/?${params.toString()}`;
+        endpoint = `/api/results/nursery/results/?${params.toString()}`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/results/?${params.toString()}`;
+        endpoint = `/api/results/primary/results/?${params.toString()}`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/results/?${params.toString()}`;
+        endpoint = `/api/results/junior-secondary/results/?${params.toString()}`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/results/?${params.toString()}`;
+        endpoint = `/api/results/senior-secondary/results/?${params.toString()}`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -309,16 +309,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/term-reports/?${params.toString()}`;
+        endpoint = `/api/results/nursery/term-reports/?${params.toString()}`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/term-reports/?${params.toString()}`;
+        endpoint = `/api/results/primary/term-reports/?${params.toString()}`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/term-reports/?${params.toString()}`;
+        endpoint = `/api/results/junior-secondary/term-reports/?${params.toString()}`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/term-reports/?${params.toString()}`;
+        endpoint = `/api/results/senior-secondary/term-reports/?${params.toString()}`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -372,20 +372,20 @@ class ResultCheckerService {
     let endpoint = '';
     
     if (resultType === 'session' && educationLevel.toUpperCase() === 'SENIOR_SECONDARY') {
-      endpoint = `results/senior-secondary/session-results/${resultId}/`;
+      endpoint = `/api/results/senior-secondary/session-results/${resultId}/`;
     } else {
       switch (educationLevel.toUpperCase()) {
         case 'NURSERY':
-          endpoint = `results/nursery/results/${resultId}/`;
+          endpoint = `/api/results/nursery/results/${resultId}/`;
           break;
         case 'PRIMARY':
-          endpoint = `results/primary/results/${resultId}/`;
+          endpoint = `/api/results/primary/results/${resultId}/`;
           break;
         case 'JUNIOR_SECONDARY':
-          endpoint = `results/junior-secondary/results/${resultId}/`;
+          endpoint = `/api/results/junior-secondary/results/${resultId}/`;
           break;
         case 'SENIOR_SECONDARY':
-          endpoint = `results/senior-secondary/results/${resultId}/`;
+          endpoint = `/api/results/senior-secondary/results/${resultId}/`;
           break;
         default:
           throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -402,16 +402,16 @@ class ResultCheckerService {
     
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/term-reports/${reportId}/`;
+        endpoint = `/api/results/nursery/term-reports/${reportId}/`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/term-reports/${reportId}/`;
+        endpoint = `/api/results/primary/term-reports/${reportId}/`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/term-reports/${reportId}/`;
+        endpoint = `/api/results/junior-secondary/term-reports/${reportId}/`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/term-reports/${reportId}/`;
+        endpoint = `/api/results/senior-secondary/term-reports/${reportId}/`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -444,16 +444,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/results/class_statistics/?${params.toString()}`;
+        endpoint = `/api/results/nursery/results/class_statistics/?${params.toString()}`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/results/class_statistics/?${params.toString()}`;
+        endpoint = `/api/results/primary/results/class_statistics/?${params.toString()}`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/results/class_statistics/?${params.toString()}`;
+        endpoint = `/api/results/junior-secondary/results/class_statistics/?${params.toString()}`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/results/class_statistics/?${params.toString()}`;
+        endpoint = `/api/results/senior-secondary/results/class_statistics/?${params.toString()}`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -820,16 +820,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = 'results/nursery/results/bulk_create/';
+        endpoint = '/api/results/nursery/results/bulk_create/';
         break;
       case 'PRIMARY':
-        endpoint = 'results/primary/results/bulk_create/';
+        endpoint = '/api/results/primary/results/bulk_create/';
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = 'results/junior-secondary/results/bulk_create/';
+        endpoint = '/api/results/junior-secondary/results/bulk_create/';
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = 'results/senior-secondary/results/bulk_create/';
+        endpoint = '/api/results/senior-secondary/results/bulk_create/';
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -844,16 +844,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/results/${resultId}/approve/`;
+        endpoint = `/api/results/nursery/results/${resultId}/approve/`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/results/${resultId}/approve/`;
+        endpoint = `/api/results/primary/results/${resultId}/approve/`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/results/${resultId}/approve/`;
+        endpoint = `/api/results/junior-secondary/results/${resultId}/approve/`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/results/${resultId}/approve/`;
+        endpoint = `/api/results/senior-secondary/results/${resultId}/approve/`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -868,16 +868,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/results/${resultId}/publish/`;
+        endpoint = `/api/results/nursery/results/${resultId}/publish/`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/results/${resultId}/publish/`;
+        endpoint = `/api/results/primary/results/${resultId}/publish/`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/results/${resultId}/publish/`;
+        endpoint = `/api/results/junior-secondary/results/${resultId}/publish/`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/results/${resultId}/publish/`;
+        endpoint = `/api/results/senior-secondary/results/${resultId}/publish/`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -892,16 +892,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/term-reports/${reportId}/publish/`;
+        endpoint = `/api/results/nursery/term-reports/${reportId}/publish/`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/term-reports/${reportId}/publish/`;
+        endpoint = `/api/results/primary/term-reports/${reportId}/publish/`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/term-reports/${reportId}/publish/`;
+        endpoint = `/api/results/junior-secondary/term-reports/${reportId}/publish/`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/term-reports/${reportId}/publish/`;
+        endpoint = `/api/results/senior-secondary/term-reports/${reportId}/publish/`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
@@ -916,16 +916,16 @@ class ResultCheckerService {
     let endpoint = '';
     switch (educationLevel.toUpperCase()) {
       case 'NURSERY':
-        endpoint = `results/nursery/term-reports/${reportId}/calculate_metrics/`;
+        endpoint = `/api/results/nursery/term-reports/${reportId}/calculate_metrics/`;
         break;
       case 'PRIMARY':
-        endpoint = `results/primary/term-reports/${reportId}/calculate_metrics/`;
+        endpoint = `/api/results/primary/term-reports/${reportId}/calculate_metrics/`;
         break;
       case 'JUNIOR_SECONDARY':
-        endpoint = `results/junior-secondary/term-reports/${reportId}/calculate_metrics/`;
+        endpoint = `/api/results/junior-secondary/term-reports/${reportId}/calculate_metrics/`;
         break;
       case 'SENIOR_SECONDARY':
-        endpoint = `results/senior-secondary/term-reports/${reportId}/calculate_metrics/`;
+        endpoint = `/api/results/senior-secondary/term-reports/${reportId}/calculate_metrics/`;
         break;
       default:
         throw new Error(`Unsupported education level: ${educationLevel}`);
