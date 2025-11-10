@@ -439,15 +439,32 @@ async getTermResults(params?: FilterParams) {
     const junior = Array.isArray(juniorReports) ? juniorReports : (juniorReports?.results || []);
     const senior = Array.isArray(seniorReports) ? seniorReports : (seniorReports?.results || []);
 
+
+    console.log('🔍 API Response Analysis:');
+    console.log('Nursery reports count:', nursery.length);
+    console.log('Primary reports count:', primary.length);
+    console.log('Junior reports count:', junior.length);
+    console.log('Senior reports count:', senior.length);
+    
+    // Log sample raw data from API
+    if (senior.length > 0) {
+      console.log('📄 Sample Senior Report (RAW from API):', senior[0]);
+      console.log('   Status from API:', senior[0].status);
+    }
+    if (primary.length > 0) {
+      console.log('📄 Sample Primary Report (RAW from API):', primary[0]);
+      console.log('   Status from API:', primary[0].status);
+    }
+
     // Helper function to calculate overall grade from average score
     const calculateGrade = (averageScore: number) => {
       if (!averageScore || isNaN(averageScore)) return 'N/A';
-      if (averageScore >= 80) return 'A';
-      if (averageScore >= 70) return 'B+';
+      if (averageScore >= 70) return 'A';
       if (averageScore >= 60) return 'B';
       if (averageScore >= 50) return 'C';
-      if (averageScore >= 40) return 'D';
-      return 'E';
+      if (averageScore >= 45) return 'D';
+      if (averageScore >= 39) return 'E';
+      return 'F';
     };
 
     // Normalize all reports to a common structure matching the UI interface
