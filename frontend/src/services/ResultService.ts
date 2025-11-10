@@ -247,6 +247,8 @@ class ResultService {
     }));
   }
 
+
+  
   // Core API methods - UPDATED to use new hierarchical structure
   async getNurseryResults(params?: FilterParams): Promise<NurseryResultData[]> {
     try {
@@ -338,6 +340,56 @@ class ResultService {
       return [];
     }
   }
+
+
+  async approveSubjectResult(resultId: string, educationLevel: string) {
+  try {
+    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+    
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/approve/`,
+      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/approve/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/approve/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/approve/`,
+    };
+    
+    const endpoint = endpoints[normalizedLevel];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level for approve subject result: ${normalizedLevel}`);
+    }
+    
+    return api.post(endpoint, {});
+  } catch (error) {
+    console.error('Error approving subject result:', error);
+    throw error;
+  }
+}
+
+/**
+ * Publish an individual subject result (not a term report)
+ */
+async publishSubjectResult(resultId: string, educationLevel: string) {
+  try {
+    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+    
+    const endpoints: Record<string, string> = {
+      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/publish/`,
+      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/publish/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/publish/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/publish/`,
+    };
+    
+    const endpoint = endpoints[normalizedLevel];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level for publish subject result: ${normalizedLevel}`);
+    }
+    
+    return api.post(endpoint, {});
+  } catch (error) {
+    console.error('Error publishing subject result:', error);
+    throw error;
+  }
+}
 
   async getSeniorSecondarySessionReports(params?: FilterParams): Promise<any[]> {
     try {

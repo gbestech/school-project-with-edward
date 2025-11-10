@@ -281,29 +281,83 @@ const EnhancedResultsManagement: React.FC = () => {
     [studentResults]);
 
   // Status management functions
+  // const updateResultStatus = async (resultId: string, newStatus: string, educationLevel: string) => {
+  //   try {
+  //     setActionLoading(resultId);
+      
+  //     let response;
+  //     switch (newStatus) {
+  //       case 'APPROVED':
+  //         response = await ResultService.approveResult(resultId, educationLevel);
+  //         break;
+  //       case 'PUBLISHED':
+  //         response = await ResultService.publishResult(resultId, educationLevel);
+  //         break;
+  //       default:
+  //         throw new Error(`Unsupported status change: ${newStatus}`);
+  //     }
+      
+  //     setStudentResults(prev => prev.map(result => 
+  //       result.id === resultId 
+  //         ? { ...result, status: newStatus as any, ...response }
+  //         : result
+  //     ));
+      
+  //     toast.success(`Result ${newStatus.toLowerCase()} successfully`);
+  //   } catch (error) {
+  //     console.error('Error updating result status:', error);
+  //     toast.error(`Failed to ${newStatus.toLowerCase()} result`);
+  //   } finally {
+  //     setActionLoading(null);
+  //   }
+  // };
+
+  // Status management functions
+  // Status management functions
   const updateResultStatus = async (resultId: string, newStatus: string, educationLevel: string) => {
     try {
       setActionLoading(resultId);
       
       let response;
-      switch (newStatus) {
-        case 'APPROVED':
-          response = await ResultService.approveResult(resultId, educationLevel);
-          break;
-        case 'PUBLISHED':
-          response = await ResultService.publishResult(resultId, educationLevel);
-          break;
-        default:
-          throw new Error(`Unsupported status change: ${newStatus}`);
+      
+      // Check if we're in subject results or term reports view
+      if (viewMode === 'subject-results') {
+        // For individual subject results, use the subject result endpoints
+        switch (newStatus) {
+          case 'APPROVED':
+            response = await ResultService.approveSubjectResult(resultId, educationLevel);
+            break;
+          case 'PUBLISHED':
+            response = await ResultService.publishSubjectResult(resultId, educationLevel);
+            break;
+          default:
+            throw new Error(`Unsupported status change: ${newStatus}`);
+        }
+        
+        toast.success(`Subject result ${newStatus.toLowerCase()} successfully`);
+      } else {
+        // For term reports, use the term report endpoints
+        switch (newStatus) {
+          case 'APPROVED':
+            response = await ResultService.approveResult(resultId, educationLevel);
+            break;
+          case 'PUBLISHED':
+            response = await ResultService.publishResult(resultId, educationLevel);
+            break;
+          default:
+            throw new Error(`Unsupported status change: ${newStatus}`);
+        }
+        
+        toast.success(`Term report ${newStatus.toLowerCase()} successfully`);
       }
       
+      // Update the result in state
       setStudentResults(prev => prev.map(result => 
         result.id === resultId 
           ? { ...result, status: newStatus as any, ...response }
           : result
       ));
       
-      toast.success(`Result ${newStatus.toLowerCase()} successfully`);
     } catch (error) {
       console.error('Error updating result status:', error);
       toast.error(`Failed to ${newStatus.toLowerCase()} result`);
