@@ -2360,7 +2360,6 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 "subject",
                 "exam_session",
                 "grading_system",
-                "stream",
                 "entered_by",
                 "approved_by",
                 "published_by",
@@ -2370,55 +2369,166 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
         user = self.request.user
 
+        # ===== SUPER ADMIN / STAFF =====
         if user.is_superuser or user.is_staff:
-            logger.info(f"User {user.username} is superuser/staff - full access")
+            logger.info(
+                f"✅ Super admin/staff {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
         role = self.get_user_role()
-        logger.info(f"User {user.username} has role: {role}")
+        logger.info(f"User {user.username} role: {role}")
 
+        # ===== ADMIN / PRINCIPAL =====
         if role in ["admin", "superadmin", "principal"]:
-            logger.info("Admin role - full access")
+            logger.info(
+                f"✅ Admin {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
-        if role == "teacher":
-            section_access = self.get_user_section_access()
-            education_levels = self.get_education_levels_for_sections(section_access)
+        # ===== SECTION ADMINS =====
+        if role in [
+            "secondary_admin",
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+        ]:
+            education_levels = self.get_user_education_level_access()
+            logger.info(f"Section admin access for {education_levels}")
 
-            logger.info(f"Teacher section access: {education_levels}")
-
-            filter_q = Q(entered_by=user)
             if education_levels:
-                filter_q |= Q(student__education_level__in=education_levels)
-
-            filtered_queryset = queryset.filter(filter_q)
-            logger.info(f"Teacher can see {filtered_queryset.count()} results")
-            return filtered_queryset
-
-        if role == "student":
-            try:
-                student = Student.objects.get(user=user)
-                return queryset.filter(student=student)
-            except Student.DoesNotExist:
+                filtered = queryset.filter(
+                    student__education_level__in=education_levels
+                )
+                logger.info(f"✅ Section admin can see {filtered.count()} results")
+                return filtered
+            else:
+                logger.warning("❌ Section admin has no education level access")
                 return queryset.none()
 
+        # ===== TEACHERS =====
+        if role == "teacher":
+            try:
+                from teacher.models import Teacher
+                from classroom.models import (
+                    Classroom,
+                    StudentEnrollment,
+                    ClassroomTeacherAssignment,
+                )
+
+                teacher = Teacher.objects.get(user=user)
+
+                # Get assigned classrooms
+                assigned_classrooms = Classroom.objects.filter(
+                    Q(class_teacher=teacher)
+                    | Q(classroomteacherassignment__teacher=teacher)
+                ).distinct()
+
+                classroom_education_levels = list(
+                    assigned_classrooms.values_list(
+                        "grade_level__education_level", flat=True
+                    ).distinct()
+                )
+
+                logger.info(
+                    f"Teacher {user.username} classroom education levels: {classroom_education_levels}"
+                )
+
+                # Check if this is a classroom teacher (Nursery/Primary)
+                is_classroom_teacher = any(
+                    level in ["NURSERY", "PRIMARY"]
+                    for level in classroom_education_levels
+                )
+
+                if is_classroom_teacher:
+                    # CLASSROOM TEACHERS: See ALL results for students in their classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    filtered = queryset.filter(student_id__in=student_ids)
+                    logger.info(
+                        f"✅ Classroom teacher can see {filtered.count()} results"
+                    )
+                    return filtered
+                else:
+                    # SUBJECT TEACHERS: See ONLY results for subjects they teach
+
+                    # Get subjects assigned to this teacher
+                    teacher_assignments = ClassroomTeacherAssignment.objects.filter(
+                        teacher=teacher
+                    ).select_related("subject")
+
+                    assigned_subject_ids = list(
+                        teacher_assignments.values_list(
+                            "subject_id", flat=True
+                        ).distinct()
+                    )
+
+                    logger.info(
+                        f"Teacher {user.username} assigned subjects: {assigned_subject_ids}"
+                    )
+
+                    if not assigned_subject_ids:
+                        logger.warning(
+                            f"❌ Subject teacher {user.username} has no assigned subjects"
+                        )
+                        return queryset.none()
+
+                    # Get students from assigned classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    # Filter: ONLY their assigned subjects + their students
+                    filtered = queryset.filter(
+                        subject_id__in=assigned_subject_ids, student_id__in=student_ids
+                    )
+
+                    logger.info(
+                        f"✅ Subject teacher can see {filtered.count()} results (subjects: {assigned_subject_ids})"
+                    )
+                    return filtered
+
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for user {user.username}")
+                return queryset.none()
+            except Exception as e:
+                logger.error(f"❌ Error filtering for teacher: {str(e)}", exc_info=True)
+                return queryset.none()
+
+        # ===== STUDENTS =====
+        if role == "student":
+            try:
+                from students.models import Student
+
+                student = Student.objects.get(user=user)
+                # Students only see PUBLISHED results
+                filtered = queryset.filter(student=student, status="PUBLISHED")
+                logger.info(f"✅ Student can see {filtered.count()} published results")
+                return filtered
+            except Student.DoesNotExist:
+                logger.warning(f"❌ Student object not found for user {user.username}")
+                return queryset.none()
+
+        # ===== PARENTS =====
         if role == "parent":
             try:
                 from parent.models import Parent
 
                 parent = Parent.objects.get(user=user)
-                return queryset.filter(student__parents=parent)
+                # Parents only see PUBLISHED results
+                filtered = queryset.filter(student__parents=parent, status="PUBLISHED")
+                logger.info(f"✅ Parent can see {filtered.count()} published results")
+                return filtered
             except:
+                logger.warning(f"❌ Parent object not found for user {user.username}")
                 return queryset.none()
 
-        section_access = self.get_user_section_access()
-        education_levels = self.get_education_levels_for_sections(section_access)
-
-        if not education_levels:
-            logger.warning(f"User {user.username} has no education level access")
-            return queryset.none()
-
-        return queryset.filter(student__education_level__in=education_levels)
+        # ===== DEFAULT: NO ACCESS =====
+        logger.warning(f"❌ No access for user {user.username} with role {role}")
+        return queryset.none()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -2601,51 +2711,180 @@ class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelView
             super(viewsets.ModelViewSet, self)
             .get_queryset()
             .select_related(
-                "student", "student__user", "subject", "academic_session", "stream"
+                "student",
+                "student__user",
+                "subject",
+                "exam_session",
+                "grading_system",
+                "entered_by",
+                "approved_by",
+                "published_by",
+                "last_edited_by",
             )
         )
 
         user = self.request.user
 
+        # ===== SUPER ADMIN / STAFF =====
         if user.is_superuser or user.is_staff:
+            logger.info(
+                f"✅ Super admin/staff {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
         role = self.get_user_role()
+        logger.info(f"User {user.username} role: {role}")
 
+        # ===== ADMIN / PRINCIPAL =====
         if role in ["admin", "superadmin", "principal"]:
+            logger.info(
+                f"✅ Admin {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
-        if role == "teacher":
-            section_access = self.get_user_section_access()
-            education_levels = self.get_education_levels_for_sections(section_access)
+        # ===== SECTION ADMINS =====
+        if role in [
+            "secondary_admin",
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+        ]:
+            education_levels = self.get_user_education_level_access()
+            logger.info(f"Section admin access for {education_levels}")
 
             if education_levels:
-                return queryset.filter(student__education_level__in=education_levels)
-            return queryset.none()
-
-        if role == "student":
-            try:
-                student = Student.objects.get(user=user)
-                return queryset.filter(student=student)
-            except:
+                filtered = queryset.filter(
+                    student__education_level__in=education_levels
+                )
+                logger.info(f"✅ Section admin can see {filtered.count()} results")
+                return filtered
+            else:
+                logger.warning("❌ Section admin has no education level access")
                 return queryset.none()
 
+        # ===== TEACHERS =====
+        if role == "teacher":
+            try:
+                from teacher.models import Teacher
+                from classroom.models import (
+                    Classroom,
+                    StudentEnrollment,
+                    ClassroomTeacherAssignment,
+                )
+
+                teacher = Teacher.objects.get(user=user)
+
+                # Get assigned classrooms
+                assigned_classrooms = Classroom.objects.filter(
+                    Q(class_teacher=teacher)
+                    | Q(classroomteacherassignment__teacher=teacher)
+                ).distinct()
+
+                classroom_education_levels = list(
+                    assigned_classrooms.values_list(
+                        "grade_level__education_level", flat=True
+                    ).distinct()
+                )
+
+                logger.info(
+                    f"Teacher {user.username} classroom education levels: {classroom_education_levels}"
+                )
+
+                # Check if this is a classroom teacher (Nursery/Primary)
+                is_classroom_teacher = any(
+                    level in ["NURSERY", "PRIMARY"]
+                    for level in classroom_education_levels
+                )
+
+                if is_classroom_teacher:
+                    # CLASSROOM TEACHERS: See ALL results for students in their classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    filtered = queryset.filter(student_id__in=student_ids)
+                    logger.info(
+                        f"✅ Classroom teacher can see {filtered.count()} results"
+                    )
+                    return filtered
+                else:
+                    # SUBJECT TEACHERS: See ONLY results for subjects they teach
+
+                    # Get subjects assigned to this teacher
+                    teacher_assignments = ClassroomTeacherAssignment.objects.filter(
+                        teacher=teacher
+                    ).select_related("subject")
+
+                    assigned_subject_ids = list(
+                        teacher_assignments.values_list(
+                            "subject_id", flat=True
+                        ).distinct()
+                    )
+
+                    logger.info(
+                        f"Teacher {user.username} assigned subjects: {assigned_subject_ids}"
+                    )
+
+                    if not assigned_subject_ids:
+                        logger.warning(
+                            f"❌ Subject teacher {user.username} has no assigned subjects"
+                        )
+                        return queryset.none()
+
+                    # Get students from assigned classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    # Filter: ONLY their assigned subjects + their students
+                    filtered = queryset.filter(
+                        subject_id__in=assigned_subject_ids, student_id__in=student_ids
+                    )
+
+                    logger.info(
+                        f"✅ Subject teacher can see {filtered.count()} results (subjects: {assigned_subject_ids})"
+                    )
+                    return filtered
+
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for user {user.username}")
+                return queryset.none()
+            except Exception as e:
+                logger.error(f"❌ Error filtering for teacher: {str(e)}", exc_info=True)
+                return queryset.none()
+
+        # ===== STUDENTS =====
+        if role == "student":
+            try:
+                from students.models import Student
+
+                student = Student.objects.get(user=user)
+                # Students only see PUBLISHED results
+                filtered = queryset.filter(student=student, status="PUBLISHED")
+                logger.info(f"✅ Student can see {filtered.count()} published results")
+                return filtered
+            except Student.DoesNotExist:
+                logger.warning(f"❌ Student object not found for user {user.username}")
+                return queryset.none()
+
+        # ===== PARENTS =====
         if role == "parent":
             try:
                 from parent.models import Parent
 
                 parent = Parent.objects.get(user=user)
-                return queryset.filter(student__parents=parent)
+                # Parents only see PUBLISHED results
+                filtered = queryset.filter(student__parents=parent, status="PUBLISHED")
+                logger.info(f"✅ Parent can see {filtered.count()} published results")
+                return filtered
             except:
+                logger.warning(f"❌ Parent object not found for user {user.username}")
                 return queryset.none()
 
-        section_access = self.get_user_section_access()
-        education_levels = self.get_education_levels_for_sections(section_access)
-
-        if not education_levels:
-            return queryset.none()
-
-        return queryset.filter(student__education_level__in=education_levels)
+        # ===== DEFAULT: NO ACCESS =====
+        logger.warning(f"❌ No access for user {user.username} with role {role}")
+        return queryset.none()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -3233,55 +3472,166 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
         user = self.request.user
 
+        # ===== SUPER ADMIN / STAFF =====
         if user.is_superuser or user.is_staff:
-            logger.info(f"User {user.username} is superuser/staff - full access")
+            logger.info(
+                f"✅ Super admin/staff {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
         role = self.get_user_role()
-        logger.info(f"User {user.username} has role: {role}")
+        logger.info(f"User {user.username} role: {role}")
 
+        # ===== ADMIN / PRINCIPAL =====
         if role in ["admin", "superadmin", "principal"]:
-            logger.info("Admin role - full access")
+            logger.info(
+                f"✅ Admin {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
-        if role == "teacher":
-            section_access = self.get_user_section_access()
-            education_levels = self.get_education_levels_for_sections(section_access)
+        # ===== SECTION ADMINS =====
+        if role in [
+            "secondary_admin",
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+        ]:
+            education_levels = self.get_user_education_level_access()
+            logger.info(f"Section admin access for {education_levels}")
 
-            logger.info(f"Teacher section access: {education_levels}")
-
-            filter_q = Q(entered_by=user)
             if education_levels:
-                filter_q |= Q(student__education_level__in=education_levels)
-
-            filtered_queryset = queryset.filter(filter_q)
-            logger.info(f"Teacher can see {filtered_queryset.count()} results")
-            return filtered_queryset
-
-        if role == "student":
-            try:
-                student = Student.objects.get(user=user)
-                return queryset.filter(student=student)
-            except Student.DoesNotExist:
+                filtered = queryset.filter(
+                    student__education_level__in=education_levels
+                )
+                logger.info(f"✅ Section admin can see {filtered.count()} results")
+                return filtered
+            else:
+                logger.warning("❌ Section admin has no education level access")
                 return queryset.none()
 
+        # ===== TEACHERS =====
+        if role == "teacher":
+            try:
+                from teacher.models import Teacher
+                from classroom.models import (
+                    Classroom,
+                    StudentEnrollment,
+                    ClassroomTeacherAssignment,
+                )
+
+                teacher = Teacher.objects.get(user=user)
+
+                # Get assigned classrooms
+                assigned_classrooms = Classroom.objects.filter(
+                    Q(class_teacher=teacher)
+                    | Q(classroomteacherassignment__teacher=teacher)
+                ).distinct()
+
+                classroom_education_levels = list(
+                    assigned_classrooms.values_list(
+                        "grade_level__education_level", flat=True
+                    ).distinct()
+                )
+
+                logger.info(
+                    f"Teacher {user.username} classroom education levels: {classroom_education_levels}"
+                )
+
+                # Check if this is a classroom teacher (Nursery/Primary)
+                is_classroom_teacher = any(
+                    level in ["NURSERY", "PRIMARY"]
+                    for level in classroom_education_levels
+                )
+
+                if is_classroom_teacher:
+                    # CLASSROOM TEACHERS: See ALL results for students in their classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    filtered = queryset.filter(student_id__in=student_ids)
+                    logger.info(
+                        f"✅ Classroom teacher can see {filtered.count()} results"
+                    )
+                    return filtered
+                else:
+                    # SUBJECT TEACHERS: See ONLY results for subjects they teach
+
+                    # Get subjects assigned to this teacher
+                    teacher_assignments = ClassroomTeacherAssignment.objects.filter(
+                        teacher=teacher
+                    ).select_related("subject")
+
+                    assigned_subject_ids = list(
+                        teacher_assignments.values_list(
+                            "subject_id", flat=True
+                        ).distinct()
+                    )
+
+                    logger.info(
+                        f"Teacher {user.username} assigned subjects: {assigned_subject_ids}"
+                    )
+
+                    if not assigned_subject_ids:
+                        logger.warning(
+                            f"❌ Subject teacher {user.username} has no assigned subjects"
+                        )
+                        return queryset.none()
+
+                    # Get students from assigned classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    # Filter: ONLY their assigned subjects + their students
+                    filtered = queryset.filter(
+                        subject_id__in=assigned_subject_ids, student_id__in=student_ids
+                    )
+
+                    logger.info(
+                        f"✅ Subject teacher can see {filtered.count()} results (subjects: {assigned_subject_ids})"
+                    )
+                    return filtered
+
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for user {user.username}")
+                return queryset.none()
+            except Exception as e:
+                logger.error(f"❌ Error filtering for teacher: {str(e)}", exc_info=True)
+                return queryset.none()
+
+        # ===== STUDENTS =====
+        if role == "student":
+            try:
+                from students.models import Student
+
+                student = Student.objects.get(user=user)
+                # Students only see PUBLISHED results
+                filtered = queryset.filter(student=student, status="PUBLISHED")
+                logger.info(f"✅ Student can see {filtered.count()} published results")
+                return filtered
+            except Student.DoesNotExist:
+                logger.warning(f"❌ Student object not found for user {user.username}")
+                return queryset.none()
+
+        # ===== PARENTS =====
         if role == "parent":
             try:
                 from parent.models import Parent
 
                 parent = Parent.objects.get(user=user)
-                return queryset.filter(student__parents=parent)
+                # Parents only see PUBLISHED results
+                filtered = queryset.filter(student__parents=parent, status="PUBLISHED")
+                logger.info(f"✅ Parent can see {filtered.count()} published results")
+                return filtered
             except:
+                logger.warning(f"❌ Parent object not found for user {user.username}")
                 return queryset.none()
 
-        section_access = self.get_user_section_access()
-        education_levels = self.get_education_levels_for_sections(section_access)
-
-        if not education_levels:
-            logger.warning(f"User {user.username} has no education level access")
-            return queryset.none()
-
-        return queryset.filter(student__education_level__in=education_levels)
+        # ===== DEFAULT: NO ACCESS =====
+        logger.warning(f"❌ No access for user {user.username} with role {role}")
+        return queryset.none()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -3879,55 +4229,166 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
         user = self.request.user
 
+        # ===== SUPER ADMIN / STAFF =====
         if user.is_superuser or user.is_staff:
-            logger.info(f"User {user.username} is superuser/staff - full access")
+            logger.info(
+                f"✅ Super admin/staff {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
         role = self.get_user_role()
-        logger.info(f"User {user.username} has role: {role}")
+        logger.info(f"User {user.username} role: {role}")
 
+        # ===== ADMIN / PRINCIPAL =====
         if role in ["admin", "superadmin", "principal"]:
-            logger.info("Admin role - full access")
+            logger.info(
+                f"✅ Admin {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
-        if role == "teacher":
-            section_access = self.get_user_section_access()
-            education_levels = self.get_education_levels_for_sections(section_access)
+        # ===== SECTION ADMINS =====
+        if role in [
+            "secondary_admin",
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+        ]:
+            education_levels = self.get_user_education_level_access()
+            logger.info(f"Section admin access for {education_levels}")
 
-            logger.info(f"Teacher section access: {education_levels}")
-
-            filter_q = Q(entered_by=user)
             if education_levels:
-                filter_q |= Q(student__education_level__in=education_levels)
-
-            filtered_queryset = queryset.filter(filter_q)
-            logger.info(f"Teacher can see {filtered_queryset.count()} results")
-            return filtered_queryset
-
-        if role == "student":
-            try:
-                student = Student.objects.get(user=user)
-                return queryset.filter(student=student)
-            except Student.DoesNotExist:
+                filtered = queryset.filter(
+                    student__education_level__in=education_levels
+                )
+                logger.info(f"✅ Section admin can see {filtered.count()} results")
+                return filtered
+            else:
+                logger.warning("❌ Section admin has no education level access")
                 return queryset.none()
 
+        # ===== TEACHERS =====
+        if role == "teacher":
+            try:
+                from teacher.models import Teacher
+                from classroom.models import (
+                    Classroom,
+                    StudentEnrollment,
+                    ClassroomTeacherAssignment,
+                )
+
+                teacher = Teacher.objects.get(user=user)
+
+                # Get assigned classrooms
+                assigned_classrooms = Classroom.objects.filter(
+                    Q(class_teacher=teacher)
+                    | Q(classroomteacherassignment__teacher=teacher)
+                ).distinct()
+
+                classroom_education_levels = list(
+                    assigned_classrooms.values_list(
+                        "grade_level__education_level", flat=True
+                    ).distinct()
+                )
+
+                logger.info(
+                    f"Teacher {user.username} classroom education levels: {classroom_education_levels}"
+                )
+
+                # Check if this is a classroom teacher (Nursery/Primary)
+                is_classroom_teacher = any(
+                    level in ["NURSERY", "PRIMARY"]
+                    for level in classroom_education_levels
+                )
+
+                if is_classroom_teacher:
+                    # CLASSROOM TEACHERS: See ALL results for students in their classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    filtered = queryset.filter(student_id__in=student_ids)
+                    logger.info(
+                        f"✅ Classroom teacher can see {filtered.count()} results"
+                    )
+                    return filtered
+                else:
+                    # SUBJECT TEACHERS: See ONLY results for subjects they teach
+
+                    # Get subjects assigned to this teacher
+                    teacher_assignments = ClassroomTeacherAssignment.objects.filter(
+                        teacher=teacher
+                    ).select_related("subject")
+
+                    assigned_subject_ids = list(
+                        teacher_assignments.values_list(
+                            "subject_id", flat=True
+                        ).distinct()
+                    )
+
+                    logger.info(
+                        f"Teacher {user.username} assigned subjects: {assigned_subject_ids}"
+                    )
+
+                    if not assigned_subject_ids:
+                        logger.warning(
+                            f"❌ Subject teacher {user.username} has no assigned subjects"
+                        )
+                        return queryset.none()
+
+                    # Get students from assigned classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    # Filter: ONLY their assigned subjects + their students
+                    filtered = queryset.filter(
+                        subject_id__in=assigned_subject_ids, student_id__in=student_ids
+                    )
+
+                    logger.info(
+                        f"✅ Subject teacher can see {filtered.count()} results (subjects: {assigned_subject_ids})"
+                    )
+                    return filtered
+
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for user {user.username}")
+                return queryset.none()
+            except Exception as e:
+                logger.error(f"❌ Error filtering for teacher: {str(e)}", exc_info=True)
+                return queryset.none()
+
+        # ===== STUDENTS =====
+        if role == "student":
+            try:
+                from students.models import Student
+
+                student = Student.objects.get(user=user)
+                # Students only see PUBLISHED results
+                filtered = queryset.filter(student=student, status="PUBLISHED")
+                logger.info(f"✅ Student can see {filtered.count()} published results")
+                return filtered
+            except Student.DoesNotExist:
+                logger.warning(f"❌ Student object not found for user {user.username}")
+                return queryset.none()
+
+        # ===== PARENTS =====
         if role == "parent":
             try:
                 from parent.models import Parent
 
                 parent = Parent.objects.get(user=user)
-                return queryset.filter(student__parents=parent)
+                # Parents only see PUBLISHED results
+                filtered = queryset.filter(student__parents=parent, status="PUBLISHED")
+                logger.info(f"✅ Parent can see {filtered.count()} published results")
+                return filtered
             except:
+                logger.warning(f"❌ Parent object not found for user {user.username}")
                 return queryset.none()
 
-        section_access = self.get_user_section_access()
-        education_levels = self.get_education_levels_for_sections(section_access)
-
-        if not education_levels:
-            logger.warning(f"User {user.username} has no education level access")
-            return queryset.none()
-
-        return queryset.filter(student__education_level__in=education_levels)
+        # ===== DEFAULT: NO ACCESS =====
+        logger.warning(f"❌ No access for user {user.username} with role {role}")
+        return queryset.none()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -4523,55 +4984,166 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
         user = self.request.user
 
+        # ===== SUPER ADMIN / STAFF =====
         if user.is_superuser or user.is_staff:
-            logger.info(f"User {user.username} is superuser/staff - full access")
+            logger.info(
+                f"✅ Super admin/staff {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
         role = self.get_user_role()
-        logger.info(f"User {user.username} has role: {role}")
+        logger.info(f"User {user.username} role: {role}")
 
+        # ===== ADMIN / PRINCIPAL =====
         if role in ["admin", "superadmin", "principal"]:
-            logger.info("Admin role - full access")
+            logger.info(
+                f"✅ Admin {user.username} - Full access to {queryset.count()} results"
+            )
             return queryset
 
-        if role == "teacher":
-            section_access = self.get_user_section_access()
-            education_levels = self.get_education_levels_for_sections(section_access)
+        # ===== SECTION ADMINS =====
+        if role in [
+            "secondary_admin",
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+        ]:
+            education_levels = self.get_user_education_level_access()
+            logger.info(f"Section admin access for {education_levels}")
 
-            logger.info(f"Teacher section access: {education_levels}")
-
-            filter_q = Q(entered_by=user)
             if education_levels:
-                filter_q |= Q(student__education_level__in=education_levels)
-
-            filtered_queryset = queryset.filter(filter_q)
-            logger.info(f"Teacher can see {filtered_queryset.count()} results")
-            return filtered_queryset
-
-        if role == "student":
-            try:
-                student = Student.objects.get(user=user)
-                return queryset.filter(student=student)
-            except Student.DoesNotExist:
+                filtered = queryset.filter(
+                    student__education_level__in=education_levels
+                )
+                logger.info(f"✅ Section admin can see {filtered.count()} results")
+                return filtered
+            else:
+                logger.warning("❌ Section admin has no education level access")
                 return queryset.none()
 
+        # ===== TEACHERS =====
+        if role == "teacher":
+            try:
+                from teacher.models import Teacher
+                from classroom.models import (
+                    Classroom,
+                    StudentEnrollment,
+                    ClassroomTeacherAssignment,
+                )
+
+                teacher = Teacher.objects.get(user=user)
+
+                # Get assigned classrooms
+                assigned_classrooms = Classroom.objects.filter(
+                    Q(class_teacher=teacher)
+                    | Q(classroomteacherassignment__teacher=teacher)
+                ).distinct()
+
+                classroom_education_levels = list(
+                    assigned_classrooms.values_list(
+                        "grade_level__education_level", flat=True
+                    ).distinct()
+                )
+
+                logger.info(
+                    f"Teacher {user.username} classroom education levels: {classroom_education_levels}"
+                )
+
+                # Check if this is a classroom teacher (Nursery/Primary)
+                is_classroom_teacher = any(
+                    level in ["NURSERY", "PRIMARY"]
+                    for level in classroom_education_levels
+                )
+
+                if is_classroom_teacher:
+                    # CLASSROOM TEACHERS: See ALL results for students in their classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    filtered = queryset.filter(student_id__in=student_ids)
+                    logger.info(
+                        f"✅ Classroom teacher can see {filtered.count()} results"
+                    )
+                    return filtered
+                else:
+                    # SUBJECT TEACHERS: See ONLY results for subjects they teach
+
+                    # Get subjects assigned to this teacher
+                    teacher_assignments = ClassroomTeacherAssignment.objects.filter(
+                        teacher=teacher
+                    ).select_related("subject")
+
+                    assigned_subject_ids = list(
+                        teacher_assignments.values_list(
+                            "subject_id", flat=True
+                        ).distinct()
+                    )
+
+                    logger.info(
+                        f"Teacher {user.username} assigned subjects: {assigned_subject_ids}"
+                    )
+
+                    if not assigned_subject_ids:
+                        logger.warning(
+                            f"❌ Subject teacher {user.username} has no assigned subjects"
+                        )
+                        return queryset.none()
+
+                    # Get students from assigned classrooms
+                    student_ids = StudentEnrollment.objects.filter(
+                        classroom__in=assigned_classrooms, is_active=True
+                    ).values_list("student_id", flat=True)
+
+                    # Filter: ONLY their assigned subjects + their students
+                    filtered = queryset.filter(
+                        subject_id__in=assigned_subject_ids, student_id__in=student_ids
+                    )
+
+                    logger.info(
+                        f"✅ Subject teacher can see {filtered.count()} results (subjects: {assigned_subject_ids})"
+                    )
+                    return filtered
+
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for user {user.username}")
+                return queryset.none()
+            except Exception as e:
+                logger.error(f"❌ Error filtering for teacher: {str(e)}", exc_info=True)
+                return queryset.none()
+
+        # ===== STUDENTS =====
+        if role == "student":
+            try:
+                from students.models import Student
+
+                student = Student.objects.get(user=user)
+                # Students only see PUBLISHED results
+                filtered = queryset.filter(student=student, status="PUBLISHED")
+                logger.info(f"✅ Student can see {filtered.count()} published results")
+                return filtered
+            except Student.DoesNotExist:
+                logger.warning(f"❌ Student object not found for user {user.username}")
+                return queryset.none()
+
+        # ===== PARENTS =====
         if role == "parent":
             try:
                 from parent.models import Parent
 
                 parent = Parent.objects.get(user=user)
-                return queryset.filter(student__parents=parent)
+                # Parents only see PUBLISHED results
+                filtered = queryset.filter(student__parents=parent, status="PUBLISHED")
+                logger.info(f"✅ Parent can see {filtered.count()} published results")
+                return filtered
             except:
+                logger.warning(f"❌ Parent object not found for user {user.username}")
                 return queryset.none()
 
-        section_access = self.get_user_section_access()
-        education_levels = self.get_education_levels_for_sections(section_access)
-
-        if not education_levels:
-            logger.warning(f"User {user.username} has no education level access")
-            return queryset.none()
-
-        return queryset.filter(student__education_level__in=education_levels)
+        # ===== DEFAULT: NO ACCESS =====
+        logger.warning(f"❌ No access for user {user.username} with role {role}")
+        return queryset.none()
 
     def create(self, request, *args, **kwargs):
         try:
