@@ -87,7 +87,7 @@ private extractSessionInfo(report: any): AcademicSession | undefined {
   if (!examSession) return undefined;
   
   // If the API already returned a full academic_session object, return it (matches AcademicSession)
-  if (examSession.academic_session && typeof examSession.academic_session === 'object') {
+  if (examSession && typeof examSession === 'object') {
     return examSession.academic_session_name || examSession.academic_session.name as AcademicSession;
   }
  console.log("Academic Session from Exam Session", examSession.academic_session_name || examSession.academic_session.name) 
@@ -96,6 +96,7 @@ private extractSessionInfo(report: any): AcademicSession | undefined {
 
   // Data transformation methods - ADDED: Missing transform methods
   private transformNurseryResults(results: NurseryResultData[]): StandardResult[] {
+    console.log("Confirm this also", this.extractSessionInfo(results[0]))
     return results.map(result => ({
       id: result.id,
       student: result.student,
