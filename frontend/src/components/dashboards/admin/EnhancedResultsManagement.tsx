@@ -204,7 +204,7 @@ const EnhancedResultsManagement: React.FC = () => {
     return {
       id: result.id,
       student: result.student,
-      academic_session: result.exam_session?.academic_session.name || {},
+      academic_session: result.exam_session?.academic_session_name || {},
       term: result.exam_session?.term || 'N/A',
       total_subjects: 1,
       subjects_passed: result.is_passed ? 1 : 0,
