@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import ResultService from '@/services/ResultService';
-import { AcademicSession} from '@/types/types'
+import { AcademicSession, ExamSession} from '@/types/types'
 import SubjectService, {Subject} from '@/services/SubjectService';
 import { toast } from 'react-toastify';
 import api from '@/services/api';
@@ -31,13 +31,13 @@ interface Student {
   section_id?: number | null;
 }
 
-interface ExamSession {
-  id: string;
-  name: string;
-  exam_type: string;
-  term: string;
-   academic_session?: AcademicSession | string | number;
-}
+// export interface ExamSession {
+//   id: string;
+//   name: string;
+//   exam_type: string;
+//   term: string;
+//    academic_session?: AcademicSession | string | number;
+// }
 
 interface GradingSystem {
   id: string;

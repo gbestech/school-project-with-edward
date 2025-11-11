@@ -22,9 +22,11 @@ import EditResultForm from './EditResultForm';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import StudentService, { Student } from '@/services/StudentService';
+import { ExamSession} from '@/types/types'
 import ResultService from '@/services/ResultService';
 import {SubjectInfo} from '@/types/types'
 import { toast } from 'react-toastify';
+import { Exam } from '@/services/ExamService';
 
 
 // Updated Result interface in StudentResultDetail.tsx
@@ -38,7 +40,7 @@ type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED' | string;
 interface Result {
   id: string;
   subject?: SubjectInfo | { id: string | number; name?: string };
-  exam_session?: { name?: string; term?: string } | string | number;
+  exam_session?: ExamSession
   term?: string;
   status: ResultStatus;
   education_level: string;
@@ -283,7 +285,10 @@ const getSubjectName = (result: Result): string => {
 };
 
 const getExamSessionName = (result: Result): string => {
-  if (typeof result.exam_session === 'object' && result.exam_session?.name) {
+  if (typeof result.exam_session === 'object' && result.exam_session?.academic_session) {
+    // <option key={session.id} value={session.id}>
+    //{session.name} - {typeof session.academic_session === 'object' && session.academic_session.name !== null ? (session.academic_session as AcademicSession).name : (session.academic_session ? String(session.academic_session) : 'No Session')}
+    //</option>
     return result.exam_session.name;
   }
   return result.exam_session_name || 'N/A';

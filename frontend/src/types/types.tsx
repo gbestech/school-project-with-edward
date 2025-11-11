@@ -2126,6 +2126,13 @@ export interface CustomSection {
   created_at: string;  // ISO datetime string
   updated_at: string;  // ISO datetime string
 }
+export interface ExamSession {
+  id: string;
+  name: string;
+  exam_type: string;
+  term: string;
+   academic_session?: AcademicSession | string | number;
+}
 
 export interface SubjectInfo {
   id: string;
