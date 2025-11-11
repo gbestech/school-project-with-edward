@@ -199,53 +199,7 @@ const EnhancedResultsManagement: React.FC = () => {
     }
   };
 
-  //   // Transform individual subject result to match interface
-  // const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
-  //   // Extract session info properly
-  //   const sessionName = result.exam_session?.academic_session_name || 
-  //                      result.exam_session?.academic_session?.name || 
-  //                      result.exam_session?.academic_session?.academic_session_name || 
-  //                      'N/A';
-    
-  //   const sessionObj = typeof result.exam_session?.academic_session === 'object' 
-  //     ? result.exam_session.academic_session 
-  //     : { name: sessionName };
-    
-  //   return {
-  //     id: result.id,
-  //     student: result.student,
-  //     academic_session: sessionObj,
-  //     term: result.exam_session?.term || 'N/A',
-  //     total_subjects: 1,
-  //     subjects_passed: result.is_passed ? 1 : 0,
-  //     subjects_failed: result.is_passed ? 0 : 1,
-  //     total_score: result.total_score || 0,
-  //     average_score: result.percentage || 0,
-  //     gpa: result.grade_point || 0,
-  //     class_position: null,
-  //     total_students: 0,
-  //     status: result.status,
-  //     remarks: result.teacher_remark || '',
-  //     subject_results: [{
-  //       id: result.id,
-  //       subject: result.subject,
-  //       total_ca_score: result.total_ca_score || result.continuous_assessment_score || result.ca_total || 0,
-  //       exam_score: result.exam_score || 0,
-  //       total_score: result.total_score || 0,
-  //       percentage: result.percentage || 0,
-  //       grade: result.grade || 'N/A',
-  //       grade_point: result.grade_point || 0,
-  //       is_passed: result.is_passed,
-  //       status: result.status
-  //     }],
-  //     created_at: result.created_at,
-  //     updated_at: result.updated_at,
-  //     education_level: educationLevel,
-  //     subject_name: result.subject?.name || 'N/A',
-  //   } as any;
-  // };
-
-  // Transform individual subject result to match interface
+   // Transform individual subject result to match interface
   const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
     // Extract session info properly
     const sessionName = result.exam_session?.academic_session_name || 

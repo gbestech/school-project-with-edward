@@ -61,7 +61,8 @@ export interface TranscriptOptions {
   include_subject_remarks?: boolean;
   format?: 'PDF' | 'HTML' | 'DOCX';
 }
-
+ let sessionName;
+ let sessionObj;
 class ResultService {
   private baseURL = '/api/results'; // Updated: removed /api/ prefix since our api helper handles it
   private cache = new Map<string, {data: any; timestamp: number}>();
@@ -78,13 +79,28 @@ class ResultService {
     return data;
   }
 
+ 
+
   // Data transformation methods - ADDED: Missing transform methods
+ 
+
   private transformNurseryResults(results: NurseryResultData[]): StandardResult[] {
+     
+
     return results.map(result => ({
+
+      sessionName:    result.exam_session?.academic_session?.name || 
+                       result.exam_session?.academic_session?.academic_session_name || 
+                       'N/A',
+    
+     sessionObj: typeof result.exam_session?.academic_session === 'object' 
+      ? result.exam_session.academic_session 
+      : { name: sessionName },
+
       id: result.id,
       student: result.student,
       subject: result.subject,
-      exam_session: result.exam_session,
+      exam_session: sessionObj,
       education_level: 'NURSERY',
       grading_system: result.grading_system,
       total_score: result.mark_obtained,
@@ -110,10 +126,18 @@ class ResultService {
 
   private transformPrimaryResults(results: PrimaryResultData[]): StandardResult[] {
     return results.map(result => ({
+
+      sessionName:    result.exam_session?.academic_session?.name || 
+                       result.exam_session?.academic_session?.academic_session_name || 
+                       'N/A',
+    
+     sessionObj: typeof result.exam_session?.academic_session === 'object' 
+      ? result.exam_session.academic_session 
+      : { name: sessionName },
       id: result.id,
       student: result.student,
       subject: result.subject,
-      exam_session: result.exam_session,
+      exam_session: sessionObj,
       education_level: 'PRIMARY',
       grading_system: result.grading_system,
       total_score: result.total_score,
@@ -151,10 +175,19 @@ class ResultService {
 
   private transformJuniorSecondaryResults(results: JuniorSecondaryResultData[]): StandardResult[] {
     return results.map(result => ({
+
+      sessionName:    result.exam_session?.academic_session?.name || 
+                       result.exam_session?.academic_session?.academic_session_name || 
+                       'N/A',
+    
+     sessionObj: typeof result.exam_session?.academic_session === 'object' 
+      ? result.exam_session.academic_session 
+      : { name: sessionName },
+
       id: result.id,
       student: result.student,
       subject: result.subject,
-      exam_session: result.exam_session,
+      exam_session: sessionObj,
       education_level: 'JUNIOR_SECONDARY',
       grading_system: result.grading_system,
       total_score: result.total_score,
@@ -192,10 +225,19 @@ class ResultService {
 
   private transformSeniorSecondaryResults(results: SeniorSecondaryResultData[]): StandardResult[] {
     return results.map(result => ({
+
+      sessionName:    result.exam_session?.academic_session?.name || 
+                       result.exam_session?.academic_session?.academic_session_name || 
+                       'N/A',
+    
+     sessionObj: typeof result.exam_session?.academic_session === 'object' 
+      ? result.exam_session.academic_session 
+      : { name: sessionName },
+
       id: result.id,
       student: result.student,
       subject: result.subject,
-      exam_session: result.exam_session,
+      exam_session: sessionObj,
       education_level: 'SENIOR_SECONDARY',
       stream: result.stream,
       grading_system: result.grading_system,
@@ -226,10 +268,19 @@ class ResultService {
 
   private transformSeniorSessionResults(results: SeniorSecondarySessionResultData[]): StandardResult[] {
     return results.map(result => ({
+
+      sessionName:    result.academic_session?.name || 
+                       result.academic_session?.academic_session_name || 
+                       'N/A',
+    
+     sessionObj: typeof result.academic_session === 'object' 
+      ? result.academic_session 
+      : { name: sessionName },
+
       id: result.id,
       student: result.student,
       subject: result.subject,
-      academic_session: result.academic_session,
+      academic_session: sessionObj,
       education_level: 'SENIOR_SECONDARY',
       stream: result.stream,
       total_score: result.obtained,
