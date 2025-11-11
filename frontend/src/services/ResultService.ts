@@ -90,7 +90,7 @@ private extractSessionInfo(report: any): AcademicSession | undefined {
   if (examSession.academic_session && typeof examSession.academic_session === 'object') {
     return examSession.academic_session_name || examSession.academic_session.name as AcademicSession;
   }
- console.log("Academic Session from Exam Session", examSession.academic_session) 
+ console.log("Academic Session from Exam Session", examSession.academic_session_name || examSession.academic_session.name) 
    return undefined;
 }
 
