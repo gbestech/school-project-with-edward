@@ -93,6 +93,7 @@ class ResultService {
       if (examSession.academic_session_name) {
         return { name: examSession.academic_session_name };
       }
+      console.log ("", this.extractSessionInfo(report));
       
       // Fallback
       return { name: 'N/A' };
@@ -126,9 +127,11 @@ class ResultService {
       teacher_remark: result.academic_comment,
       created_at: result.created_at,
     }));
+   
   }
 
   private transformPrimaryResults(results: PrimaryResultData[]): StandardResult[] {
+     console.log("Transformed Primary Result:", this.transformPrimaryResults(results));
     return results.map(result => ({
       id: result.id,
       student: result.student,
@@ -166,7 +169,9 @@ class ResultService {
       status: result.status,
       teacher_remark: result.teacher_remark,
       created_at: result.created_at,
+     
     }));
+    
   }
 
   private transformJuniorSecondaryResults(results: JuniorSecondaryResultData[]): StandardResult[] {
@@ -211,6 +216,7 @@ class ResultService {
   }
 
   private transformSeniorSecondaryResults(results: SeniorSecondaryResultData[]): StandardResult[] {
+     console.log("Transformed Primary Result:", this.transformSeniorSecondaryResults(results));
     return results.map(result => ({
       id: result.id,
       student: result.student,
