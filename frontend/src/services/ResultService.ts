@@ -86,7 +86,7 @@ class ResultService {
       
       // Check if academic_session is an object
       if (examSession.academic_session && typeof examSession.academic_session === 'object') {
-        return examSession.academic_session;
+        return examSession.academic_session || examSession.academic_session_name || examSession.academic_session.name;
       }
       
       // Check if academic_session_name exists
