@@ -87,7 +87,7 @@ private extractSessionInfo(report: any): AcademicSession | undefined {
   
   // If the API already returned a full academic_session object, return it (matches AcademicSession)
   if (examSession.academic_session && typeof examSession.academic_session === 'object') {
-    return examSession.academic_session as AcademicSession;
+    return examSession.academic_session_name|| examSession.academic_session.name as AcademicSession;
   }
   
   // If the API only provided an academic_session_name or an ID, we cannot reliably construct a full AcademicSession,
