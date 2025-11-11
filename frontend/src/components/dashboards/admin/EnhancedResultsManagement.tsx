@@ -199,12 +199,22 @@ const EnhancedResultsManagement: React.FC = () => {
     }
   };
 
-  // // Transform individual subject result to match interface
+  //   // Transform individual subject result to match interface
   // const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
+  //   // Extract session info properly
+  //   const sessionName = result.exam_session?.academic_session_name || 
+  //                      result.exam_session?.academic_session?.name || 
+  //                      result.exam_session?.academic_session?.academic_session_name || 
+  //                      'N/A';
+    
+  //   const sessionObj = typeof result.exam_session?.academic_session === 'object' 
+  //     ? result.exam_session.academic_session 
+  //     : { name: sessionName };
+    
   //   return {
   //     id: result.id,
   //     student: result.student,
-  //     academic_session: result.exam_session?.academic_session_name || {},
+  //     academic_session: sessionObj,
   //     term: result.exam_session?.term || 'N/A',
   //     total_subjects: 1,
   //     subjects_passed: result.is_passed ? 1 : 0,
@@ -219,7 +229,7 @@ const EnhancedResultsManagement: React.FC = () => {
   //     subject_results: [{
   //       id: result.id,
   //       subject: result.subject,
-  //       total_ca_score: result.continuous_assessment_score || result.ca_total || 0,
+  //       total_ca_score: result.total_ca_score || result.continuous_assessment_score || result.ca_total || 0,
   //       exam_score: result.exam_score || 0,
   //       total_score: result.total_score || 0,
   //       percentage: result.percentage || 0,
@@ -234,6 +244,7 @@ const EnhancedResultsManagement: React.FC = () => {
   //     subject_name: result.subject?.name || 'N/A',
   //   } as any;
   // };
+
   // Transform individual subject result to match interface
   const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
     // Extract session info properly
