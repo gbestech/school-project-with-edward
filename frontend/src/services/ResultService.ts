@@ -512,12 +512,7 @@ async getTermResults(params?: FilterParams) {
     const senior = Array.isArray(seniorReports) ? seniorReports : (seniorReports?.results || []);
 
 
-    console.log('🔍 API Response Analysis:');
-    console.log('Nursery reports count:', nursery.length);
-    console.log('Primary reports count:', primary.length);
-    console.log('Junior reports count:', junior.length);
-    console.log('Senior reports count:', senior.length);
-    
+      
     // Log sample raw data from API
     if (senior.length > 0) {
       console.log('📄 Sample Senior Report (RAW from API):', senior[0]);
@@ -544,7 +539,8 @@ async getTermResults(params?: FilterParams) {
       ...nursery.map((report: any) => ({
         id: report.id,
         student: report.student || {},
-        academic_session: report.exam_session?.academic_session || {},
+        // academic_session: report.exam_session?.academic_session || {},
+         academic_session: this.extractSessionInfo(report),
         term: report.exam_session?.term || 'N/A',
         total_subjects: report.total_subjects || 0,
         subjects_passed: 0, // Nursery doesn't track this separately
@@ -566,7 +562,8 @@ async getTermResults(params?: FilterParams) {
       ...primary.map((report: any) => ({
         id: report.id,
         student: report.student || {},
-        academic_session: report.exam_session?.academic_session || {},
+        // academic_session: report.exam_session?.academic_session || {},
+         academic_session: this.extractSessionInfo(report),
         term: report.exam_session?.term || 'N/A',
         total_subjects: report.total_subjects || 0,
         subjects_passed: 0, // Calculated from subject_results if needed
@@ -588,7 +585,8 @@ async getTermResults(params?: FilterParams) {
       ...junior.map((report: any) => ({
         id: report.id,
         student: report.student || {},
-        academic_session: report.exam_session?.academic_session || {},
+        // academic_session: report.exam_session?.academic_session || {},
+         academic_session: this.extractSessionInfo(report),
         term: report.exam_session?.term || 'N/A',
         total_subjects: report.total_subjects || 0,
         subjects_passed: 0,
@@ -610,7 +608,8 @@ async getTermResults(params?: FilterParams) {
       ...senior.map((report: any) => ({
         id: report.id,
         student: report.student || {},
-        academic_session: report.exam_session?.academic_session || {},
+        // academic_session: report.exam_session?.academic_session || {},
+         academic_session: this.extractSessionInfo(report),
         term: report.exam_session?.term || 'N/A',
         total_subjects: 0, // Calculate from subject_results
         subjects_passed: 0,
@@ -764,17 +763,6 @@ async debugTermReports() {
     });
   }
 
-  // Term results - UPDATED for backward compatibility
-  // async getTermResults(params?: FilterParams) {
-  //   try {
-  //     const response = await api.get(`${this.baseURL}/student-term-results/`, { params });
-  //     return Array.isArray(response) ? response : (response?.results || []);
-  //   } catch (error) {
-  //     console.error('Error fetching term results:', error);
-  //     return [];
-  //   }
-  // }
-
   async getDetailedTermResult(termResultId: string): Promise<StudentTermResult> {
     return api.get(`${this.baseURL}/student-term-results/${termResultId}/detailed/`);
   }
@@ -789,25 +777,6 @@ async debugTermReports() {
     }
   }
 
-  // Delete term result
-  // async deleteTermResult(termResultId: string): Promise<void> {
-  //   try {
-  //     // First check if the term result exists
-  //     try {
-  //       await api.get(`${this.baseURL}/student-term-results/${termResultId}/`);
-  //     } catch (checkError: any) {
-  //       if (checkError.response?.status === 404) {
-  //         throw new Error(`Term result with ID ${termResultId} not found.`);
-  //       }
-  //       throw checkError;
-  //     }
-      
-  //     await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
-  //   } catch (error) {
-  //     console.error('Error deleting term result:', error);
-  //     throw error;
-  //   }
-  // }
 
   // Exam sessions - UPDATED
   async getExamSessions(params?: FilterParams): Promise<ExamSessionInfo[]> {
@@ -925,18 +894,6 @@ async testTermReports() {
   
   console.log('=== END TEST ===');
 }
-  // NEW: Result approval and publishing
-  // async approveResult(resultId: string, educationLevel: string) {
-  //   // Use the student-term-results endpoint for term reports
-  //   return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
-  // }
-
-  // async publishResult(resultId: string, educationLevel: string) {
-  //   // Use the student-term-results endpoint for term reports
-  //   return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
-  // }
-
-// Add these updated methods to your ResultService class
 
 /**
  * Approve a term result (education-level aware)
