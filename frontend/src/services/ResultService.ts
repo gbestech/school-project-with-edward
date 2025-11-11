@@ -78,21 +78,20 @@ class ResultService {
     return data;
   }
 
-// Helper function to extract session info properly
+
 // Helper function to extract session info properly
 private extractSessionInfo(report: any): AcademicSession | undefined {
   // Try to get session from exam_session
   const examSession = report.exam_session;
+  console.log("This is Exam Session", examSession)
   if (!examSession) return undefined;
   
   // If the API already returned a full academic_session object, return it (matches AcademicSession)
   if (examSession.academic_session && typeof examSession.academic_session === 'object') {
     return examSession.academic_session_name|| examSession.academic_session.name as AcademicSession;
   }
-  
-  // If the API only provided an academic_session_name or an ID, we cannot reliably construct a full AcademicSession,
-  // so return undefined to keep the academic_session property compatible with AcademicSession | undefined.
-  return undefined;
+ console.log("Academic Session from Exam Session", examSession.academic_session) 
+   return undefined;
 }
 
   // Data transformation methods - ADDED: Missing transform methods
