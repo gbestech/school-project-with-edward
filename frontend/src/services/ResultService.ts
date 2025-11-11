@@ -79,25 +79,21 @@ class ResultService {
   }
 
 // Helper function to extract session info properly
-    private extractSessionInfo(report: any) {
-      // Try to get session from exam_session
-      const examSession = report.exam_session;
-      if (!examSession) return { name: 'N/A' };
-      
-      // Check if academic_session is an object
-      if (examSession.academic_session && typeof examSession.academic_session === 'object') {
-        return examSession.academic_session || examSession.academic_session_name || examSession.academic_session.name;
-      }
-      
-      // Check if academic_session_name exists
-      if (examSession.academic_session_name) {
-        return { name: examSession.academic_session_name };
-      }
-      console.log ("", this.extractSessionInfo(report));
-      
-      // Fallback
-      return { name: 'N/A' };
-    }
+// Helper function to extract session info properly
+private extractSessionInfo(report: any): AcademicSession | undefined {
+  // Try to get session from exam_session
+  const examSession = report.exam_session;
+  if (!examSession) return undefined;
+  
+  // If the API already returned a full academic_session object, return it (matches AcademicSession)
+  if (examSession.academic_session && typeof examSession.academic_session === 'object') {
+    return examSession.academic_session as AcademicSession;
+  }
+  
+  // If the API only provided an academic_session_name or an ID, we cannot reliably construct a full AcademicSession,
+  // so return undefined to keep the academic_session property compatible with AcademicSession | undefined.
+  return undefined;
+}
 
   // Data transformation methods - ADDED: Missing transform methods
   private transformNurseryResults(results: NurseryResultData[]): StandardResult[] {
@@ -131,7 +127,6 @@ class ResultService {
   }
 
   private transformPrimaryResults(results: PrimaryResultData[]): StandardResult[] {
-     console.log("Transformed Primary Result:", this.transformPrimaryResults(results));
     return results.map(result => ({
       id: result.id,
       student: result.student,
@@ -216,7 +211,6 @@ class ResultService {
   }
 
   private transformSeniorSecondaryResults(results: SeniorSecondaryResultData[]): StandardResult[] {
-     console.log("Transformed Primary Result:", this.transformSeniorSecondaryResults(results));
     return results.map(result => ({
       id: result.id,
       student: result.student,
