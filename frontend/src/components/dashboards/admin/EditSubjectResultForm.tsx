@@ -204,10 +204,11 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
 
   // Determine grade based on percentage
   const determineGrade = (percentage: number): string => {
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B';
-    if (percentage >= 60) return 'C';
-    if (percentage >= 50) return 'D';
+    if (percentage >= 70) return 'A';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 50) return 'C';
+    if (percentage >= 45) return 'D';
+    if (percentage >= 39) return 'E';
     return 'F';
   };
 
@@ -239,9 +240,9 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
           appearance_score: 0,
           project_score: 0,
           note_copying_score: 0,
+          // Preserve/assign max marks for compatibility with SubjectFormData
+          max_marks_obtainable: (subject as any)?.breakdown?.max_marks_obtainable ?? formData.max_marks_obtainable ?? 100,
         });
-      } else if (result.student.education_level === 'PRIMARY' || result.student.education_level === 'JUNIOR_SECONDARY') {
-        // Primary/Junior Secondary: Use CA breakdown
         setFormData({
           ...baseFormData,
           continuous_assessment_score: (subject as any).continuous_assessment_score || 0,
@@ -254,7 +255,10 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
           first_test_score: 0,
           second_test_score: 0,
           third_test_score: 0,
+          // Preserve/assign max marks for compatibility with SubjectFormData
+          max_marks_obtainable: (subject as any)?.breakdown?.max_marks_obtainable ?? formData.max_marks_obtainable ?? 100,
         });
+       
       } else {
         // Nursery or other levels: Use basic structure
         setFormData({
