@@ -7,6 +7,7 @@ import {
 import { toast } from 'react-toastify';
 import ResultService from '@/services/ResultService';
 import { useSettings } from '@/contexts/SettingsContext';
+import { AcademicSession } from '@/types/types';
 import EditSubjectResultForm from './EditSubjectResultForm';
 import AddResultForm from './AddResultForm';
 
@@ -21,12 +22,7 @@ interface StudentResult {
     education_level: string;
     profile_picture?: string;
   };
-  academic_session: {
-    id: string;
-    name: string;
-    start_date: string;
-    end_date: string;
-  };
+  academic_session:AcademicSession;
   term: string;
   total_subjects: number;
   subjects_passed: number;
