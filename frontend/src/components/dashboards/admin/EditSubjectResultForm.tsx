@@ -1264,13 +1264,14 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
   // Calculate CA total
   const caTotal = useMemo(() => {
     return educationConfig.caFields.reduce((sum, field) => {
-      return sum + (formData[field.key as keyof SubjectFormData] as number || 0);
+      const value = formData[field.key as keyof SubjectFormData];
+      return sum + (Number(value) || 0);
     }, 0);
   }, [formData, educationConfig.caFields]);
 
   // Calculate total score
   const totalScore = useMemo(() => {
-    const exam = formData.exam_score || 0;
+    const exam = Number(formData.exam_score) || 0;
     return result.student.education_level === 'NURSERY' ? exam : caTotal + exam;
   }, [caTotal, formData.exam_score, result.student.education_level]);
 
@@ -1278,11 +1279,11 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
   const percentage = useMemo(() => {
     if (totalScore === 0) return 0;
     const max = result.student.education_level === 'NURSERY' 
-      ? formData.max_marks_obtainable 
+      ? (Number(formData.max_marks_obtainable) || 100)
       : educationConfig.totalMax;
+    if (max === 0) return 0;
     return (totalScore / max) * 100;
   }, [totalScore, formData.max_marks_obtainable, educationConfig.totalMax, result.student.education_level]);
-
   // Determine grade
   const grade = useMemo(() => {
     if (percentage >= 70) return 'A';
