@@ -1758,6 +1758,30 @@ return (
                     {caTotal > 0 && (
                       <div>
                         <div className="text-sm text-blue-700 mb-1">CA Total</div>
+                        <div className="text-xl font-bold text-blue-900">{(caTotal || 0).toFixed(1)}</div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-sm text-blue-700 mb-1">Total Score</div>
+                      <div className="text-xl font-bold text-blue-900">{(totalScore || 0).toFixed(1)}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-blue-700 mb-1">Percentage</div>
+                      <div className="text-xl font-bold text-blue-900">{(percentage || 0).toFixed(1)}%</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-blue-700 mb-1">Grade</div>
+                      <div className={`text-xl font-bold px-3 py-1 rounded-lg inline-block ${
+                        ['A', 'B'].includes(grade) ? 'bg-green-500 text-white' :
+                        ['C', 'D'].includes(grade) ? 'bg-yellow-500 text-white' :
+                        'bg-red-500 text-white'
+                      }`}>{grade || 'N/A'}</div>
+                    </div>
+                  </div>
+                  {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {caTotal > 0 && (
+                      <div>
+                        <div className="text-sm text-blue-700 mb-1">CA Total</div>
                         <div className="text-xl font-bold text-blue-900">{caTotal.toFixed(1)}</div>
                       </div>
                     )}
@@ -1777,7 +1801,7 @@ return (
                         'bg-red-500 text-white'
                       }`}>{grade}</div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Teacher Remark */}
