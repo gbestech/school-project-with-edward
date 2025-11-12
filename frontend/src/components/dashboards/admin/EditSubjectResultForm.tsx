@@ -1758,16 +1758,22 @@ return (
                     {caTotal > 0 && (
                       <div>
                         <div className="text-sm text-blue-700 mb-1">CA Total</div>
-                        <div className="text-xl font-bold text-blue-900">{(caTotal || 0).toFixed(1)}</div>
+                        <div className="text-xl font-bold text-blue-900">
+                          {typeof caTotal === 'number' ? caTotal.toFixed(1) : '0.0'}
+                        </div>
                       </div>
                     )}
                     <div>
                       <div className="text-sm text-blue-700 mb-1">Total Score</div>
-                      <div className="text-xl font-bold text-blue-900">{(totalScore || 0).toFixed(1)}</div>
+                      <div className="text-xl font-bold text-blue-900">
+                        {typeof totalScore === 'number' ? totalScore.toFixed(1) : '0.0'}
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-blue-700 mb-1">Percentage</div>
-                      <div className="text-xl font-bold text-blue-900">{(percentage || 0).toFixed(1)}%</div>
+                      <div className="text-xl font-bold text-blue-900">
+                        {typeof percentage === 'number' ? percentage.toFixed(1) : '0.0'}%
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-blue-700 mb-1">Grade</div>
