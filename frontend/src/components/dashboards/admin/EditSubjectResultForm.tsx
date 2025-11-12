@@ -91,6 +91,7 @@ interface SubjectFormData {
   exam_score: number;
   grade: string;
   status: string;
+  teacher_remark: string;
   
   // Nursery specific fields
   max_marks_obtainable: number;
@@ -125,6 +126,7 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
     exam_score: 0,
     grade: '',
     status: 'DRAFT',
+    teacher_remark: '',
     
     // Nursery specific fields
     max_marks_obtainable: 100,
@@ -213,74 +215,189 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
   };
 
   // Handle subject selection
-  const handleSubjectSelect = (subjectId: string) => {
+  // const handleSubjectSelect = (subjectId: string) => {
+  //   setSelectedSubjectId(subjectId);
+  //   const subject = result.subject_results.find(s => s.id === subjectId);
+  //   if (subject) {
+  //     setSelectedSubject(subject);
+      
+  //     // Populate form data based on education level
+  //     const baseFormData = {
+  //       exam_score: subject.exam_score || 0,
+  //       grade: subject.grade || '',
+  //       status: subject.status || 'DRAFT',
+  //     };
+
+  //     if (result.student.education_level === 'SENIOR_SECONDARY') {
+  //       // Senior Secondary: Use test scores
+  //       setFormData({
+  //         ...baseFormData,
+  //         first_test_score: (subject as any).first_test_score || 0,
+  //         second_test_score: (subject as any).second_test_score || 0,
+  //         third_test_score: (subject as any).third_test_score || 0,
+  //         // Set other fields to 0
+  //         continuous_assessment_score: 0,
+  //         take_home_test_score: 0,
+  //         practical_score: 0,
+  //         appearance_score: 0,
+  //         project_score: 0,
+  //         note_copying_score: 0,
+  //         // Preserve/assign max marks for compatibility with SubjectFormData
+  //         max_marks_obtainable: (subject as any)?.breakdown?.max_marks_obtainable ?? formData.max_marks_obtainable ?? 100,
+  //       });
+  //       setFormData({
+  //         ...baseFormData,
+  //         continuous_assessment_score: (subject as any).continuous_assessment_score || 0,
+  //         take_home_test_score: (subject as any).take_home_test_score || 0,
+  //         practical_score: (subject as any).practical_score || 0,
+  //         appearance_score: (subject as any).appearance_score || 0,
+  //         project_score: (subject as any).project_score || 0,
+  //         note_copying_score: (subject as any).note_copying_score || 0,
+  //         // Set test scores to 0
+  //         first_test_score: 0,
+  //         second_test_score: 0,
+  //         third_test_score: 0,
+  //         // Preserve/assign max marks for compatibility with SubjectFormData
+  //         max_marks_obtainable: (subject as any)?.breakdown?.max_marks_obtainable ?? formData.max_marks_obtainable ?? 100,
+  //       });
+       
+  //     } else {
+  //       // Nursery or other levels: Use basic structure
+  //       setFormData({
+  //         ...baseFormData,
+  //         // For nursery, use mark_obtained from breakdown if available, otherwise exam_score
+  //         exam_score: (subject as any).breakdown?.mark_obtained || subject.exam_score || 0,
+  //         // Set max_marks_obtainable from the breakdown data
+  //         max_marks_obtainable: (subject as any).breakdown?.max_marks_obtainable || 100,
+  //         // Set all other fields to 0
+  //         first_test_score: 0,
+  //         second_test_score: 0,
+  //         third_test_score: 0,
+  //         continuous_assessment_score: 0,
+  //         take_home_test_score: 0,
+  //         practical_score: 0,
+  //         appearance_score: 0,
+  //         project_score: 0,
+  //         note_copying_score: 0,
+  //       });
+  //     }
+  //   }
+  // };
+
+  // Handle subject selection - FIXED to properly extract and populate all fields
+  const handleSubjectSelect = async (subjectId: string) => {
     setSelectedSubjectId(subjectId);
     const subject = result.subject_results.find(s => s.id === subjectId);
-    if (subject) {
-      setSelectedSubject(subject);
+    if (!subject) return;
+    
+    setSelectedSubject(subject);
+    
+    try {
+      // Fetch the full result data from the API to get all fields
+      let endpoint = '';
+      const educationLevel = result.student.education_level;
       
-      // Populate form data based on education level
+      if (educationLevel === 'SENIOR_SECONDARY') {
+        endpoint = `/api/results/senior-secondary/results/${subjectId}/`;
+      } else if (educationLevel === 'JUNIOR_SECONDARY') {
+        endpoint = `/api/results/junior-secondary/results/${subjectId}/`;
+      } else if (educationLevel === 'PRIMARY') {
+        endpoint = `/api/results/primary/results/${subjectId}/`;
+      } else if (educationLevel === 'NURSERY') {
+        endpoint = `/api/results/nursery/results/${subjectId}/`;
+      }
+      
+      if (endpoint) {
+        const fullResultData = await api.get(endpoint);
+        console.log('Full result data from API:', fullResultData);
+        
+        // Populate form data based on education level with API data
+        const baseFormData = {
+          exam_score: fullResultData.exam_score || 0,
+          grade: fullResultData.grade || '',
+          status: fullResultData.status || 'DRAFT',
+        };
+
+        if (educationLevel === 'SENIOR_SECONDARY') {
+          // Senior Secondary: Use test scores
+          setFormData({
+            ...baseFormData,
+            first_test_score: fullResultData.first_test_score || 0,
+            second_test_score: fullResultData.second_test_score || 0,
+            third_test_score: fullResultData.third_test_score || 0,
+            // Set other fields to 0
+            continuous_assessment_score: 0,
+            take_home_test_score: 0,
+            practical_score: 0,
+            appearance_score: 0,
+            project_score: 0,
+            note_copying_score: 0,
+            max_marks_obtainable: 100,
+          });
+        } else if (educationLevel === 'PRIMARY' || educationLevel === 'JUNIOR_SECONDARY') {
+          // Primary/Junior Secondary: Use CA breakdown
+          setFormData({
+            ...baseFormData,
+            continuous_assessment_score: fullResultData.continuous_assessment_score || 0,
+            take_home_test_score: fullResultData.take_home_test_score || 0,
+            practical_score: fullResultData.practical_score || 0,
+            appearance_score: fullResultData.appearance_score || 0,
+            project_score: fullResultData.project_score || 0,
+            note_copying_score: fullResultData.note_copying_score || 0,
+            // Set test scores to 0
+            first_test_score: 0,
+            second_test_score: 0,
+            third_test_score: 0,
+            max_marks_obtainable: 100,
+          });
+        } else {
+          // Nursery: Use basic structure
+          setFormData({
+            ...baseFormData,
+            // For nursery, use mark_obtained
+            exam_score: fullResultData.mark_obtained || 0,
+            max_marks_obtainable: fullResultData.max_marks_obtainable || 100,
+            // Set all other fields to 0
+            first_test_score: 0,
+            second_test_score: 0,
+            third_test_score: 0,
+            continuous_assessment_score: 0,
+            take_home_test_score: 0,
+            practical_score: 0,
+            appearance_score: 0,
+            project_score: 0,
+            note_copying_score: 0,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching full result data:', error);
+      toast.error('Failed to load complete result data');
+      
+      // Fallback to using the subject data we have
       const baseFormData = {
         exam_score: subject.exam_score || 0,
         grade: subject.grade || '',
         status: subject.status || 'DRAFT',
       };
 
-      if (result.student.education_level === 'SENIOR_SECONDARY') {
-        // Senior Secondary: Use test scores
-        setFormData({
-          ...baseFormData,
-          first_test_score: (subject as any).first_test_score || 0,
-          second_test_score: (subject as any).second_test_score || 0,
-          third_test_score: (subject as any).third_test_score || 0,
-          // Set other fields to 0
-          continuous_assessment_score: 0,
-          take_home_test_score: 0,
-          practical_score: 0,
-          appearance_score: 0,
-          project_score: 0,
-          note_copying_score: 0,
-          // Preserve/assign max marks for compatibility with SubjectFormData
-          max_marks_obtainable: (subject as any)?.breakdown?.max_marks_obtainable ?? formData.max_marks_obtainable ?? 100,
-        });
-        setFormData({
-          ...baseFormData,
-          continuous_assessment_score: (subject as any).continuous_assessment_score || 0,
-          take_home_test_score: (subject as any).take_home_test_score || 0,
-          practical_score: (subject as any).practical_score || 0,
-          appearance_score: (subject as any).appearance_score || 0,
-          project_score: (subject as any).project_score || 0,
-          note_copying_score: (subject as any).note_copying_score || 0,
-          // Set test scores to 0
-          first_test_score: 0,
-          second_test_score: 0,
-          third_test_score: 0,
-          // Preserve/assign max marks for compatibility with SubjectFormData
-          max_marks_obtainable: (subject as any)?.breakdown?.max_marks_obtainable ?? formData.max_marks_obtainable ?? 100,
-        });
-       
-      } else {
-        // Nursery or other levels: Use basic structure
-        setFormData({
-          ...baseFormData,
-          // For nursery, use mark_obtained from breakdown if available, otherwise exam_score
-          exam_score: (subject as any).breakdown?.mark_obtained || subject.exam_score || 0,
-          // Set max_marks_obtainable from the breakdown data
-          max_marks_obtainable: (subject as any).breakdown?.max_marks_obtainable || 100,
-          // Set all other fields to 0
-          first_test_score: 0,
-          second_test_score: 0,
-          third_test_score: 0,
-          continuous_assessment_score: 0,
-          take_home_test_score: 0,
-          practical_score: 0,
-          appearance_score: 0,
-          project_score: 0,
-          note_copying_score: 0,
-        });
-      }
+      setFormData({
+        ...baseFormData,
+        first_test_score: 0,
+        second_test_score: 0,
+        third_test_score: 0,
+        continuous_assessment_score: 0,
+        take_home_test_score: 0,
+        practical_score: 0,
+        appearance_score: 0,
+        project_score: 0,
+        note_copying_score: 0,
+        max_marks_obtainable: 100,
+      });
     }
   };
+
+  
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
