@@ -529,12 +529,12 @@ const TeacherResults: React.FC = () => {
     <TeacherDashboardLayout>
       <div className="p-6 space-y-6">
         {/* Debug Info */}
-        {debugInfo && (
+        {/* {debugInfo && (
           <details className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <summary className="cursor-pointer font-semibold">Debug Information (Click to expand)</summary>
             <pre className="text-xs overflow-auto mt-2 whitespace-pre-wrap">{debugInfo}</pre>
           </details>
-        )}
+        )} */}
 
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -700,10 +700,10 @@ const TeacherResults: React.FC = () => {
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
                 // Table View
-                <div className="overflow-x-auto overflow-y-visible">
+                <div className="overflow-x-auto overflow-y-visible" style={{ maxWidth: '100%' }}>
                   <div className="inline-block min-w-full align-middle">
-                    <div className="overflow-hidden">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed" style={{ minWidth: '1400px' }}>
+                    <div className="overflow-visible">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" style={{ minWidth: '1400px', tableLayout: 'auto' }}>
                     <thead className="bg-gray-50 dark:bg-gray-900">
                       <tr>
                         {tableColumns.map((column) => (
