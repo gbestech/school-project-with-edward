@@ -1,4 +1,4 @@
-// TeacherResults.tsx (Fixed - bypassing education_level requirement)
+// TeacherResults.tsx (Fixed - with proper tables and error handling)
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
@@ -21,6 +21,8 @@ import {
   FileText,
   User,
   Archive,
+  Table as TableIcon,
+  Grid,
 } from 'lucide-react';
 
 type EducationLevel =
@@ -71,6 +73,7 @@ const TeacherResults: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEducationLevel, setFilterEducationLevel] = useState<EducationLevel | 'all'>('all');
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   const { 
@@ -129,7 +132,6 @@ const TeacherResults: React.FC = () => {
       debugLog += `Subject IDs for query: ${subjectIds.join(', ')}\n`;
 
       if (subjectIds.length) {
-        // Extract education levels from subjects and assignments
         const educationLevels = new Set<string>();
         
         subjects.forEach((s: any) => {
@@ -151,7 +153,6 @@ const TeacherResults: React.FC = () => {
         
         let levelsToQuery = Array.from(educationLevels);
         
-        // If no levels found, try all common levels
         if (levelsToQuery.length === 0) {
           levelsToQuery = ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
           debugLog += `No education levels found, querying all common levels\n`;
@@ -291,9 +292,9 @@ const TeacherResults: React.FC = () => {
   const availableSubjects = useMemo(
     () =>
       teacherAssignments.map((assignment) => ({
-        id: assignment.subject_id,
-        name: assignment.subject_name,
-        code: assignment.subject_code,
+        id: String(assignment.subject_id), // Convert to string for select value
+        name: String(assignment.subject_name),
+        code: String(assignment.subject_code),
       })),
     [teacherAssignments]
   );
@@ -318,9 +319,9 @@ const TeacherResults: React.FC = () => {
 
   const getTableColumns = (educationLevel: EducationLevel | 'all'): TableColumn[] => {
     const baseColumns: TableColumn[] = [
-      { key: 'student', label: 'Student', sticky: 'left', width: 'w-64' },
-      { key: 'subject', label: 'Subject', width: 'w-40' },
-      { key: 'session', label: 'Session', width: 'w-36' },
+      { key: 'student', label: 'Student', sticky: 'left', width: 'min-w-[200px]' },
+      { key: 'subject', label: 'Subject', width: 'min-w-[120px]' },
+      { key: 'session', label: 'Session', width: 'min-w-[100px]' },
     ];
 
     const seniorColumns: TableColumn[] = [
@@ -342,7 +343,7 @@ const TeacherResults: React.FC = () => {
       { key: 'exam', label: 'Exam', width: 'w-20', center: true },
       { key: 'total', label: 'Total', width: 'w-20', center: true },
       { key: 'grade', label: 'Grade', width: 'w-20', center: true },
-      { key: 'status', label: 'Status', width: 'w-28', center: true },
+      { key: 'status', label: 'Status', width: 'min-w-[100px]', center: true },
       { key: 'actions', label: 'Actions', sticky: 'right', width: 'w-32', center: true },
     ];
 
@@ -354,8 +355,7 @@ const TeacherResults: React.FC = () => {
   };
 
   const currentEducationLevel: EducationLevel = filterEducationLevel === 'all' ? 'MIXED' : filterEducationLevel;
-  // tableColumns can be used if we implement the table view instead of cards
-  // const tableColumns = useMemo(() => getTableColumns(currentEducationLevel), [currentEducationLevel]);
+  const tableColumns = useMemo(() => getTableColumns(currentEducationLevel), [currentEducationLevel]);
 
   const getStatusBadge = (status: ResultStatus = 'DRAFT') => {
     const STATUS_CONFIG = {
@@ -386,6 +386,107 @@ const TeacherResults: React.FC = () => {
       F: 'text-red-600 bg-red-100',
     };
     return map[(grade || '').toUpperCase()] || 'text-gray-600 bg-gray-100';
+  };
+
+  const renderTableCell = (column: TableColumn, result: StudentResult) => {
+    const centerClass = column.center ? 'text-center' : '';
+    
+    switch (column.key) {
+      case 'student':
+        return (
+          <div className="flex items-center space-x-3">
+            {result.student.profile_picture ? (
+              <img 
+                src={result.student.profile_picture} 
+                alt={result.student.full_name}
+                className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white truncate">{result.student.full_name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{result.student.registration_number}</p>
+            </div>
+          </div>
+        );
+      case 'subject':
+        return (
+          <div>
+            <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{result.subject.code}</p>
+          </div>
+        );
+      case 'session':
+        return (
+          <div>
+            <p className="text-sm text-gray-900 dark:text-white">{result.exam_session.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{result.exam_session.term}</p>
+          </div>
+        );
+      case 'test1':
+        return <span className={centerClass}>{result.first_test_score}</span>;
+      case 'test2':
+        return <span className={centerClass}>{result.second_test_score}</span>;
+      case 'test3':
+        return <span className={centerClass}>{result.third_test_score}</span>;
+      case 'ca_total':
+        return <span className={`${centerClass} font-semibold`}>{result.ca_score}</span>;
+      case 'ca':
+        return <span className={centerClass}>{result.continuous_assessment_score}</span>;
+      case 'project':
+        return <span className={centerClass}>{result.project_score}</span>;
+      case 'take_home':
+        return <span className={centerClass}>{result.take_home_test_score}</span>;
+      case 'practical':
+        return <span className={centerClass}>{result.practical_score}</span>;
+      case 'note_copy':
+        return <span className={centerClass}>{result.note_copying_score}</span>;
+      case 'exam':
+        return <span className={`${centerClass} font-semibold`}>{result.exam_score}</span>;
+      case 'total':
+        return <span className={`${centerClass} font-bold text-blue-600 dark:text-blue-400`}>{result.total_score}</span>;
+      case 'grade':
+        return (
+          <div className={centerClass}>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(result.grade)}`}>
+              {result.grade ?? '—'}
+            </span>
+          </div>
+        );
+      case 'status':
+        return <div className={centerClass}>{getStatusBadge(result.status)}</div>;
+      case 'actions':
+        return (
+          <div className="flex items-center justify-center space-x-1">
+            <button
+              onClick={() => handleViewResult(result)}
+              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              title="View Details"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleEditResult(result)}
+              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+              title="Edit Result"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleDeleteResult(result)}
+              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+              title="Delete Result"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
   if (loading) {
@@ -495,9 +596,9 @@ const TeacherResults: React.FC = () => {
           />
         )}
 
-        {/* Filters */}
+        {/* Filters and View Toggle */}
         {activeTab === 'results' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -511,13 +612,13 @@ const TeacherResults: React.FC = () => {
               </div>
 
               <select
-                value={filterEducationLevel}
+                value={String(filterEducationLevel)}
                 onChange={(e) => setFilterEducationLevel(e.target.value as EducationLevel | 'all')}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
                 <option value="all">All Education Levels</option>
                 {availableEducationLevels.map((level) => (
-                  <option key={level} value={level}>
+                  <option key={String(level)} value={String(level)}>
                     {String(level)
                       .replace(/_/g, ' ')
                       .toLowerCase()
@@ -527,7 +628,7 @@ const TeacherResults: React.FC = () => {
               </select>
 
               <select
-                value={filterSubject}
+                value={String(filterSubject)}
                 onChange={(e) => setFilterSubject(e.target.value)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
@@ -540,7 +641,7 @@ const TeacherResults: React.FC = () => {
               </select>
 
               <select
-                value={filterStatus}
+                value={String(filterStatus)}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
@@ -563,86 +664,171 @@ const TeacherResults: React.FC = () => {
                 <X className="w-4 h-4 mr-2" /> Clear
               </button>
             </div>
+
+            {/* View Toggle */}
+            <div className="flex items-center justify-end space-x-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">View:</span>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-lg ${
+                  viewMode === 'table'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                }`}
+                title="Table View"
+              >
+                <TableIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded-lg ${
+                  viewMode === 'cards'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
+                }`}
+                title="Card View"
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
         {/* Results Display */}
         {activeTab === 'results' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             {filteredResults.length > 0 ? (
-              <div className="space-y-4">
-                {filteredResults.map((result) => (
-                  <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        {result.student.profile_picture ? (
-                          <img 
-                            src={result.student.profile_picture} 
-                            alt={result.student.full_name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                            <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              viewMode === 'table' ? (
+                // Table View
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
+                      <tr>
+                        {tableColumns.map((column) => (
+                          <th
+                            key={column.key}
+                            className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
+                              column.center ? 'text-center' : 'text-left'
+                            } ${column.width} ${
+                              column.sticky === 'left'
+                                ? 'sticky left-0 z-10 bg-gray-50 dark:bg-gray-900'
+                                : column.sticky === 'right'
+                                ? 'sticky right-0 z-10 bg-gray-50 dark:bg-gray-900'
+                                : ''
+                            }`}
+                          >
+                            {column.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {filteredResults.map((result) => (
+                        <tr
+                          key={result.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          {tableColumns.map((column) => (
+                            <td
+                              key={column.key}
+                              className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 ${column.width} ${
+                                column.sticky === 'left'
+                                  ? 'sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'
+                                  : column.sticky === 'right'
+                                  ? 'sticky right-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'
+                                  : ''
+                              }`}
+                            >
+                              {renderTableCell(column, result)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                // Card View
+                <div className="p-6 space-y-4">
+                  {filteredResults.map((result) => (
+                    <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          {result.student.profile_picture ? (
+                            <img 
+                              src={result.student.profile_picture} 
+                              alt={result.student.full_name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                              <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-gray-900 dark:text-white">{result.student.full_name}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{result.student.registration_number}</p>
                           </div>
-                        )}
+                        </div>
+                        {getStatusBadge(result.status)}
+                      </div>
+                      
+                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">{result.student.full_name}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{result.student.registration_number}</p>
+                          <span className="text-gray-500 dark:text-gray-400">Subject:</span>
+                          <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">CA:</span>
+                          <p className="font-medium text-gray-900 dark:text-white">{result.ca_score}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Exam:</span>
+                          <p className="font-medium text-gray-900 dark:text-white">{result.exam_score}</p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400">Total:</span>
+                          <p className="font-medium text-blue-600 dark:text-blue-400">{result.total_score}</p>
                         </div>
                       </div>
-                      {getStatusBadge(result.status)}
-                    </div>
-                    
-                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Subject:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Exam:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{result.exam_score}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Total:</span>
-                        <p className="font-medium text-gray-900 dark:text-white">{result.total_score}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 dark:text-gray-400">Grade:</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(result.grade)}`}>
-                          {result.grade ?? '—'}
-                        </span>
-                      </div>
-                    </div>
 
-                    <div className="mt-4 flex items-center space-x-2">
-                      <button
-                        onClick={() => handleViewResult(result)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditResult(result)}
-                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-2 rounded"
-                        title="Edit Result"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteResult(result)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded"
-                        title="Delete Result"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="mt-4 flex items-center justify-between">
+                        <div>
+                          <span className="text-gray-500 dark:text-gray-400 text-sm">Grade: </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(result.grade)}`}>
+                            {result.grade ?? '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewResult(result)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditResult(result)}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-2 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                            title="Edit Result"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteResult(result)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                            title="Delete Result"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-12 px-6">
                 <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4 mx-auto" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No results found</h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
