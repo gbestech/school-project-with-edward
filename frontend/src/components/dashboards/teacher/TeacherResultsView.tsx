@@ -765,9 +765,10 @@ const TeacherResults: React.FC = () => {
                   <div 
                     ref={tableContainerRef}
                     onScroll={handleScroll}
-                    className="overflow-x-auto"
+                    className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800"
                     style={{ 
                       scrollBehavior: 'smooth',
+                      WebkitOverflowScrolling: 'touch',
                     }}
                   >
                     <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
