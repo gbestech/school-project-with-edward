@@ -394,7 +394,7 @@ const TeacherResults: React.FC = () => {
     switch (column.key) {
       case 'student':
         return (
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 min-w-[250px]">
             {result.student.profile_picture ? (
               <img 
                 src={result.student.profile_picture} 
@@ -406,22 +406,22 @@ const TeacherResults: React.FC = () => {
                 <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </div>
             )}
-            <div className="min-w-0">
-              <p className="font-medium text-gray-900 dark:text-white truncate">{result.student.full_name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{result.student.registration_number}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 dark:text-white">{result.student.full_name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{result.student.registration_number}</p>
             </div>
           </div>
         );
       case 'subject':
         return (
-          <div>
+          <div className="min-w-[180px]">
             <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{result.subject.code}</p>
           </div>
         );
       case 'session':
         return (
-          <div>
+          <div className="min-w-[150px]">
             <p className="text-sm text-gray-900 dark:text-white">{result.exam_session.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{result.exam_session.term}</p>
           </div>
@@ -700,22 +700,31 @@ const TeacherResults: React.FC = () => {
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
                 // Table View
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <div className="overflow-x-auto overflow-y-visible">
+                  <div className="inline-block min-w-full align-middle">
+                    <div className="overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed" style={{ minWidth: '1400px' }}>
                     <thead className="bg-gray-50 dark:bg-gray-900">
                       <tr>
                         {tableColumns.map((column) => (
                           <th
                             key={column.key}
-                            className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${
+                            className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${
                               column.center ? 'text-center' : 'text-left'
-                            } ${column.width} ${
+                            } ${
                               column.sticky === 'left'
-                                ? 'sticky left-0 z-10 bg-gray-50 dark:bg-gray-900'
+                                ? 'sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                 : column.sticky === 'right'
-                                ? 'sticky right-0 z-10 bg-gray-50 dark:bg-gray-900'
+                                ? 'sticky right-0 z-20 bg-gray-50 dark:bg-gray-900 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                 : ''
                             }`}
+                            style={
+                              column.key === 'student' ? { minWidth: '250px' } :
+                              column.key === 'subject' ? { minWidth: '180px' } :
+                              column.key === 'session' ? { minWidth: '150px' } :
+                              column.key === 'actions' ? { minWidth: '140px' } :
+                              { minWidth: '80px' }
+                            }
                           >
                             {column.label}
                           </th>
@@ -731,13 +740,20 @@ const TeacherResults: React.FC = () => {
                           {tableColumns.map((column) => (
                             <td
                               key={column.key}
-                              className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 ${column.width} ${
+                              className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${
                                 column.sticky === 'left'
-                                  ? 'sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'
+                                  ? 'sticky left-0 z-10 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                   : column.sticky === 'right'
-                                  ? 'sticky right-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700'
+                                  ? 'sticky right-0 z-10 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                   : ''
                               }`}
+                              style={
+                                column.key === 'student' ? { minWidth: '250px' } :
+                                column.key === 'subject' ? { minWidth: '180px' } :
+                                column.key === 'session' ? { minWidth: '150px' } :
+                                column.key === 'actions' ? { minWidth: '140px' } :
+                                { minWidth: '80px' }
+                              }
                             >
                               {renderTableCell(column, result)}
                             </td>
@@ -746,6 +762,8 @@ const TeacherResults: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 // Card View
