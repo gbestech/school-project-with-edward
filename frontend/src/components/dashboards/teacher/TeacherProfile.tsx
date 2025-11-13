@@ -156,8 +156,8 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ onRefresh }) => {
         address: responseData.address || "",
         qualification: responseData.qualification || "",
         specialization: responseData.specialization || "",
-        bio: responseData.user?.bio || responseData.bio || "",
-        date_of_birth: responseData.date_of_birth || "",
+        bio: responseData.bio || responseData.user?.bio || "",
+        date_of_birth: responseData.date_of_birth || ""
       });
 
       if (onRefresh) {
