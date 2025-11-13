@@ -1,5 +1,5 @@
-// TeacherResults.tsx (Fixed - with proper tables and error handling)
-import React, { useEffect, useMemo, useState } from 'react';
+// TeacherResults.tsx - Improved with scrollable table
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
@@ -23,6 +23,8 @@ import {
   Archive,
   Table as TableIcon,
   Grid,
+  ChevronRight,
+  ChevronLeft,
 } from 'lucide-react';
 
 type EducationLevel =
@@ -75,6 +77,11 @@ const TeacherResults: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [showScrollHint, setShowScrollHint] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const { 
     handleEditResult, 
@@ -269,6 +276,38 @@ const TeacherResults: React.FC = () => {
     }
   }, [user, isLoading]);
 
+  // Scroll handling
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollLeft = container.scrollLeft;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    
+    setCanScrollLeft(scrollLeft > 10);
+    setCanScrollRight(scrollLeft < maxScroll - 10);
+    
+    if (scrollLeft > 10) {
+      setShowScrollHint(false);
+    }
+  };
+
+  const scrollTable = (direction: 'left' | 'right') => {
+    if (tableContainerRef.current) {
+      const scrollAmount = 300;
+      tableContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    const container = tableContainerRef.current;
+    if (container) {
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      setCanScrollRight(maxScroll > 10);
+    }
+  }, [results, filterEducationLevel]);
+
   const handleCreateResult = () => {
     setActiveTab('record');
   };
@@ -292,7 +331,7 @@ const TeacherResults: React.FC = () => {
   const availableSubjects = useMemo(
     () =>
       teacherAssignments.map((assignment) => ({
-        id: String(assignment.subject_id), // Convert to string for select value
+        id: String(assignment.subject_id),
         name: String(assignment.subject_name),
         code: String(assignment.subject_code),
       })),
@@ -319,32 +358,32 @@ const TeacherResults: React.FC = () => {
 
   const getTableColumns = (educationLevel: EducationLevel | 'all'): TableColumn[] => {
     const baseColumns: TableColumn[] = [
-      { key: 'student', label: 'Student', sticky: 'left', width: 'min-w-[200px]' },
-      { key: 'subject', label: 'Subject', width: 'min-w-[120px]' },
-      { key: 'session', label: 'Session', width: 'min-w-[100px]' },
+      { key: 'student', label: 'Student', sticky: 'left', width: '250px' },
+      { key: 'subject', label: 'Subject', width: '180px' },
+      { key: 'session', label: 'Session', width: '150px' },
     ];
 
     const seniorColumns: TableColumn[] = [
-      { key: 'test1', label: 'Test 1', width: 'w-20', center: true },
-      { key: 'test2', label: 'Test 2', width: 'w-20', center: true },
-      { key: 'test3', label: 'Test 3', width: 'w-20', center: true },
-      { key: 'ca_total', label: 'CA Total', width: 'w-24', center: true },
+      { key: 'test1', label: 'Test 1', width: '80px', center: true },
+      { key: 'test2', label: 'Test 2', width: '80px', center: true },
+      { key: 'test3', label: 'Test 3', width: '80px', center: true },
+      { key: 'ca_total', label: 'CA Total', width: '100px', center: true },
     ];
 
     const primaryJuniorColumns: TableColumn[] = [
-      { key: 'ca', label: 'CA', width: 'w-20', center: true },
-      { key: 'project', label: 'Project', width: 'w-20', center: true },
-      { key: 'take_home', label: 'Take Home', width: 'w-24', center: true },
-      { key: 'practical', label: 'Practical', width: 'w-24', center: true },
-      { key: 'note_copy', label: 'Note Copy', width: 'w-24', center: true },
+      { key: 'ca', label: 'CA', width: '80px', center: true },
+      { key: 'project', label: 'Project', width: '80px', center: true },
+      { key: 'take_home', label: 'Take Home', width: '100px', center: true },
+      { key: 'practical', label: 'Practical', width: '100px', center: true },
+      { key: 'note_copy', label: 'Note Copy', width: '100px', center: true },
     ];
 
     const endColumns: TableColumn[] = [
-      { key: 'exam', label: 'Exam', width: 'w-20', center: true },
-      { key: 'total', label: 'Total', width: 'w-20', center: true },
-      { key: 'grade', label: 'Grade', width: 'w-20', center: true },
-      { key: 'status', label: 'Status', width: 'min-w-[100px]', center: true },
-      { key: 'actions', label: 'Actions', sticky: 'right', width: 'w-32', center: true },
+      { key: 'exam', label: 'Exam', width: '80px', center: true },
+      { key: 'total', label: 'Total', width: '80px', center: true },
+      { key: 'grade', label: 'Grade', width: '80px', center: true },
+      { key: 'status', label: 'Status', width: '120px', center: true },
+      { key: 'actions', label: 'Actions', sticky: 'right', width: '140px', center: true },
     ];
 
     if (educationLevel === 'SENIOR_SECONDARY') return [...baseColumns, ...seniorColumns, ...endColumns];
@@ -359,10 +398,10 @@ const TeacherResults: React.FC = () => {
 
   const getStatusBadge = (status: ResultStatus = 'DRAFT') => {
     const STATUS_CONFIG = {
-      DRAFT: { color: 'bg-yellow-100 text-yellow-800', icon: Edit },
-      PUBLISHED: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      APPROVED: { color: 'bg-blue-100 text-blue-800', icon: Eye },
-      ARCHIVED: { color: 'bg-gray-100 text-gray-800', icon: Archive },
+      DRAFT: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Edit },
+      PUBLISHED: { color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+      APPROVED: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Eye },
+      ARCHIVED: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300', icon: Archive },
     } as const;
 
     const upper = (status || 'DRAFT').toString().toUpperCase() as keyof typeof STATUS_CONFIG;
@@ -379,13 +418,13 @@ const TeacherResults: React.FC = () => {
 
   const getGradeColor = (grade?: string) => {
     const map: Record<string, string> = {
-      A: 'text-green-600 bg-green-100',
-      B: 'text-blue-600 bg-blue-100',
-      C: 'text-yellow-600 bg-yellow-100',
-      D: 'text-orange-600 bg-orange-100',
-      F: 'text-red-600 bg-red-100',
+      A: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+      B: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',
+      C: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400',
+      D: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400',
+      F: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',
     };
-    return map[(grade || '').toUpperCase()] || 'text-gray-600 bg-gray-100';
+    return map[(grade || '').toUpperCase()] || 'text-gray-600 bg-gray-100 dark:bg-gray-700 dark:text-gray-300';
   };
 
   const renderTableCell = (column: TableColumn, result: StudentResult) => {
@@ -394,7 +433,7 @@ const TeacherResults: React.FC = () => {
     switch (column.key) {
       case 'student':
         return (
-          <div className="flex items-center space-x-3 min-w-[250px]">
+          <div className="flex items-center space-x-3">
             {result.student.profile_picture ? (
               <img 
                 src={result.student.profile_picture} 
@@ -406,22 +445,22 @@ const TeacherResults: React.FC = () => {
                 <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-gray-900 dark:text-white">{result.student.full_name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{result.student.registration_number}</p>
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 dark:text-white truncate">{result.student.full_name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{result.student.registration_number}</p>
             </div>
           </div>
         );
       case 'subject':
         return (
-          <div className="min-w-[180px]">
+          <div>
             <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{result.subject.code}</p>
           </div>
         );
       case 'session':
         return (
-          <div className="min-w-[150px]">
+          <div>
             <p className="text-sm text-gray-900 dark:text-white">{result.exam_session.name}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{result.exam_session.term}</p>
           </div>
@@ -463,21 +502,21 @@ const TeacherResults: React.FC = () => {
           <div className="flex items-center justify-center space-x-1">
             <button
               onClick={() => handleViewResult(result)}
-              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               title="View Details"
             >
               <Eye className="w-4 h-4" />
             </button>
             <button
               onClick={() => handleEditResult(result)}
-              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-1.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
               title="Edit Result"
             >
               <Edit className="w-4 h-4" />
             </button>
             <button
               onClick={() => handleDeleteResult(result)}
-              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               title="Delete Result"
             >
               <Trash2 className="w-4 h-4" />
@@ -528,14 +567,6 @@ const TeacherResults: React.FC = () => {
   return (
     <TeacherDashboardLayout>
       <div className="p-6 space-y-6">
-        {/* Debug Info */}
-        {/* {debugInfo && (
-          <details className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <summary className="cursor-pointer font-semibold">Debug Information (Click to expand)</summary>
-            <pre className="text-xs overflow-auto mt-2 whitespace-pre-wrap">{debugInfo}</pre>
-          </details>
-        )} */}
-
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
@@ -548,13 +579,13 @@ const TeacherResults: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button 
               onClick={loadTeacherData} 
-              className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 rounded-lg"
+              className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-lg transition-colors"
             >
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
             </button>
             <button 
               onClick={handleCreateResult} 
-              className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="w-4 h-4 mr-2" /> Record Result
             </button>
@@ -566,7 +597,7 @@ const TeacherResults: React.FC = () => {
           <nav className="-mb-px flex space-x-8 overflow-x-auto whitespace-nowrap">
             <button
               onClick={() => setActiveTab('results')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'results'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
@@ -576,7 +607,7 @@ const TeacherResults: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('record')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'record'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
@@ -659,7 +690,7 @@ const TeacherResults: React.FC = () => {
                   setFilterStatus('all');
                   setFilterEducationLevel('all');
                 }}
-                className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 rounded-lg"
+                className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 dark:border-gray-600 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4 mr-2" /> Clear
               </button>
@@ -670,7 +701,7 @@ const TeacherResults: React.FC = () => {
               <span className="text-sm text-gray-600 dark:text-gray-400">View:</span>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-2 rounded-lg ${
+                className={`p-2 rounded-lg transition-colors ${
                   viewMode === 'table'
                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
                     : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -681,7 +712,7 @@ const TeacherResults: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewMode('cards')}
-                className={`p-2 rounded-lg ${
+                className={`p-2 rounded-lg transition-colors ${
                   viewMode === 'cards'
                     ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
                     : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -699,78 +730,116 @@ const TeacherResults: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                // Table View
-                <div className="overflow-x-auto overflow-y-visible" style={{ maxWidth: '100%' }}>
-                  <div className="inline-block min-w-full align-middle">
-                    <div className="overflow-visible">
-                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" style={{ minWidth: '1400px', tableLayout: 'auto' }}>
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        {tableColumns.map((column) => (
-                          <th
-                            key={column.key}
-                            className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap ${
-                              column.center ? 'text-center' : 'text-left'
-                            } ${
-                              column.sticky === 'left'
-                                ? 'sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
-                                : column.sticky === 'right'
-                                ? 'sticky right-0 z-20 bg-gray-50 dark:bg-gray-900 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
-                                : ''
-                            }`}
-                            style={
-                              column.key === 'student' ? { minWidth: '250px' } :
-                              column.key === 'subject' ? { minWidth: '180px' } :
-                              column.key === 'session' ? { minWidth: '150px' } :
-                              column.key === 'actions' ? { minWidth: '140px' } :
-                              { minWidth: '80px' }
-                            }
-                          >
-                            {column.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {filteredResults.map((result) => (
-                        <tr
-                          key={result.id}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                        >
+                // Table View with Scroll
+                <div className="relative">
+                  {/* Scroll buttons */}
+                  {canScrollLeft && (
+                    <button
+                      onClick={() => scrollTable('left')}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-50 bg-white dark:bg-gray-800 shadow-lg rounded-r-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600"
+                      style={{ marginLeft: '250px' }}
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    </button>
+                  )}
+                  
+                  {canScrollRight && (
+                    <button
+                      onClick={() => scrollTable('right')}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-50 bg-white dark:bg-gray-800 shadow-lg rounded-l-lg p-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600"
+                      style={{ marginRight: '140px' }}
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    </button>
+                  )}
+
+                  {/* Scroll hint */}
+                  {showScrollHint && canScrollRight && (
+                    <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white dark:from-gray-800 to-transparent pointer-events-none z-40 flex items-center justify-end pr-4" style={{ marginRight: '140px' }}>
+                      <div className="animate-bounce text-blue-500 dark:text-blue-400">
+                        <ChevronRight className="w-6 h-6" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div 
+                    ref={tableContainerRef}
+                    onScroll={handleScroll}
+                    className="overflow-x-auto"
+                    style={{ 
+                      scrollBehavior: 'smooth',
+                    }}
+                  >
+                    <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
+                      <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
+                        <tr>
                           {tableColumns.map((column) => (
-                            <td
+                            <th
                               key={column.key}
-                              className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${
+                              className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap border-b border-gray-200 dark:border-gray-700 ${
+                                column.center ? 'text-center' : 'text-left'
+                              } ${
                                 column.sticky === 'left'
-                                  ? 'sticky left-0 z-10 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
+                                  ? 'sticky left-0 z-40 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[2px_0_8px_-2px_rgba(0,0,0,0.4)]'
                                   : column.sticky === 'right'
-                                  ? 'sticky right-0 z-10 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
+                                  ? 'sticky right-0 z-40 bg-gray-50 dark:bg-gray-900 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.4)]'
                                   : ''
                               }`}
-                              style={
-                                column.key === 'student' ? { minWidth: '250px' } :
-                                column.key === 'subject' ? { minWidth: '180px' } :
-                                column.key === 'session' ? { minWidth: '150px' } :
-                                column.key === 'actions' ? { minWidth: '140px' } :
-                                { minWidth: '80px' }
-                              }
+                              style={{ 
+                                minWidth: column.width,
+                                width: column.width,
+                              }}
                             >
-                              {renderTableCell(column, result)}
-                            </td>
+                              {column.label}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                    </div>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredResults.map((result) => (
+                          <tr
+                            key={result.id}
+                            className="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          >
+                            {tableColumns.map((column) => (
+                              <td
+                                key={column.key}
+                                className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${
+                                  column.sticky === 'left'
+                                    ? 'sticky left-0 z-20 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 shadow-[2px_0_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[2px_0_8px_-2px_rgba(0,0,0,0.4)]'
+                                    : column.sticky === 'right'
+                                    ? 'sticky right-0 z-20 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[-2px_0_8px_-2px_rgba(0,0,0,0.4)]'
+                                    : ''
+                                }`}
+                                style={{ 
+                                  minWidth: column.width,
+                                  width: column.width,
+                                }}
+                              >
+                                {renderTableCell(column, result)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Scroll instruction */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-2 text-xs text-gray-500 dark:text-gray-400 text-center bg-gray-50 dark:bg-gray-900">
+                    <span className="inline-flex items-center">
+                      <ChevronLeft className="w-3 h-3 mr-1" />
+                      Scroll horizontally to view all columns
+                      <ChevronRight className="w-3 h-3 ml-1" />
+                    </span>
                   </div>
                 </div>
               ) : (
                 // Card View
                 <div className="p-6 space-y-4">
                   {filteredResults.map((result) => (
-                    <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex items-start justify-between">
+                    <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           {result.student.profile_picture ? (
                             <img 
@@ -791,7 +860,7 @@ const TeacherResults: React.FC = () => {
                         {getStatusBadge(result.status)}
                       </div>
                       
-                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500 dark:text-gray-400">Subject:</span>
                           <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
@@ -820,21 +889,21 @@ const TeacherResults: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => handleViewResult(result)}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleEditResult(result)}
-                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-2 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-2 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
                             title="Edit Result"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteResult(result)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             title="Delete Result"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -856,7 +925,7 @@ const TeacherResults: React.FC = () => {
                 </p>
                 <button 
                   onClick={handleCreateResult} 
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Plus className="w-4 h-4 mr-2" /> Record First Result
                 </button>
