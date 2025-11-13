@@ -1,4 +1,4 @@
-// TeacherResults.tsx (Fixed with debugging)
+// TeacherResults.tsx (Fixed - bypassing education_level requirement)
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
@@ -73,7 +73,6 @@ const TeacherResults: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
   const [debugInfo, setDebugInfo] = useState<string>('');
 
-  // Initialize the result actions manager
   const { 
     handleEditResult, 
     handleViewResult, 
@@ -81,136 +80,107 @@ const TeacherResults: React.FC = () => {
     ResultModalsComponent,
   } = useResultActionsManager(loadTeacherData);
 
-  // ---- Data loading ----
   async function loadTeacherData() {
     try {
       setLoading(true);
       setError(null);
       let debugLog = '';
 
-      // Get teacher ID from current user
       const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user as unknown as object);
       debugLog += `Teacher ID: ${teacherId}\n`;
       
       if (!teacherId) throw new Error('Teacher ID not found');
 
-      // Load teacher subjects
       const subjects = await TeacherDashboardService.getTeacherSubjects(teacherId);
       debugLog += `Subjects loaded: ${subjects.length}\n`;
       debugLog += `Subject IDs: ${subjects.map((s: any) => s.id).join(', ')}\n`;
 
-      // Map subjects to TeacherAssignment shape fallback (for UI filters)
-      const assignments: TeacherAssignment[] = subjects.map((subject: any) => ({
-        id: subject.id,
-        classroom_name: subject.classroom ?? 'Unknown',
-        section_name: subject.section_name ?? subject.section ?? 'Unknown',
-        grade_level_name: subject.grade_level_name ?? subject.grade_level ?? 'Unknown',
-        education_level: subject.education_level ?? 'Unknown',
-        subject_name: subject.subject_name ?? subject.name ?? 'Unknown Subject',
-        subject_code: subject.subject_code ?? subject.code ?? '',
-        subject_id: Number(subject.subject_id ?? subject.id),
-        grade_level_id: subject.grade_level_id ?? null,
-        section_id: subject.section_id ?? null,
-        student_count: subject.student_count ?? 0,
-        periods_per_week: subject.periods_per_week ?? 0,
-        teacher: subject.teacher ?? null,
-        grade_level: subject.grade_level ?? null,
-        section: subject.section ?? null,
-        academic_year: subject.academic_year ?? null,
-        is_primary_teacher: subject.is_primary_teacher ?? false,
-      }));
+      const assignments: TeacherAssignment[] = subjects.map((subject: any) => {
+        const educationLevel = subject.education_level 
+          || subject.grade_level_education_level
+          || subject.classroom_education_level
+          || (subject.assignments && subject.assignments[0]?.education_level)
+          || (subject.assignments && subject.assignments[0]?.grade_level?.education_level)
+          || 'UNKNOWN';
+        
+        return {
+          id: subject.id,
+          classroom_name: subject.classroom ?? 'Unknown',
+          section_name: subject.section_name ?? subject.section ?? 'Unknown',
+          grade_level_name: subject.grade_level_name ?? subject.grade_level ?? 'Unknown',
+          education_level: educationLevel,
+          subject_name: subject.subject_name ?? subject.name ?? 'Unknown Subject',
+          subject_code: subject.subject_code ?? subject.code ?? '',
+          subject_id: Number(subject.subject_id ?? subject.id),
+          grade_level_id: subject.grade_level_id ?? null,
+          section_id: subject.section_id ?? null,
+          student_count: subject.student_count ?? 0,
+          periods_per_week: subject.periods_per_week ?? 0,
+          teacher: subject.teacher ?? null,
+          grade_level: subject.grade_level ?? null,
+          section: subject.section ?? null,
+          academic_year: subject.academic_year ?? null,
+          is_primary_teacher: subject.is_primary_teacher ?? false,
+        };
+      });
       setTeacherAssignments(assignments);
 
-      // Load results - Try multiple approaches
-      let resultsData: any = null;
       const subjectIds = subjects.map((s: any) => s.id).filter(Boolean);
-      
       debugLog += `Subject IDs for query: ${subjectIds.join(', ')}\n`;
 
       if (subjectIds.length) {
-        // Determine education levels from subjects
-        const educationLevels = Array.from(new Set(
-          subjects.map((s: any) => s.education_level).filter(Boolean)
-        ));
-        debugLog += `Education levels: ${educationLevels.join(', ')}\n`;
-
-        try {
-          // If we have education levels, try with them
-          if (educationLevels.length > 0) {
-            const allResults: any[] = [];
-            for (const level of educationLevels) {
-              try {
-                const levelResults: any = await ResultService.getStudentResults({ 
-                  subject: subjectIds.join(','),
-                  education_level: level
-                });
-                let resultsArray: any[] = [];
-                if (Array.isArray(levelResults)) {
-                  resultsArray = levelResults;
-                } else if (levelResults && typeof levelResults === 'object') {
-                  resultsArray = (levelResults as any).data ?? (levelResults as any).results ?? [];
-                } else {
-                  resultsArray = [];
-                }
-                allResults.push(...resultsArray);
-                debugLog += `Results for ${level}: ${resultsArray.length}\n`;
-              } catch (levelErr) {
-                debugLog += `Error fetching results for ${level}: ${levelErr}\n`;
-              }
-            }
-            resultsData = allResults;
-            debugLog += `Total results from education levels: ${allResults.length}\n`;
-          } else {
-            // Try without education_level filter
-            resultsData = await ResultService.getStudentResults({ 
-              subject: subjectIds.join(',')
-            });
-            debugLog += `Results from subject filter: ${Array.isArray(resultsData) ? resultsData.length : 'not array'}\n`;
-          }
-        } catch (err) {
-          debugLog += `Error with primary approach: ${err}\n`;
-          
-          // Try approach 2: Query each subject individually
-          try {
-            const allResults: any[] = [];
-            for (const subjectId of subjectIds) {
-              try {
-                const subjectResults = await ResultService.getStudentResults({
-                  subject: String(subjectId)
-                });
-                let resultsArray: any[] = [];
-                if (Array.isArray(subjectResults)) {
-                  resultsArray = subjectResults as any[];
-                } else if (subjectResults && typeof subjectResults === 'object') {
-                  resultsArray = (subjectResults as any).data ?? (subjectResults as any).results ?? [];
-                } else {
-                  resultsArray = [];
-                }
-                allResults.push(...resultsArray);
-              } catch (subErr) {
-                debugLog += `Error fetching results for subject ${subjectId}: ${subErr}\n`;
-              }
-            }
-            resultsData = allResults;
-            debugLog += `Results from individual subject queries: ${allResults.length}\n`;
-          } catch (err2) {
-            debugLog += `Error with individual queries: ${err2}\n`;
-          }
-        }
-
-        const raw: any[] = Array.isArray(resultsData)
-          ? resultsData
-          : (resultsData && (resultsData as { data?: unknown[], results?: unknown[] }).data) 
-          || (resultsData && (resultsData as { data?: unknown[], results?: unknown[] }).results)
-          || [];
-
-        debugLog += `Raw results count: ${raw.length}\n`;
+        // Extract education levels from subjects and assignments
+        const educationLevels = new Set<string>();
         
-        if (raw.length > 0) {
-          debugLog += `Sample result structure: ${JSON.stringify(raw[0], null, 2).substring(0, 500)}\n`;
+        subjects.forEach((s: any) => {
+          const level = s.education_level 
+            || s.grade_level_education_level
+            || s.classroom_education_level;
+          
+          if (level) educationLevels.add(level);
+          
+          if (s.assignments && Array.isArray(s.assignments)) {
+            s.assignments.forEach((assignment: any) => {
+              const assignmentLevel = assignment.education_level 
+                || assignment.grade_level?.education_level
+                || assignment.classroom?.education_level;
+              if (assignmentLevel) educationLevels.add(assignmentLevel);
+            });
+          }
+        });
+        
+        let levelsToQuery = Array.from(educationLevels);
+        
+        // If no levels found, try all common levels
+        if (levelsToQuery.length === 0) {
+          levelsToQuery = ['NURSERY', 'PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY'];
+          debugLog += `No education levels found, querying all common levels\n`;
+        } else {
+          debugLog += `Education levels found: ${levelsToQuery.join(', ')}\n`;
         }
 
-        const normalized: StudentResult[] = raw.map((r: any): StudentResult => {
+        const allResults: any[] = [];
+        
+        for (const level of levelsToQuery) {
+          try {
+            debugLog += `Querying ${level} with subjects: ${subjectIds.join(',')}\n`;
+            const levelResults = await ResultService.getStudentResults({ 
+              subject: subjectIds.join(','),
+              education_level: level
+            });
+            const resultsArray = Array.isArray(levelResults) 
+              ? levelResults 
+              : ((levelResults as any)?.data || (levelResults as any)?.results || []);
+            allResults.push(...resultsArray);
+            debugLog += `Results for ${level}: ${resultsArray.length}\n`;
+          } catch (levelErr) {
+            debugLog += `Error fetching results for ${level}: ${levelErr}\n`;
+          }
+        }
+        
+        debugLog += `Total raw results: ${allResults.length}\n`;
+
+        const normalized: StudentResult[] = allResults.map((r: any): StudentResult => {
           const studentId = (r.student && r.student.id) || r.student || r.student_id;
           const subjectId = (r.subject && r.subject.id) || r.subject || r.subject_id;
           const examSessionId = (r.exam_session && r.exam_session.id) || r.exam_session || r.exam_session_id || r.session_id;
@@ -247,21 +217,17 @@ const TeacherResults: React.FC = () => {
               term: r.exam_session?.term ?? r.term ?? '',
               academic_session: r.exam_session?.academic_session?.name ?? r.academic_session_name ?? r.academic_session ?? '',
             },
-            // Senior
             first_test_score: Number(r.first_test_score || 0),
             second_test_score: Number(r.second_test_score || 0),
             third_test_score: Number(r.third_test_score || 0),
-            // Primary/Junior
             continuous_assessment_score: Number(r.continuous_assessment_score || 0),
             take_home_test_score: Number(r.take_home_test_score || 0),
             practical_score: Number(r.practical_score || 0),
             project_score: Number(r.project_score || 0),
             note_copying_score: Number(r.note_copying_score || 0),
-            // Computed
             ca_score,
             exam_score: Number((r.exam_score ?? r.exam) ?? 0),
             total_score: Number((r.total_score ?? (ca_score + Number(r.exam_score ?? 0))) ?? 0),
-            // Misc
             education_level: (r.education_level || r.student?.education_level || 'UNKNOWN') as EducationLevel,
             grade: r.grade ?? r.letter_grade,
             status: (typeof r.status === 'string' ? r.status.toUpperCase() : 'DRAFT') as ResultStatus,
@@ -271,26 +237,13 @@ const TeacherResults: React.FC = () => {
           };
         });
 
-        debugLog += `Normalized results count: ${normalized.length}\n`;
+        debugLog += `Normalized results: ${normalized.length}\n`;
 
-        // Filter by teacher's subject IDs
         const idSet = new Set(subjectIds.map((id: number) => String(id)));
-        const filtered = normalized.filter((item) => {
-          const matches = idSet.has(String(item.subject.id));
-          if (!matches) {
-            debugLog += `Filtered out result with subject ID: ${item.subject.id}\n`;
-          }
-          return matches;
-        });
+        const filtered = normalized.filter((item) => idSet.has(String(item.subject.id)));
         
-        debugLog += `Filtered results count: ${filtered.length}\n`;
+        debugLog += `Filtered results: ${filtered.length}\n`;
         setResults(filtered);
-        
-        if (filtered.length === 0 && normalized.length > 0) {
-          debugLog += `WARNING: Results were normalized but all filtered out. Check subject ID matching.\n`;
-          debugLog += `Subject IDs expected: ${Array.from(idSet).join(', ')}\n`;
-          debugLog += `Subject IDs in results: ${Array.from(new Set(normalized.map(r => r.subject.id))).join(', ')}\n`;
-        }
       } else {
         setResults([]);
         debugLog += 'No subject IDs found\n';
@@ -315,7 +268,6 @@ const TeacherResults: React.FC = () => {
     }
   }, [user, isLoading]);
 
-  // ---- Actions ----
   const handleCreateResult = () => {
     setActiveTab('record');
   };
@@ -331,7 +283,6 @@ const TeacherResults: React.FC = () => {
     }
   };
 
-  // ---- Derived data & filters ----
   const availableEducationLevels = useMemo(
     () => Array.from(new Set(results.map((r) => r.education_level))).filter(Boolean) as EducationLevel[],
     [results]
@@ -365,7 +316,6 @@ const TeacherResults: React.FC = () => {
     });
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
 
-  // ---- Table columns ----
   const getTableColumns = (educationLevel: EducationLevel | 'all'): TableColumn[] => {
     const baseColumns: TableColumn[] = [
       { key: 'student', label: 'Student', sticky: 'left', width: 'w-64' },
@@ -404,9 +354,9 @@ const TeacherResults: React.FC = () => {
   };
 
   const currentEducationLevel: EducationLevel = filterEducationLevel === 'all' ? 'MIXED' : filterEducationLevel;
-  const tableColumns = useMemo(() => getTableColumns(currentEducationLevel), [currentEducationLevel]);
+  // tableColumns can be used if we implement the table view instead of cards
+  // const tableColumns = useMemo(() => getTableColumns(currentEducationLevel), [currentEducationLevel]);
 
-  // ---- UI helpers ----
   const getStatusBadge = (status: ResultStatus = 'DRAFT') => {
     const STATUS_CONFIG = {
       DRAFT: { color: 'bg-yellow-100 text-yellow-800', icon: Edit },
@@ -438,7 +388,6 @@ const TeacherResults: React.FC = () => {
     return map[(grade || '').toUpperCase()] || 'text-gray-600 bg-gray-100';
   };
 
-  // ---- Render ----
   if (loading) {
     return (
       <TeacherDashboardLayout>
@@ -467,7 +416,7 @@ const TeacherResults: React.FC = () => {
           {debugInfo && (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
               <h3 className="font-semibold mb-2">Debug Information:</h3>
-              <pre className="text-xs overflow-auto">{debugInfo}</pre>
+              <pre className="text-xs overflow-auto whitespace-pre-wrap">{debugInfo}</pre>
             </div>
           )}
         </div>
@@ -477,12 +426,12 @@ const TeacherResults: React.FC = () => {
 
   return (
     <TeacherDashboardLayout>
-      <div className="p-6 space-y-9">
-        {/* Debug Info Toggle (Development only) */}
-        {process.env.NODE_ENV === 'development' && debugInfo && (
+      <div className="p-6 space-y-6">
+        {/* Debug Info */}
+        {debugInfo && (
           <details className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <summary className="cursor-pointer font-semibold">Debug Information</summary>
-            <pre className="text-xs overflow-auto mt-2">{debugInfo}</pre>
+            <summary className="cursor-pointer font-semibold">Debug Information (Click to expand)</summary>
+            <pre className="text-xs overflow-auto mt-2 whitespace-pre-wrap">{debugInfo}</pre>
           </details>
         )}
 
@@ -498,7 +447,7 @@ const TeacherResults: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button 
               onClick={loadTeacherData} 
-              className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 rounded-lg"
             >
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
             </button>
@@ -522,7 +471,7 @@ const TeacherResults: React.FC = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              <FileText className="w-4 h-4 inline mr-2" /> All Results
+              <FileText className="w-4 h-4 inline mr-2" /> All Results ({filteredResults.length})
             </button>
             <button
               onClick={() => setActiveTab('record')}
@@ -546,7 +495,7 @@ const TeacherResults: React.FC = () => {
           />
         )}
 
-        {/* Filters - only show on results tab */}
+        {/* Filters */}
         {activeTab === 'results' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -609,7 +558,7 @@ const TeacherResults: React.FC = () => {
                   setFilterStatus('all');
                   setFilterEducationLevel('all');
                 }}
-                className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                className="flex items-center justify-center px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-300 rounded-lg"
               >
                 <X className="w-4 h-4 mr-2" /> Clear
               </button>
@@ -617,413 +566,101 @@ const TeacherResults: React.FC = () => {
           </div>
         )}
 
-        {/* Results Table */}
+        {/* Results Display */}
         {activeTab === 'results' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-            {/* Table Header Info */}
-            <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded" />
-                  <span>Senior Secondary: Test 1, Test 2, Test 3, CA Total</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded" />
-                  <span>Primary/Junior: CA, Project, Take Home, Practical, Note Copy</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-gray-500 rounded" />
-                  <span>All Levels: Exam, Total, Grade, Status</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile Card List */}
-            <div className="md:hidden p-4 space-y-4">
-              {filteredResults.length > 0 ? (
-                filteredResults.map((result) => (
-                  <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
-                    <div className="flex items-center">
-                      {result.student.profile_picture ? (
-                        <img 
-                          className="h-10 w-10 rounded-full object-cover" 
-                          src={result.student.profile_picture} 
-                          alt={result.student.full_name} 
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                          <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                        </div>
-                      )}
-                      <div className="ml-3">
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {result.student.full_name}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {result.student.registration_number}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Subject</div>
-                        <div className="text-gray-900 dark:text-white">{result.subject.name}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Session</div>
-                        <div className="text-gray-900 dark:text-white">{result.exam_session.name}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Exam</div>
-                        <div className="text-gray-900 dark:text-white">{result.exam_score}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Total</div>
-                        <div className="text-gray-900 dark:text-white font-semibold">{result.total_score}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500 dark:text-gray-400">Grade</div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            {filteredResults.length > 0 ? (
+              <div className="space-y-4">
+                {filteredResults.map((result) => (
+                  <div key={result.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        {result.student.profile_picture ? (
+                          <img 
+                            src={result.student.profile_picture} 
+                            alt={result.student.full_name}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                            <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                          </div>
+                        )}
                         <div>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(result.grade)}`}>
-                            {result.grade ?? '—'}
-                          </span>
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{result.student.full_name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{result.student.registration_number}</p>
                         </div>
                       </div>
-                      <div className="flex items-center">
-                        {getStatusBadge(result.status)}
+                      {getStatusBadge(result.status)}
+                    </div>
+                    
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Subject:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{result.subject.name}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Exam:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{result.exam_score}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Total:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{result.total_score}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Grade:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getGradeColor(result.grade)}`}>
+                          {result.grade ?? '—'}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-3 flex items-center space-x-2">
+                    <div className="mt-4 flex items-center space-x-2">
                       <button
                         onClick={() => handleViewResult(result)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded"
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded"
                         title="View Details"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEditResult(result)}
-                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-1 rounded"
+                        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-2 rounded"
                         title="Edit Result"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteResult(result)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded"
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2 rounded"
                         title="Delete Result"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="px-2 py-8 text-center">
-                  <FileText className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3 inline-block" />
-                  <div className="text-gray-700 dark:text-gray-200 font-medium">No results found</div>
-                  <div className="text-gray-500 dark:text-gray-400 text-sm">Try adjusting your search criteria</div>
-                </div>
-              )}
-            </div>
-
-            {/* Desktop/Table View */}
-            <div className="hidden md:block relative">
-              <div className="overflow-x-auto overflow-y-auto max-h-[70vh] lg:max-w-auto xl:max-w-[80vw] 2xl:max-w-[70vw]">
-                <div className="min-w-max">
-                  <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        {tableColumns.map((column) => (
-                          <th
-                            key={column.key}
-                            className={`
-                              sticky top-0 z-20 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider
-                              ${column.center ? 'text-center' : 'text-left'}
-                              ${column.width || ''}
-                            `}
-                          >
-                            {column.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {filteredResults.length > 0 ? (
-                        filteredResults.map((result) => {
-                          const isSeniorSecondary = result.education_level === 'SENIOR_SECONDARY';
-                          const showSeniorColumns =
-                            currentEducationLevel === 'SENIOR_SECONDARY' || currentEducationLevel === 'MIXED';
-                          const showPrimaryJuniorColumns =
-                            currentEducationLevel === 'PRIMARY' ||
-                            currentEducationLevel === 'JUNIOR_SECONDARY' ||
-                            currentEducationLevel === 'MIXED';
-
-                          return (
-                            <tr key={result.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                              {tableColumns.map((column) => {
-                                const cellClass = `
-                                  px-4 py-4 whitespace-nowrap
-                                  ${column.center ? 'text-center' : ''}
-                                `;
-
-                                switch (column.key) {
-                                  case 'student':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className="flex items-center">
-                                          <div className="flex-shrink-0 h-8 w-8">
-                                            {result.student.profile_picture ? (
-                                              <img
-                                                className="h-8 w-8 rounded-full object-cover"
-                                                src={result.student.profile_picture}
-                                                alt={result.student.full_name}
-                                              />
-                                            ) : (
-                                              <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                                                <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="ml-3">
-                                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                              {result.student.full_name}
-                                            </div>
-                                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                              {result.student.registration_number}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'subject':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className="text-sm text-gray-900 dark:text-white">{result.subject.name}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">{result.subject.code}</div>
-                                      </td>
-                                    );
-
-                                  case 'session':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className="text-sm text-gray-900 dark:text-white">{result.exam_session.name}</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">{result.exam_session.term}</div>
-                                      </td>
-                                    );
-
-                                  // Senior Secondary columns
-                                  case 'test1':
-                                    if (!showSeniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {isSeniorSecondary ? result.first_test_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'test2':
-                                    if (!showSeniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {isSeniorSecondary ? result.second_test_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'test3':
-                                    if (!showSeniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {isSeniorSecondary ? result.third_test_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'ca_total':
-                                    if (!showSeniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          isSeniorSecondary ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {isSeniorSecondary ? result.ca_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  // Primary/Junior Secondary columns
-                                  case 'ca':
-                                    if (!showPrimaryJuniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          !isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {!isSeniorSecondary ? result.continuous_assessment_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'project':
-                                    if (!showPrimaryJuniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          !isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {!isSeniorSecondary ? result.project_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'take_home':
-                                    if (!showPrimaryJuniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          !isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {!isSeniorSecondary ? result.take_home_test_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'practical':
-                                    if (!showPrimaryJuniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          !isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {!isSeniorSecondary ? result.practical_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  case 'note_copy':
-                                    if (!showPrimaryJuniorColumns) return null;
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className={`text-sm font-medium ${
-                                          !isSeniorSecondary ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-600'
-                                        }`}>
-                                          {!isSeniorSecondary ? result.note_copying_score : '-'}
-                                        </div>
-                                      </td>
-                                    );
-
-                                  // Common columns
-                                  case 'exam':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{result.exam_score}</div>
-                                      </td>
-                                    );
-
-                                  case 'total':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className="text-sm font-bold text-gray-900 dark:text-white">{result.total_score}</div>
-                                      </td>
-                                    );
-
-                                  case 'grade':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getGradeColor(
-                                          result.grade
-                                        )}`}>
-                                          {result.grade ?? '—'}
-                                        </span>
-                                      </td>
-                                    );
-
-                                  case 'status':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        {getStatusBadge(result.status)}
-                                      </td>
-                                    );
-
-                                  case 'actions':
-                                    return (
-                                      <td key={column.key} className={cellClass}>
-                                        <div className="flex items-center justify-center space-x-1">
-                                          <button
-                                            onClick={() => handleViewResult(result)}
-                                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded"
-                                            title="View Details"
-                                          >
-                                            <Eye className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleEditResult(result)}
-                                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 p-1 rounded"
-                                            title="Edit Result"
-                                          >
-                                            <Edit className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDeleteResult(result)}
-                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded"
-                                            title="Delete Result"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    );
-
-                                  default:
-                                    return null;
-                                }
-                              })}
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={tableColumns.length} className="px-6 py-12 text-center">
-                            <div className="flex flex-col items-center">
-                              <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
-                              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No results found</h3>
-                              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                                {searchTerm || filterSubject !== 'all' || filterStatus !== 'all'
-                                  ? 'Try adjusting your search criteria'
-                                  : 'Start by recording results for your students'}
-                              </p>
-                              <button 
-                                onClick={handleCreateResult} 
-                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                              >
-                                <Plus className="w-4 h-4 mr-2" /> Record First Result
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4 mx-auto" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No results found</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  {searchTerm || filterSubject !== 'all' || filterStatus !== 'all'
+                    ? 'Try adjusting your search criteria'
+                    : 'Start by recording results for your students'}
+                </p>
+                <button 
+                  onClick={handleCreateResult} 
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Record First Result
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Render the modals from the actions manager */}
         <ResultModalsComponent />
       </div>
     </TeacherDashboardLayout>
