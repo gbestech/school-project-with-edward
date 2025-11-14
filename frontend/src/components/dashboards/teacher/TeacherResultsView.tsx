@@ -700,7 +700,7 @@ const TeacherResults: React.FC = () => {
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
                 // TABLE WITH WORKING HORIZONTAL SCROLL
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                   <div className="relative">
                     {/* Scroll Buttons */}
                     {canScrollLeft && (
@@ -723,24 +723,23 @@ const TeacherResults: React.FC = () => {
                       </button>
                     )}
 
-                    {/* THE KEY: This div MUST have a constrained width and overflow-x-auto */}
+                    {/* Scrollable container - REMOVED overflow-hidden that was blocking scroll */}
                     <div 
                       ref={tableContainerRef}
                       onScroll={handleScroll}
                       style={{ 
                         width: '100%',
                         maxHeight: '70vh',
-                        overflowX: 'auto',
+                        overflowX: 'scroll',
                         overflowY: 'auto',
                         WebkitOverflowScrolling: 'touch',
                       }}
                     >
-                      {/* This table MUST be wider than the container above */}
+                      {/* Table must be wider than viewport */}
                       <table style={{ 
-                        minWidth: '2200px',
-                        width: '2200px',
+                        minWidth: '2400px',
+                        width: '2400px',
                         borderCollapse: 'collapse',
-                        tableLayout: 'fixed'
                       }}>
                         <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                           <tr>
