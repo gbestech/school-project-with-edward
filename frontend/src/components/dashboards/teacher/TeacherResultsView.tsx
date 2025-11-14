@@ -765,15 +765,16 @@ const TeacherResults: React.FC = () => {
                   <div 
                     ref={tableContainerRef}
                     onScroll={handleScroll}
-                    className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800"
+                    className="w-full scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800"
                     style={{ 
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      maxHeight: '600px',
                       scrollBehavior: 'smooth',
                       WebkitOverflowScrolling: 'touch',
-                      overflowX: 'scroll',
-                      overflowY: 'auto',
                     }}
                   >
-                    <table className="border-collapse" style={{ minWidth: '1800px', width: 'max-content' }}>
+                    <table className="border-collapse table-auto" style={{ minWidth: '2000px' }}>
                       <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                         <tr>
                           {tableColumns.map((column) => (
