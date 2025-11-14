@@ -1615,18 +1615,20 @@ const TeacherResults: React.FC = () => {
         )}
 
         {/* Results Display */}
+       {/* Results Display */}
         {activeTab === 'results' && (
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                // FINAL WORKING SOLUTION: HORIZONTAL SCROLL TABLE
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  {/* Scroll Buttons */}
+                // Horizontal Scrollable Table with Fixed Columns
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  {/* Scroll Navigation Buttons */}
                   {canScrollLeft && (
                     <button
                       onClick={() => scrollTable('left')}
-                      className="fixed left-4 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-3 transition-all"
+                      className="fixed left-4 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-2xl rounded-full p-3 transition-all hover:scale-110"
                       style={{ top: '50%', transform: 'translateY(-50%)' }}
+                      aria-label="Scroll left"
                     >
                       <ChevronLeft className="w-6 h-6" />
                     </button>
@@ -1635,50 +1637,46 @@ const TeacherResults: React.FC = () => {
                   {canScrollRight && (
                     <button
                       onClick={() => scrollTable('right')}
-                      className="fixed right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-3 transition-all animate-pulse"
+                      className="fixed right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-2xl rounded-full p-3 transition-all hover:scale-110 animate-pulse"
                       style={{ top: '50%', transform: 'translateY(-50%)' }}
+                      aria-label="Scroll right"
                     >
                       <ChevronRight className="w-6 h-6" />
                     </button>
                   )}
 
-                  {/* Scrollable wrapper with display block */}
+                  {/* Scrollable Table Container */}
                   <div 
                     ref={tableContainerRef}
                     onScroll={handleScroll}
+                    className="overflow-x-auto overflow-y-auto"
                     style={{ 
-                      display: 'block',
-                      overflowX: 'auto',
-                      overflowY: 'auto',
                       maxHeight: '70vh',
                       width: '100%',
+                      WebkitOverflowScrolling: 'touch',
                     }}
                   >
-                    <table 
-                      style={{ 
-                        width: '2400px',
-                        minWidth: '2400px',
-                        borderCollapse: 'collapse',
-                        display: 'table',
-                      }}
-                    >
+                    {/* Inner wrapper to control table width */}
+                    <div style={{ minWidth: 'max-content' }}>
+                      <table className="w-full border-collapse">
                         <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                           <tr>
                             {tableColumns.map((column) => (
                               <th
                                 key={column.key}
-                                className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-300 dark:border-gray-600 ${
+                                className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b-2 border-gray-300 dark:border-gray-600 ${
                                   column.center ? 'text-center' : 'text-left'
                                 } ${
                                   column.sticky === 'left'
-                                    ? 'sticky left-0 z-40 bg-gray-50 dark:bg-gray-900 border-r-2 border-gray-300 dark:border-gray-600'
+                                    ? 'sticky left-0 z-40 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                     : column.sticky === 'right'
-                                    ? 'sticky right-0 z-40 bg-gray-50 dark:bg-gray-900 border-l-2 border-gray-300 dark:border-gray-600'
+                                    ? 'sticky right-0 z-40 bg-gray-50 dark:bg-gray-900 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                     : ''
                                 }`}
                                 style={{ 
                                   minWidth: column.width,
                                   width: column.width,
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
                                 {column.label}
@@ -1690,21 +1688,22 @@ const TeacherResults: React.FC = () => {
                           {filteredResults.map((result) => (
                             <tr
                               key={result.id}
-                              className="group hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                             >
                               {tableColumns.map((column) => (
                                 <td
                                   key={column.key}
-                                  className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap ${
+                                  className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 ${
                                     column.sticky === 'left'
-                                      ? 'sticky left-0 z-20 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 border-r border-gray-200 dark:border-gray-700'
+                                      ? 'sticky left-0 z-20 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                       : column.sticky === 'right'
-                                      ? 'sticky right-0 z-20 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 border-l border-gray-200 dark:border-gray-700'
+                                      ? 'sticky right-0 z-20 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
                                       : ''
                                   }`}
                                   style={{ 
                                     minWidth: column.width,
                                     width: column.width,
+                                    whiteSpace: 'nowrap',
                                   }}
                                 >
                                   {renderTableCell(column, result)}
@@ -1715,16 +1714,22 @@ const TeacherResults: React.FC = () => {
                         </tbody>
                       </table>
                     </div>
+                  </div>
 
-                    {/* Footer with scroll instruction */}
-                    <div className="border-t-2 border-gray-300 dark:border-gray-600 px-4 py-3 text-xs text-gray-500 dark:text-gray-400 text-center bg-gray-50 dark:bg-gray-900">
-                      <span className="inline-flex items-center font-medium">
+                  {/* Footer with Scroll Instructions */}
+                  <div className="border-t-2 border-gray-300 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-900">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center font-medium">
                         <ChevronLeft className="w-4 h-4 mr-1" />
-                        Drag or use arrow buttons to scroll horizontally • {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
+                        Scroll horizontally to view all columns
                         <ChevronRight className="w-4 h-4 ml-1" />
+                      </span>
+                      <span className="font-semibold">
+                        {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>
+                </div>
               ) : (
                 // Card View
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
