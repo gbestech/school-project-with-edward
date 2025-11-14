@@ -977,7 +977,7 @@ type TableColumn = {
     | 'status'
     | 'actions';
   label: string;
-  width: string;
+  width: number;
   center?: boolean;
   sticky?: 'left' | 'right';
 };
@@ -1237,9 +1237,15 @@ const TeacherResults: React.FC = () => {
   };
 
   useEffect(() => {
-    checkScrollability();
+    const timer = setTimeout(() => {
+      checkScrollability();
+    }, 100);
+    
     window.addEventListener('resize', checkScrollability);
-    return () => window.removeEventListener('resize', checkScrollability);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkScrollability);
+    };
   }, [filteredResults, viewMode]);
 
   const handleScroll = () => {
@@ -1273,32 +1279,32 @@ const TeacherResults: React.FC = () => {
 
   const getTableColumns = (educationLevel: EducationLevel | 'all'): TableColumn[] => {
     const baseColumns: TableColumn[] = [
-      { key: 'student', label: 'Student', sticky: 'left', width: '250px' },
-      { key: 'subject', label: 'Subject', width: '180px' },
-      { key: 'session', label: 'Session', width: '150px' },
+      { key: 'student', label: 'Student', sticky: 'left', width: 250 },
+      { key: 'subject', label: 'Subject', width: 180 },
+      { key: 'session', label: 'Session', width: 150 },
     ];
 
     const seniorColumns: TableColumn[] = [
-      { key: 'test1', label: 'Test 1', width: '80px', center: true },
-      { key: 'test2', label: 'Test 2', width: '80px', center: true },
-      { key: 'test3', label: 'Test 3', width: '80px', center: true },
-      { key: 'ca_total', label: 'CA Total', width: '100px', center: true },
+      { key: 'test1', label: 'Test 1', width: 80, center: true },
+      { key: 'test2', label: 'Test 2', width: 80, center: true },
+      { key: 'test3', label: 'Test 3', width: 80, center: true },
+      { key: 'ca_total', label: 'CA Total', width: 100, center: true },
     ];
 
     const primaryJuniorColumns: TableColumn[] = [
-      { key: 'ca', label: 'CA', width: '80px', center: true },
-      { key: 'project', label: 'Project', width: '80px', center: true },
-      { key: 'take_home', label: 'Take Home', width: '100px', center: true },
-      { key: 'practical', label: 'Practical', width: '100px', center: true },
-      { key: 'note_copy', label: 'Note Copy', width: '100px', center: true },
+      { key: 'ca', label: 'CA', width: 80, center: true },
+      { key: 'project', label: 'Project', width: 90, center: true },
+      { key: 'take_home', label: 'Take Home', width: 110, center: true },
+      { key: 'practical', label: 'Practical', width: 100, center: true },
+      { key: 'note_copy', label: 'Note Copy', width: 110, center: true },
     ];
 
     const endColumns: TableColumn[] = [
-      { key: 'exam', label: 'Exam', width: '80px', center: true },
-      { key: 'total', label: 'Total', width: '80px', center: true },
-      { key: 'grade', label: 'Grade', width: '80px', center: true },
-      { key: 'status', label: 'Status', width: '120px', center: true },
-      { key: 'actions', label: 'Actions', sticky: 'right', width: '140px', center: true },
+      { key: 'exam', label: 'Exam', width: 80, center: true },
+      { key: 'total', label: 'Total', width: 80, center: true },
+      { key: 'grade', label: 'Grade', width: 80, center: true },
+      { key: 'status', label: 'Status', width: 120, center: true },
+      { key: 'actions', label: 'Actions', sticky: 'right', width: 140, center: true },
     ];
 
     if (educationLevel === 'SENIOR_SECONDARY') return [...baseColumns, ...seniorColumns, ...endColumns];
@@ -1479,6 +1485,8 @@ const TeacherResults: React.FC = () => {
     );
   }
 
+  const totalTableWidth = tableColumns.reduce((sum, col) => sum + col.width, 0);
+
   return (
     <TeacherDashboardLayout>
       <div className="p-6 space-y-6">
@@ -1615,13 +1623,11 @@ const TeacherResults: React.FC = () => {
         )}
 
         {/* Results Display */}
-       {/* Results Display */}
         {activeTab === 'results' && (
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                // Horizontal Scrollable Table with Fixed Columns
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative">
                   {/* Scroll Navigation Buttons */}
                   {canScrollLeft && (
                     <button
@@ -1649,71 +1655,86 @@ const TeacherResults: React.FC = () => {
                   <div 
                     ref={tableContainerRef}
                     onScroll={handleScroll}
-                    className="overflow-x-auto overflow-y-auto"
                     style={{ 
+                      overflowX: 'auto',
+                      overflowY: 'auto',
                       maxHeight: '70vh',
                       width: '100%',
                       WebkitOverflowScrolling: 'touch',
                     }}
                   >
-                    {/* Inner wrapper to control table width */}
-                    <div style={{ minWidth: 'max-content' }}>
-                      <table className="w-full border-collapse">
-                        <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
-                          <tr>
+                    <table 
+                      style={{ 
+                        width: `${totalTableWidth}px`,
+                        minWidth: `${totalTableWidth}px`,
+                        tableLayout: 'fixed',
+                        borderCollapse: 'separate',
+                        borderSpacing: 0,
+                      }}
+                    >
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 30 }}>
+                        <tr>
+                          {tableColumns.map((column) => (
+                            <th
+                              key={column.key}
+                              className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 border-b-2 border-gray-300 dark:border-gray-600 ${
+                                column.center ? 'text-center' : 'text-left'
+                              }`}
+                              style={{ 
+                                width: `${column.width}px`,
+                                minWidth: `${column.width}px`,
+                                maxWidth: `${column.width}px`,
+                                whiteSpace: 'nowrap',
+                                position: column.sticky ? 'sticky' : 'relative',
+                                left: column.sticky === 'left' ? 0 : 'auto',
+                                right: column.sticky === 'right' ? 0 : 'auto',
+                                zIndex: column.sticky ? 40 : 10,
+                                boxShadow: column.sticky === 'left' 
+                                  ? '2px 0 5px -2px rgba(0,0,0,0.1)' 
+                                  : column.sticky === 'right' 
+                                  ? '-2px 0 5px -2px rgba(0,0,0,0.1)' 
+                                  : 'none',
+                              }}
+                            >
+                              {column.label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800">
+                        {filteredResults.map((result, idx) => (
+                          <tr
+                            key={result.id}
+                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          >
                             {tableColumns.map((column) => (
-                              <th
+                              <td
                                 key={column.key}
-                                className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b-2 border-gray-300 dark:border-gray-600 ${
-                                  column.center ? 'text-center' : 'text-left'
-                                } ${
-                                  column.sticky === 'left'
-                                    ? 'sticky left-0 z-40 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
-                                    : column.sticky === 'right'
-                                    ? 'sticky right-0 z-40 bg-gray-50 dark:bg-gray-900 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
-                                    : ''
-                                }`}
+                                className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100"
                                 style={{ 
-                                  minWidth: column.width,
-                                  width: column.width,
+                                  width: `${column.width}px`,
+                                  minWidth: `${column.width}px`,
+                                  maxWidth: `${column.width}px`,
                                   whiteSpace: 'nowrap',
+                                  position: column.sticky ? 'sticky' : 'relative',
+                                  left: column.sticky === 'left' ? 0 : 'auto',
+                                  right: column.sticky === 'right' ? 0 : 'auto',
+                                  zIndex: column.sticky ? 20 : 1,
+                                  backgroundColor: 'inherit',
+                                  boxShadow: column.sticky === 'left' 
+                                    ? '2px 0 5px -2px rgba(0,0,0,0.1)' 
+                                    : column.sticky === 'right' 
+                                    ? '-2px 0 5px -2px rgba(0,0,0,0.1)' 
+                                    : 'none',
                                 }}
                               >
-                                {column.label}
-                              </th>
+                                {renderTableCell(column, result)}
+                              </td>
                             ))}
                           </tr>
-                        </thead>
-                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                          {filteredResults.map((result) => (
-                            <tr
-                              key={result.id}
-                              className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                            >
-                              {tableColumns.map((column) => (
-                                <td
-                                  key={column.key}
-                                  className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 ${
-                                    column.sticky === 'left'
-                                      ? 'sticky left-0 z-20 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]'
-                                      : column.sticky === 'right'
-                                      ? 'sticky right-0 z-20 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]'
-                                      : ''
-                                  }`}
-                                  style={{ 
-                                    minWidth: column.width,
-                                    width: column.width,
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  {renderTableCell(column, result)}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
                   {/* Footer with Scroll Instructions */}
@@ -1721,7 +1742,7 @@ const TeacherResults: React.FC = () => {
                     <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                       <span className="flex items-center font-medium">
                         <ChevronLeft className="w-4 h-4 mr-1" />
-                        Scroll horizontally to view all columns
+                        Scroll horizontally to view all columns ({tableColumns.length} columns, {totalTableWidth}px wide)
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </span>
                       <span className="font-semibold">
