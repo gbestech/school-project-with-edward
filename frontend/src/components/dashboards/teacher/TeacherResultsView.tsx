@@ -699,15 +699,14 @@ const TeacherResults: React.FC = () => {
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                // TABLE WITH WORKING HORIZONTAL SCROLL
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                // DEFINITIVE FIX: HORIZONTAL SCROLL TABLE
+                <div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                   <div className="relative">
                     {/* Scroll Buttons */}
                     {canScrollLeft && (
                       <button
                         onClick={() => scrollTable('left')}
                         className="absolute left-2 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-2 transition-all"
-                        aria-label="Scroll left"
                       >
                         <ChevronLeft className="w-5 h-5" />
                       </button>
@@ -717,30 +716,27 @@ const TeacherResults: React.FC = () => {
                       <button
                         onClick={() => scrollTable('right')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-2 transition-all animate-pulse"
-                        aria-label="Scroll right"
                       >
                         <ChevronRight className="w-5 h-5" />
                       </button>
                     )}
 
-                    {/* Scrollable container - REMOVED overflow-hidden that was blocking scroll */}
+                    {/* THE SCROLL FIX: inline styles with !important would work but we use explicit pixel widths */}
                     <div 
                       ref={tableContainerRef}
                       onScroll={handleScroll}
+                      className="overflow-x-auto overflow-y-auto"
                       style={{ 
-                        width: '100%',
                         maxHeight: '70vh',
-                        overflowX: 'scroll',
-                        overflowY: 'auto',
-                        WebkitOverflowScrolling: 'touch',
                       }}
                     >
-                      {/* Table must be wider than viewport */}
-                      <table style={{ 
-                        minWidth: '2400px',
-                        width: '2400px',
-                        borderCollapse: 'collapse',
-                      }}>
+                      <table 
+                        className="border-collapse"
+                        style={{ 
+                          width: '2400px',
+                          minWidth: '2400px',
+                        }}
+                      >
                         <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                           <tr>
                             {tableColumns.map((column) => (
