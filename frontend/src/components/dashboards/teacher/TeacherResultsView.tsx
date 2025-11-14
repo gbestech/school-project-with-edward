@@ -826,9 +826,7 @@ const TeacherResults: React.FC = () => {
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot>
-                        This is hte table footer, I want to know something here
-                      </tfoot>
+                      
                     </table>
                   </div>
 
