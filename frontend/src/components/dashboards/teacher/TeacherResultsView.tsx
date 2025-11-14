@@ -699,44 +699,49 @@ const TeacherResults: React.FC = () => {
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                // DEFINITIVE FIX: HORIZONTAL SCROLL TABLE
-                <div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                  <div className="relative">
-                    {/* Scroll Buttons */}
-                    {canScrollLeft && (
-                      <button
-                        onClick={() => scrollTable('left')}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-2 transition-all"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-                    )}
-                    
-                    {canScrollRight && (
-                      <button
-                        onClick={() => scrollTable('right')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-2 transition-all animate-pulse"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                    )}
+                // FINAL WORKING SOLUTION: HORIZONTAL SCROLL TABLE
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  {/* Scroll Buttons */}
+                  {canScrollLeft && (
+                    <button
+                      onClick={() => scrollTable('left')}
+                      className="fixed left-4 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-3 transition-all"
+                      style={{ top: '50%', transform: 'translateY(-50%)' }}
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                  )}
+                  
+                  {canScrollRight && (
+                    <button
+                      onClick={() => scrollTable('right')}
+                      className="fixed right-4 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-xl rounded-full p-3 transition-all animate-pulse"
+                      style={{ top: '50%', transform: 'translateY(-50%)' }}
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  )}
 
-                    {/* THE SCROLL FIX: inline styles with !important would work but we use explicit pixel widths */}
-                    <div 
-                      ref={tableContainerRef}
-                      onScroll={handleScroll}
-                      className="overflow-x-auto overflow-y-auto"
+                  {/* Scrollable wrapper with display block */}
+                  <div 
+                    ref={tableContainerRef}
+                    onScroll={handleScroll}
+                    style={{ 
+                      display: 'block',
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      maxHeight: '70vh',
+                      width: '100%',
+                    }}
+                  >
+                    <table 
                       style={{ 
-                        maxHeight: '70vh',
+                        width: '2400px',
+                        minWidth: '2400px',
+                        borderCollapse: 'collapse',
+                        display: 'table',
                       }}
                     >
-                      <table 
-                        className="border-collapse"
-                        style={{ 
-                          width: '2400px',
-                          minWidth: '2400px',
-                        }}
-                      >
                         <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                           <tr>
                             {tableColumns.map((column) => (
@@ -795,12 +800,11 @@ const TeacherResults: React.FC = () => {
                     <div className="border-t-2 border-gray-300 dark:border-gray-600 px-4 py-3 text-xs text-gray-500 dark:text-gray-400 text-center bg-gray-50 dark:bg-gray-900">
                       <span className="inline-flex items-center font-medium">
                         <ChevronLeft className="w-4 h-4 mr-1" />
-                        Use arrow buttons or drag to scroll • {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
+                        Drag or use arrow buttons to scroll horizontally • {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
                         <ChevronRight className="w-4 h-4 ml-1" />
                       </span>
                     </div>
                   </div>
-                </div>
               ) : (
                 // Card View
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
