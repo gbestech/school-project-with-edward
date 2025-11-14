@@ -274,50 +274,6 @@ const TeacherResults: React.FC = () => {
     }
   }, [user, isLoading]);
 
-  const checkScrollability = () => {
-    const container = tableContainerRef.current;
-    if (container) {
-      const { scrollLeft, scrollWidth, clientWidth } = container;
-      setCanScrollLeft(scrollLeft > 5);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
-    }
-  };
-
-  useEffect(() => {
-    checkScrollability();
-    window.addEventListener('resize', checkScrollability);
-    return () => window.removeEventListener('resize', checkScrollability);
-  }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel, viewMode]);
-
-  const handleScroll = () => {
-    checkScrollability();
-  };
-
-  const scrollTable = (direction: 'left' | 'right') => {
-    if (tableContainerRef.current) {
-      const scrollAmount = 400;
-      tableContainerRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  const handleCreateResult = () => {
-    setActiveTab('record');
-  };
-
-  const handleResultSuccess = async (): Promise<void> => {
-    try {
-      await loadTeacherData();
-      setActiveTab('results');
-      toast.success('Result saved successfully');
-    } catch (error) {
-      console.error('Error handling result success:', error);
-      toast.error('Failed to reload data');
-    }
-  };
-
   const availableEducationLevels = useMemo(
     () => Array.from(new Set(results.map((r) => r.education_level))).filter(Boolean) as EducationLevel[],
     [results]
@@ -350,6 +306,50 @@ const TeacherResults: React.FC = () => {
       return matchesSearch && matchesSubject && matchesStatus && matchesEducationLevel;
     });
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
+
+  const checkScrollability = () => {
+    const container = tableContainerRef.current;
+    if (container) {
+      const { scrollLeft, scrollWidth, clientWidth } = container;
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScrollability();
+    window.addEventListener('resize', checkScrollability);
+    return () => window.removeEventListener('resize', checkScrollability);
+  }, [filteredResults, viewMode]);
+
+  const handleScroll = () => {
+    checkScrollability();
+  };
+
+  const scrollTable = (direction: 'left' | 'right') => {
+    if (tableContainerRef.current) {
+      const scrollAmount = 400;
+      tableContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleCreateResult = () => {
+    setActiveTab('record');
+  };
+
+  const handleResultSuccess = async (): Promise<void> => {
+    try {
+      await loadTeacherData();
+      setActiveTab('results');
+      toast.success('Result saved successfully');
+    } catch (error) {
+      console.error('Error handling result success:', error);
+      toast.error('Failed to reload data');
+    }
+  };
 
   const getTableColumns = (educationLevel: EducationLevel | 'all'): TableColumn[] => {
     const baseColumns: TableColumn[] = [
@@ -699,8 +699,8 @@ const TeacherResults: React.FC = () => {
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                // SIMPLIFIED TABLE WITH GUARANTEED HORIZONTAL SCROLL
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                // TABLE WITH WORKING HORIZONTAL SCROLL
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                   <div className="relative">
                     {/* Scroll Buttons */}
                     {canScrollLeft && (
@@ -723,16 +723,25 @@ const TeacherResults: React.FC = () => {
                       </button>
                     )}
 
-                    {/* Scrollable Container - SIMPLIFIED */}
+                    {/* THE KEY: This div MUST have a constrained width and overflow-x-auto */}
                     <div 
                       ref={tableContainerRef}
                       onScroll={handleScroll}
-                      className="overflow-x-auto overflow-y-auto"
                       style={{ 
+                        width: '100%',
                         maxHeight: '70vh',
+                        overflowX: 'auto',
+                        overflowY: 'auto',
+                        WebkitOverflowScrolling: 'touch',
                       }}
                     >
-                      <table className="w-full" style={{ minWidth: '2200px' }}>
+                      {/* This table MUST be wider than the container above */}
+                      <table style={{ 
+                        minWidth: '2200px',
+                        width: '2200px',
+                        borderCollapse: 'collapse',
+                        tableLayout: 'fixed'
+                      }}>
                         <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                           <tr>
                             {tableColumns.map((column) => (
