@@ -769,9 +769,11 @@ const TeacherResults: React.FC = () => {
                     style={{ 
                       scrollBehavior: 'smooth',
                       WebkitOverflowScrolling: 'touch',
+                      overflowX: 'scroll',
+                      overflowY: 'auto',
                     }}
                   >
-                    <table className="w-full border-collapse" style={{ minWidth: 'max-content' }}>
+                    <table className="border-collapse" style={{ minWidth: '1800px', width: 'max-content' }}>
                       <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-30">
                         <tr>
                           {tableColumns.map((column) => (
