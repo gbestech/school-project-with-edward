@@ -707,7 +707,7 @@ const TeacherResults: React.FC = () => {
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative overflow-hidden">
                   {/* Scroll Navigation Buttons */}
                   {canScrollLeft && (
                     <button
@@ -733,17 +733,19 @@ const TeacherResults: React.FC = () => {
                   <div 
                     ref={tableContainerRef}
                     onScroll={handleScroll}
-                    className="overflow-x-auto overflow-y-auto"
                     style={{ 
                       maxHeight: '70vh',
+                      overflowX: 'auto',
+                      overflowY: 'auto',
                       scrollbarWidth: 'thin',
-                      scrollbarColor: '#cbd5e1 #f1f5f9'
+                      scrollbarColor: '#cbd5e1 #f1f5f9',
+                      WebkitOverflowScrolling: 'touch'
                     }}
                   >
                     <table 
                       style={{ 
                         width: `${totalTableWidth}px`,
-                        minWidth: `${totalTableWidth}px`,
+                        minWidth: '100%',
                         tableLayout: 'fixed',
                         borderCollapse: 'separate',
                         borderSpacing: 0,
@@ -762,10 +764,11 @@ const TeacherResults: React.FC = () => {
                                 minWidth: `${column.width}px`,
                                 maxWidth: `${column.width}px`,
                                 whiteSpace: 'nowrap',
-                                position: column.sticky ? 'sticky' : 'relative',
+                                position: column.sticky ? 'sticky' : 'static',
                                 left: column.sticky === 'left' ? 0 : 'auto',
                                 right: column.sticky === 'right' ? 0 : 'auto',
                                 zIndex: column.sticky ? 40 : 10,
+                                backgroundColor: 'rgb(249 250 251)',
                                 boxShadow: column.sticky === 'left' 
                                   ? '2px 0 5px -2px rgba(0,0,0,0.1)' 
                                   : column.sticky === 'right' 
@@ -787,17 +790,16 @@ const TeacherResults: React.FC = () => {
                             {tableColumns.map((column) => (
                               <td
                                 key={column.key}
-                                className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100"
+                                className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
                                 style={{ 
                                   width: `${column.width}px`,
                                   minWidth: `${column.width}px`,
                                   maxWidth: `${column.width}px`,
                                   whiteSpace: 'nowrap',
-                                  position: column.sticky ? 'sticky' : 'relative',
+                                  position: column.sticky ? 'sticky' : 'static',
                                   left: column.sticky === 'left' ? 0 : 'auto',
                                   right: column.sticky === 'right' ? 0 : 'auto',
                                   zIndex: column.sticky ? 20 : 1,
-                                  backgroundColor: 'inherit',
                                   boxShadow: column.sticky === 'left' 
                                     ? '2px 0 5px -2px rgba(0,0,0,0.1)' 
                                     : column.sticky === 'right' 
