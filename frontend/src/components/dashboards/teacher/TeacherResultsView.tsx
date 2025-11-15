@@ -322,15 +322,19 @@ const TeacherResults: React.FC = () => {
     }, 100);
     
     window.addEventListener('resize', checkScrollability);
+    const container = tableContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScrollability);
+    }
+    
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', checkScrollability);
+      if (container) {
+        container.removeEventListener('scroll', checkScrollability);
+      }
     };
   }, [filteredResults, viewMode]);
-
-  const handleScroll = () => {
-    checkScrollability();
-  };
 
   const scrollTable = (direction: 'left' | 'right') => {
     if (tableContainerRef.current) {
@@ -707,131 +711,125 @@ const TeacherResults: React.FC = () => {
           <>
             {filteredResults.length > 0 ? (
               viewMode === 'table' ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 relative overflow-hidden">
-                  {/* Scroll Navigation Buttons */}
-                  {canScrollLeft && (
-                    <button
-                      onClick={() => scrollTable('left')}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full p-2.5 transition-all hover:scale-110"
-                      aria-label="Scroll left"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                  )}
-                  
-                  {canScrollRight && (
-                    <button
-                      onClick={() => scrollTable('right')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-lg rounded-full p-2.5 transition-all hover:scale-110 animate-pulse"
-                      aria-label="Scroll right"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  )}
+                <div className="w-full">
+                  <div className="relative w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    
+                    {/* Scroll Navigation Buttons */}
+                    {canScrollLeft && (
+                      <button
+                        onClick={() => scrollTable('left')}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-2xl rounded-full p-3 transition-all hover:scale-110"
+                        style={{ marginTop: '20px' }}
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+                    )}
+                    
+                    {canScrollRight && (
+                      <button
+                        onClick={() => scrollTable('right')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 z-50 bg-blue-600 hover:bg-blue-700 text-white shadow-2xl rounded-full p-3 transition-all hover:scale-110 animate-pulse"
+                        style={{ marginTop: '20px' }}
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+                    )}
 
-                  {/* Scrollable Table Container */}
-                  <div 
-                    ref={tableContainerRef}
-                    onScroll={handleScroll}
-                    style={{ 
-                      maxHeight: '70vh',
-                      overflowX: 'auto',
-                      overflowY: 'auto',
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#cbd5e1 #f1f5f9',
-                      WebkitOverflowScrolling: 'touch'
-                    }}
-                  >
-                    <table 
-                      style={{ 
-                        width: `${totalTableWidth}px`,
-                        minWidth: '100%',
-                        tableLayout: 'fixed',
-                        borderCollapse: 'separate',
-                        borderSpacing: 0,
+                    {/* Table Wrapper with Forced Scroll */}
+                    <div 
+                      ref={tableContainerRef}
+                      style={{
+                        width: '100%',
+                        overflowX: 'scroll',
+                        overflowY: 'auto',
+                        maxHeight: '70vh',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: '#3b82f6 #e5e7eb',
                       }}
                     >
-                      <thead style={{ position: 'sticky', top: 0, zIndex: 30 }}>
-                        <tr>
-                          {tableColumns.map((column) => (
-                            <th
-                              key={column.key}
-                              className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 border-b-2 border-gray-300 dark:border-gray-600 ${
-                                column.center ? 'text-center' : 'text-left'
-                              }`}
-                              style={{ 
-                                width: `${column.width}px`,
-                                minWidth: `${column.width}px`,
-                                maxWidth: `${column.width}px`,
-                                whiteSpace: 'nowrap',
-                                position: column.sticky ? 'sticky' : 'static',
-                                left: column.sticky === 'left' ? 0 : 'auto',
-                                right: column.sticky === 'right' ? 0 : 'auto',
-                                zIndex: column.sticky ? 40 : 10,
-                                backgroundColor: 'rgb(249 250 251)',
-                                boxShadow: column.sticky === 'left' 
-                                  ? '2px 0 5px -2px rgba(0,0,0,0.1)' 
-                                  : column.sticky === 'right' 
-                                  ? '-2px 0 5px -2px rgba(0,0,0,0.1)' 
-                                  : 'none',
-                              }}
-                            >
-                              {column.label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-gray-800">
-                        {filteredResults.map((result) => (
-                          <tr
-                            key={result.id}
-                            className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                          >
-                            {tableColumns.map((column) => (
-                              <td
-                                key={column.key}
-                                className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
-                                style={{ 
-                                  width: `${column.width}px`,
-                                  minWidth: `${column.width}px`,
-                                  maxWidth: `${column.width}px`,
-                                  whiteSpace: 'nowrap',
-                                  position: column.sticky ? 'sticky' : 'static',
-                                  left: column.sticky === 'left' ? 0 : 'auto',
-                                  right: column.sticky === 'right' ? 0 : 'auto',
-                                  zIndex: column.sticky ? 20 : 1,
-                                  boxShadow: column.sticky === 'left' 
-                                    ? '2px 0 5px -2px rgba(0,0,0,0.1)' 
-                                    : column.sticky === 'right' 
-                                    ? '-2px 0 5px -2px rgba(0,0,0,0.1)' 
-                                    : 'none',
-                                }}
+                      {/* Inner wrapper to force width */}
+                      <div style={{ minWidth: 'max-content' }}>
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-gray-900 border-b-2 border-gray-200 dark:border-gray-700">
+                              {tableColumns.map((column) => (
+                                <th
+                                  key={column.key}
+                                  className={`px-4 py-3 text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider ${
+                                    column.center ? 'text-center' : 'text-left'
+                                  }`}
+                                  style={{
+                                    minWidth: `${column.width}px`,
+                                    width: `${column.width}px`,
+                                    position: column.sticky ? 'sticky' : 'static',
+                                    left: column.sticky === 'left' ? 0 : undefined,
+                                    right: column.sticky === 'right' ? 0 : undefined,
+                                    zIndex: column.sticky ? 30 : 1,
+                                    backgroundColor: column.sticky ? '#f9fafb' : undefined,
+                                    boxShadow: column.sticky === 'left' 
+                                      ? '4px 0 6px -2px rgba(0,0,0,0.1)' 
+                                      : column.sticky === 'right'
+                                      ? '-4px 0 6px -2px rgba(0,0,0,0.1)'
+                                      : undefined,
+                                  }}
+                                >
+                                  {column.label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            {filteredResults.map((result) => (
+                              <tr
+                                key={result.id}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                               >
-                                {renderTableCell(column, result)}
-                              </td>
+                                {tableColumns.map((column) => (
+                                  <td
+                                    key={column.key}
+                                    className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100"
+                                    style={{
+                                      minWidth: `${column.width}px`,
+                                      width: `${column.width}px`,
+                                      position: column.sticky ? 'sticky' : 'static',
+                                      left: column.sticky === 'left' ? 0 : undefined,
+                                      right: column.sticky === 'right' ? 0 : undefined,
+                                      zIndex: column.sticky ? 20 : 1,
+                                      backgroundColor: column.sticky ? '#ffffff' : undefined,
+                                      boxShadow: column.sticky === 'left' 
+                                        ? '4px 0 6px -2px rgba(0,0,0,0.1)' 
+                                        : column.sticky === 'right'
+                                        ? '-4px 0 6px -2px rgba(0,0,0,0.1)'
+                                        : undefined,
+                                    }}
+                                  >
+                                    {renderTableCell(column, result)}
+                                  </td>
+                                ))}
+                              </tr>
                             ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
-                  {/* Footer with Scroll Instructions */}
-                  <div className="border-t-2 border-gray-300 dark:border-gray-600 px-4 py-3 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center font-medium">
-                        <ChevronLeft className="w-4 h-4 mr-1" />
-                        Scroll horizontally to view all columns ({tableColumns.length} columns, {totalTableWidth}px wide)
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </span>
-                      <span className="font-semibold">
-                        {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
-                      </span>
+                    {/* Footer */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-900">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                          <ChevronLeft className="w-4 h-4 mr-2" />
+                          <span>Scroll horizontally to view all {tableColumns.length} columns</span>
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                // Card View
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                   <div className="p-6 space-y-4">
                     {filteredResults.map((result) => (
