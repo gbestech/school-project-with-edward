@@ -92,7 +92,12 @@ const useResultActionsManager = (onDataRefresh: () => void): ResultActionsManage
         throw new Error('Missing result id for delete');
       }
 
-      await ResultService.deleteStudentResult(resultId, educationLevel);
+      const effectiveEducationLevel = educationLevel ?? (result as any)?.student?.education_level;
+      if (!effectiveEducationLevel) {
+        throw new Error('Missing education level for delete');
+      }
+
+      await ResultService.deleteStudentResult(resultId, effectiveEducationLevel);
       toast.success('Result deleted successfully');
       await onDataRefresh();
     } catch (err) {
