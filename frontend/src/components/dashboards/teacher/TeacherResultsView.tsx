@@ -2930,8 +2930,8 @@ const TeacherResults: React.FC = () => {
     () =>
       teacherAssignments.map((assignment) => ({
         id: String(assignment.subject_id),
-        name: String(assignment.subject_name),
-        code: String(assignment.subject_code),
+        name: String(assignment.subject_name || 'Unknown'),
+        code: String(assignment.subject_code || ''),
       })),
     [teacherAssignments]
   );
@@ -2955,10 +2955,10 @@ const TeacherResults: React.FC = () => {
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
 
   const stats = useMemo(() => [
-    { label: 'Total', value: results.length, icon: FileText, color: 'bg-blue-500' },
-    { label: 'Published', value: results.filter(r => r.status === 'PUBLISHED').length, icon: CheckCircle, color: 'bg-green-500' },
-    { label: 'Average', value: results.length > 0 ? Math.round(results.reduce((acc, r) => acc + r.total_score, 0) / results.length) : 0, icon: TrendingUp, color: 'bg-purple-500' },
-    { label: 'A Grades', value: results.filter(r => r.grade === 'A').length, icon: Award, color: 'bg-amber-500' }
+    { label: 'Total', value: String(results.length), icon: FileText, color: 'bg-blue-500' },
+    { label: 'Published', value: String(results.filter(r => r.status === 'PUBLISHED').length), icon: CheckCircle, color: 'bg-green-500' },
+    { label: 'Average', value: String(results.length > 0 ? Math.round(results.reduce((acc, r) => acc + r.total_score, 0) / results.length) : 0), icon: TrendingUp, color: 'bg-purple-500' },
+    { label: 'A Grades', value: String(results.filter(r => r.grade === 'A').length), icon: Award, color: 'bg-amber-500' }
   ], [results]);
 
   const handleCreateResult = () => {
@@ -3170,7 +3170,7 @@ const TeacherResults: React.FC = () => {
                     <option value="all">All Levels</option>
                     {availableEducationLevels.map((level) => (
                       <option key={String(level)} value={String(level)}>
-                        {String(level).replace(/_/g, ' ')}
+                        {String(level).replace(/_/g, ' ').toUpperCase()}
                       </option>
                     ))}
                   </select>
