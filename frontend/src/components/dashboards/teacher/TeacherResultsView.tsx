@@ -2053,9 +2053,9 @@ const TeacherResults: React.FC = () => {
             },
             exam_session: {
               id: Number(examSessionId),
-              name: r.exam_session?.name ?? r.exam_session_name ?? r.session_name ?? 'N/A',
-              term: r.exam_session?.term ?? r.term ?? '',
-              academic_session: r.exam_session?.academic_session?.name ?? r.academic_session_name ?? r.academic_session ?? '',
+              name: r.exam_session?.name ?? r.exam_session_name ?? r.session_name ?? r.exam_session?.session_name ?? 'Unknown Session',
+              term: r.exam_session?.term ?? r.term ?? r.exam_session?.term_name ?? 'Unknown Term',
+              academic_session: r.exam_session?.academic_session?.name ?? r.academic_session_name ?? r.academic_session ?? r.exam_session?.academic_year ?? 'Unknown Year',
             },
             first_test_score: Number(r.first_test_score || 0),
             second_test_score: Number(r.second_test_score || 0),
@@ -2171,11 +2171,19 @@ const TeacherResults: React.FC = () => {
 
   const scroll = (direction: 'left' | 'right') => {
     if (tableRef.current) {
-      const scrollAmount = 1700;
-      tableRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
+      if (direction === 'right') {
+        // Scroll to the absolute end
+        tableRef.current.scrollTo({
+          left: tableRef.current.scrollWidth,
+          behavior: 'smooth'
+        });
+      } else {
+        // Scroll to the absolute beginning
+        tableRef.current.scrollTo({
+          left: 0,
+          behavior: 'smooth'
+        });
+      }
     }
   };
 
