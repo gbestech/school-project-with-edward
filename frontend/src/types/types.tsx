@@ -2450,6 +2450,7 @@ export interface StudentResult {
     term: string;
     academic_session: string;
   };
+  academic_session: AcademicSession;
    // Computed
   ca_score: number;
   exam_score: number;
