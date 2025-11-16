@@ -3232,8 +3232,8 @@ const TeacherResults: React.FC = () => {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm text-gray-900 truncate">{result.student.full_name}</h3>
-                            <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
+                            <h3 className="font-semibold text-sm text-gray-900 truncate">{result.student?.full_name || 'Unknown'}</h3>
+                            <p className="text-xs text-gray-500 truncate">{result.student?.registration_number || 'N/A'}</p>
                           </div>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')} flex-shrink-0`}>
                             {result.status ?? 'DRAFT'}
@@ -3245,12 +3245,12 @@ const TeacherResults: React.FC = () => {
                       <div className="p-3 space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-gray-600">Subject:</span>
-                          <span className="font-medium text-gray-900 truncate ml-2">{result.subject.name}</span>
+                          <span className="font-medium text-gray-900 truncate ml-2">{result.subject?.name || 'N/A'}</span>
                         </div>
                         
                         <div className="flex items-center gap-1.5 text-xs text-gray-600">
                           <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="truncate">{result.exam_session.name} - {result.exam_session.term}</span>
+                          <span className="truncate">{result.exam_session?.name || 'N/A'} - {result.exam_session?.term || 'N/A'}</span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
@@ -3388,22 +3388,22 @@ const TeacherResults: React.FC = () => {
                                   />
                                 ) : (
                                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0 text-xs">
-                                    {result.student.full_name.charAt(0)}
+                                    {result.student?.full_name?.charAt(0) || '?'}
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <p className="font-medium text-gray-900 text-xs truncate">{result.student.full_name}</p>
-                                  <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
+                                  <p className="font-medium text-gray-900 text-xs truncate">{result.student?.full_name || 'Unknown'}</p>
+                                  <p className="text-xs text-gray-500 truncate">{result.student?.registration_number || 'N/A'}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '160px' }}>
-                              <p className="font-medium text-gray-900 text-xs truncate">{result.subject.name}</p>
-                              <p className="text-xs text-gray-500">{result.subject.code}</p>
+                              <p className="font-medium text-gray-900 text-xs truncate">{result.subject?.name || 'N/A'}</p>
+                              <p className="text-xs text-gray-500">{result.subject?.code || ''}</p>
                             </td>
                             <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '180px' }}>
-                              <p className="text-xs text-gray-900 truncate">{result.exam_session.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{result.exam_session.term}</p>
+                              <p className="text-xs text-gray-900 truncate">{result.exam_session?.name || 'N/A'}</p>
+                              <p className="text-xs text-gray-500 truncate">{result.exam_session?.term || 'N/A'}</p>
                             </td>
                             <td className="px-3 py-2.5 text-center bg-blue-50/50 whitespace-nowrap" style={{ minWidth: '90px' }}>
                               <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-900 font-bold text-xs">
