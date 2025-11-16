@@ -3402,7 +3402,7 @@ const TeacherResults: React.FC = () => {
                               <p className="text-xs text-gray-500">{result.subject?.code || ''}</p>
                             </td>
                             <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '180px' }}>
-                              <p className="text-xs text-gray-900 truncate">{result.exam_session?.academic_session || 'N/A'}</p>
+                              <p className="text-xs text-gray-900 truncate">{result.exam_session?.name || 'N/A'}</p>
                               <p className="text-xs text-gray-500 truncate">{result.exam_session?.term || 'N/A'}</p>
                             </td>
                             <td className="px-3 py-2.5 text-center bg-blue-50/50 whitespace-nowrap" style={{ minWidth: '90px' }}>
