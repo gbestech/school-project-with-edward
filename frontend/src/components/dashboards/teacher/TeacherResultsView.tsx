@@ -2179,19 +2179,14 @@ const TeacherResults: React.FC = () => {
   const scroll = (direction: 'left' | 'right') => {
     if (tableRef.current) {
       if (direction === 'right') {
-        // Force scroll to absolute maximum
         const container = tableRef.current;
         const maxScrollLeft = container.scrollWidth - container.clientWidth;
         
-        // Use instant scroll to guarantee reaching the end
-        container.scrollLeft = maxScrollLeft;
-        
-        // Also try smooth scroll as backup
-        setTimeout(() => {
-          if (tableRef.current) {
-            tableRef.current.scrollLeft = tableRef.current.scrollWidth;
-          }
-        }, 100);
+        // Scroll to maximum with smooth behavior
+        container.scrollTo({
+          left: maxScrollLeft + 100, // Add extra padding to ensure all content is visible
+          behavior: 'smooth'
+        });
       } else {
         tableRef.current.scrollTo({
           left: 0,
