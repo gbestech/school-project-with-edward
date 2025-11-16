@@ -1886,8 +1886,6 @@
 // export default TeacherResults;
 
 
-
-
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
@@ -2132,33 +2130,6 @@ const TeacherResults: React.FC = () => {
     [teacherAssignments]
   );
 
-  const checkScroll = () => {
-    if (tableRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = tableRef.current;
-      setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-    }
-  };
-
-  useEffect(() => {
-    checkScroll();
-    const ref = tableRef.current;
-    if (ref) {
-      ref.addEventListener('scroll', checkScroll);
-      return () => ref.removeEventListener('scroll', checkScroll);
-    }
-  }, [results]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (tableRef.current) {
-      const scrollAmount = 400;
-      tableRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
-
   const filteredResults = useMemo(() => {
     const term = (searchTerm || '').toLowerCase();
     return results.filter((result) => {
@@ -2176,6 +2147,37 @@ const TeacherResults: React.FC = () => {
       return matchesSearch && matchesSubject && matchesStatus && matchesEducationLevel;
     });
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
+
+  const checkScroll = () => {
+    if (tableRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tableRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const ref = tableRef.current;
+    if (ref) {
+      ref.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      return () => {
+        ref.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+      };
+    }
+  }, [filteredResults]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (tableRef.current) {
+      const scrollAmount = 600;
+      tableRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const stats = useMemo(() => [
     { label: 'Total Results', value: results.length, icon: FileText, color: 'bg-blue-500' },
@@ -2418,7 +2420,8 @@ const TeacherResults: React.FC = () => {
               {canScrollLeft && (
                 <button
                   onClick={() => scroll('left')}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center hover:bg-gray-50 border-2 border-blue-500"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 bg-white shadow-2xl rounded-full flex items-center justify-center hover:bg-blue-50 border-2 border-blue-500 transition-all"
+                  aria-label="Scroll left"
                 >
                   <ChevronLeft className="w-6 h-6 text-blue-600" />
                 </button>
@@ -2427,107 +2430,180 @@ const TeacherResults: React.FC = () => {
               {canScrollRight && (
                 <button
                   onClick={() => scroll('right')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 bg-white shadow-xl rounded-full flex items-center justify-center hover:bg-gray-50 border-2 border-blue-500 animate-pulse"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 shadow-2xl rounded-full flex items-center justify-center hover:shadow-xl border-2 border-white transition-all animate-pulse"
+                  aria-label="Scroll right"
                 >
-                  <ChevronRight className="w-6 h-6 text-blue-600" />
+                  <ChevronRight className="w-6 h-6 text-white" />
                 </button>
               )}
 
               {filteredResults.length > 0 ? (
                 <div 
                   ref={tableRef}
-                  className="overflow-x-auto"
-                  style={{ maxHeight: '65vh' }}
+                  className="overflow-x-auto overflow-y-auto"
+                  style={{ maxHeight: '70vh' }}
                 >
-                  <table className="w-full" style={{ minWidth: '1800px' }}>
-                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20">
+                  <table className="w-full border-collapse" style={{ minWidth: '2400px' }}>
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
                       <tr>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase sticky left-0 bg-gray-50" style={{ minWidth: '280px' }}>Student</th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase" style={{ minWidth: '90px' }}>Grade</th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase" style={{ minWidth: '120px' }}>Status</th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase sticky right-0 bg-gray-50" style={{ minWidth: '140px' }}>Actions</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '280px', width: '280px' }}>
+                          Student
+                        </th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '200px', width: '200px' }}>
+                          Subject
+                        </th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '180px', width: '180px' }}>
+                          Session
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
+                          1st Test
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
+                          2nd Test
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
+                          3rd Test
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 border-b-2 border-blue-300" style={{ minWidth: '110px', width: '110px' }}>
+                          Total CA
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '110px', width: '110px' }}>
+                          Class Work
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
+                          Project
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px', width: '120px' }}>
+                          Take Home
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '110px', width: '110px' }}>
+                          Practical
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 border-b-2 border-purple-300" style={{ minWidth: '110px', width: '110px' }}>
+                          Exam
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 border-b-2 border-green-300" style={{ minWidth: '120px', width: '120px' }}>
+                          Total Score
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '90px', width: '90px' }}>
+                          Grade
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px', width: '120px' }}>
+                          Status
+                        </th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '140px', width: '140px' }}>
+                          Actions
+                        </th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {filteredResults.map((result) => (
-                        <tr key={result.id} className="border-b hover:bg-blue-50/50 transition-colors">
-                          <td className="px-6 py-4 sticky left-0 bg-white">
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {filteredResults.map((result, index) => (
+                        <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                          <td className="px-6 py-4 sticky left-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '280px', width: '280px' }}>
                             <div className="flex items-center gap-3">
                               {result.student.profile_picture ? (
-                                <img src={result.student.profile_picture} alt={result.student.full_name} className="w-10 h-10 rounded-full object-cover border-2 border-gray-200" />
+                                <img 
+                                  src={result.student.profile_picture} 
+                                  alt={result.student.full_name} 
+                                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
+                                />
                               ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
                                   {result.student.full_name.charAt(0)}
                                 </div>
                               )}
-                              <div>
-                                <p className="font-medium text-gray-900">{result.student.full_name}</p>
-                                <p className="text-xs text-gray-500">{result.student.registration_number}</p>
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{result.student.full_name}</p>
+                                <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4">
-                            <p className="font-medium text-gray-900">{result.subject.name}</p>
-                            <p className="text-xs text-gray-500">{result.subject.code}</p>
+                          <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '200px', width: '200px' }}>
+                            <p className="font-medium text-gray-900 truncate">{result.subject.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{result.subject.code}</p>
                           </td>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '180px', width: '180px' }}>
                             <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-900">{result.exam_session.name}</p>
-                                <p className="text-xs text-gray-500">{result.exam_session.term}</p>
+                              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm text-gray-900 truncate">{result.exam_session.name}</p>
+                                <p className="text-xs text-gray-500 truncate">{result.exam_session.term}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">{result.first_test_score}</span>
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
+                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
+                              {result.first_test_score}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">{result.second_test_score}</span>
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
+                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
+                              {result.second_test_score}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">{result.third_test_score}</span>
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
+                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
+                              {result.third_test_score}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-center bg-blue-50">
-                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-blue-100 text-blue-900 font-bold">{result.ca_score}</span>
+                          <td className="px-4 py-4 text-center bg-blue-50/50 border-b border-blue-100" style={{ minWidth: '110px', width: '110px' }}>
+                            <span className="inline-flex items-center justify-center w-14 h-10 rounded-lg bg-blue-100 text-blue-900 font-bold">
+                              {result.ca_score}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '110px', width: '110px' }}>
                             <span className="text-gray-900 font-medium">{result.continuous_assessment_score}</span>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
                             <span className="text-gray-900 font-medium">{result.project_score}</span>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px', width: '120px' }}>
                             <span className="text-gray-900 font-medium">{result.take_home_test_score}</span>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '110px', width: '110px' }}>
                             <span className="text-gray-900 font-medium">{result.practical_score}</span>
                           </td>
-                          <td className="px-4 py-4 text-center bg-purple-50">
-                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-purple-100 text-purple-900 font-bold">{result.exam_score}</span>
+                          <td className="px-4 py-4 text-center bg-purple-50/50 border-b border-purple-100" style={{ minWidth: '110px', width: '110px' }}>
+                            <span className="inline-flex items-center justify-center w-14 h-10 rounded-lg bg-purple-100 text-purple-900 font-bold">
+                              {result.exam_score}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-center bg-green-50">
-                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-green-100 text-green-900 font-bold text-lg">{result.total_score}</span>
+                          <td className="px-4 py-4 text-center bg-green-50/50 border-b border-green-100" style={{ minWidth: '120px', width: '120px' }}>
+                            <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-green-100 text-green-900 font-bold text-lg">
+                              {result.total_score}
+                            </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '90px', width: '90px' }}>
                             <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-sm ${getGradeColor(result.grade)}`}>
                               {result.grade ?? '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-center">
+                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px', width: '120px' }}>
                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
                               {result.status ?? 'DRAFT'}
                             </span>
                           </td>
-                          <td className="px-4 py-4 text-center sticky right-0 bg-white">
+                          <td className="px-4 py-4 text-center sticky right-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '140px', width: '140px' }}>
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => handleViewResult(result)} className="p-2 hover:bg-blue-50 rounded-lg transition-colors group" title="View">
+                              <button 
+                                onClick={() => handleViewResult(result)} 
+                                className="p-2 hover:bg-blue-50 rounded-lg transition-colors group" 
+                                title="View"
+                              >
                                 <Eye className="w-4 h-4 text-gray-600 group-hover:text-blue-600" />
                               </button>
-                              <button onClick={() => handleEditResult(result)} className="p-2 hover:bg-indigo-50 rounded-lg transition-colors group" title="Edit">
+                              <button 
+                                onClick={() => handleEditResult(result)} 
+                                className="p-2 hover:bg-indigo-50 rounded-lg transition-colors group" 
+                                title="Edit"
+                              >
                                 <Edit className="w-4 h-4 text-gray-600 group-hover:text-indigo-600" />
                               </button>
-                              <button onClick={() => handleDeleteResult(result)} className="p-2 hover:bg-red-50 rounded-lg transition-colors group" title="Delete">
+                              <button 
+                                onClick={() => handleDeleteResult(result)} 
+                                className="p-2 hover:bg-red-50 rounded-lg transition-colors group" 
+                                title="Delete"
+                              >
                                 <Trash2 className="w-4 h-4 text-gray-600 group-hover:text-red-600" />
                               </button>
                             </div>
@@ -2548,7 +2624,10 @@ const TeacherResults: React.FC = () => {
                       ? 'Try adjusting your filters' 
                       : 'Start by recording your first result'}
                   </p>
-                  <button onClick={handleCreateResult} className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium">
+                  <button 
+                    onClick={handleCreateResult} 
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium"
+                  >
                     <Plus className="w-5 h-5" /> Record First Result
                   </button>
                 </div>
@@ -2556,16 +2635,16 @@ const TeacherResults: React.FC = () => {
             </div>
 
             {filteredResults.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg font-medium">
-                    <ChevronLeft className="w-4 h-4" />
-                    Scroll
-                    <ChevronRight className="w-4 h-4" />
+              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium shadow-sm">
+                    <ChevronLeft className="w-5 h-5" />
+                    <span className="text-sm">Scroll horizontally</span>
+                    <ChevronRight className="w-5 h-5" />
                   </div>
-                  <span>to view all columns</span>
+                  <span className="text-sm text-gray-600">to view all score columns</span>
                 </div>
-                <div className="text-sm font-medium text-gray-900">
+                <div className="text-sm font-semibold text-gray-900 bg-white px-4 py-2 rounded-lg border border-gray-200">
                   Showing {filteredResults.length} of {results.length} results
                 </div>
               </div>
@@ -2579,4 +2658,4 @@ const TeacherResults: React.FC = () => {
   );
 };
 
-export default TeacherResults
+export default TeacherResults;
