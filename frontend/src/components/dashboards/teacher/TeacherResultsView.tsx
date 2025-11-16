@@ -2179,17 +2179,19 @@ const TeacherResults: React.FC = () => {
   const scroll = (direction: 'left' | 'right') => {
     if (tableRef.current) {
       if (direction === 'right') {
-        const maxScroll = tableRef.current.scrollWidth - tableRef.current.clientWidth;
-        tableRef.current.scrollTo({
-          left: maxScroll + 300,
-          behavior: 'smooth'
-        });
+        // Force scroll to absolute maximum
+        const container = tableRef.current;
+        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+        
+        // Use instant scroll to guarantee reaching the end
+        container.scrollLeft = maxScrollLeft;
+        
+        // Also try smooth scroll as backup
         setTimeout(() => {
           if (tableRef.current) {
-            const finalMax = tableRef.current.scrollWidth - tableRef.current.clientWidth;
-            tableRef.current.scrollLeft = finalMax + 200;
+            tableRef.current.scrollLeft = tableRef.current.scrollWidth;
           }
-        }, 600);
+        }, 100);
       } else {
         tableRef.current.scrollTo({
           left: 0,
@@ -2463,7 +2465,7 @@ const TeacherResults: React.FC = () => {
                   className="overflow-x-scroll overflow-y-auto"
                   style={{ maxHeight: '70vh' }}
                 >
-                  <div style={{ minWidth: '3800px', paddingRight: '30px' }}>
+                  <div style={{ minWidth: '3200px', paddingRight: '30px' }}>
                     <table className="w-full border-collapse">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
                         <tr>
