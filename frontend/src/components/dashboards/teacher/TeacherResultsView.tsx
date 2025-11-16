@@ -2171,7 +2171,7 @@ const TeacherResults: React.FC = () => {
 
   const scroll = (direction: 'left' | 'right') => {
     if (tableRef.current) {
-      const scrollAmount = 1000;
+      const scrollAmount = 1700;
       tableRef.current.scrollBy({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
