@@ -2025,10 +2025,9 @@ const TeacherResults: React.FC = () => {
           const subjectId = (r.subject && r.subject.id) || r.subject || r.subject_id;
           const examSessionId = (r.exam_session && r.exam_session.id) || r.exam_session || r.exam_session_id || r.session_id;
 
-          // Log the raw exam session data for debugging
           if (allResults.indexOf(r) === 0) {
             console.log('Sample exam_session data:', r.exam_session);
-            console.log('Raw result object:', r);
+            console.log('Raw result object keys:', Object.keys(r));
             debugLog += `Sample exam_session: ${JSON.stringify(r.exam_session)}\n`;
           }
 
@@ -2159,7 +2158,7 @@ const TeacherResults: React.FC = () => {
     if (tableRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = tableRef.current;
       setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 20);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 30);
     }
   };
 
@@ -2169,7 +2168,6 @@ const TeacherResults: React.FC = () => {
     if (ref) {
       ref.addEventListener('scroll', checkScroll);
       window.addEventListener('resize', checkScroll);
-      // Initial check after a short delay to ensure proper sizing
       setTimeout(checkScroll, 100);
       return () => {
         ref.removeEventListener('scroll', checkScroll);
@@ -2181,14 +2179,18 @@ const TeacherResults: React.FC = () => {
   const scroll = (direction: 'left' | 'right') => {
     if (tableRef.current) {
       if (direction === 'right') {
-        // Scroll to the absolute end with extra padding
         const maxScroll = tableRef.current.scrollWidth - tableRef.current.clientWidth;
         tableRef.current.scrollTo({
-          left: maxScroll + 50,
+          left: maxScroll + 300,
           behavior: 'smooth'
         });
+        setTimeout(() => {
+          if (tableRef.current) {
+            const finalMax = tableRef.current.scrollWidth - tableRef.current.clientWidth;
+            tableRef.current.scrollLeft = finalMax + 200;
+          }
+        }, 600);
       } else {
-        // Scroll to the absolute beginning
         tableRef.current.scrollTo({
           left: 0,
           behavior: 'smooth'
@@ -2458,178 +2460,180 @@ const TeacherResults: React.FC = () => {
               {filteredResults.length > 0 ? (
                 <div 
                   ref={tableRef}
-                  className="overflow-x-auto overflow-y-auto"
-                  style={{ maxHeight: '70vh', overflowX: 'scroll' }}
+                  className="overflow-x-scroll overflow-y-auto"
+                  style={{ maxHeight: '70vh' }}
                 >
-                  <table className="w-full border-collapse" style={{ minWidth: '2600px' }}>
-                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '280px', width: '280px' }}>
-                          Student
-                        </th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '200px', width: '200px' }}>
-                          Subject
-                        </th>
-                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '180px', width: '180px' }}>
-                          Session
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
-                          1st Test
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
-                          2nd Test
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
-                          3rd Test
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 border-b-2 border-blue-300" style={{ minWidth: '110px', width: '110px' }}>
-                          Total CA
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '110px', width: '110px' }}>
-                          Class Work
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '100px', width: '100px' }}>
-                          Project
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px', width: '120px' }}>
-                          Take Home
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '110px', width: '110px' }}>
-                          Practical
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 border-b-2 border-purple-300" style={{ minWidth: '110px', width: '110px' }}>
-                          Exam
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 border-b-2 border-green-300" style={{ minWidth: '120px', width: '120px' }}>
-                          Total Score
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '90px', width: '90px' }}>
-                          Grade
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px', width: '120px' }}>
-                          Status
-                        </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '160px', width: '160px' }}>
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {filteredResults.map((result, index) => (
-                        <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                          <td className="px-6 py-4 sticky left-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '280px', width: '280px' }}>
-                            <div className="flex items-center gap-3">
-                              {result.student.profile_picture ? (
-                                <img 
-                                  src={result.student.profile_picture} 
-                                  alt={result.student.full_name} 
-                                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                                  {result.student.full_name.charAt(0)}
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 truncate">{result.student.full_name}</p>
-                                <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '200px', width: '200px' }}>
-                            <p className="font-medium text-gray-900 truncate">{result.subject.name}</p>
-                            <p className="text-xs text-gray-500 truncate">{result.subject.code}</p>
-                          </td>
-                          <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '180px', width: '180px' }}>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-sm text-gray-900 truncate">{result.exam_session.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{result.exam_session.term}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
-                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
-                              {result.first_test_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
-                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
-                              {result.second_test_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
-                            <span className="inline-flex items-center justify-center w-12 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
-                              {result.third_test_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center bg-blue-50/50 border-b border-blue-100" style={{ minWidth: '110px', width: '110px' }}>
-                            <span className="inline-flex items-center justify-center w-14 h-10 rounded-lg bg-blue-100 text-blue-900 font-bold">
-                              {result.ca_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '110px', width: '110px' }}>
-                            <span className="text-gray-900 font-medium">{result.continuous_assessment_score}</span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '100px', width: '100px' }}>
-                            <span className="text-gray-900 font-medium">{result.project_score}</span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px', width: '120px' }}>
-                            <span className="text-gray-900 font-medium">{result.take_home_test_score}</span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '110px', width: '110px' }}>
-                            <span className="text-gray-900 font-medium">{result.practical_score}</span>
-                          </td>
-                          <td className="px-4 py-4 text-center bg-purple-50/50 border-b border-purple-100" style={{ minWidth: '110px', width: '110px' }}>
-                            <span className="inline-flex items-center justify-center w-14 h-10 rounded-lg bg-purple-100 text-purple-900 font-bold">
-                              {result.exam_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center bg-green-50/50 border-b border-green-100" style={{ minWidth: '120px', width: '120px' }}>
-                            <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-green-100 text-green-900 font-bold text-lg">
-                              {result.total_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '90px', width: '90px' }}>
-                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-sm ${getGradeColor(result.grade)}`}>
-                              {result.grade ?? '—'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px', width: '120px' }}>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
-                              {result.status ?? 'DRAFT'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center sticky right-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '140px', width: '140px' }}>
-                            <div className="flex items-center justify-center gap-1">
-                              <button 
-                                onClick={() => handleViewResult(result)} 
-                                className="p-2 hover:bg-blue-50 rounded-lg transition-colors group" 
-                                title="View"
-                              >
-                                <Eye className="w-4 h-4 text-gray-600 group-hover:text-blue-600" />
-                              </button>
-                              <button 
-                                onClick={() => handleEditResult(result)} 
-                                className="p-2 hover:bg-indigo-50 rounded-lg transition-colors group" 
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4 text-gray-600 group-hover:text-indigo-600" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteResult(result)} 
-                                className="p-2 hover:bg-red-50 rounded-lg transition-colors group" 
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4 text-gray-600 group-hover:text-red-600" />
-                              </button>
-                            </div>
-                          </td>
+                  <div style={{ minWidth: '3200px', paddingRight: '30px' }}>
+                    <table className="w-full border-collapse">
+                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '280px' }}>
+                            Student
+                          </th>
+                          <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '200px' }}>
+                            Subject
+                          </th>
+                          <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '220px' }}>
+                            Session
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
+                            1st Test
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
+                            2nd Test
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
+                            3rd Test
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 border-b-2 border-blue-300" style={{ minWidth: '130px' }}>
+                            Total CA
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '130px' }}>
+                            Class Work
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
+                            Project
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '130px' }}>
+                            Take Home
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '130px' }}>
+                            Practical
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 border-b-2 border-purple-300" style={{ minWidth: '140px' }}>
+                            Exam
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 border-b-2 border-green-300" style={{ minWidth: '150px' }}>
+                            Total Score
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
+                            Grade
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '150px' }}>
+                            Status
+                          </th>
+                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '200px' }}>
+                            Actions
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {filteredResults.map((result, index) => (
+                          <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                            <td className="px-6 py-4 sticky left-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '280px' }}>
+                              <div className="flex items-center gap-3">
+                                {result.student.profile_picture ? (
+                                  <img 
+                                    src={result.student.profile_picture} 
+                                    alt={result.student.full_name} 
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                    {result.student.full_name.charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 truncate">{result.student.full_name}</p>
+                                  <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '200px' }}>
+                              <p className="font-medium text-gray-900 truncate">{result.subject.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{result.subject.code}</p>
+                            </td>
+                            <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '220px' }}>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-sm text-gray-900 truncate">{result.exam_session.name}</p>
+                                  <p className="text-xs text-gray-500 truncate">{result.exam_session.term}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
+                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
+                                {result.first_test_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
+                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
+                                {result.second_test_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
+                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
+                                {result.third_test_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center bg-blue-50/50 border-b border-blue-100" style={{ minWidth: '130px' }}>
+                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-blue-100 text-blue-900 font-bold">
+                                {result.ca_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '130px' }}>
+                              <span className="text-gray-900 font-medium">{result.continuous_assessment_score}</span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
+                              <span className="text-gray-900 font-medium">{result.project_score}</span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '130px' }}>
+                              <span className="text-gray-900 font-medium">{result.take_home_test_score}</span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '130px' }}>
+                              <span className="text-gray-900 font-medium">{result.practical_score}</span>
+                            </td>
+                            <td className="px-4 py-4 text-center bg-purple-50/50 border-b border-purple-100" style={{ minWidth: '140px' }}>
+                              <span className="inline-flex items-center justify-center w-20 h-10 rounded-lg bg-purple-100 text-purple-900 font-bold">
+                                {result.exam_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center bg-green-50/50 border-b border-green-100" style={{ minWidth: '150px' }}>
+                              <span className="inline-flex items-center justify-center w-20 h-10 rounded-lg bg-green-100 text-green-900 font-bold text-lg">
+                                {result.total_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
+                              <span className={`inline-flex items-center justify-center w-12 h-12 rounded-lg font-bold text-base ${getGradeColor(result.grade)}`}>
+                                {result.grade ?? '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '150px' }}>
+                              <span className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
+                                {result.status ?? 'DRAFT'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 text-center sticky right-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '200px' }}>
+                              <div className="flex items-center justify-center gap-3">
+                                <button 
+                                  onClick={() => handleViewResult(result)} 
+                                  className="p-3 hover:bg-blue-50 rounded-lg transition-colors group" 
+                                  title="View"
+                                >
+                                  <Eye className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
+                                </button>
+                                <button 
+                                  onClick={() => handleEditResult(result)} 
+                                  className="p-3 hover:bg-indigo-50 rounded-lg transition-colors group" 
+                                  title="Edit"
+                                >
+                                  <Edit className="w-5 h-5 text-gray-600 group-hover:text-indigo-600" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteResult(result)} 
+                                  className="p-3 hover:bg-red-50 rounded-lg transition-colors group" 
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-5 h-5 text-gray-600 group-hover:text-red-600" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
                 <div className="p-12 text-center">
