@@ -2463,7 +2463,7 @@ const TeacherResults: React.FC = () => {
                   className="overflow-x-scroll overflow-y-auto"
                   style={{ maxHeight: '70vh' }}
                 >
-                  <div style={{ minWidth: '3200px', paddingRight: '30px' }}>
+                  <div style={{ minWidth: '3800px', paddingRight: '30px' }}>
                     <table className="w-full border-collapse">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
                         <tr>
