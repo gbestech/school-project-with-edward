@@ -1898,7 +1898,7 @@ import { TeacherAssignment, StudentResult } from '@/types/types';
 import { 
   Plus, Edit, Trash2, Eye, CheckCircle, AlertCircle, RefreshCw, 
   Search, X, FileText, Filter, TrendingUp, Award, Calendar, 
-  GraduationCap, Grid, List, ChevronDown, BarChart3
+  GraduationCap, Grid, List
 } from 'lucide-react';
 
 type EducationLevel = 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY' | 'UNKNOWN' | 'MIXED' | string;
@@ -1918,7 +1918,7 @@ const TeacherResults: React.FC = () => {
   const [filterEducationLevel, setFilterEducationLevel] = useState<EducationLevel | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   async function loadTeacherData() {
@@ -2146,9 +2146,9 @@ const TeacherResults: React.FC = () => {
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
 
   const stats = useMemo(() => [
-    { label: 'Total Results', value: results.length, icon: FileText, color: 'bg-blue-500' },
+    { label: 'Total', value: results.length, icon: FileText, color: 'bg-blue-500' },
     { label: 'Published', value: results.filter(r => r.status === 'PUBLISHED').length, icon: CheckCircle, color: 'bg-green-500' },
-    { label: 'Average Score', value: results.length > 0 ? Math.round(results.reduce((acc, r) => acc + r.total_score, 0) / results.length) : 0, icon: TrendingUp, color: 'bg-purple-500' },
+    { label: 'Average', value: results.length > 0 ? Math.round(results.reduce((acc, r) => acc + r.total_score, 0) / results.length) : 0, icon: TrendingUp, color: 'bg-purple-500' },
     { label: 'A Grades', value: results.filter(r => r.grade === 'A').length, icon: Award, color: 'bg-amber-500' }
   ], [results]);
 
@@ -2193,8 +2193,8 @@ const TeacherResults: React.FC = () => {
       <TeacherDashboardLayout>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
           <div className="flex flex-col items-center space-y-4">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
-            <p className="text-lg text-gray-600 font-medium">Loading Student Results...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600"></div>
+            <p className="text-sm md:text-base text-gray-600 font-medium">Loading Results...</p>
           </div>
         </div>
       </TeacherDashboardLayout>
@@ -2204,27 +2204,21 @@ const TeacherResults: React.FC = () => {
   if (error) {
     return (
       <TeacherDashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 md:p-6">
               <div className="flex items-center gap-3 mb-4">
-                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-                <h3 className="text-lg font-semibold text-red-900">Error Loading Data</h3>
+                <AlertCircle className="w-5 h-5 md:w-6 md:h-6 text-red-600 flex-shrink-0" />
+                <h3 className="text-base md:text-lg font-semibold text-red-900">Error Loading Data</h3>
               </div>
-              <p className="text-red-800 mb-4">{error}</p>
+              <p className="text-sm text-red-800 mb-4">{error}</p>
               <button 
                 onClick={loadTeacherData}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
               >
                 Try Again
               </button>
             </div>
-            {debugInfo && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4 mt-4">
-                <h3 className="font-semibold mb-2">Debug Information:</h3>
-                <pre className="text-xs overflow-auto whitespace-pre-wrap text-gray-600">{debugInfo}</pre>
-              </div>
-            )}
           </div>
         </div>
       </TeacherDashboardLayout>
@@ -2234,16 +2228,16 @@ const TeacherResults: React.FC = () => {
   if (activeTab === 'record') {
     return (
       <TeacherDashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl p-4 md:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Record New Result</h2>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-3 md:p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <h2 className="text-lg md:text-xl font-bold text-gray-900">Record Result</h2>
                 <button 
                   onClick={() => setActiveTab('results')}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900 flex items-center gap-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" /> Close
+                  <X className="w-4 h-4" /> Close
                 </button>
               </div>
               <ResultCreateTab
@@ -2261,34 +2255,34 @@ const TeacherResults: React.FC = () => {
   return (
     <TeacherDashboardLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        {/* Header */}
+        {/* Compact Header */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                  <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          <div className="max-w-7xl mx-auto px-3 md:px-6 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <GraduationCap className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Results Management</h1>
-                  <p className="text-xs sm:text-sm text-gray-500">Track and manage student performance</p>
+                <div className="min-w-0">
+                  <h1 className="text-base md:text-lg font-bold text-gray-900 truncate">Results</h1>
+                  <p className="text-xs text-gray-500 hidden sm:block">Manage performance</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button 
                   onClick={loadTeacherData}
                   disabled={loading}
-                  className="flex-1 sm:flex-initial px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 border border-gray-200"
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                  title="Refresh"
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
                 </button>
                 <button 
                   onClick={handleCreateResult}
-                  className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium"
+                  className="px-3 md:px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-1.5 text-sm font-medium"
                 >
-                  <Plus className="w-5 h-5" />
-                  <span>Record Result</span>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Record</span>
                 </button>
               </div>
             </div>
@@ -2296,79 +2290,78 @@ const TeacherResults: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 space-y-4 md:space-y-6">
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="max-w-7xl mx-auto px-3 md:px-6 py-3 md:py-4 space-y-3 md:space-y-4">
+          {/* Compact Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
             {stats.map((stat, idx) => (
-              <div key={idx} className="bg-white rounded-xl p-4 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs md:text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900">{stat.value}</p>
+              <div key={idx} className="bg-white rounded-lg p-3 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-600 mb-0.5 truncate">{stat.label}</p>
+                    <p className="text-xl md:text-2xl font-bold text-gray-900">{stat.value}</p>
                   </div>
-                  <div className={`w-10 h-10 md:w-12 md:h-12 ${stat.color} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
-                    <stat.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                  <div className={`w-8 h-8 md:w-10 md:h-10 ${stat.color} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <stat.icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Search and Filters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row gap-3">
+          {/* Compact Search and Filters */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
                     type="text"
-                    placeholder="Search students, subjects..."
+                    placeholder="Search..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                   />
                 </div>
-                <div className="flex gap-2">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm flex items-center gap-1.5"
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="hidden sm:inline">Filters</span>
+                  {(filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all') && (
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  )}
+                </button>
+                {/* View Mode Toggle - Hidden on Mobile */}
+                <div className="hidden md:flex border border-gray-200 rounded-lg overflow-hidden">
                   <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex-1 sm:flex-initial px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors text-sm"
+                    onClick={() => setViewMode('table')}
+                    className={`p-2 ${viewMode === 'table' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'} transition-colors`}
+                    title="Table View"
                   >
-                    <Filter className="w-4 h-4" />
-                    <span>Filters</span>
-                    {(filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all') && (
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                    )}
+                    <List className="w-4 h-4" />
                   </button>
-                  <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => setViewMode('table')}
-                      className={`p-2.5 ${viewMode === 'table' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'} transition-colors`}
-                      title="Table View"
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode('card')}
-                      className={`p-2.5 ${viewMode === 'card' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'} transition-colors border-l border-gray-200`}
-                      title="Card View"
-                    >
-                      <Grid className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setViewMode('card')}
+                    className={`p-2 ${viewMode === 'card' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'} transition-colors border-l border-gray-200`}
+                    title="Card View"
+                  >
+                    <Grid className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
               {showFilters && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 pt-2 border-t border-gray-100">
                   <select
                     value={String(filterEducationLevel)}
                     onChange={(e) => setFilterEducationLevel(e.target.value as EducationLevel | 'all')}
                     className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                   >
-                    <option value="all">All Education Levels</option>
+                    <option value="all">All Levels</option>
                     {availableEducationLevels.map((level) => (
                       <option key={String(level)} value={String(level)}>
-                        {String(level).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                        {String(level).replace(/_/g, ' ')}
                       </option>
                     ))}
                   </select>
@@ -2381,7 +2374,7 @@ const TeacherResults: React.FC = () => {
                     <option value="all">All Subjects</option>
                     {availableSubjects.map((subject) => (
                       <option key={subject.id} value={subject.id}>
-                        {subject.name} ({subject.code})
+                        {subject.name}
                       </option>
                     ))}
                   </select>
@@ -2402,72 +2395,72 @@ const TeacherResults: React.FC = () => {
             </div>
           </div>
 
-          {/* Results Display */}
-          {viewMode === 'card' ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <p className="text-sm text-gray-600">
-                  Showing {filteredResults.length} of {results.length} results
+          {/* Results Display - Card View on Mobile, Toggle on Desktop */}
+          {(viewMode === 'card' || window.innerWidth < 768) ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs md:text-sm text-gray-600">
+                  {filteredResults.length} of {results.length} results
                 </p>
               </div>
               
               {filteredResults.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {filteredResults.map((result) => (
-                    <div key={result.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                    <div key={result.id} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                       {/* Card Header */}
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b border-gray-100">
-                        <div className="flex items-start gap-3">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-3 border-b border-gray-100">
+                        <div className="flex items-start gap-2">
                           {result.student.profile_picture ? (
                             <img 
                               src={result.student.profile_picture} 
                               alt={result.student.full_name} 
-                              className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0" 
+                              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0" 
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-sm">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0 text-sm">
                               {result.student.full_name.charAt(0)}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-gray-900 truncate">{result.student.full_name}</h3>
+                            <h3 className="font-semibold text-sm text-gray-900 truncate">{result.student.full_name}</h3>
                             <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
                           </div>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')} flex-shrink-0`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')} flex-shrink-0`}>
                             {result.status ?? 'DRAFT'}
                           </span>
                         </div>
                       </div>
 
                       {/* Card Body */}
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-center justify-between text-sm">
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
                           <span className="text-gray-600">Subject:</span>
-                          <span className="font-medium text-gray-900">{result.subject.name}</span>
+                          <span className="font-medium text-gray-900 truncate ml-2">{result.subject.name}</span>
                         </div>
                         
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="w-4 h-4 flex-shrink-0" />
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
                           <span className="truncate">{result.exam_session.name} - {result.exam_session.term}</span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
                           <div className="text-center">
-                            <p className="text-xs text-gray-500 mb-1">CA Score</p>
-                            <div className="bg-blue-50 rounded-lg py-2">
-                              <p className="text-lg font-bold text-blue-900">{result.ca_score}</p>
+                            <p className="text-xs text-gray-500 mb-1">CA</p>
+                            <div className="bg-blue-50 rounded-lg py-1.5">
+                              <p className="text-base font-bold text-blue-900">{result.ca_score}</p>
                             </div>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-gray-500 mb-1">Exam</p>
-                            <div className="bg-purple-50 rounded-lg py-2">
-                              <p className="text-lg font-bold text-purple-900">{result.exam_score}</p>
+                            <div className="bg-purple-50 rounded-lg py-1.5">
+                              <p className="text-base font-bold text-purple-900">{result.exam_score}</p>
                             </div>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-gray-500 mb-1">Total</p>
-                            <div className="bg-green-50 rounded-lg py-2">
-                              <p className="text-lg font-bold text-green-900">{result.total_score}</p>
+                            <div className="bg-green-50 rounded-lg py-1.5">
+                              <p className="text-base font-bold text-green-900">{result.total_score}</p>
                             </div>
                           </div>
                         </div>
@@ -2475,28 +2468,28 @@ const TeacherResults: React.FC = () => {
                         <div className="flex items-center justify-between pt-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-gray-600">Grade:</span>
-                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold ${getGradeColor(result.grade)}`}>
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${getGradeColor(result.grade)}`}>
                               {result.grade ?? '—'}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <button 
                               onClick={() => handleViewResult(result)} 
-                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors" 
+                              className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors" 
                               title="View"
                             >
                               <Eye className="w-4 h-4 text-gray-600" />
                             </button>
                             <button 
                               onClick={() => handleEditResult(result)} 
-                              className="p-2 hover:bg-indigo-50 rounded-lg transition-colors" 
+                              className="p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" 
                               title="Edit"
                             >
                               <Edit className="w-4 h-4 text-gray-600" />
                             </button>
                             <button 
                               onClick={() => handleDeleteResult(result)} 
-                              className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
+                              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" 
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4 text-gray-600" />
@@ -2508,67 +2501,67 @@ const TeacherResults: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-xl p-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-gray-400" />
+                <div className="bg-white rounded-lg p-8 md:p-12 text-center">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                    <FileText className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No results found</h3>
-                  <p className="text-gray-500 mb-6">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">No results found</h3>
+                  <p className="text-sm text-gray-500 mb-4 md:mb-6">
                     {searchTerm || filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all'
                       ? 'Try adjusting your filters' 
                       : 'Start by recording your first result'}
                   </p>
                   <button 
                     onClick={handleCreateResult} 
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium"
+                    className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium text-sm"
                   >
-                    <Plus className="w-5 h-5" /> Record First Result
+                    <Plus className="w-4 h-4" /> Record First Result
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-3 md:p-4 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Student Results</h2>
-                    <p className="text-sm text-gray-500">{filteredResults.length} of {results.length} results</p>
+                    <h2 className="text-base md:text-lg font-semibold text-gray-900">Student Results</h2>
+                    <p className="text-xs md:text-sm text-gray-500">{filteredResults.length} of {results.length} results</p>
                   </div>
                 </div>
               </div>
 
               {filteredResults.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <div style={{ minWidth: '1400px' }}>
+                  <div style={{ minWidth: '1200px' }}>
                     <table className="w-full">
                       <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '250px' }}>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '200px' }}>
                             Student
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '180px' }}>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '160px' }}>
                             Subject
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '200px' }}>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '180px' }}>
                             Session
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 whitespace-nowrap" style={{ minWidth: '90px' }}>
                             CA
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 whitespace-nowrap" style={{ minWidth: '90px' }}>
                             Exam
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 whitespace-nowrap" style={{ minWidth: '90px' }}>
                             Total
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '100px' }}>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '80px' }}>
                             Grade
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '140px' }}>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '120px' }}>
                             Status
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '180px' }}>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '140px' }}>
                             Actions
                           </th>
                         </tr>
@@ -2576,77 +2569,77 @@ const TeacherResults: React.FC = () => {
                       <tbody className="bg-white divide-y divide-gray-100">
                         {filteredResults.map((result, index) => (
                           <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                            <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: '250px' }}>
-                              <div className="flex items-center gap-3">
+                            <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '200px' }}>
+                              <div className="flex items-center gap-2">
                                 {result.student.profile_picture ? (
                                   <img 
                                     src={result.student.profile_picture} 
                                     alt={result.student.full_name} 
-                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
+                                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
                                   />
                                 ) : (
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0 text-xs">
                                     {result.student.full_name.charAt(0)}
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <p className="font-medium text-gray-900 text-sm">{result.student.full_name}</p>
+                                  <p className="font-medium text-gray-900 text-xs truncate">{result.student.full_name}</p>
                                   <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: '180px' }}>
-                              <p className="font-medium text-gray-900 text-sm">{result.subject.name}</p>
+                            <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '160px' }}>
+                              <p className="font-medium text-gray-900 text-xs truncate">{result.subject.name}</p>
                               <p className="text-xs text-gray-500">{result.subject.code}</p>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: '200px' }}>
-                              <p className="text-sm text-gray-900">{result.exam_session.name}</p>
-                              <p className="text-xs text-gray-500">{result.exam_session.term}</p>
+                            <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '180px' }}>
+                              <p className="text-xs text-gray-900 truncate">{result.exam_session.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{result.exam_session.term}</p>
                             </td>
-                            <td className="px-4 py-3 text-center bg-blue-50/50 whitespace-nowrap" style={{ minWidth: '100px' }}>
-                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-blue-100 text-blue-900 font-bold text-sm">
+                            <td className="px-3 py-2.5 text-center bg-blue-50/50 whitespace-nowrap" style={{ minWidth: '90px' }}>
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-900 font-bold text-xs">
                                 {result.ca_score}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center bg-purple-50/50 whitespace-nowrap" style={{ minWidth: '100px' }}>
-                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-purple-100 text-purple-900 font-bold text-sm">
+                            <td className="px-3 py-2.5 text-center bg-purple-50/50 whitespace-nowrap" style={{ minWidth: '90px' }}>
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 font-bold text-xs">
                                 {result.exam_score}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center bg-green-50/50 whitespace-nowrap" style={{ minWidth: '100px' }}>
-                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-green-100 text-green-900 font-bold text-sm">
+                            <td className="px-3 py-2.5 text-center bg-green-50/50 whitespace-nowrap" style={{ minWidth: '90px' }}>
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-green-100 text-green-900 font-bold text-xs">
                                 {result.total_score}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center whitespace-nowrap" style={{ minWidth: '100px' }}>
-                              <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold ${getGradeColor(result.grade)}`}>
+                            <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ minWidth: '80px' }}>
+                              <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-xs ${getGradeColor(result.grade)}`}>
                                 {result.grade ?? '—'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center whitespace-nowrap" style={{ minWidth: '140px' }}>
-                              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
+                            <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ minWidth: '120px' }}>
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
                                 {result.status ?? 'DRAFT'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center whitespace-nowrap" style={{ minWidth: '180px' }}>
+                            <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ minWidth: '140px' }}>
                               <div className="flex items-center justify-center gap-1">
                                 <button 
                                   onClick={() => handleViewResult(result)} 
-                                  className="p-2 hover:bg-blue-50 rounded-lg transition-colors" 
+                                  className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors" 
                                   title="View"
                                 >
                                   <Eye className="w-4 h-4 text-gray-600" />
                                 </button>
                                 <button 
                                   onClick={() => handleEditResult(result)} 
-                                  className="p-2 hover:bg-indigo-50 rounded-lg transition-colors" 
+                                  className="p-1.5 hover:bg-indigo-50 rounded-lg transition-colors" 
                                   title="Edit"
                                 >
                                   <Edit className="w-4 h-4 text-gray-600" />
                                 </button>
                                 <button 
                                   onClick={() => handleDeleteResult(result)} 
-                                  className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
+                                  className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" 
                                   title="Delete"
                                 >
                                   <Trash2 className="w-4 h-4 text-gray-600" />
@@ -2660,21 +2653,21 @@ const TeacherResults: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-gray-400" />
+                <div className="p-8 md:p-12 text-center">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                    <FileText className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No results found</h3>
-                  <p className="text-gray-500 mb-6">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">No results found</h3>
+                  <p className="text-sm text-gray-500 mb-4 md:mb-6">
                     {searchTerm || filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all'
                       ? 'Try adjusting your filters' 
                       : 'Start by recording your first result'}
                   </p>
                   <button 
                     onClick={handleCreateResult} 
-                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium"
+                    className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium text-sm"
                   >
-                    <Plus className="w-5 h-5" /> Record First Result
+                    <Plus className="w-4 h-4" /> Record First Result
                   </button>
                 </div>
               )}
