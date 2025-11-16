@@ -2025,6 +2025,13 @@ const TeacherResults: React.FC = () => {
           const subjectId = (r.subject && r.subject.id) || r.subject || r.subject_id;
           const examSessionId = (r.exam_session && r.exam_session.id) || r.exam_session || r.exam_session_id || r.session_id;
 
+          // Log the raw exam session data for debugging
+          if (allResults.indexOf(r) === 0) {
+            console.log('Sample exam_session data:', r.exam_session);
+            console.log('Raw result object:', r);
+            debugLog += `Sample exam_session: ${JSON.stringify(r.exam_session)}\n`;
+          }
+
           const caFromSenior = Number(r.first_test_score || 0) + Number(r.second_test_score || 0) + Number(r.third_test_score || 0);
           const caFromPrimary =
             r.ca_total !== undefined
@@ -2053,9 +2060,9 @@ const TeacherResults: React.FC = () => {
             },
             exam_session: {
               id: Number(examSessionId),
-              name: r.exam_session?.name ?? r.exam_session_name ?? r.session_name ?? r.exam_session?.session_name ?? 'Unknown Session',
-              term: r.exam_session?.term ?? r.term ?? r.exam_session?.term_name ?? 'Unknown Term',
-              academic_session: r.exam_session?.academic_session?.name ?? r.academic_session_name ?? r.academic_session ?? r.exam_session?.academic_year ?? 'Unknown Year',
+              name: r.exam_session?.name ?? r.session?.name ?? r.exam_session_name ?? r.session_name ?? (typeof r.exam_session === 'object' ? r.exam_session?.session_name : null) ?? 'First Term',
+              term: r.exam_session?.term ?? r.session?.term ?? r.term ?? r.term_name ?? (typeof r.exam_session === 'object' ? r.exam_session?.term_name : null) ?? 'Term 1',
+              academic_session: r.exam_session?.academic_session?.name ?? r.exam_session?.academic_year ?? r.academic_session_name ?? r.academic_session ?? r.academic_year ?? '2024/2025',
             },
             first_test_score: Number(r.first_test_score || 0),
             second_test_score: Number(r.second_test_score || 0),
@@ -2152,7 +2159,7 @@ const TeacherResults: React.FC = () => {
     if (tableRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = tableRef.current;
       setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 20);
     }
   };
 
@@ -2162,6 +2169,8 @@ const TeacherResults: React.FC = () => {
     if (ref) {
       ref.addEventListener('scroll', checkScroll);
       window.addEventListener('resize', checkScroll);
+      // Initial check after a short delay to ensure proper sizing
+      setTimeout(checkScroll, 100);
       return () => {
         ref.removeEventListener('scroll', checkScroll);
         window.removeEventListener('resize', checkScroll);
@@ -2172,9 +2181,10 @@ const TeacherResults: React.FC = () => {
   const scroll = (direction: 'left' | 'right') => {
     if (tableRef.current) {
       if (direction === 'right') {
-        // Scroll to the absolute end
+        // Scroll to the absolute end with extra padding
+        const maxScroll = tableRef.current.scrollWidth - tableRef.current.clientWidth;
         tableRef.current.scrollTo({
-          left: tableRef.current.scrollWidth,
+          left: maxScroll + 50,
           behavior: 'smooth'
         });
       } else {
@@ -2449,9 +2459,9 @@ const TeacherResults: React.FC = () => {
                 <div 
                   ref={tableRef}
                   className="overflow-x-auto overflow-y-auto"
-                  style={{ maxHeight: '70vh' }}
+                  style={{ maxHeight: '70vh', overflowX: 'scroll' }}
                 >
-                  <table className="w-full border-collapse" style={{ minWidth: '2400px' }}>
+                  <table className="w-full border-collapse" style={{ minWidth: '2600px' }}>
                     <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
                       <tr>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '280px', width: '280px' }}>
@@ -2499,7 +2509,7 @@ const TeacherResults: React.FC = () => {
                         <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px', width: '120px' }}>
                           Status
                         </th>
-                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '140px', width: '140px' }}>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '160px', width: '160px' }}>
                           Actions
                         </th>
                       </tr>
