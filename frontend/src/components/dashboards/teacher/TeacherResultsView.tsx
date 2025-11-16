@@ -1886,7 +1886,7 @@
 // export default TeacherResults;
 
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardLayout from '@/components/layouts/TeacherDashboardLayout';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
@@ -1897,12 +1897,13 @@ import { toast } from 'react-toastify';
 import { TeacherAssignment, StudentResult } from '@/types/types';
 import { 
   Plus, Edit, Trash2, Eye, CheckCircle, AlertCircle, RefreshCw, 
-  Search, X, FileText, User, Archive, ChevronRight, ChevronLeft,
-  Filter, TrendingUp, Award, Calendar, GraduationCap
+  Search, X, FileText, Filter, TrendingUp, Award, Calendar, 
+  GraduationCap, Grid, List, ChevronDown, BarChart3
 } from 'lucide-react';
 
 type EducationLevel = 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY' | 'UNKNOWN' | 'MIXED' | string;
 type ResultStatus = 'DRAFT' | 'PUBLISHED' | 'APPROVED' | 'ARCHIVED' | string;
+type ViewMode = 'table' | 'card';
 
 const TeacherResults: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -1917,11 +1918,8 @@ const TeacherResults: React.FC = () => {
   const [filterEducationLevel, setFilterEducationLevel] = useState<EducationLevel | 'all'>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<'results' | 'record'>('results');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [debugInfo, setDebugInfo] = useState<string>('');
-  
-  const tableRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
 
   async function loadTeacherData() {
     try {
@@ -2025,12 +2023,6 @@ const TeacherResults: React.FC = () => {
           const subjectId = (r.subject && r.subject.id) || r.subject || r.subject_id;
           const examSessionId = (r.exam_session && r.exam_session.id) || r.exam_session || r.exam_session_id || r.session_id;
 
-          if (allResults.indexOf(r) === 0) {
-            console.log('Sample exam_session data:', r.exam_session);
-            console.log('Raw result object keys:', Object.keys(r));
-            debugLog += `Sample exam_session: ${JSON.stringify(r.exam_session)}\n`;
-          }
-
           const caFromSenior = Number(r.first_test_score || 0) + Number(r.second_test_score || 0) + Number(r.third_test_score || 0);
           const caFromPrimary =
             r.ca_total !== undefined
@@ -2096,7 +2088,6 @@ const TeacherResults: React.FC = () => {
       }
       
       setDebugInfo(debugLog);
-      console.log('Debug Info:\n', debugLog);
       
     } catch (err) {
       console.error('Error loading teacher data:', err);
@@ -2154,48 +2145,6 @@ const TeacherResults: React.FC = () => {
     });
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
 
-  const checkScroll = () => {
-    if (tableRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = tableRef.current;
-      setCanScrollLeft(scrollLeft > 10);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 30);
-    }
-  };
-
-  useEffect(() => {
-    checkScroll();
-    const ref = tableRef.current;
-    if (ref) {
-      ref.addEventListener('scroll', checkScroll);
-      window.addEventListener('resize', checkScroll);
-      setTimeout(checkScroll, 100);
-      return () => {
-        ref.removeEventListener('scroll', checkScroll);
-        window.removeEventListener('resize', checkScroll);
-      };
-    }
-  }, [filteredResults]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    if (tableRef.current) {
-      if (direction === 'right') {
-        const container = tableRef.current;
-        const maxScrollLeft = container.scrollWidth - container.clientWidth;
-        
-        // Scroll to maximum with smooth behavior
-        container.scrollTo({
-          left: maxScrollLeft + 100, // Add extra padding to ensure all content is visible
-          behavior: 'smooth'
-        });
-      } else {
-        tableRef.current.scrollTo({
-          left: 0,
-          behavior: 'smooth'
-        });
-      }
-    }
-  };
-
   const stats = useMemo(() => [
     { label: 'Total Results', value: results.length, icon: FileText, color: 'bg-blue-500' },
     { label: 'Published', value: results.filter(r => r.status === 'PUBLISHED').length, icon: CheckCircle, color: 'bg-green-500' },
@@ -2242,7 +2191,7 @@ const TeacherResults: React.FC = () => {
   if (loading) {
     return (
       <TeacherDashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
           <div className="flex flex-col items-center space-y-4">
             <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
             <p className="text-lg text-gray-600 font-medium">Loading Student Results...</p>
@@ -2255,11 +2204,11 @@ const TeacherResults: React.FC = () => {
   if (error) {
     return (
       <TeacherDashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
             <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
                 <h3 className="text-lg font-semibold text-red-900">Error Loading Data</h3>
               </div>
               <p className="text-red-800 mb-4">{error}</p>
@@ -2285,11 +2234,11 @@ const TeacherResults: React.FC = () => {
   if (activeTab === 'record') {
     return (
       <TeacherDashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-6">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="bg-white rounded-2xl shadow-xl p-4 md:p-8">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Record New Result</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900">Record New Result</h2>
                 <button 
                   onClick={() => setActiveTab('results')}
                   className="px-4 py-2 text-gray-600 hover:text-gray-900 flex items-center gap-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -2312,325 +2261,401 @@ const TeacherResults: React.FC = () => {
   return (
     <TeacherDashboardLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        {/* Header */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-          <div className="max-w-[1800px] mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                  <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">Results Management</h1>
-                  <p className="text-sm text-gray-500">Track and manage student performance</p>
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Results Management</h1>
+                  <p className="text-xs sm:text-sm text-gray-500">Track and manage student performance</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button 
                   onClick={loadTeacherData}
                   disabled={loading}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+                  className="flex-1 sm:flex-initial px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 border border-gray-200"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
                 </button>
                 <button 
                   onClick={handleCreateResult}
-                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center gap-2 font-medium"
+                  className="flex-1 sm:flex-initial px-4 sm:px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium"
                 >
-                  <Plus className="w-5 h-5" /> Record Result
+                  <Plus className="w-5 h-5" />
+                  <span>Record Result</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-[1800px] mx-auto px-6 py-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 space-y-4 md:space-y-6">
+          {/* Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {stats.map((stat, idx) => (
-              <div key={idx} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
+              <div key={idx} className="bg-white rounded-xl p-4 md:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-xs md:text-sm text-gray-600 mb-1">{stat.label}</p>
+                    <p className="text-2xl md:text-3xl font-bold text-gray-900">{stat.value}</p>
                   </div>
-                  <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center shadow-lg`}>
-                    <stat.icon className="w-6 h-6 text-white" />
+                  <div className={`w-10 h-10 md:w-12 md:h-12 ${stat.color} rounded-xl flex items-center justify-center shadow-lg flex-shrink-0`}>
+                    <stat.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
 
+          {/* Search and Filters */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search by student name, registration number, or subject..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search students, subjects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex-1 sm:flex-initial px-4 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors text-sm"
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span>Filters</span>
+                    {(filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all') && (
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    )}
+                  </button>
+                  <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setViewMode('table')}
+                      className={`p-2.5 ${viewMode === 'table' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'} transition-colors`}
+                      title="Table View"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('card')}
+                      className={`p-2.5 ${viewMode === 'card' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'} transition-colors border-l border-gray-200`}
+                      title="Card View"
+                    >
+                      <Grid className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-3 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-2 transition-colors"
-              >
-                <Filter className="w-5 h-5" />
-                Filters
-                {(filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all') && (
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                )}
-              </button>
+
+              {showFilters && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-gray-100">
+                  <select
+                    value={String(filterEducationLevel)}
+                    onChange={(e) => setFilterEducationLevel(e.target.value as EducationLevel | 'all')}
+                    className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  >
+                    <option value="all">All Education Levels</option>
+                    {availableEducationLevels.map((level) => (
+                      <option key={String(level)} value={String(level)}>
+                        {String(level).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  >
+                    <option value="all">All Subjects</option>
+                    {availableSubjects.map((subject) => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name} ({subject.code})
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="approved">Approved</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+              )}
             </div>
-
-            {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
-                <select
-                  value={String(filterEducationLevel)}
-                  onChange={(e) => setFilterEducationLevel(e.target.value as EducationLevel | 'all')}
-                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="all">All Education Levels</option>
-                  {availableEducationLevels.map((level) => (
-                    <option key={String(level)} value={String(level)}>
-                      {String(level).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterSubject}
-                  onChange={(e) => setFilterSubject(e.target.value)}
-                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="all">All Subjects</option>
-                  {availableSubjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name} ({subject.code})
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="all">All Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="approved">Approved</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </div>
-            )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Student Results</h2>
-              <p className="text-sm text-gray-500">{filteredResults.length} of {results.length} results</p>
+          {/* Results Display */}
+          {viewMode === 'card' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <p className="text-sm text-gray-600">
+                  Showing {filteredResults.length} of {results.length} results
+                </p>
+              </div>
+              
+              {filteredResults.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredResults.map((result) => (
+                    <div key={result.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                      {/* Card Header */}
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 border-b border-gray-100">
+                        <div className="flex items-start gap-3">
+                          {result.student.profile_picture ? (
+                            <img 
+                              src={result.student.profile_picture} 
+                              alt={result.student.full_name} 
+                              className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0" 
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-sm">
+                              {result.student.full_name.charAt(0)}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 truncate">{result.student.full_name}</h3>
+                            <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
+                          </div>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')} flex-shrink-0`}>
+                            {result.status ?? 'DRAFT'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Subject:</span>
+                          <span className="font-medium text-gray-900">{result.subject.name}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{result.exam_session.name} - {result.exam_session.term}</span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
+                          <div className="text-center">
+                            <p className="text-xs text-gray-500 mb-1">CA Score</p>
+                            <div className="bg-blue-50 rounded-lg py-2">
+                              <p className="text-lg font-bold text-blue-900">{result.ca_score}</p>
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-gray-500 mb-1">Exam</p>
+                            <div className="bg-purple-50 rounded-lg py-2">
+                              <p className="text-lg font-bold text-purple-900">{result.exam_score}</p>
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs text-gray-500 mb-1">Total</p>
+                            <div className="bg-green-50 rounded-lg py-2">
+                              <p className="text-lg font-bold text-green-900">{result.total_score}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-600">Grade:</span>
+                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold ${getGradeColor(result.grade)}`}>
+                              {result.grade ?? '—'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleViewResult(result)} 
+                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors" 
+                              title="View"
+                            >
+                              <Eye className="w-4 h-4 text-gray-600" />
+                            </button>
+                            <button 
+                              onClick={() => handleEditResult(result)} 
+                              className="p-2 hover:bg-indigo-50 rounded-lg transition-colors" 
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4 text-gray-600" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteResult(result)} 
+                              className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4 text-gray-600" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl p-12 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No results found</h3>
+                  <p className="text-gray-500 mb-6">
+                    {searchTerm || filterSubject !== 'all' || filterStatus !== 'all' || filterEducationLevel !== 'all'
+                      ? 'Try adjusting your filters' 
+                      : 'Start by recording your first result'}
+                  </p>
+                  <button 
+                    onClick={handleCreateResult} 
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all inline-flex items-center gap-2 font-medium"
+                  >
+                    <Plus className="w-5 h-5" /> Record First Result
+                  </button>
+                </div>
+              )}
             </div>
-
-            <div className="relative">
-              {canScrollLeft && (
-                <button
-                  onClick={() => scroll('left')}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 bg-white shadow-2xl rounded-full flex items-center justify-center hover:bg-blue-50 border-2 border-blue-500 transition-all"
-                  aria-label="Scroll left"
-                >
-                  <ChevronLeft className="w-6 h-6 text-blue-600" />
-                </button>
-              )}
-
-              {canScrollRight && (
-                <button
-                  onClick={() => scroll('right')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 shadow-2xl rounded-full flex items-center justify-center hover:shadow-xl border-2 border-white transition-all animate-pulse"
-                  aria-label="Scroll right"
-                >
-                  <ChevronRight className="w-6 h-6 text-white" />
-                </button>
-              )}
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-4 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Student Results</h2>
+                    <p className="text-sm text-gray-500">{filteredResults.length} of {results.length} results</p>
+                  </div>
+                </div>
+              </div>
 
               {filteredResults.length > 0 ? (
-                <div 
-                  ref={tableRef}
-                  className="overflow-x-scroll overflow-y-auto"
-                  style={{ maxHeight: '70vh' }}
-                >
-                  <div style={{ minWidth: '3200px', paddingRight: '30px' }}>
-                    <table className="w-full border-collapse">
-                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100 sticky top-0 z-20 shadow-sm">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '280px' }}>
-                            Student
-                          </th>
-                          <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '200px' }}>
-                            Subject
-                          </th>
-                          <th className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '220px' }}>
-                            Session
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
-                            1st Test
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
-                            2nd Test
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
-                            3rd Test
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 border-b-2 border-blue-300" style={{ minWidth: '130px' }}>
-                            Total CA
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '130px' }}>
-                            Class Work
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
-                            Project
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '130px' }}>
-                            Take Home
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '130px' }}>
-                            Practical
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 border-b-2 border-purple-300" style={{ minWidth: '140px' }}>
-                            Exam
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 border-b-2 border-green-300" style={{ minWidth: '150px' }}>
-                            Total Score
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '120px' }}>
-                            Grade
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200" style={{ minWidth: '150px' }}>
-                            Status
-                          </th>
-                          <th className="px-4 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-20 border-b-2 border-gray-200" style={{ minWidth: '200px' }}>
-                            Actions
-                          </th>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                          Student
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
+                          Subject
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden xl:table-cell">
+                          Session
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 whitespace-nowrap">
+                          CA
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 whitespace-nowrap">
+                          Exam
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 whitespace-nowrap">
+                          Total
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                          Grade
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {filteredResults.map((result, index) => (
+                        <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              {result.student.profile_picture ? (
+                                <img 
+                                  src={result.student.profile_picture} 
+                                  alt={result.student.full_name} 
+                                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                  {result.student.full_name.charAt(0)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 text-sm">{result.student.full_name}</p>
+                                <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
+                            <p className="font-medium text-gray-900 text-sm">{result.subject.name}</p>
+                            <p className="text-xs text-gray-500">{result.subject.code}</p>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap hidden xl:table-cell">
+                            <p className="text-sm text-gray-900">{result.exam_session.name}</p>
+                            <p className="text-xs text-gray-500">{result.exam_session.term}</p>
+                          </td>
+                          <td className="px-4 py-3 text-center bg-blue-50/50 whitespace-nowrap">
+                            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-blue-100 text-blue-900 font-bold text-sm">
+                              {result.ca_score}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center bg-purple-50/50 whitespace-nowrap">
+                            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-purple-100 text-purple-900 font-bold text-sm">
+                              {result.exam_score}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center bg-green-50/50 whitespace-nowrap">
+                            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-green-100 text-green-900 font-bold text-sm">
+                              {result.total_score}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center whitespace-nowrap hidden md:table-cell">
+                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold ${getGradeColor(result.grade)}`}>
+                              {result.grade ?? '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center whitespace-nowrap hidden sm:table-cell">
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
+                              {result.status ?? 'DRAFT'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <button 
+                                onClick={() => handleViewResult(result)} 
+                                className="p-2 hover:bg-blue-50 rounded-lg transition-colors" 
+                                title="View"
+                              >
+                                <Eye className="w-4 h-4 text-gray-600" />
+                              </button>
+                              <button 
+                                onClick={() => handleEditResult(result)} 
+                                className="p-2 hover:bg-indigo-50 rounded-lg transition-colors" 
+                                title="Edit"
+                              >
+                                <Edit className="w-4 h-4 text-gray-600" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteResult(result)} 
+                                className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4 text-gray-600" />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-100">
-                        {filteredResults.map((result, index) => (
-                          <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                            <td className="px-6 py-4 sticky left-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '280px' }}>
-                              <div className="flex items-center gap-3">
-                                {result.student.profile_picture ? (
-                                  <img 
-                                    src={result.student.profile_picture} 
-                                    alt={result.student.full_name} 
-                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                                    {result.student.full_name.charAt(0)}
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <p className="font-medium text-gray-900 truncate">{result.student.full_name}</p>
-                                  <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '200px' }}>
-                              <p className="font-medium text-gray-900 truncate">{result.subject.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{result.subject.code}</p>
-                            </td>
-                            <td className="px-4 py-4 border-b border-gray-100" style={{ minWidth: '220px' }}>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="text-sm text-gray-900 truncate">{result.exam_session.name}</p>
-                                  <p className="text-xs text-gray-500 truncate">{result.exam_session.term}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
-                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
-                                {result.first_test_score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
-                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
-                                {result.second_test_score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
-                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-gray-50 text-gray-900 font-medium">
-                                {result.third_test_score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center bg-blue-50/50 border-b border-blue-100" style={{ minWidth: '130px' }}>
-                              <span className="inline-flex items-center justify-center w-16 h-10 rounded-lg bg-blue-100 text-blue-900 font-bold">
-                                {result.ca_score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '130px' }}>
-                              <span className="text-gray-900 font-medium">{result.continuous_assessment_score}</span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
-                              <span className="text-gray-900 font-medium">{result.project_score}</span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '130px' }}>
-                              <span className="text-gray-900 font-medium">{result.take_home_test_score}</span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '130px' }}>
-                              <span className="text-gray-900 font-medium">{result.practical_score}</span>
-                            </td>
-                            <td className="px-4 py-4 text-center bg-purple-50/50 border-b border-purple-100" style={{ minWidth: '140px' }}>
-                              <span className="inline-flex items-center justify-center w-20 h-10 rounded-lg bg-purple-100 text-purple-900 font-bold">
-                                {result.exam_score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center bg-green-50/50 border-b border-green-100" style={{ minWidth: '150px' }}>
-                              <span className="inline-flex items-center justify-center w-20 h-10 rounded-lg bg-green-100 text-green-900 font-bold text-lg">
-                                {result.total_score}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '120px' }}>
-                              <span className={`inline-flex items-center justify-center w-12 h-12 rounded-lg font-bold text-base ${getGradeColor(result.grade)}`}>
-                                {result.grade ?? '—'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center border-b border-gray-100" style={{ minWidth: '150px' }}>
-                              <span className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
-                                {result.status ?? 'DRAFT'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-center sticky right-0 bg-inherit z-10 border-b border-gray-100" style={{ minWidth: '200px' }}>
-                              <div className="flex items-center justify-center gap-3">
-                                <button 
-                                  onClick={() => handleViewResult(result)} 
-                                  className="p-3 hover:bg-blue-50 rounded-lg transition-colors group" 
-                                  title="View"
-                                >
-                                  <Eye className="w-5 h-5 text-gray-600 group-hover:text-blue-600" />
-                                </button>
-                                <button 
-                                  onClick={() => handleEditResult(result)} 
-                                  className="p-3 hover:bg-indigo-50 rounded-lg transition-colors group" 
-                                  title="Edit"
-                                >
-                                  <Edit className="w-5 h-5 text-gray-600 group-hover:text-indigo-600" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteResult(result)} 
-                                  className="p-3 hover:bg-red-50 rounded-lg transition-colors group" 
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-5 h-5 text-gray-600 group-hover:text-red-600" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="p-12 text-center">
@@ -2652,23 +2677,7 @@ const TeacherResults: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {filteredResults.length > 0 && (
-              <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-blue-200 text-blue-700 rounded-lg font-medium shadow-sm">
-                    <ChevronLeft className="w-5 h-5" />
-                    <span className="text-sm">Scroll horizontally</span>
-                    <ChevronRight className="w-5 h-5" />
-                  </div>
-                  <span className="text-sm text-gray-600">to view all score columns</span>
-                </div>
-                <div className="text-sm font-semibold text-gray-900 bg-white px-4 py-2 rounded-lg border border-gray-200">
-                  Showing {filteredResults.length} of {results.length} results
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         <ResultModalsComponent />
