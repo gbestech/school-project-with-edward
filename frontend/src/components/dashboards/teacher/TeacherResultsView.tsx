@@ -2540,122 +2540,124 @@ const TeacherResults: React.FC = () => {
 
               {filteredResults.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">
-                          Student
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
-                          Subject
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden xl:table-cell">
-                          Session
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 whitespace-nowrap">
-                          CA
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 whitespace-nowrap">
-                          Exam
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 whitespace-nowrap">
-                          Total
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
-                          Grade
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {filteredResults.map((result, index) => (
-                        <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex items-center gap-3">
-                              {result.student.profile_picture ? (
-                                <img 
-                                  src={result.student.profile_picture} 
-                                  alt={result.student.full_name} 
-                                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
-                                  {result.student.full_name.charAt(0)}
-                                </div>
-                              )}
-                              <div className="min-w-0">
-                                <p className="font-medium text-gray-900 text-sm">{result.student.full_name}</p>
-                                <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
-                            <p className="font-medium text-gray-900 text-sm">{result.subject.name}</p>
-                            <p className="text-xs text-gray-500">{result.subject.code}</p>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap hidden xl:table-cell">
-                            <p className="text-sm text-gray-900">{result.exam_session.name}</p>
-                            <p className="text-xs text-gray-500">{result.exam_session.term}</p>
-                          </td>
-                          <td className="px-4 py-3 text-center bg-blue-50/50 whitespace-nowrap">
-                            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-blue-100 text-blue-900 font-bold text-sm">
-                              {result.ca_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center bg-purple-50/50 whitespace-nowrap">
-                            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-purple-100 text-purple-900 font-bold text-sm">
-                              {result.exam_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center bg-green-50/50 whitespace-nowrap">
-                            <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-green-100 text-green-900 font-bold text-sm">
-                              {result.total_score}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap hidden md:table-cell">
-                            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold ${getGradeColor(result.grade)}`}>
-                              {result.grade ?? '—'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap hidden sm:table-cell">
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
-                              {result.status ?? 'DRAFT'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1">
-                              <button 
-                                onClick={() => handleViewResult(result)} 
-                                className="p-2 hover:bg-blue-50 rounded-lg transition-colors" 
-                                title="View"
-                              >
-                                <Eye className="w-4 h-4 text-gray-600" />
-                              </button>
-                              <button 
-                                onClick={() => handleEditResult(result)} 
-                                className="p-2 hover:bg-indigo-50 rounded-lg transition-colors" 
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4 text-gray-600" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteResult(result)} 
-                                className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4 text-gray-600" />
-                              </button>
-                            </div>
-                          </td>
+                  <div style={{ minWidth: '1400px' }}>
+                    <table className="w-full">
+                      <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '250px' }}>
+                            Student
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '180px' }}>
+                            Subject
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '200px' }}>
+                            Session
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-blue-800 uppercase tracking-wider bg-blue-50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                            CA
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-purple-800 uppercase tracking-wider bg-purple-50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                            Exam
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-green-800 uppercase tracking-wider bg-green-50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                            Total
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '100px' }}>
+                            Grade
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '140px' }}>
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" style={{ minWidth: '180px' }}>
+                            Actions
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {filteredResults.map((result, index) => (
+                          <tr key={result.id} className={`hover:bg-blue-50/50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                            <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: '250px' }}>
+                              <div className="flex items-center gap-3">
+                                {result.student.profile_picture ? (
+                                  <img 
+                                    src={result.student.profile_picture} 
+                                    alt={result.student.full_name} 
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 flex-shrink-0" 
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                    {result.student.full_name.charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-medium text-gray-900 text-sm">{result.student.full_name}</p>
+                                  <p className="text-xs text-gray-500 truncate">{result.student.registration_number}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: '180px' }}>
+                              <p className="font-medium text-gray-900 text-sm">{result.subject.name}</p>
+                              <p className="text-xs text-gray-500">{result.subject.code}</p>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: '200px' }}>
+                              <p className="text-sm text-gray-900">{result.exam_session.name}</p>
+                              <p className="text-xs text-gray-500">{result.exam_session.term}</p>
+                            </td>
+                            <td className="px-4 py-3 text-center bg-blue-50/50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-blue-100 text-blue-900 font-bold text-sm">
+                                {result.ca_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center bg-purple-50/50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-purple-100 text-purple-900 font-bold text-sm">
+                                {result.exam_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center bg-green-50/50 whitespace-nowrap" style={{ minWidth: '100px' }}>
+                              <span className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-green-100 text-green-900 font-bold text-sm">
+                                {result.total_score}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap" style={{ minWidth: '100px' }}>
+                              <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold ${getGradeColor(result.grade)}`}>
+                                {result.grade ?? '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap" style={{ minWidth: '140px' }}>
+                              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')}`}>
+                                {result.status ?? 'DRAFT'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap" style={{ minWidth: '180px' }}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button 
+                                  onClick={() => handleViewResult(result)} 
+                                  className="p-2 hover:bg-blue-50 rounded-lg transition-colors" 
+                                  title="View"
+                                >
+                                  <Eye className="w-4 h-4 text-gray-600" />
+                                </button>
+                                <button 
+                                  onClick={() => handleEditResult(result)} 
+                                  className="p-2 hover:bg-indigo-50 rounded-lg transition-colors" 
+                                  title="Edit"
+                                >
+                                  <Edit className="w-4 h-4 text-gray-600" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteResult(result)} 
+                                  className="p-2 hover:bg-red-50 rounded-lg transition-colors" 
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-4 h-4 text-gray-600" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
                 <div className="p-12 text-center">
