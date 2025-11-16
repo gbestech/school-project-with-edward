@@ -816,7 +816,7 @@ import ResultService from '@/services/ResultService';
 import ResultCreateTab from '@/components/dashboards/teacher/ResultCreateTab';
 import useResultActionsManager from '@/components/dashboards/teacher/ResultActionsManager';
 import { toast } from 'react-toastify';
-import { TeacherAssignment, StudentResult } from '@/types/types';
+import { TeacherAssignment, StudentResult, AcademicSession } from '@/types/types';
 import { 
   Plus, Edit, Trash2, Eye, CheckCircle, AlertCircle, RefreshCw, 
   Search, X, FileText, Filter, TrendingUp, Award, Calendar, 
@@ -972,6 +972,22 @@ const TeacherResults: React.FC = () => {
           // Extract exam session info properly
           const examSession = typeof r.exam_session === 'object' ? r.exam_session : null;
           
+          // Ensure academic_session is a string, not an object
+          let academicSessionName = 'N/A';
+          if (examSession?.academic_session_name) {
+            academicSessionName = String(examSession.academic_session_name);
+          } else if (typeof examSession?.academic_session === 'string') {
+            academicSessionName = examSession.academic_session;
+          } else if (typeof examSession?.academic_session === 'object' && examSession.academic_session?.name) {
+            academicSessionName = String(examSession.academic_session.name);
+          } else if (r.academic_session_name) {
+            academicSessionName = String(r.academic_session_name);
+          } else if (r.academic_session) {
+            academicSessionName = typeof r.academic_session === 'string' 
+              ? r.academic_session 
+              : (r.academic_session?.name || 'N/A');
+          }
+          
           return {
             id: r.id ? Number(r.id) : 0,
             student: {
@@ -990,9 +1006,23 @@ const TeacherResults: React.FC = () => {
               id: Number(examSessionId),
               name: examSession?.name ?? r.exam_session_name ?? r.session_name ?? 'N/A',
               term: examSession?.term_display ?? examSession?.term ?? r.term ?? 'N/A',
-              academic_session: examSession?.academic_session_name ?? r.academic_session_name ?? r.academic_session ?? r.academic_year ?? 'N/A',
+              academic_session: academicSessionName, // Now guaranteed to be a string
             },
-            academic_session: r.academic_session.name,
+            academic_session: (() => {
+              const raw = r.academic_session && typeof r.academic_session === 'object' ? r.academic_session : null;
+              return {
+                id: raw?.id || examSession?.academic_session || 0,
+                name: raw?.name || academicSessionName,
+                // provide defaults for required AcademicSession fields
+                start_date: raw?.start_date ?? '',
+                end_date: raw?.end_date ?? '',
+                is_current: raw?.is_current ?? false,
+                is_active: raw?.is_active ?? false,
+                // include common audit fields if expected by the type
+                created_at: raw?.created_at ?? '',
+                updated_at: raw?.updated_at ?? ''
+              } as AcademicSession;
+            })(),
             first_test_score: Number(r.first_test_score || 0),
             second_test_score: Number(r.second_test_score || 0),
             third_test_score: Number(r.third_test_score || 0),
@@ -1084,10 +1114,10 @@ const TeacherResults: React.FC = () => {
   }, [results, searchTerm, filterSubject, filterStatus, filterEducationLevel]);
 
   const stats = useMemo(() => [
-    { label: 'Total', value: String(results.length), icon: FileText, color: 'bg-blue-500' },
-    { label: 'Published', value: String(results.filter(r => r.status === 'PUBLISHED').length), icon: CheckCircle, color: 'bg-green-500' },
-    { label: 'Average', value: String(results.length > 0 ? Math.round(results.reduce((acc, r) => acc + r.total_score, 0) / results.length) : 0), icon: TrendingUp, color: 'bg-purple-500' },
-    { label: 'A Grades', value: String(results.filter(r => r.grade === 'A').length), icon: Award, color: 'bg-amber-500' }
+    { label: 'Total', value: results.length, icon: FileText, color: 'bg-blue-500' },
+    { label: 'Published', value: results.filter(r => r.status === 'PUBLISHED').length, icon: CheckCircle, color: 'bg-green-500' },
+    { label: 'Average', value: results.length > 0 ? Math.round(results.reduce((acc, r) => acc + r.total_score, 0) / results.length) : 0, icon: TrendingUp, color: 'bg-purple-500' },
+    { label: 'A Grades', value: results.filter(r => r.grade === 'A').length, icon: Award, color: 'bg-amber-500' }
   ], [results]);
 
   const handleCreateResult = () => {
@@ -1361,8 +1391,8 @@ const TeacherResults: React.FC = () => {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm text-gray-900 truncate">{result.student?.full_name || 'Unknown'}</h3>
-                            <p className="text-xs text-gray-500 truncate">{result.student?.registration_number || 'N/A'}</p>
+                            <h3 className="font-semibold text-sm text-gray-900 truncate">{String(result.student?.full_name || 'Unknown')}</h3>
+                            <p className="text-xs text-gray-500 truncate">{String(result.student?.registration_number || 'N/A')}</p>
                           </div>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(result.status ?? 'DRAFT')} flex-shrink-0`}>
                             {result.status ?? 'DRAFT'}
@@ -1374,13 +1404,13 @@ const TeacherResults: React.FC = () => {
                       <div className="p-3 space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-gray-600">Subject:</span>
-                          <span className="font-medium text-gray-900 truncate ml-2">{result.subject?.name || 'N/A'}</span>
+                          <span className="font-medium text-gray-900 truncate ml-2">{String(result.subject?.name || 'N/A')}</span>
                         </div>
                         
                         <div className="flex items-center gap-1.5 text-xs text-gray-600">
                           <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
                           <span className="truncate">
-                            {result.exam_session?.term || 'N/A'} - {result.exam_session?.academic_session || result.academic_session?.name || 'N/A'}
+                            {String(result.exam_session?.term || 'N/A')} - {String(result.exam_session?.academic_session || 'N/A')}
                           </span>
                         </div>
 
@@ -1523,18 +1553,18 @@ const TeacherResults: React.FC = () => {
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <p className="font-medium text-gray-900 text-xs truncate">{result.student?.full_name || 'Unknown'}</p>
-                                  <p className="text-xs text-gray-500 truncate">{result.student?.registration_number || 'N/A'}</p>
+                                  <p className="font-medium text-gray-900 text-xs truncate">{String(result.student?.full_name || 'Unknown')}</p>
+                                  <p className="text-xs text-gray-500 truncate">{String(result.student?.registration_number || 'N/A')}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '160px' }}>
-                              <p className="font-medium text-gray-900 text-xs truncate">{result.subject?.name || 'N/A'}</p>
-                              <p className="text-xs text-gray-500">{result.subject?.code || ''}</p>
+                              <p className="font-medium text-gray-900 text-xs truncate">{String(result.subject?.name || 'N/A')}</p>
+                              <p className="text-xs text-gray-500">{String(result.subject?.code || '')}</p>
                             </td>
                             <td className="px-3 py-2.5 whitespace-nowrap" style={{ minWidth: '180px' }}>
-                              <p className="text-xs text-gray-900 truncate">{result.exam_session?.term || 'N/A'}</p>
-                              <p className="text-xs text-gray-500 truncate">{result.exam_session?.academic_session || result.academic_session?.name || 'N/A'}</p>
+                              <p className="text-xs text-gray-900 truncate">{String(result.exam_session?.term || 'N/A')}</p>
+                              <p className="text-xs text-gray-500 truncate">{String(result.exam_session?.academic_session || 'N/A')}</p>
                             </td>
                             <td className="px-3 py-2.5 text-center bg-blue-50/50 whitespace-nowrap" style={{ minWidth: '90px' }}>
                               <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-900 font-bold text-xs">
