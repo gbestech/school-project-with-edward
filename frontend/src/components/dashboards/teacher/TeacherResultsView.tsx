@@ -2862,7 +2862,7 @@ const TeacherResults: React.FC = () => {
               id: Number(examSessionId),
               name: r.exam_session?.academic_session_name ?? r.session?.name ?? r.exam_session_name ?? r.session_name ?? (typeof r.exam_session === 'object' ? r.exam_session?.session_name : null) ?? 'First Term',
               term: r.exam_session?.term ?? r.session?.term ?? r.term ?? r.term_name ?? (typeof r.exam_session === 'object' ? r.exam_session?.term_name : null) ?? 'Term 1',
-              academic_session: r.exam_session?.academic_session?._name ?? r.exam_session?.academic_session?.name ?? r.exam_session?.academic_year ?? r.academic_session_name ?? r.academic_session ?? r.academic_year ?? '2024/2025',
+              academic_session: r.exam_session?.academic_session?.name ?? r.exam_session?.academic_session?.name ?? r.exam_session?.academic_year ?? r.academic_session_name ?? r.academic_session ?? r.academic_year ?? '2024/2025',
             },
             first_test_score: Number(r.first_test_score || 0),
             second_test_score: Number(r.second_test_score || 0),
@@ -3250,7 +3250,7 @@ const TeacherResults: React.FC = () => {
                         
                         <div className="flex items-center gap-1.5 text-xs text-gray-600">
                           <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="truncate">{result.exam_session?.academic_session || 'N/A'} - {result.exam_session?.term || 'N/A'}</span>
+                          <span className="truncate">{result.exam_session?.name || 'N/A'} - {result.exam_session?.term || 'N/A'}</span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
