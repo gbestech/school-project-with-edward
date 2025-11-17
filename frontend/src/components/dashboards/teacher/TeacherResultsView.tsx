@@ -160,7 +160,38 @@ const TeacherResults: React.FC = () => {
           const ca_score = caFromTotalField ?? (caFromSenior > 0 ? caFromSenior : caFromPrimary || 0);
 
           // Extract exam session info properly
+          // const examSession = typeof r.exam_session === 'object' ? r.exam_session : null;
+          
+          // // Ensure academic_session is a string, not an object
+          // let academicSessionName = 'N/A';
+          // if (examSession?.academic_session_name) {
+          //   academicSessionName = String(examSession.academic_session_name);
+          // } else if (typeof examSession?.academic_session === 'string') {
+          //   academicSessionName = examSession.academic_session;
+          // } else if (typeof examSession?.academic_session === 'object' && examSession.academic_session?.name) {
+          //   academicSessionName = String(examSession.academic_session.name);
+          // } else if (r.academic_session_name) {
+          //   academicSessionName = String(r.academic_session_name);
+          // } else if (r.academic_session) {
+          //   academicSessionName = typeof r.academic_session === 'string' 
+          //     ? r.academic_session 
+          //     : (r.academic_session?.name || 'N/A');
+          // }
+          // Extract exam session info properly
           const examSession = typeof r.exam_session === 'object' ? r.exam_session : null;
+          
+          // Extract term display - check both nested and root level
+          const termDisplay = examSession?.term_display 
+            || examSession?.term 
+            || r.term_display 
+            || r.term 
+            || 'N/A';
+          
+          // Extract exam session name
+          const examSessionName = examSession?.name 
+            || r.exam_session_name 
+            || r.session_name 
+            || 'N/A';
           
           // Ensure academic_session is a string, not an object
           let academicSessionName = 'N/A';
