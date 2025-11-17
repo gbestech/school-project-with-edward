@@ -159,28 +159,7 @@ const TeacherResults: React.FC = () => {
           const caFromTotalField = r.total_ca_score !== undefined ? Number(r.total_ca_score) : undefined;
           const ca_score = caFromTotalField ?? (caFromSenior > 0 ? caFromSenior : caFromPrimary || 0);
 
-          // Extract exam session info properly
-          // const examSession = typeof r.exam_session === 'object' ? r.exam_session : null;
-          
-          // // Ensure academic_session is a string, not an object
-          // let academicSessionName = 'N/A';
-          // if (examSession?.academic_session_name) {
-          //   academicSessionName = String(examSession.academic_session_name);
-          // } else if (typeof examSession?.academic_session === 'string') {
-          //   academicSessionName = examSession.academic_session;
-          // } else if (typeof examSession?.academic_session === 'object' && examSession.academic_session?.name) {
-          //   academicSessionName = String(examSession.academic_session.name);
-          // } else if (r.academic_session_name) {
-          //   academicSessionName = String(r.academic_session_name);
-          // } else if (r.academic_session) {
-          //   academicSessionName = typeof r.academic_session === 'string' 
-          //     ? r.academic_session 
-          //     : (r.academic_session?.name || 'N/A');
-          // }
-          // Extract exam session info properly
-          // Extract exam session info properly
-
-          // Debug: Log raw result data for first result
+           // Debug: Log raw result data for first result
           if (allResults.indexOf(r) === 0) {
             console.log('Raw Result Data:', r);
             console.log('exam_session field:', r.exam_session);

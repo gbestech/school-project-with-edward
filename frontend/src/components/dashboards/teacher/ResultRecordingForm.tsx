@@ -2830,10 +2830,11 @@ const ResultRecordingForm = ({
   };
 
   const getGrade = (total: number) => {
-    if (total >= 80) return 'A';
-    if (total >= 70) return 'B';
-    if (total >= 60) return 'C';
-    if (total >= 50) return 'D';
+    if (total >= 70) return 'A';
+    if (total >= 60) return 'B';
+    if (total >= 50) return 'C';
+    if (total >= 45) return 'D';
+    if (total >= 39) return 'E';
     return 'F';
   };
 
@@ -2843,6 +2844,7 @@ const ResultRecordingForm = ({
       'B': 'text-blue-600 bg-blue-100',
       'C': 'text-yellow-600 bg-yellow-100',
       'D': 'text-orange-600 bg-orange-100',
+      'E': 'text-purple-600 bg-purple-100',
       'F': 'text-red-600 bg-red-100'
     };
     return gradeConfig[grade as keyof typeof gradeConfig] || 'text-gray-600 bg-gray-100';
