@@ -198,7 +198,6 @@ const TeacherResults: React.FC = () => {
               term: examSession?.term_display ?? examSession?.term ?? r.term ?? 'N/A',
               academic_session: academicSessionName, // Now guaranteed to be a string
             },
-            term: examSession.term,
             academic_session: (() => {
               const raw = r.academic_session && typeof r.academic_session === 'object' ? r.academic_session : null;
               return {
