@@ -178,6 +178,15 @@ const TeacherResults: React.FC = () => {
           //     : (r.academic_session?.name || 'N/A');
           // }
           // Extract exam session info properly
+          // Extract exam session info properly
+
+          // Debug: Log raw result data for first result
+          if (allResults.indexOf(r) === 0) {
+            console.log('Raw Result Data:', r);
+            console.log('exam_session field:', r.exam_session);
+            console.log('term_display field:', r.term_display);
+            console.log('academic_session field:', r.academic_session);
+          }
           const examSession = typeof r.exam_session === 'object' ? r.exam_session : null;
           
           // Extract term display - check both nested and root level
@@ -186,6 +195,17 @@ const TeacherResults: React.FC = () => {
             || r.term_display 
             || r.term 
             || 'N/A';
+          
+          // Debug: Log term data for first result
+          if (allResults.indexOf(r) === 0) {
+            console.log('Term Debug:', {
+              'r.term_display': r.term_display,
+              'r.term': r.term,
+              'examSession': examSession,
+              'examSession?.term_display': examSession?.term_display,
+              'termDisplay': termDisplay
+            });
+          }
           
           // Extract exam session name
           const examSessionName = examSession?.name 
@@ -208,7 +228,6 @@ const TeacherResults: React.FC = () => {
               ? r.academic_session 
               : (r.academic_session?.name || 'N/A');
           }
-          
           return {
             id: r.id ? Number(r.id) : 0,
             student: {
@@ -226,7 +245,7 @@ const TeacherResults: React.FC = () => {
             exam_session: {
               id: Number(examSessionId),
               name: examSession?.name ?? r.exam_session_name ?? r.session_name ?? 'N/A',
-              term: termDisplay ?? examSession?.term ?? r.term ?? 'N/A',
+              term: termDisplay ?? 'N/A',
               academic_session: academicSessionName, // Now guaranteed to be a string
             },
             academic_session: (() => {

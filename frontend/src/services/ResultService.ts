@@ -252,6 +252,13 @@ private extractSessionInfo(report: any): AcademicSession | undefined {
       status: result.status,
       teacher_remark: result.teacher_remark,
       created_at: result.created_at,
+      exam_session: result.exam_session,
+    term_display: result.term_display,
+    term: result.term,
+    academic_session_name: result.academic_session_name,
+    name: result.name,
+    exam_session_name: result.exam_session_name,
+    session_name: result.session_name,
     }));
   }
 

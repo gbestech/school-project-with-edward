@@ -2373,6 +2373,13 @@ export interface SeniorSecondaryResultData {
   status: ResultStatus;
   created_at: string;
   updated_at: string;
+    term_display: string,
+    term: string,
+    academic_session_name: string,
+    name: string,
+    exam_session_name: string,
+    session_name: string,
+  
 }
 
 export interface SeniorSecondarySessionResultData {
