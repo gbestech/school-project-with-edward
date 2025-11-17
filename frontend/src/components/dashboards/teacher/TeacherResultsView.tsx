@@ -226,7 +226,7 @@ const TeacherResults: React.FC = () => {
             exam_session: {
               id: Number(examSessionId),
               name: examSession?.name ?? r.exam_session_name ?? r.session_name ?? 'N/A',
-              term: examSession?.term_display ?? examSession?.term ?? r.term ?? 'N/A',
+              term: termDisplay ?? examSession?.term ?? r.term ?? 'N/A',
               academic_session: academicSessionName, // Now guaranteed to be a string
             },
             academic_session: (() => {
