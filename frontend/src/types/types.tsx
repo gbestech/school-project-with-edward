@@ -2451,6 +2451,7 @@ export interface StudentResult {
     academic_session: string;
   };
   academic_session: AcademicSession;
+  term: string;
    // Computed
   ca_score: number;
   exam_score: number;
