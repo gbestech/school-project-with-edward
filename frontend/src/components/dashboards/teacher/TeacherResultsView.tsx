@@ -601,7 +601,7 @@ const TeacherResults: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-xs text-gray-600">
                           <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
                           <span className="truncate">
-                            {String(result.exam_session?.term || result.term || 'N/A')} - {String(result.exam_session?.academic_session || 'N/A')}
+                            {String(result.exam_session?.term || 'N/A')} - {String(result.exam_session?.academic_session || 'N/A')}
                           </span>
                         </div>
 
