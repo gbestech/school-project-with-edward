@@ -2253,6 +2253,10 @@ const ResultRecordingForm = ({
 
   const setupEditResult = async () => {
     try {
+      console.log('📝 Edit Result Data:', editResult);
+      console.log('📝 Teacher Remark:', editResult.teacher_remark);
+      console.log('📝 Remarks:', editResult.remarks);
+      
       const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
       const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
       const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
@@ -2335,13 +2339,13 @@ const ResultRecordingForm = ({
           test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
           test3: (editResult.third_test_score ?? editResult.test3 ?? 0).toString(),
           exam: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: editResult.remarks || editResult.teacher_remark || ''
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       } else if (educationLevel.includes('NURSERY')) {
         setAssessmentScores({
           max_marks: (editResult.max_marks ?? 100).toString(),
           mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
-          remarks: editResult.remarks || editResult.teacher_remark || ''
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
         setAssessmentScores({
@@ -2354,7 +2358,7 @@ const ResultRecordingForm = ({
           note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
           ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: editResult.remarks || editResult.teacher_remark || ''
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
         
         if (editResult.physical_development || editResult.height_beginning) {
@@ -2370,7 +2374,7 @@ const ResultRecordingForm = ({
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: editResult.remarks || editResult.teacher_remark || ''
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       }
       
@@ -2390,12 +2394,12 @@ const ResultRecordingForm = ({
   };
 
   useEffect(() => {
-    if (formData.subject && availableClasses.length === 1 && !selectedClass) {
+    if (formData.subject && availableClasses.length === 1 && !selectedClass && !editResult) {
       const onlyClass = availableClasses[0];
       setSelectedClass(String(onlyClass.id));
       setTimeout(() => handleClassChange(String(onlyClass.id)), 0);
     }
-  }, [availableClasses, formData.subject, selectedClass]);
+  }, [availableClasses, formData.subject, selectedClass, editResult]);
 
   const loadTeacherData = async () => {
     try {
@@ -2525,10 +2529,6 @@ const ResultRecordingForm = ({
       let resultData: any;
       if (structure.type === 'senior') {
         resultData = {
-          student: formData.student,
-          subject: formData.subject,
-          exam_session: formData.exam_session,
-          grading_system: gsId ?? undefined,
           first_test_score: parseFloat(assessmentScores.test1?.toString() || '0'),
           second_test_score: parseFloat(assessmentScores.test2?.toString() || '0'),
           third_test_score: parseFloat(assessmentScores.test3?.toString() || '0'),
@@ -2537,12 +2537,19 @@ const ResultRecordingForm = ({
           status: formData.status,
           education_level,
         };
+        
+        // Only include student, subject, exam_session in create mode
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          // In edit mode, only include grading_system if needed
+          if (gsId) resultData.grading_system = gsId;
+        }
       } else {
         resultData = {
-          student: formData.student,
-          subject: formData.subject,
-          exam_session: formData.exam_session,
-          grading_system: gsId ?? undefined,
           ca_score,
           exam_score,
           total_score: totalScore,
@@ -2553,6 +2560,17 @@ const ResultRecordingForm = ({
           class_statistics: classStatistics,
           physical_development: physicalDevelopment
         };
+        
+        // Only include student, subject, exam_session in create mode
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          // In edit mode, only include grading_system if needed
+          if (gsId) resultData.grading_system = gsId;
+        }
       }
 
       if (editResult) {
@@ -2617,7 +2635,6 @@ const ResultRecordingForm = ({
       onClose();
     } catch (error) {
       console.error('Error saving result:', error);
-      toast.error('Failed to save result. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -3080,22 +3097,24 @@ const ResultRecordingForm = ({
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab('single')}
+                disabled={!!editResult}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'single'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                }`}
+                } ${editResult ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <User className="w-4 h-4 inline mr-2" />
                 Single Result
               </button>
               <button
                 onClick={() => setActiveTab('bulk')}
+                disabled={!!editResult}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === 'bulk'
                     ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                }`}
+                } ${editResult ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <FileText className="w-4 h-4 inline mr-2" />
                 Bulk Results
@@ -3122,71 +3141,9 @@ const ResultRecordingForm = ({
                           setFormData(prev => ({ ...prev, subject: e.target.value, student: '' }));
                           handleSubjectChange(e.target.value, !!editResult);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         required
-                      >
-                        <option value="">Select Subject</option>
-                        {subjects.map(subject => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name} ({subject.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Class *
-                      </label>
-                      <select
-                        value={selectedClass}
-                        onChange={(e) => {
-                          setSelectedClass(e.target.value);
-                          setFormData(prev => ({ ...prev, student: '' }));
-                          handleClassChange(e.target.value);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        required
-                        disabled={!formData.subject || availableClasses.length === 0}
-                      >
-                        <option value="">Select Class</option>
-                        {availableClasses.map(classOption => (
-                          <option key={classOption.id} value={classOption.id}>
-                            {classOption.grade_level_name} {classOption.section_name} ({classOption.student_count} students)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Exam Session *
-                      </label>
-                      <select
-                        value={formData.exam_session}
-                        onChange={(e) => setFormData(prev => ({ ...prev, exam_session: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        required
-                      >
-                        <option value="">Select Exam Session</option>
-                        {examSessions.map(session => (
-                          <option key={session.id} value={session.id}>
-                            {session.academic_session?.name} - {session.term} {typeof session.academic_session === 'object' ? session.academic_session?.name : session.academic_session || ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Student *
-                      </label>
-                      <select
-                        value={formData.student}
-                        onChange={(e) => setFormData(prev => ({ ...prev, student: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                        required
-                        disabled={!selectedClass || filteredStudents.length === 0}
+                        disabled={!!editResult || !selectedClass || filteredStudents.length === 0}
                       >
                         <option value="">Select Student</option>
                         {filteredStudents.map(student => (
@@ -3195,6 +3152,11 @@ const ResultRecordingForm = ({
                           </option>
                         ))}
                       </select>
+                      {editResult && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Cannot change student for existing result
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -3236,6 +3198,13 @@ const ResultRecordingForm = ({
                   )}
 
                   <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={handleClose}
+                      className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900"
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="submit"
                       disabled={saving}
@@ -3313,7 +3282,7 @@ const ResultRecordingForm = ({
                         <option value="">Select Exam Session</option>
                         {examSessions.map(session => (
                           <option key={session.id} value={session.id}>
-                            {session.academic_session?.name} - {session.term} {typeof session.academic_session === 'object' ? session.academic_session?.name : session.academic_session || ''}
+                            {session.academic_session?.name} - {session.term}
                           </option>
                         ))}
                       </select>
