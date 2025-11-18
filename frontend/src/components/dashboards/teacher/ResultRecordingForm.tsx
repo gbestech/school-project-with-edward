@@ -2253,33 +2253,18 @@ const ResultRecordingForm = ({
 
   const setupEditResult = async () => {
     try {
-      console.log('📝 Full Edit Result Data:', JSON.stringify(editResult, null, 2));
+      console.log('📝 Edit Result Data:', editResult);
+      console.log('📝 Teacher Remark:', editResult.teacher_remark);
+      console.log('📝 Remarks:', editResult.remarks);
       
-      let studentId = null;
-      if (editResult.student?.id) studentId = editResult.student.id;
-      else if (editResult.student_id) studentId = editResult.student_id;
-      else if (typeof editResult.student === 'number' || typeof editResult.student === 'string') studentId = editResult.student;
-      
-      let subjectId = null;
-      if (editResult.subject?.id) subjectId = editResult.subject.id;
-      else if (editResult.subject_id) subjectId = editResult.subject_id;
-      else if (typeof editResult.subject === 'number' || typeof editResult.subject === 'string') subjectId = editResult.subject;
-      
-      let examSessionId = null;
-      if (editResult.exam_session?.id) examSessionId = editResult.exam_session.id;
-      else if (editResult.exam_session_id) examSessionId = editResult.exam_session_id;
-      else if (typeof editResult.exam_session === 'number' || typeof editResult.exam_session === 'string') examSessionId = editResult.exam_session;
-      
-      console.log('📝 Extracted IDs:', { studentId, subjectId, examSessionId });
-      
-      const studentIdStr = studentId?.toString() || '';
-      const subjectIdStr = subjectId?.toString() || '';
-      const examSessionIdStr = examSessionId?.toString() || '';
+      const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
+      const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
+      const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
       
       setFormData({
-        student: studentIdStr,
-        subject: subjectIdStr,
-        exam_session: examSessionIdStr,
+        student: studentId,
+        subject: subjectId,
+        exam_session: examSessionId,
         status: editResult.status || 'DRAFT'
       });
       
@@ -2293,10 +2278,8 @@ const ResultRecordingForm = ({
         setSelectedEducationLevel(normalizedLevel);
       }
       
-      if (subjectIdStr) {
-        await handleSubjectChange(subjectIdStr, true);
-        
-        const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectIdStr));
+      if (subjectId) {
+        const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
         
         if (subjectAssignments.length > 0) {
           if (!normalizedLevel) {
@@ -2307,13 +2290,6 @@ const ResultRecordingForm = ({
               .trim();
             setSelectedEducationLevel(normalizedLevel);
           }
-          
-          const upperLevel = (subjectAssignments[0].education_level || '')
-            .toString()
-            .replace(/\s+/g, '_')
-            .toUpperCase();
-          const configForLevel = scoringConfigs.find((c: any) => c.education_level === upperLevel && (c.is_default || c.is_active));
-          setActiveScoringConfig(configForLevel || null);
           
           const classOptions = subjectAssignments.map(assignment => ({
             id: assignment.section_id,
@@ -2326,21 +2302,14 @@ const ResultRecordingForm = ({
           
           setAvailableClasses(classOptions);
           
-          if (studentIdStr) {
-            console.log('📝 Looking for student:', studentIdStr);
+          if (studentId) {
             try {
               const studentClassPromises = classOptions.map(async (classOption) => {
                 try {
                   const classStudents = await TeacherDashboardService.getStudentsForClass(classOption.id);
-                  const studentExists = classStudents.find((s: Student) => 
-                    s.id.toString() === studentIdStr || 
-                    s.id === parseInt(studentIdStr)
-                  );
-                  if (studentExists) {
-                    console.log('📝 Found student in class:', classOption.name);
-                  }
+                  const studentExists = classStudents.find((s: Student) => s.id.toString() === studentId);
                   return studentExists ? classOption : null;
-                } catch (error) {
+                } catch {
                   return null;
                 }
               });
@@ -2350,38 +2319,19 @@ const ResultRecordingForm = ({
               
               if (studentClass) {
                 const classId = studentClass.id.toString();
-                console.log('📝 Setting class:', classId);
                 setSelectedClass(classId);
                 
                 const studentsData = await TeacherDashboardService.getStudentsForClass(studentClass.id);
-                console.log('📝 Loaded students:', studentsData.length);
                 setFilteredStudents(studentsData);
-              } else {
-                console.warn('📝 Student not found, loading first class');
-                if (classOptions.length > 0) {
-                  const firstClass = classOptions[0];
-                  setSelectedClass(firstClass.id.toString());
-                  const studentsData = await TeacherDashboardService.getStudentsForClass(firstClass.id);
-                  setFilteredStudents(studentsData);
-                }
               }
             } catch (error) {
-              console.error('Error finding student:', error);
+              console.error('Error finding student class:', error);
             }
           }
         }
       }
       
       const educationLevel = String(editResult.education_level || '').toUpperCase();
-      const extractedRemarks = 
-        editResult.teacher_remark || 
-        editResult.remarks || 
-        editResult.comment || 
-        editResult.teacher_comment || 
-        editResult.remark ||
-        '';
-      
-      console.log('📝 Extracted remarks:', extractedRemarks);
       
       if (educationLevel.includes('SENIOR')) {
         setAssessmentScores({
@@ -2389,26 +2339,26 @@ const ResultRecordingForm = ({
           test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
           test3: (editResult.third_test_score ?? editResult.test3 ?? 0).toString(),
           exam: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: extractedRemarks
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       } else if (educationLevel.includes('NURSERY')) {
         setAssessmentScores({
           max_marks: (editResult.max_marks ?? 100).toString(),
-          mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? 0).toString(),
-          remarks: extractedRemarks
+          mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
         setAssessmentScores({
-          ca_score: (editResult.ca_score ?? 0).toString(),
-          take_home_marks: (editResult.take_home_marks ?? 0).toString(),
-          take_home_test: (editResult.take_home_test ?? 0).toString(),
-          appearance_marks: (editResult.appearance_marks ?? 0).toString(),
-          practical_marks: (editResult.practical_marks ?? 0).toString(),
-          project_marks: (editResult.project_marks ?? 0).toString(),
-          note_copying_marks: (editResult.note_copying_marks ?? 0).toString(),
-          ca_total: (editResult.ca_total ?? 0).toString(),
-          exam_score: (editResult.exam_score ?? 0).toString(),
-          remarks: extractedRemarks
+          ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
+          take_home_marks: (editResult.take_home_marks ?? editResult.take_home_score ?? 0).toString(),
+          take_home_test: (editResult.take_home_test ?? editResult.take_home_test_score ?? 0).toString(),
+          appearance_marks: (editResult.appearance_marks ?? editResult.appearance_score ?? 0).toString(),
+          practical_marks: (editResult.practical_marks ?? editResult.practical_score ?? 0).toString(),
+          project_marks: (editResult.project_marks ?? editResult.project_score ?? 0).toString(),
+          note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
+          ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
+          exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
         
         if (editResult.physical_development || editResult.height_beginning) {
@@ -2422,9 +2372,9 @@ const ResultRecordingForm = ({
         }
       } else {
         setAssessmentScores({
-          ca_score: (editResult.ca_score ?? 0).toString(),
-          exam_score: (editResult.exam_score ?? 0).toString(),
-          remarks: extractedRemarks
+          ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
+          exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       }
       
@@ -2433,13 +2383,12 @@ const ResultRecordingForm = ({
           class_average: editResult.class_statistics?.class_average ?? editResult.class_average ?? 0,
           highest_in_class: editResult.class_statistics?.highest_in_class ?? editResult.highest_in_class ?? 0,
           lowest_in_class: editResult.class_statistics?.lowest_in_class ?? editResult.lowest_in_class ?? 0,
-          class_position: editResult.class_statistics?.class_position ?? editResult.class_position ?? 0,
+          class_position: editResult.class_statistics?.class_position ?? editResult.class_position ?? editResult.position ?? 0,
           total_students: editResult.class_statistics?.total_students ?? editResult.total_students ?? 0
         });
       }
-      
     } catch (error) {
-      console.error('❌ Error setting up edit:', error);
+      console.error('Error setting up edit result:', error);
       toast.error('Failed to load edit data');
     }
   };
@@ -2457,7 +2406,9 @@ const ResultRecordingForm = ({
       setLoading(true);
       
       const teacherId = await TeacherDashboardService.getTeacherIdFromUser(user);
-      if (!teacherId) throw new Error('Teacher ID not found');
+      if (!teacherId) {
+        throw new Error('Teacher ID not found');
+      }
       setCurrentTeacherId(teacherId);
 
       const subjects = await TeacherDashboardService.getTeacherSubjects(teacherId);
@@ -2521,7 +2472,7 @@ const ResultRecordingForm = ({
           if (!Number.isNaN(firstId)) setGradingSystemId(firstId);
         }
       } catch (e) {
-        console.warn('Could not load grading systems.', e);
+        console.warn('Could not load grading systems; will rely on backend default.', e);
       }
 
     } catch (error) {
@@ -2587,12 +2538,14 @@ const ResultRecordingForm = ({
           education_level,
         };
         
+        // Only include student, subject, exam_session in create mode
         if (!editResult) {
           resultData.student = formData.student;
           resultData.subject = formData.subject;
           resultData.exam_session = formData.exam_session;
           resultData.grading_system = gsId ?? undefined;
         } else {
+          // In edit mode, only include grading_system if needed
           if (gsId) resultData.grading_system = gsId;
         }
       } else {
@@ -2608,12 +2561,14 @@ const ResultRecordingForm = ({
           physical_development: physicalDevelopment
         };
         
+        // Only include student, subject, exam_session in create mode
         if (!editResult) {
           resultData.student = formData.student;
           resultData.subject = formData.subject;
           resultData.exam_session = formData.exam_session;
           resultData.grading_system = gsId ?? undefined;
         } else {
+          // In edit mode, only include grading_system if needed
           if (gsId) resultData.grading_system = gsId;
         }
       }
@@ -3186,85 +3141,6 @@ const ResultRecordingForm = ({
                           setFormData(prev => ({ ...prev, subject: e.target.value, student: '' }));
                           handleSubjectChange(e.target.value, !!editResult);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult}
-                      >
-                        <option value="">Select Subject</option>
-                        {subjects.map(subject => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name} ({subject.code})
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change subject for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Class *
-                      </label>
-                      <select
-                        value={selectedClass}
-                        onChange={(e) => {
-                          setSelectedClass(e.target.value);
-                          setFormData(prev => ({ ...prev, student: '' }));
-                          handleClassChange(e.target.value);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult || !formData.subject || availableClasses.length === 0}
-                      >
-                        <option value="">Select Class</option>
-                        {availableClasses.map(classOption => (
-                          <option key={classOption.id} value={classOption.id}>
-                            {classOption.grade_level_name} {classOption.section_name} ({classOption.student_count} students)
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change class for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Exam Session *
-                      </label>
-                      <select
-                        value={formData.exam_session}
-                        onChange={(e) => setFormData(prev => ({ ...prev, exam_session: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult}
-                      >
-                        <option value="">Select Exam Session</option>
-                        {examSessions.map(session => (
-                          <option key={session.id} value={session.id}>
-                            {session.academic_session?.name} - {session.term}
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change exam session for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Student *
-                      </label>
-                      <select
-                        value={formData.student}
-                        onChange={(e) => setFormData(prev => ({ ...prev, student: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         required
                         disabled={!!editResult || !selectedClass || filteredStudents.length === 0}
