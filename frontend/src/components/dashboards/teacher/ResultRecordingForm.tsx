@@ -2254,6 +2254,8 @@ const ResultRecordingForm = ({
   const setupEditResult = async () => {
     try {
       console.log('📝 Edit Result Data:', editResult);
+      console.log('📝 Teacher Remark:', editResult.teacher_remark);
+      console.log('📝 Remarks:', editResult.remarks);
       
       const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
       const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
@@ -2267,26 +2269,27 @@ const ResultRecordingForm = ({
       });
       
       let normalizedLevel = '';
+      if (editResult.education_level) {
+        normalizedLevel = (editResult.education_level || '')
+          .toString()
+          .replace(/_/g, ' ')
+          .toLowerCase()
+          .trim();
+        setSelectedEducationLevel(normalizedLevel);
+      }
+      
       if (subjectId) {
         const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
         
         if (subjectAssignments.length > 0) {
-          // CRITICAL: Use education level from assignment, NOT from editResult
-          normalizedLevel = (subjectAssignments[0].education_level || '')
-            .toString()
-            .replace(/_/g, ' ')
-            .toLowerCase()
-            .trim();
-          setSelectedEducationLevel(normalizedLevel);
-          
-          const upperLevel = (subjectAssignments[0].education_level || '')
-            .toString()
-            .replace(/\s+/g, '_')
-            .toUpperCase();
-          const configForLevel = scoringConfigs.find((c: any) => c.education_level === upperLevel && (c.is_default || c.is_active));
-          setActiveScoringConfig(configForLevel || null);
-          
-          console.log('📝 Education level from assignment:', normalizedLevel);
+          if (!normalizedLevel) {
+            normalizedLevel = (subjectAssignments[0].education_level || '')
+              .toString()
+              .replace(/_/g, ' ')
+              .toLowerCase()
+              .trim();
+            setSelectedEducationLevel(normalizedLevel);
+          }
           
           const classOptions = subjectAssignments.map(assignment => ({
             id: assignment.section_id,
@@ -2328,39 +2331,23 @@ const ResultRecordingForm = ({
         }
       }
       
-      // Use the education level from assignment (normalizedLevel), NOT from editResult
-      const educationLevel = String(normalizedLevel || '').toUpperCase();
-      
-      // Extract remarks from all possible fields
-      const extractedRemarks = 
-        editResult.teacher_remark || 
-        editResult.remarks || 
-        editResult.comment || 
-        editResult.teacher_comment || 
-        editResult.remark ||
-        '';
-      
-      console.log('📝 Using education level for field structure:', educationLevel);
-      console.log('📝 Extracted remarks:', extractedRemarks);
+      const educationLevel = String(editResult.education_level || '').toUpperCase();
       
       if (educationLevel.includes('SENIOR')) {
-        console.log('📝 Loading SENIOR SECONDARY fields');
         setAssessmentScores({
           test1: (editResult.first_test_score ?? editResult.test1 ?? 0).toString(),
           test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
           test3: (editResult.third_test_score ?? editResult.test3 ?? 0).toString(),
           exam: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: extractedRemarks
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       } else if (educationLevel.includes('NURSERY')) {
-        console.log('📝 Loading NURSERY fields');
         setAssessmentScores({
           max_marks: (editResult.max_marks ?? 100).toString(),
           mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
-          remarks: extractedRemarks
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
-        console.log('📝 Loading PRIMARY/JUNIOR fields');
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           take_home_marks: (editResult.take_home_marks ?? editResult.take_home_score ?? 0).toString(),
@@ -2371,7 +2358,7 @@ const ResultRecordingForm = ({
           note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
           ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: extractedRemarks
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
         
         if (editResult.physical_development || editResult.height_beginning) {
@@ -2384,11 +2371,10 @@ const ResultRecordingForm = ({
           });
         }
       } else {
-        console.log('📝 Loading DEFAULT fields');
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: extractedRemarks
+          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
         });
       }
       
@@ -2552,12 +2538,14 @@ const ResultRecordingForm = ({
           education_level,
         };
         
+        // Only include student, subject, exam_session in create mode
         if (!editResult) {
           resultData.student = formData.student;
           resultData.subject = formData.subject;
           resultData.exam_session = formData.exam_session;
           resultData.grading_system = gsId ?? undefined;
         } else {
+          // In edit mode, only include grading_system if needed
           if (gsId) resultData.grading_system = gsId;
         }
       } else {
@@ -2573,12 +2561,14 @@ const ResultRecordingForm = ({
           physical_development: physicalDevelopment
         };
         
+        // Only include student, subject, exam_session in create mode
         if (!editResult) {
           resultData.student = formData.student;
           resultData.subject = formData.subject;
           resultData.exam_session = formData.exam_session;
           resultData.grading_system = gsId ?? undefined;
         } else {
+          // In edit mode, only include grading_system if needed
           if (gsId) resultData.grading_system = gsId;
         }
       }
@@ -3151,85 +3141,6 @@ const ResultRecordingForm = ({
                           setFormData(prev => ({ ...prev, subject: e.target.value, student: '' }));
                           handleSubjectChange(e.target.value, !!editResult);
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult}
-                      >
-                        <option value="">Select Subject</option>
-                        {subjects.map(subject => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name} ({subject.code})
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change subject for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Class *
-                      </label>
-                      <select
-                        value={selectedClass}
-                        onChange={(e) => {
-                          setSelectedClass(e.target.value);
-                          setFormData(prev => ({ ...prev, student: '' }));
-                          handleClassChange(e.target.value);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult || !formData.subject || availableClasses.length === 0}
-                      >
-                        <option value="">Select Class</option>
-                        {availableClasses.map(classOption => (
-                          <option key={classOption.id} value={classOption.id}>
-                            {classOption.grade_level_name} {classOption.section_name} ({classOption.student_count} students)
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change class for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Exam Session *
-                      </label>
-                      <select
-                        value={formData.exam_session}
-                        onChange={(e) => setFormData(prev => ({ ...prev, exam_session: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult}
-                      >
-                        <option value="">Select Exam Session</option>
-                        {examSessions.map(session => (
-                          <option key={session.id} value={session.id}>
-                            {session.academic_session?.name} - {session.term}
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change exam session for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Student *
-                      </label>
-                      <select
-                        value={formData.student}
-                        onChange={(e) => setFormData(prev => ({ ...prev, student: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         required
                         disabled={!!editResult || !selectedClass || filteredStudents.length === 0}
