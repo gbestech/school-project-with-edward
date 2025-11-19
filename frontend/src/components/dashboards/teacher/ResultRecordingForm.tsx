@@ -4126,157 +4126,161 @@ const ResultRecordingForm = ({
   };
 
   const handleSingleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!validateSingleForm()) return;
+  try {
+    setSaving(true);
     
-    if (!validateSingleForm()) return;
-
-    try {
-      setSaving(true);
-      
-      let gsId = gradingSystemId;
-      if (gsId == null) {
-        try {
-          const gsResp = await ResultService.getGradingSystems();
-          const gsArray = Array.isArray(gsResp) ? gsResp : (gsResp?.results || gsResp?.data || []);
-          if (gsArray && gsArray.length) {
-            const firstId = Number(gsArray[0].id || gsArray[0].pk || gsArray[0]);
-            if (!Number.isNaN(firstId)) {
-              gsId = firstId;
-              setGradingSystemId(firstId);
-            }
-          }
-        } catch {}
-      }
-      
-      const totalScore = calculateTotalScore(assessmentScores, selectedEducationLevel);
-      const structure = getAssessmentStructure(selectedEducationLevel);
-      let ca_score = 0;
-      let exam_score = 0;
-      let education_level = normalizeEducationLevelForApi(selectedEducationLevel);
-
-      if (structure.type === 'senior') {
-        ca_score =
-          parseFloat(assessmentScores.test1?.toString() || '0') +
-          parseFloat(assessmentScores.test2?.toString() || '0') +
-          parseFloat(assessmentScores.test3?.toString() || '0');
-        exam_score = parseFloat(assessmentScores.exam?.toString() || '0');
-      } else if (structure.type === 'nursery') {
-        ca_score = parseFloat(assessmentScores.mark_obtained?.toString() || '0');
-        exam_score = 0;
-      } else {
-        ca_score = parseFloat(assessmentScores.ca_total?.toString() || assessmentScores.ca_score?.toString() || '0');
-        exam_score = parseFloat(assessmentScores.exam_score?.toString() || '0');
-      }
-
-      let resultData: any;
-      if (structure.type === 'senior') {
-        resultData = {
-          first_test_score: parseFloat(assessmentScores.test1?.toString() || '0'),
-          second_test_score: parseFloat(assessmentScores.test2?.toString() || '0'),
-          third_test_score: parseFloat(assessmentScores.test3?.toString() || '0'),
-          exam_score: parseFloat(assessmentScores.exam?.toString() || '0'),
-          teacher_remark: assessmentScores.remarks || '',
-          status: formData.status,
-          education_level,
-        };
-        
-        if (!editResult) {
-          resultData.student = formData.student;
-          resultData.subject = formData.subject;
-          resultData.exam_session = formData.exam_session;
-          resultData.grading_system = gsId ?? undefined;
-        } else {
-          if (gsId) resultData.grading_system = gsId;
-        }
-      } else {
-        resultData = {
-          ca_score,
-          exam_score,
-          total_score: totalScore,
-          grade: getGrade(totalScore),
-          remarks: assessmentScores.remarks || '',
-          status: formData.status,
-          education_level,
-          class_statistics: classStatistics,
-          physical_development: physicalDevelopment
-        };
-        
-        if (!editResult) {
-          resultData.student = formData.student;
-          resultData.subject = formData.subject;
-          resultData.exam_session = formData.exam_session;
-          resultData.grading_system = gsId ?? undefined;
-        } else {
-          if (gsId) resultData.grading_system = gsId;
-        }
-      }
-
-      if (editResult) {
-        const candidates = [
-          editResult?.id,
-          editResult?.pk,
-          editResult?.result_id,
-          editResult?.student_result_id,
-          editResult?.studentResultId,
-          editResult?.result?.id
-        ];
-        
-        const numeric = candidates
-          .map((v) => (v !== null && v !== undefined ? Number(v) : NaN))
-          .find((n) => Number.isFinite(n) && n > 0);
-        const safeId = numeric ? String(numeric) : '';
-        
-        let finalId = safeId;
-        if (!finalId) {
-          try {
-            const resolvedId = await ResultService.findResultIdByComposite({
-              student: formData.student,
-              subject: formData.subject,
-              exam_session: formData.exam_session,
-              education_level: education_level,
-            });
-            if (resolvedId) {
-              finalId = resolvedId;
-            }
-          } catch (e) {
-            console.warn('Composite id lookup failed', e);
+    let gsId = gradingSystemId;
+    if (gsId == null) {
+      try {
+        const gsResp = await ResultService.getGradingSystems();
+        const gsArray = Array.isArray(gsResp) ? gsResp : (gsResp?.results || gsResp?.data || []);
+        if (gsArray && gsArray.length) {
+          const firstId = Number(gsArray[0].id || gsArray[0].pk || gsArray[0]);
+          if (!Number.isNaN(firstId)) {
+            gsId = firstId;
+            setGradingSystemId(firstId);
           }
         }
-        if (!finalId) {
-          toast.error('Cannot update: missing result ID. Please refresh and try again.');
-          throw new Error('Invalid result id for update');
-        }
-        await ResultService.updateStudentResult(finalId, resultData, education_level);
-        toast.success('Result updated successfully!');
-      } else {
-        try {
-          await ResultService.createStudentResult(resultData, education_level);
-          toast.success('Result recorded successfully!');
-        } catch (error: any) {
-          console.error('Error creating result:', error);
-          
-          if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
-            const errorMessage = error.response.data.non_field_errors[0];
-            if (errorMessage.includes('unique')) {
-              toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
-              return;
-            }
-          }
-          
-          const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
-          toast.error(errorMessage);
-          throw error;
-        }
-      }
-
-      onResultCreated();
-      onClose();
-    } catch (error) {
-      console.error('Error saving result:', error);
-    } finally {
-      setSaving(false);
+      } catch {}
     }
-  };
+    
+    const totalScore = calculateTotalScore(assessmentScores, selectedEducationLevel);
+    const structure = getAssessmentStructure(selectedEducationLevel);
+    let ca_score = 0;
+    let exam_score = 0;
+    let education_level = normalizeEducationLevelForApi(selectedEducationLevel);
+    
+    if (structure.type === 'senior') {
+      ca_score =
+        parseFloat(assessmentScores.test1?.toString() || '0') +
+        parseFloat(assessmentScores.test2?.toString() || '0') +
+        parseFloat(assessmentScores.test3?.toString() || '0');
+      exam_score = parseFloat(assessmentScores.exam?.toString() || '0');
+    } else if (structure.type === 'nursery') {
+      ca_score = parseFloat(assessmentScores.mark_obtained?.toString() || '0');
+      exam_score = 0;
+    } else {
+      ca_score = parseFloat(assessmentScores.ca_total?.toString() || assessmentScores.ca_score?.toString() || '0');
+      exam_score = parseFloat(assessmentScores.exam_score?.toString() || '0');
+    }
+    
+    let resultData: any;
+    if (structure.type === 'senior') {
+      resultData = {
+        first_test_score: parseFloat(assessmentScores.test1?.toString() || '0'),
+        second_test_score: parseFloat(assessmentScores.test2?.toString() || '0'),
+        third_test_score: parseFloat(assessmentScores.test3?.toString() || '0'),
+        exam_score: parseFloat(assessmentScores.exam?.toString() || '0'),
+        teacher_remark: assessmentScores.remarks || '',
+        status: formData.status,
+        education_level,
+      };
+      
+      // CRITICAL FIX: Only include unique constraint fields for CREATE
+      if (!editResult) {
+        resultData.student = formData.student;
+        resultData.subject = formData.subject;
+        resultData.exam_session = formData.exam_session;
+        resultData.grading_system = gsId ?? undefined;
+      } else {
+        // For UPDATE: only include grading_system if it's set
+        if (gsId) resultData.grading_system = gsId;
+      }
+    } else {
+      resultData = {
+        ca_score,
+        exam_score,
+        total_score: totalScore,
+        grade: getGrade(totalScore),
+        remarks: assessmentScores.remarks || '',
+        status: formData.status,
+        education_level,
+        class_statistics: classStatistics,
+        physical_development: physicalDevelopment
+      };
+      
+      // CRITICAL FIX: Only include unique constraint fields for CREATE
+      if (!editResult) {
+        resultData.student = formData.student;
+        resultData.subject = formData.subject;
+        resultData.exam_session = formData.exam_session;
+        resultData.grading_system = gsId ?? undefined;
+      } else {
+        // For UPDATE: only include grading_system if it's set
+        if (gsId) resultData.grading_system = gsId;
+      }
+    }
+    
+    if (editResult) {
+      const candidates = [
+        editResult?.id,
+        editResult?.pk,
+        editResult?.result_id,
+        editResult?.student_result_id,
+        editResult?.studentResultId,
+        editResult?.result?.id
+      ];
+      
+      const numeric = candidates
+        .map((v) => (v !== null && v !== undefined ? Number(v) : NaN))
+        .find((n) => Number.isFinite(n) && n > 0);
+      const safeId = numeric ? String(numeric) : '';
+      
+      let finalId = safeId;
+      if (!finalId) {
+        try {
+          const resolvedId = await ResultService.findResultIdByComposite({
+            student: formData.student,
+            subject: formData.subject,
+            exam_session: formData.exam_session,
+            education_level: education_level,
+          });
+          if (resolvedId) {
+            finalId = resolvedId;
+          }
+        } catch (e) {
+          console.warn('Composite id lookup failed', e);
+        }
+      }
+      if (!finalId) {
+        toast.error('Cannot update: missing result ID. Please refresh and try again.');
+        throw new Error('Invalid result id for update');
+      }
+      
+      await ResultService.updateStudentResult(finalId, resultData, education_level);
+      toast.success('Result updated successfully!');
+    } else {
+      try {
+        await ResultService.createStudentResult(resultData, education_level);
+        toast.success('Result recorded successfully!');
+      } catch (error: any) {
+        console.error('Error creating result:', error);
+        
+        if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+          const errorMessage = error.response.data.non_field_errors[0];
+          if (errorMessage.includes('unique')) {
+            toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+            return;
+          }
+        }
+        
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
+        toast.error(errorMessage);
+        throw error;
+      }
+    }
+    
+    onResultCreated();
+    onClose();
+  } catch (error) {
+    console.error('Error saving result:', error);
+  } finally {
+    setSaving(false);
+  }
+};
 
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
