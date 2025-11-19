@@ -455,10 +455,10 @@ const ViewResultModal: React.FC<ViewResultModalProps> = ({
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Session</span>
                 </div>
                 <p className="text-sm font-medium text-green-600 dark:text-green-400 truncate">
-                  {result.exam_session.name}
+                  {result.exam_session.academic_session}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {result.exam_session.term} - {result.exam_session.academic_session}
+                  {result.exam_session.term} Term - {result.exam_session.academic_session}
                 </p>
               </div>
             </div>
@@ -525,6 +525,13 @@ const ViewResultModal: React.FC<ViewResultModalProps> = ({
                     {result.practical_score}
                   </p>
                 </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-center">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Appearance</p>
+                  <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                    {result.appearance_score}
+                  </p>
+                </div>
+
                 <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400">Notes</p>
                   <p className="text-sm font-bold text-purple-600 dark:text-purple-400">

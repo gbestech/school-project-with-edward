@@ -2477,6 +2477,7 @@ export interface StudentResult {
   continuous_assessment_score?: number;
   take_home_test_score?: number;
   practical_score?: number;
+  appearance_score?: number;
   project_score?: number;
   note_copying_score?: number;
 }
