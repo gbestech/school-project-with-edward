@@ -64,6 +64,7 @@ interface SubjectResult {
     code: string;
   };
   total_ca_score: number;
+  ca_total?: number;
   exam_score: number;
   total_score: number;
   percentage: number;
@@ -226,7 +227,7 @@ const EnhancedResultsManagement: React.FC = () => {
       subject_results: [{
         id: result.id,
         subject: result.subject,
-        total_ca_score: result.ca_total || result.total_ca_score || result.continuous_assessment_score || result.ca_total || 0,
+        total_ca_score: result.ca_total || result.total_ca_score || 0,
         exam_score: result.exam_score || 0,
         total_score: result.total_score || 0,
         percentage: result.percentage || result.total_percentage || 0,
@@ -1107,7 +1108,7 @@ const EnhancedResultsManagement: React.FC = () => {
                               {subject.subject?.name}
                             </td>
                             <td className="px-4 py-2 text-center text-sm text-gray-900">
-                              {subject.total_ca_score ?? 'N/A'}
+                              {subject.ca_total ?? subject.total_ca_score ?? 'N/A'}
                             </td>
                             <td className="px-4 py-2 text-center text-sm text-gray-900">
                               {subject.exam_score ?? 'N/A'}
