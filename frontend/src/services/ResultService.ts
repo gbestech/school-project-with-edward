@@ -839,8 +839,17 @@ async debugTermReports() {
     if (!endpoint) {
       throw new Error(`Unsupported education level: ${educationLevel}`);
     }
-    
-    return api.put(endpoint, data);
+    console.log('📤 ResultService.updateStudentResult:', {
+    endpoint,
+    resultId,
+    educationLevel,
+    dataKeys: Object.keys(data),
+    data
+  });
+  
+    const response = await api.put(endpoint, data);
+    console.log('📥 ResultService.updateStudentResult RESPONSE:', response);
+     return response;
   }
 
   async deleteStudentResult(resultId: string, educationLevel: string) {

@@ -4215,6 +4215,7 @@ const ResultRecordingForm = ({
     }
     
     if (editResult) {
+      
       const candidates = [
         editResult?.id,
         editResult?.pk,
@@ -4230,6 +4231,13 @@ const ResultRecordingForm = ({
       const safeId = numeric ? String(numeric) : '';
       
       let finalId = safeId;
+
+ console.log('🚀 UPDATE REQUEST:', {
+        url: `${education_level}/results/${finalId}/`,
+        method: 'PUT',
+        data: resultData
+      });
+
       if (!finalId) {
         try {
           const resolvedId = await ResultService.findResultIdByComposite({
@@ -4250,7 +4258,18 @@ const ResultRecordingForm = ({
         throw new Error('Invalid result id for update');
       }
       
-      await ResultService.updateStudentResult(finalId, resultData, education_level);
+      const response = await ResultService.updateStudentResult(finalId, resultData, education_level);
+
+      console.log('📥 UPDATE RESPONSE:', response);
+
+const verification = await ResultService.getStudentResults({
+        student: formData.student,
+        subject: formData.subject,
+        exam_session: formData.exam_session,
+        education_level: education_level
+      });
+      console.log('✅ VERIFICATION - Refetched data:', verification);
+
       toast.success('Result updated successfully!');
     } else {
       try {
