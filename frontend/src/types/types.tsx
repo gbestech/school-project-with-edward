@@ -2461,10 +2461,12 @@ export interface StudentResult {
   
    // Computed
   ca_score: number;
+  ca_total: number;
   exam_score: number;
   total_score: number;
  grade?: 'A' | 'B' | 'C' | 'D' | 'F' | string;
   remarks: string;
+  teacher_remark?: string;
   status?: ResultStatus;
   created_at: string;
   updated_at: string;

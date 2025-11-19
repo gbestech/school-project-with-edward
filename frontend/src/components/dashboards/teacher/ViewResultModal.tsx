@@ -494,13 +494,13 @@ const ViewResultModal: React.FC<ViewResultModalProps> = ({
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-2 text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400">CA Total</p>
                   <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                    {result.ca_score}
+                    {result.ca_score ?? result.ca_total}
                   </p>
                 </div>
               </div>
             ) : (
               // Primary/Junior Secondary - More compact
-              <div className="grid grid-cols-5 gap-2 mb-3">
+              <div className="grid grid-cols-6 gap-2 mb-3">
                 <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400">CA</p>
                   <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
@@ -531,7 +531,6 @@ const ViewResultModal: React.FC<ViewResultModalProps> = ({
                     {result.appearance_score}
                   </p>
                 </div>
-
                 <div className="bg-purple-50 dark:bg-purple-900/20 rounded p-2 text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400">Notes</p>
                   <p className="text-sm font-bold text-purple-600 dark:text-purple-400">
@@ -546,7 +545,7 @@ const ViewResultModal: React.FC<ViewResultModalProps> = ({
               <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-center">
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">CA Score</p>
                 <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                  {result.ca_score}
+                  {result.ca_score ?? result.ca_total}
                 </p>
               </div>
               <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
@@ -600,7 +599,7 @@ const ViewResultModal: React.FC<ViewResultModalProps> = ({
             {result.remarks && (
               <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Remarks</p>
-                <p className="text-sm text-gray-900 dark:text-white">{result.remarks}</p>
+                <p className="text-sm text-gray-900 dark:text-white">{result.teacher_remark}</p>
               </div>
             )}
           </div>
