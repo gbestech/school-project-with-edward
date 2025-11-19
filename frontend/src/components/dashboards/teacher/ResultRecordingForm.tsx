@@ -3882,8 +3882,7 @@ const ResultRecordingForm = ({
   const setupEditResult = async () => {
     try {
       console.log('📝 Edit Result Data:', editResult);
-      console.log('📝 Teacher Remark:', editResult.teacher_remark);
-      console.log('📝 Remarks:', editResult.remarks);
+      console.log('📝 Full editResult object:', JSON.stringify(editResult, null, 2));
       
       const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
       const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
@@ -3961,19 +3960,28 @@ const ResultRecordingForm = ({
       
       const educationLevel = String(editResult.education_level || '').toUpperCase();
       
+      // Extract teacher remark from various possible fields
+      const teacherRemark = editResult.teacher_remark || 
+                           editResult.remarks || 
+                           editResult.comment || 
+                           editResult.teacher_comment || 
+                           editResult.remark || '';
+      
+      console.log('📝 Extracted Teacher Remark:', teacherRemark);
+      
       if (educationLevel.includes('SENIOR')) {
         setAssessmentScores({
           test1: (editResult.first_test_score ?? editResult.test1 ?? 0).toString(),
           test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
           test3: (editResult.third_test_score ?? editResult.test3 ?? 0).toString(),
           exam: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
+          remarks: teacherRemark
         });
       } else if (educationLevel.includes('NURSERY')) {
         setAssessmentScores({
           max_marks: (editResult.max_marks ?? 100).toString(),
           mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
-          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
+          remarks: teacherRemark
         });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
         setAssessmentScores({
@@ -3986,7 +3994,7 @@ const ResultRecordingForm = ({
           note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
           ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
+          remarks: teacherRemark
         });
         
         if (editResult.physical_development || editResult.height_beginning) {
@@ -4002,7 +4010,7 @@ const ResultRecordingForm = ({
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: editResult.teacher_remark || editResult.remarks || editResult.comment || editResult.teacher_comment || ''
+          remarks: teacherRemark
         });
       }
       
@@ -4164,42 +4172,32 @@ const ResultRecordingForm = ({
           teacher_remark: assessmentScores.remarks || '',
           status: formData.status,
           education_level,
+          student: formData.student,
+          subject: formData.subject,
+          exam_session: formData.exam_session,
         };
         
-        // Only include student, subject, exam_session in create mode
-        if (!editResult) {
-          resultData.student = formData.student;
-          resultData.subject = formData.subject;
-          resultData.exam_session = formData.exam_session;
-          resultData.grading_system = gsId ?? undefined;
-        } else {
-          // In edit mode, only include grading_system if needed
-          if (gsId) resultData.grading_system = gsId;
-        }
+        if (gsId) resultData.grading_system = gsId;
       } else {
         resultData = {
           ca_score,
           exam_score,
           total_score: totalScore,
           grade: getGrade(totalScore),
-          remarks: assessmentScores.remarks || '',
+          teacher_remark: assessmentScores.remarks || '',
           status: formData.status,
           education_level,
           class_statistics: classStatistics,
-          physical_development: physicalDevelopment
+          physical_development: physicalDevelopment,
+          student: formData.student,
+          subject: formData.subject,
+          exam_session: formData.exam_session,
         };
         
-        // Only include student, subject, exam_session in create mode
-        if (!editResult) {
-          resultData.student = formData.student;
-          resultData.subject = formData.subject;
-          resultData.exam_session = formData.exam_session;
-          resultData.grading_system = gsId ?? undefined;
-        } else {
-          // In edit mode, only include grading_system if needed
-          if (gsId) resultData.grading_system = gsId;
-        }
+        if (gsId) resultData.grading_system = gsId;
       }
+
+      console.log('📤 Submitting result data:', resultData);
 
       if (editResult) {
         const candidates = [
@@ -4232,37 +4230,53 @@ const ResultRecordingForm = ({
             console.warn('Composite id lookup failed', e);
           }
         }
+        
         if (!finalId) {
           toast.error('Cannot update: missing result ID. Please refresh and try again.');
           throw new Error('Invalid result id for update');
         }
-        await ResultService.updateStudentResult(finalId, resultData, education_level);
+        
+        console.log('📝 Updating result with ID:', finalId);
+        console.log('📝 Update payload:', resultData);
+        
+        const response = await ResultService.updateStudentResult(finalId, resultData, education_level);
+        console.log('✅ Update response:', response);
+        
         toast.success('Result updated successfully!');
       } else {
-        try {
-          await ResultService.createStudentResult(resultData, education_level);
-          toast.success('Result recorded successfully!');
-        } catch (error: any) {
-          console.error('Error creating result:', error);
-          
-          if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
-            const errorMessage = error.response.data.non_field_errors[0];
-            if (errorMessage.includes('unique')) {
-              toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
-              return;
-            }
-          }
-          
-          const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
-          toast.error(errorMessage);
-          throw error;
-        }
+        await ResultService.createStudentResult(resultData, education_level);
+        toast.success('Result recorded successfully!');
       }
 
       onResultCreated();
       onClose();
-    } catch (error) {
-      console.error('Error saving result:', error);
+    } catch (error: any) {
+      console.error('❌ Error saving result:', error);
+      console.error('❌ Error response:', error.response?.data);
+      
+      if (editResult) {
+        const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.error ||
+                           JSON.stringify(error.response?.data) ||
+                           error.message || 
+                           'Failed to update result';
+        toast.error(`Update failed: ${errorMessage}`);
+      } else {
+        if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+          const errorMessage = error.response.data.non_field_errors[0];
+          if (errorMessage.includes('unique')) {
+            toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+            return;
+          }
+        }
+        
+        const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.error ||
+                           JSON.stringify(error.response?.data) ||
+                           error.message || 
+                           'Failed to create result';
+        toast.error(errorMessage);
+      }
     } finally {
       setSaving(false);
     }
@@ -4343,7 +4357,7 @@ const ResultRecordingForm = ({
             exam_score,
             total_score: totalScore,
             grade: getGrade(totalScore),
-            remarks: result.assessment_scores.remarks || '',
+            teacher_remark: result.assessment_scores.remarks || '',
             status: 'DRAFT',
             education_level,
             class_statistics: result.class_statistics || {},
