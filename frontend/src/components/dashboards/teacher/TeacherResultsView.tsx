@@ -153,6 +153,7 @@ const TeacherResults: React.FC = () => {
               ? Number(r.ca_total)
               : Number(r.continuous_assessment_score || 0) +
                 Number(r.take_home_test_score || 0) +
+                Number(r.appearance_score || 0) +
                 Number(r.practical_score || 0) +
                 Number(r.project_score || 0) +
                 Number(r.note_copying_score || 0);
@@ -247,10 +248,12 @@ const TeacherResults: React.FC = () => {
             third_test_score: Number(r.third_test_score || 0),
             continuous_assessment_score: Number(r.continuous_assessment_score || 0),
             take_home_test_score: Number(r.take_home_test_score || 0),
+            appearance_score: Number(r.appearance_score || 0),
             practical_score: Number(r.practical_score || 0),
             project_score: Number(r.project_score || 0),
             note_copying_score: Number(r.note_copying_score || 0),
             ca_score,
+            ca_total: caFromTotalField ?? ca_score,
             exam_score: Number((r.exam_score ?? r.exam) ?? 0),
             total_score: Number((r.total_score ?? (ca_score + Number(r.exam_score ?? 0))) ?? 0),
             education_level: (r.education_level || r.student?.education_level || 'UNKNOWN') as EducationLevel,
