@@ -3640,18 +3640,18 @@ const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => 
     case 'primary':
       return {
         type: 'primary',
-        fields: ['ca_score', 'take_home_marks', 'take_home_test', 'appearance_marks', 'practical_marks', 'project_marks', 'note_copying_marks', 'ca_total', 'exam_score'],
-        labels: ['C.A (15)', 'Take Home', 'Take Home Test', 'Appearance', 'Practical', 'Project', 'Note Copying', 'C.A Total', 'Exam (60%)'],
-        maxValues: [15, 5, 5, 5, 5, 5, 5, 40, 60],
+        fields: ['ca_score', 'take_home_marks', 'appearance_marks', 'practical_marks', 'project_marks', 'note_copying_marks', 'ca_total', 'exam_score'],
+        labels: ['C.A (15)', 'Take Home Test (5)', 'Appearance (5)', 'Practical (5)', 'Project (5)', 'Note Copying (5)', 'C.A Total (40)', 'Exam (60)'],
+        maxValues: [15, 5, 5, 5, 5, 5, 40, 60],
         showPhysicalDevelopment: true,
         showClassStatistics: true
       };
     case 'junior secondary':
       return {
         type: 'junior',
-        fields: ['ca_score', 'take_home_marks', 'take_home_test', 'appearance_marks', 'practical_marks', 'project_marks', 'note_copying_marks', 'ca_total', 'exam_score'],
-        labels: ['C.A (15)', 'Take Home', 'Take Home Test', 'Appearance', 'Practical', 'Project', 'Note Copying', 'C.A Total', 'Exam (60%)'],
-        maxValues: [15, 5, 5, 5, 5, 5, 5, 40, 60],
+        fields: ['ca_score', 'take_home_marks', 'appearance_marks', 'practical_marks', 'project_marks', 'note_copying_marks', 'ca_total', 'exam_score'],
+        labels: ['C.A (15)', 'Take Home Test (5)', 'Appearance (5)', 'Practical (5)', 'Project (5)', 'Note Copying (5)', 'C.A Total (40)', 'Exam (60)'],
+        maxValues: [15, 5, 5, 5, 5, 5, 40, 60],
         showPhysicalDevelopment: true,
         showClassStatistics: true
       };
@@ -3787,19 +3787,16 @@ const ResultRecordingForm = ({
         total_students: totals.length,
       }));
     } catch (e) {
-      // Silent fail
+      console.error('Error computing class stats:', e);
     }
   };
 
   useEffect(() => {
-  if (editResult) {
-    console.log('🔍 EDIT MODE ACTIVATED');
-    console.log('   editResult.id:', editResult.id);
-    console.log('   editResult.student:', editResult.student);
-    console.log('   editResult.student.id:', editResult.student?.id);
-    console.log('   Full editResult:', editResult);
-  }
-}, [editResult]);
+    if (editResult) {
+      console.log('🔍 EDIT MODE ACTIVATED');
+      console.log('   editResult:', editResult);
+    }
+  }, [editResult]);
 
   const handleClassChange = async (classId: string, isEditMode = false) => {
     if (!classId || !currentTeacherId) return;
@@ -3894,13 +3891,12 @@ const ResultRecordingForm = ({
       console.log('📝 Edit Result Data:', editResult);
       
       const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
-    const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
-    const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
+      const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
+      const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
       
-// 🔍 ADD THIS: Verify the student ID is correct
-    console.log('🎯 Editing for Student ID:', studentId);
-    console.log('🎯 Subject ID:', subjectId);
-    console.log('🎯 Exam Session ID:', examSessionId);
+      console.log('🎯 Student ID:', studentId);
+      console.log('🎯 Subject ID:', subjectId);
+      console.log('🎯 Exam Session ID:', examSessionId);
 
       setFormData({
         student: studentId,
@@ -3914,7 +3910,6 @@ const ResultRecordingForm = ({
         const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
         
         if (subjectAssignments.length > 0) {
-          // CRITICAL: Use education level from assignment, NOT from editResult
           normalizedLevel = (subjectAssignments[0].education_level || '')
             .toString()
             .replace(/_/g, ' ')
@@ -3928,8 +3923,6 @@ const ResultRecordingForm = ({
             .toUpperCase();
           const configForLevel = scoringConfigs.find((c: any) => c.education_level === upperLevel && (c.is_default || c.is_active));
           setActiveScoringConfig(configForLevel || null);
-          
-          console.log('📝 Education level from assignment:', normalizedLevel);
           
           const classOptions = subjectAssignments.map(assignment => ({
             id: assignment.section_id,
@@ -3971,10 +3964,8 @@ const ResultRecordingForm = ({
         }
       }
       
-      // Use the education level from assignment (normalizedLevel), NOT from editResult
       const educationLevel = String(normalizedLevel || '').toUpperCase();
       
-      // Extract remarks from all possible fields
       const extractedRemarks = 
         editResult.teacher_remark || 
         editResult.remarks || 
@@ -3983,11 +3974,9 @@ const ResultRecordingForm = ({
         editResult.remark ||
         '';
       
-      console.log('📝 Using education level for field structure:', educationLevel);
-      console.log('📝 Extracted remarks:', extractedRemarks);
+      console.log('📝 Education level:', educationLevel);
       
       if (educationLevel.includes('SENIOR')) {
-        console.log('📝 Loading SENIOR SECONDARY fields');
         setAssessmentScores({
           test1: (editResult.first_test_score ?? editResult.test1 ?? 0).toString(),
           test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
@@ -3996,23 +3985,20 @@ const ResultRecordingForm = ({
           remarks: extractedRemarks
         });
       } else if (educationLevel.includes('NURSERY')) {
-        console.log('📝 Loading NURSERY fields');
         setAssessmentScores({
           max_marks: (editResult.max_marks ?? 100).toString(),
           mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
           remarks: extractedRemarks
         });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
-        console.log('📝 Loading PRIMARY/JUNIOR fields');
         setAssessmentScores({
-          ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
-          take_home_marks: (editResult.take_home_marks ?? editResult.take_home_score ?? 0).toString(),
-          take_home_test: (editResult.take_home_test ?? editResult.take_home_test_score ?? 0).toString(),
-          appearance_marks: (editResult.appearance_marks ?? editResult.appearance_score ?? 0).toString(),
-          practical_marks: (editResult.practical_marks ?? editResult.practical_score ?? 0).toString(),
-          project_marks: (editResult.project_marks ?? editResult.project_score ?? 0).toString(),
-          note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
-          ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
+          ca_score: (editResult.continuous_assessment_score ?? editResult.ca_score ?? 0).toString(),
+          take_home_marks: (editResult.take_home_test_score ?? editResult.take_home_marks ?? 0).toString(),
+          appearance_marks: (editResult.appearance_score ?? editResult.appearance_marks ?? 0).toString(),
+          practical_marks: (editResult.practical_score ?? editResult.practical_marks ?? 0).toString(),
+          project_marks: (editResult.project_score ?? editResult.project_marks ?? 0).toString(),
+          note_copying_marks: (editResult.note_copying_score ?? editResult.note_copying_marks ?? 0).toString(),
+          ca_total: (editResult.total_ca_score ?? editResult.ca_total ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
           remarks: extractedRemarks
         });
@@ -4027,7 +4013,6 @@ const ResultRecordingForm = ({
           });
         }
       } else {
-        console.log('📝 Loading DEFAULT fields');
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
@@ -4141,189 +4126,211 @@ const ResultRecordingForm = ({
   };
 
   const handleSingleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!validateSingleForm()) return;
-  try {
-    setSaving(true);
+    e.preventDefault();
     
-    let gsId = gradingSystemId;
-    if (gsId == null) {
-      try {
-        const gsResp = await ResultService.getGradingSystems();
-        const gsArray = Array.isArray(gsResp) ? gsResp : (gsResp?.results || gsResp?.data || []);
-        if (gsArray && gsArray.length) {
-          const firstId = Number(gsArray[0].id || gsArray[0].pk || gsArray[0]);
-          if (!Number.isNaN(firstId)) {
-            gsId = firstId;
-            setGradingSystemId(firstId);
-          }
-        }
-      } catch {}
-    }
+    if (!validateSingleForm()) return;
     
-    const totalScore = calculateTotalScore(assessmentScores, selectedEducationLevel);
-    const structure = getAssessmentStructure(selectedEducationLevel);
-    let ca_score = 0;
-    let exam_score = 0;
-    let education_level = normalizeEducationLevelForApi(selectedEducationLevel);
-    
-    if (structure.type === 'senior') {
-      ca_score =
-        parseFloat(assessmentScores.test1?.toString() || '0') +
-        parseFloat(assessmentScores.test2?.toString() || '0') +
-        parseFloat(assessmentScores.test3?.toString() || '0');
-      exam_score = parseFloat(assessmentScores.exam?.toString() || '0');
-    } else if (structure.type === 'nursery') {
-      ca_score = parseFloat(assessmentScores.mark_obtained?.toString() || '0');
-      exam_score = 0;
-    } else {
-      ca_score = parseFloat(assessmentScores.ca_total?.toString() || assessmentScores.ca_score?.toString() || '0');
-      exam_score = parseFloat(assessmentScores.exam_score?.toString() || '0');
-    }
-    
-    let resultData: any;
-    if (structure.type === 'senior') {
-      resultData = {
-        first_test_score: parseFloat(assessmentScores.test1?.toString() || '0'),
-        second_test_score: parseFloat(assessmentScores.test2?.toString() || '0'),
-        third_test_score: parseFloat(assessmentScores.test3?.toString() || '0'),
-        exam_score: parseFloat(assessmentScores.exam?.toString() || '0'),
-        teacher_remark: assessmentScores.remarks || '',
-        status: formData.status,
-        education_level,
-      };
+    try {
+      setSaving(true);
       
-      // CRITICAL FIX: Only include unique constraint fields for CREATE
-      if (!editResult) {
-        resultData.student = formData.student;
-        resultData.subject = formData.subject;
-        resultData.exam_session = formData.exam_session;
-        resultData.grading_system = gsId ?? undefined;
-      } else {
-        // For UPDATE: only include grading_system if it's set
-        if (gsId) resultData.grading_system = gsId;
-      }
-    } else {
-      resultData = {
-        ca_score,
-        exam_score,
-        total_score: totalScore,
-        grade: getGrade(totalScore),
-        remarks: assessmentScores.remarks || '',
-        status: formData.status,
-        education_level,
-        class_statistics: classStatistics,
-        physical_development: physicalDevelopment
-      };
-      
-      // CRITICAL FIX: Only include unique constraint fields for CREATE
-      if (!editResult) {
-        resultData.student = formData.student;
-        resultData.subject = formData.subject;
-        resultData.exam_session = formData.exam_session;
-        resultData.grading_system = gsId ?? undefined;
-      } else {
-        // For UPDATE: only include grading_system if it's set
-        if (gsId) resultData.grading_system = gsId;
-      }
-    }
-    
-    if (editResult) {
-      
-      const candidates = [
-        editResult?.id,
-        editResult?.pk,
-        editResult?.result_id,
-        editResult?.student_result_id,
-        editResult?.studentResultId,
-        editResult?.result?.id
-      ];
-      
-      const numeric = candidates
-        .map((v) => (v !== null && v !== undefined ? Number(v) : NaN))
-        .find((n) => Number.isFinite(n) && n > 0);
-      const safeId = numeric ? String(numeric) : '';
-      
-      let finalId = safeId;
-
-      console.log('🚀 UPDATE REQUEST:', {
-        url: `${education_level}/results/${finalId}/`,
-        method: 'PUT',
-        data: resultData,
-        updating: {
-      resultId: finalId,
-      studentId: formData.student,  // Should be '93'
-      subjectId: formData.subject,
-      examSessionId: formData.exam_session
-    }
-  
-      });
-
-      
-
-      if (!finalId) {
+      let gsId = gradingSystemId;
+      if (gsId == null) {
         try {
-          const resolvedId = await ResultService.findResultIdByComposite({
-            student: formData.student,
-            subject: formData.subject,
-            exam_session: formData.exam_session,
-            education_level: education_level,
-          });
-          if (resolvedId) {
-            finalId = resolvedId;
+          const gsResp = await ResultService.getGradingSystems();
+          const gsArray = Array.isArray(gsResp) ? gsResp : (gsResp?.results || gsResp?.data || []);
+          if (gsArray && gsArray.length) {
+            const firstId = Number(gsArray[0].id || gsArray[0].pk || gsArray[0]);
+            if (!Number.isNaN(firstId)) {
+              gsId = firstId;
+              setGradingSystemId(firstId);
+            }
           }
-        } catch (e) {
-          console.warn('Composite id lookup failed', e);
-        }
-      }
-      if (!finalId) {
-        toast.error('Cannot update: missing result ID. Please refresh and try again.');
-        throw new Error('Invalid result id for update');
+        } catch {}
       }
       
-      const response = await ResultService.updateStudentResult(finalId, resultData, education_level);
-
-      console.log('📥 UPDATE RESPONSE:', response);
-
-const verification = await ResultService.getStudentResults({
-        student: formData.student,
-        subject: formData.subject,
-        exam_session: formData.exam_session,
-        education_level: education_level
-      });
-      console.log('✅ VERIFICATION - Refetched data:', verification);
-
-      toast.success('Result updated successfully!');
-    } else {
-      try {
-        await ResultService.createStudentResult(resultData, education_level);
-        toast.success('Result recorded successfully!');
-      } catch (error: any) {
-        console.error('Error creating result:', error);
+      const totalScore = calculateTotalScore(assessmentScores, selectedEducationLevel);
+      const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
+      const education_level = normalizeEducationLevelForApi(selectedEducationLevel);
+      
+      let resultData: any;
+      
+      if (structure.type === 'senior') {
+        resultData = {
+          first_test_score: parseFloat(assessmentScores.test1?.toString() || '0'),
+          second_test_score: parseFloat(assessmentScores.test2?.toString() || '0'),
+          third_test_score: parseFloat(assessmentScores.test3?.toString() || '0'),
+          exam_score: parseFloat(assessmentScores.exam?.toString() || '0'),
+          teacher_remark: assessmentScores.remarks || '',
+          status: formData.status,
+          education_level,
+        };
         
-        if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
-          const errorMessage = error.response.data.non_field_errors[0];
-          if (errorMessage.includes('unique')) {
-            toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
-            return;
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          if (gsId) resultData.grading_system = gsId;
+        }
+      } else if (structure.type === 'nursery') {
+        resultData = {
+          ca_score: parseFloat(assessmentScores.mark_obtained?.toString() || '0'),
+          exam_score: 0,
+          total_score: totalScore,
+          max_marks: parseFloat(assessmentScores.max_marks?.toString() || '100'),
+          mark_obtained: parseFloat(assessmentScores.mark_obtained?.toString() || '0'),
+          grade: getGrade(totalScore),
+          remarks: assessmentScores.remarks || '',
+          status: formData.status,
+          education_level,
+          physical_development: physicalDevelopment
+        };
+        
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          if (gsId) resultData.grading_system = gsId;
+        }
+      } else if (structure.type === 'primary' || structure.type === 'junior') {
+        // CRITICAL FIX: Include ALL individual CA fields
+        const caScore = parseFloat(assessmentScores.ca_score?.toString() || '0');
+        const takeHomeMarks = parseFloat(assessmentScores.take_home_marks?.toString() || '0');
+        const appearanceMarks = parseFloat(assessmentScores.appearance_marks?.toString() || '0');
+        const practicalMarks = parseFloat(assessmentScores.practical_marks?.toString() || '0');
+        const projectMarks = parseFloat(assessmentScores.project_marks?.toString() || '0');
+        const noteCopyingMarks = parseFloat(assessmentScores.note_copying_marks?.toString() || '0');
+        const caTotal = parseFloat(assessmentScores.ca_total?.toString() || '0');
+        const examScore = parseFloat(assessmentScores.exam_score?.toString() || '0');
+        
+        resultData = {
+          // Individual CA components
+          continuous_assessment_score: caScore,
+          take_home_test_score: takeHomeMarks,
+          appearance_score: appearanceMarks,
+          practical_score: practicalMarks,
+          project_score: projectMarks,
+          note_copying_score: noteCopyingMarks,
+          // Totals
+          total_ca_score: caTotal,
+          ca_score: caTotal,
+          exam_score: examScore,
+          total_score: totalScore,
+          grade: getGrade(totalScore),
+          remarks: assessmentScores.remarks || '',
+          status: formData.status,
+          education_level,
+          class_statistics: classStatistics,
+          physical_development: physicalDevelopment
+        };
+        
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          if (gsId) resultData.grading_system = gsId;
+        }
+      } else {
+        // Default structure
+        const caScore = parseFloat(assessmentScores.ca_score?.toString() || '0');
+        const examScore = parseFloat(assessmentScores.exam_score?.toString() || '0');
+        
+        resultData = {
+          ca_score: caScore,
+          exam_score: examScore,
+          total_score: totalScore,
+          grade: getGrade(totalScore),
+          remarks: assessmentScores.remarks || '',
+          status: formData.status,
+          education_level,
+        };
+        
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          if (gsId) resultData.grading_system = gsId;
+        }
+      }
+      
+      console.log('💾 Submitting result data:', resultData);
+      
+      if (editResult) {
+        const candidates = [
+          editResult?.id,
+          editResult?.pk,
+          editResult?.result_id,
+          editResult?.student_result_id,
+          editResult?.studentResultId,
+          editResult?.result?.id
+        ];
+        
+        const numeric = candidates
+          .map((v) => (v !== null && v !== undefined ? Number(v) : NaN))
+          .find((n) => Number.isFinite(n) && n > 0);
+        const safeId = numeric ? String(numeric) : '';
+        
+        let finalId = safeId;
+
+        if (!finalId) {
+          try {
+            const resolvedId = await ResultService.findResultIdByComposite({
+              student: formData.student,
+              subject: formData.subject,
+              exam_session: formData.exam_session,
+              education_level: education_level,
+            });
+            if (resolvedId) {
+              finalId = resolvedId;
+            }
+          } catch (e) {
+            console.warn('Composite id lookup failed', e);
           }
         }
         
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
-        toast.error(errorMessage);
-        throw error;
+        if (!finalId) {
+          toast.error('Cannot update: missing result ID. Please refresh and try again.');
+          throw new Error('Invalid result id for update');
+        }
+        
+        await ResultService.updateStudentResult(finalId, resultData, education_level);
+        toast.success('Result updated successfully!');
+      } else {
+        try {
+          await ResultService.createStudentResult(resultData, education_level);
+          toast.success('Result recorded successfully!');
+        } catch (error: any) {
+          console.error('Error creating result:', error);
+          
+          if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+            const errorMessage = error.response.data.non_field_errors[0];
+            if (errorMessage.includes('unique')) {
+              toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+              return;
+            }
+          }
+          
+          const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
+          toast.error(errorMessage);
+          throw error;
+        }
       }
+      
+      onResultCreated();
+      onClose();
+    } catch (error) {
+      console.error('Error saving result:', error);
+    } finally {
+      setSaving(false);
     }
-    
-    onResultCreated();
-    onClose();
-  } catch (error) {
-    console.error('Error saving result:', error);
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -4355,27 +4362,11 @@ const verification = await ResultService.getStudentResults({
 
       for (const result of validResults) {
         const totalScore = calculateTotalScore(result.assessment_scores, selectedEducationLevel);
-        
-        const structure = getAssessmentStructure(selectedEducationLevel);
-        let ca_score = 0;
-        let exam_score = 0;
-        let education_level = normalizeEducationLevelForApi(selectedEducationLevel);
-
-        if (structure.type === 'senior') {
-          ca_score = 
-            parseFloat(result.assessment_scores.test1?.toString() || '0') +
-            parseFloat(result.assessment_scores.test2?.toString() || '0') +
-            parseFloat(result.assessment_scores.test3?.toString() || '0');
-          exam_score = parseFloat(result.assessment_scores.exam?.toString() || '0');
-        } else if (structure.type === 'nursery') {
-          ca_score = parseFloat(result.assessment_scores.mark_obtained?.toString() || '0');
-          exam_score = 0;
-        } else {
-          ca_score = parseFloat(result.assessment_scores.ca_total?.toString() || result.assessment_scores.ca_score?.toString() || '0');
-          exam_score = parseFloat(result.assessment_scores.exam_score?.toString() || '0');
-        }
+        const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
+        const education_level = normalizeEducationLevelForApi(selectedEducationLevel);
 
         let resultData: any;
+        
         if (structure.type === 'senior') {
           resultData = {
             student: result.student_id.toString(),
@@ -4390,14 +4381,50 @@ const verification = await ResultService.getStudentResults({
             status: 'DRAFT',
             education_level,
           };
-        } else {
+        } else if (structure.type === 'nursery') {
           resultData = {
             student: result.student_id.toString(),
             subject: formData.subject,
             exam_session: formData.exam_session,
             grading_system: gsId ?? undefined,
-            ca_score,
-            exam_score,
+            ca_score: parseFloat(result.assessment_scores.mark_obtained?.toString() || '0'),
+            exam_score: 0,
+            total_score: totalScore,
+            max_marks: parseFloat(result.assessment_scores.max_marks?.toString() || '100'),
+            mark_obtained: parseFloat(result.assessment_scores.mark_obtained?.toString() || '0'),
+            grade: getGrade(totalScore),
+            remarks: result.assessment_scores.remarks || '',
+            status: 'DRAFT',
+            education_level,
+            physical_development: result.physical_development || {}
+          };
+        } else if (structure.type === 'primary' || structure.type === 'junior') {
+          // CRITICAL FIX: Include ALL individual CA fields for bulk
+          const caScore = parseFloat(result.assessment_scores.ca_score?.toString() || '0');
+          const takeHomeMarks = parseFloat(result.assessment_scores.take_home_marks?.toString() || '0');
+          const appearanceMarks = parseFloat(result.assessment_scores.appearance_marks?.toString() || '0');
+          const practicalMarks = parseFloat(result.assessment_scores.practical_marks?.toString() || '0');
+          const projectMarks = parseFloat(result.assessment_scores.project_marks?.toString() || '0');
+          const noteCopyingMarks = parseFloat(result.assessment_scores.note_copying_marks?.toString() || '0');
+          const caTotal = parseFloat(result.assessment_scores.ca_total?.toString() || '0');
+          const examScore = parseFloat(result.assessment_scores.exam_score?.toString() || '0');
+          
+          resultData = {
+            student: result.student_id.toString(),
+            subject: formData.subject,
+            exam_session: formData.exam_session,
+            grading_system: gsId ?? undefined,
+            // Individual CA components
+            continuous_assessment_score: caScore,
+            take_home_test_score: takeHomeMarks,
+            appearance_score: appearanceMarks,
+            practical_score: practicalMarks,
+            project_score: projectMarks,
+            note_copying_score: noteCopyingMarks,
+            // Totals
+            total_ca_score: caTotal,
+            ca_score: caTotal,
+            exam_score: examScore,
             total_score: totalScore,
             grade: getGrade(totalScore),
             remarks: result.assessment_scores.remarks || '',
@@ -4405,6 +4432,24 @@ const verification = await ResultService.getStudentResults({
             education_level,
             class_statistics: result.class_statistics || {},
             physical_development: result.physical_development || {}
+          };
+        } else {
+          // Default structure
+          const caScore = parseFloat(result.assessment_scores.ca_score?.toString() || '0');
+          const examScore = parseFloat(result.assessment_scores.exam_score?.toString() || '0');
+          
+          resultData = {
+            student: result.student_id.toString(),
+            subject: formData.subject,
+            exam_session: formData.exam_session,
+            grading_system: gsId ?? undefined,
+            ca_score: caScore,
+            exam_score: examScore,
+            total_score: totalScore,
+            grade: getGrade(totalScore),
+            remarks: result.assessment_scores.remarks || '',
+            status: 'DRAFT',
+            education_level,
           };
         }
 
@@ -4440,7 +4485,7 @@ const verification = await ResultService.getStudentResults({
       return false;
     }
 
-    const structure = getAssessmentStructure(selectedEducationLevel);
+    const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
     const totalScore = calculateTotalScore(assessmentScores, selectedEducationLevel);
     
     if (totalScore <= 0) {
@@ -4489,7 +4534,7 @@ const verification = await ResultService.getStudentResults({
       return false;
     }
 
-    const structure = getAssessmentStructure(selectedEducationLevel);
+    const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
     for (const result of validResults) {
       for (let i = 0; i < structure.fields.length; i++) {
         const field = structure.fields[i];
@@ -4510,20 +4555,55 @@ const verification = await ResultService.getStudentResults({
   };
 
   const updateBulkResult = (index: number, field: string, value: string) => {
-    setBulkResults(prev => prev.map((result, i) => 
-      i === index ? { 
-        ...result, 
-        assessment_scores: { 
-          ...result.assessment_scores, 
-          [field]: value 
-        } 
-      } : result
-    ));
-    setTimeout(recomputeClassStats, 0);
+    setBulkResults(prev => {
+      const updated = prev.map((result, i) => {
+        if (i === index) {
+          const updatedScores = { ...result.assessment_scores, [field]: value };
+          
+          // Auto-calculate CA total for bulk entry
+          const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
+          if (structure.type === 'primary' || structure.type === 'junior') {
+            const caScore = parseFloat(updatedScores.ca_score?.toString() || '0');
+            const takeHome = parseFloat(updatedScores.take_home_marks?.toString() || '0');
+            const appearance = parseFloat(updatedScores.appearance_marks?.toString() || '0');
+            const practical = parseFloat(updatedScores.practical_marks?.toString() || '0');
+            const project = parseFloat(updatedScores.project_marks?.toString() || '0');
+            const noteCopying = parseFloat(updatedScores.note_copying_marks?.toString() || '0');
+            
+            updatedScores.ca_total = (caScore + takeHome + appearance + practical + project + noteCopying).toString();
+          }
+          
+          return { ...result, assessment_scores: updatedScores };
+        }
+        return result;
+      });
+      
+      setTimeout(recomputeClassStats, 0);
+      return updated;
+    });
   };
 
   const updateAssessmentScore = (field: keyof AssessmentScores, value: string) => {
-    setAssessmentScores(prev => ({ ...prev, [field]: value }));
+    setAssessmentScores(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // CRITICAL FIX: Auto-calculate CA total for PRIMARY and JUNIOR SECONDARY
+      const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
+      if (structure.type === 'primary' || structure.type === 'junior') {
+        const caScore = parseFloat(updated.ca_score?.toString() || '0');
+        const takeHome = parseFloat(updated.take_home_marks?.toString() || '0');
+        const appearance = parseFloat(updated.appearance_marks?.toString() || '0');
+        const practical = parseFloat(updated.practical_marks?.toString() || '0');
+        const project = parseFloat(updated.project_marks?.toString() || '0');
+        const noteCopying = parseFloat(updated.note_copying_marks?.toString() || '0');
+        
+        // Auto-calculate CA total
+        const calculatedTotal = caScore + takeHome + appearance + practical + project + noteCopying;
+        updated.ca_total = calculatedTotal.toString();
+      }
+      
+      return updated;
+    });
     setTimeout(recomputeClassStats, 0);
   };
 
@@ -4587,7 +4667,8 @@ const verification = await ResultService.getStudentResults({
           {structure.fields.map((field, index) => (
             <div key={field}>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {structure.labels[index]} (0-{structure.maxValues[index]})
+                {structure.labels[index]}
+                {field === 'ca_total' && ' 🔄 Auto'}
               </label>
               <input
                 type="number"
@@ -4596,8 +4677,11 @@ const verification = await ResultService.getStudentResults({
                 step="0.1"
                 value={scores[field as keyof AssessmentScores] || ''}
                 onChange={(e) => onUpdate(field as keyof AssessmentScores, e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                placeholder={`Enter ${structure.labels[index]}`}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                  field === 'ca_total' ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed font-semibold' : ''
+                }`}
+                placeholder={field === 'ca_total' ? 'Auto-calculated' : `0-${structure.maxValues[index]}`}
+                readOnly={field === 'ca_total'}
               />
             </div>
           ))}
@@ -4624,7 +4708,7 @@ const verification = await ResultService.getStudentResults({
   };
 
   const renderClassStatistics = (stats: ClassStatistics) => {
-    const structure = getAssessmentStructure(selectedEducationLevel);
+    const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
     if (!structure.showClassStatistics) return null;
 
     return (
@@ -4684,7 +4768,7 @@ const verification = await ResultService.getStudentResults({
   };
 
   const renderPhysicalDevelopment = (physical: PhysicalDevelopment, onUpdate: (field: keyof PhysicalDevelopment, value: string | number) => void) => {
-    const structure = getAssessmentStructure(selectedEducationLevel);
+    const structure = getAssessmentStructure(selectedEducationLevel, activeScoringConfig);
     if (!structure.showPhysicalDevelopment) return null;
 
     return (
