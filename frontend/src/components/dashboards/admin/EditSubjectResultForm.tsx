@@ -4,7 +4,7 @@
 // import { useGlobalTheme } from '../../../contexts/GlobalThemeContext';
 // import api from '../../../services/api';
 
-import { Edit } from "lucide-react";
+// import { Edit } from "lucide-react";
 
 // // Interface matching the StudentResult from EnhancedResultsManagement
 // interface StudentResult {
@@ -1310,40 +1310,40 @@ const EditSubjectResultForm: React.FC<EditSubjectResultFormProps> = ({
   const generateRemark = useCallback(() => {
     const remarks = {
       A: [
-        'Excellent performance! Outstanding work and dedication.',
-        'Exceptional achievement. Keep up the excellent work!',
-        'Outstanding performance. You are a model student.',
-        'Brilliant work! Your dedication is commendable.'
+        'Excellent.',
+        'Distinction.',
+        'Outstanding.',
+        'Brilliant.'
       ],
       B: [
-        'Very good performance. Well done!',
-        'Excellent work. Keep maintaining this standard.',
-        'Great achievement. Continue to excel.',
-        'Very good performance. You should be proud.'
+        'Very good',
+        'Excellent work.',
+        'Awesome',
+        'Interesting.'
       ],
       C: [
-        'Good performance. Keep up the good work.',
-        'Well done! Continue to improve.',
-        'Good effort. You are making progress.',
-        'Satisfactory performance. Keep working hard.'
+        'Good',
+        'Well done!.',
+        'Good effort.',
+        'Satisfactory'
       ],
       D: [
-        'Fair performance. Room for improvement.',
-        'Average work. Try to do better next time.',
-        'Satisfactory performance. Keep working hard.',
-        'Fair effort. Focus on areas that need improvement.'
+        'Fair. ',
+        'Average.',
+        'work harder.',
+        'Need improvement.'
       ],
       E: [
-        'Below average performance. More effort needed.',
-        'Needs improvement. Focus on your studies.',
-        'Below expectations. Work harder next time.',
-        'Room for improvement. Keep working hard.'
+        'More effo.',
+        'Focus more.',
+        'Concentrate.',
+        'Poor.'
       ],
       F: [
-        'Failed. Immediate remedial action required.',
-        'Complete failure. Urgent academic intervention needed.',
-        'Failed grade. Parent consultation and support required.',
-        'Critical failure. Seek immediate academic help.'
+        'Failed.',
+        'Very Poor.',
+        'Need support.',
+        'Seek help.'
       ]
     };
 

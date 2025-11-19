@@ -798,11 +798,12 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
           take_home_test_score: parseNumericValue(formData.take_home_test_score),
           practical_score: parseNumericValue(formData.practical_score),
           project_score: parseNumericValue(formData.project_score),
+           appearance_score: parseNumericValue(formData.appearance_score),
           note_copying_score: parseNumericValue(formData.note_copying_score),
           exam_score: parseNumericValue(formData.exam_score),
           teacher_remark: formData.teacher_remark || '',
           // FIXED: Include appearance_score for both PRIMARY and JUNIOR_SECONDARY
-          appearance_score: parseNumericValue(formData.appearance_score)
+         
         };
         console.log('Primary/Junior Secondary payload:', primaryJuniorPayload);
         return primaryJuniorPayload;

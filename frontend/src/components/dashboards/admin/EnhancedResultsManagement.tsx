@@ -163,9 +163,6 @@ const EnhancedResultsManagement: React.FC = () => {
         ];
       }
 
-      console.log('=== RESULTS DEBUG ===');
-      console.log(`📊 View Mode: ${viewMode}`);
-      console.log('📊 Total results loaded:', data.length);
       
       if (data.length > 0) {
         console.log('📊 First result (full):', data[0]);
@@ -225,11 +222,11 @@ const EnhancedResultsManagement: React.FC = () => {
       class_position: null,
       total_students: 0,
       status: result.status,
-      remarks: result.teacher_remark || '',
+      remarks: result.class_teacher_remark || result.teacher_remark || '',
       subject_results: [{
         id: result.id,
         subject: result.subject,
-        total_ca_score: result.total_ca_score || result.continuous_assessment_score || result.ca_total || 0,
+        total_ca_score: result.ca_total || result.total_ca_score || result.continuous_assessment_score || result.ca_total || 0,
         exam_score: result.exam_score || 0,
         total_score: result.total_score || 0,
         percentage: result.percentage || result.total_percentage || 0,

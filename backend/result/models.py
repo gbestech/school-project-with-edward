@@ -2206,6 +2206,7 @@ class JuniorSecondaryResult(models.Model):
             + self.take_home_test_score
             + self.practical_score
             + self.project_score
+            + self.appearance_score
             + self.note_copying_score
         )
 
@@ -2785,6 +2786,7 @@ class PrimaryResult(models.Model):
             self.continuous_assessment_score
             + self.take_home_test_score
             + self.practical_score
+            + self.appearance_score
             + self.project_score
             + self.note_copying_score
         )
