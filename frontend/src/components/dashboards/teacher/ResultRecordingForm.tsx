@@ -3882,7 +3882,6 @@ const ResultRecordingForm = ({
   const setupEditResult = async () => {
     try {
       console.log('📝 Edit Result Data:', editResult);
-      console.log('📝 Full editResult object:', JSON.stringify(editResult, null, 2));
       
       const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
       const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
@@ -3896,27 +3895,26 @@ const ResultRecordingForm = ({
       });
       
       let normalizedLevel = '';
-      if (editResult.education_level) {
-        normalizedLevel = (editResult.education_level || '')
-          .toString()
-          .replace(/_/g, ' ')
-          .toLowerCase()
-          .trim();
-        setSelectedEducationLevel(normalizedLevel);
-      }
-      
       if (subjectId) {
         const subjectAssignments = teacherAssignments.filter(a => a.subject_id === parseInt(subjectId));
         
         if (subjectAssignments.length > 0) {
-          if (!normalizedLevel) {
-            normalizedLevel = (subjectAssignments[0].education_level || '')
-              .toString()
-              .replace(/_/g, ' ')
-              .toLowerCase()
-              .trim();
-            setSelectedEducationLevel(normalizedLevel);
-          }
+          // CRITICAL: Use education level from assignment, NOT from editResult
+          normalizedLevel = (subjectAssignments[0].education_level || '')
+            .toString()
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .trim();
+          setSelectedEducationLevel(normalizedLevel);
+          
+          const upperLevel = (subjectAssignments[0].education_level || '')
+            .toString()
+            .replace(/\s+/g, '_')
+            .toUpperCase();
+          const configForLevel = scoringConfigs.find((c: any) => c.education_level === upperLevel && (c.is_default || c.is_active));
+          setActiveScoringConfig(configForLevel || null);
+          
+          console.log('📝 Education level from assignment:', normalizedLevel);
           
           const classOptions = subjectAssignments.map(assignment => ({
             id: assignment.section_id,
@@ -3958,32 +3956,39 @@ const ResultRecordingForm = ({
         }
       }
       
-      const educationLevel = String(editResult.education_level || '').toUpperCase();
+      // Use the education level from assignment (normalizedLevel), NOT from editResult
+      const educationLevel = String(normalizedLevel || '').toUpperCase();
       
-      // Extract teacher remark from various possible fields
-      const teacherRemark = editResult.teacher_remark || 
-                           editResult.remarks || 
-                           editResult.comment || 
-                           editResult.teacher_comment || 
-                           editResult.remark || '';
+      // Extract remarks from all possible fields
+      const extractedRemarks = 
+        editResult.teacher_remark || 
+        editResult.remarks || 
+        editResult.comment || 
+        editResult.teacher_comment || 
+        editResult.remark ||
+        '';
       
-      console.log('📝 Extracted Teacher Remark:', teacherRemark);
+      console.log('📝 Using education level for field structure:', educationLevel);
+      console.log('📝 Extracted remarks:', extractedRemarks);
       
       if (educationLevel.includes('SENIOR')) {
+        console.log('📝 Loading SENIOR SECONDARY fields');
         setAssessmentScores({
           test1: (editResult.first_test_score ?? editResult.test1 ?? 0).toString(),
           test2: (editResult.second_test_score ?? editResult.test2 ?? 0).toString(), 
           test3: (editResult.third_test_score ?? editResult.test3 ?? 0).toString(),
           exam: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: teacherRemark
+          remarks: extractedRemarks
         });
       } else if (educationLevel.includes('NURSERY')) {
+        console.log('📝 Loading NURSERY fields');
         setAssessmentScores({
           max_marks: (editResult.max_marks ?? 100).toString(),
           mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
-          remarks: teacherRemark
+          remarks: extractedRemarks
         });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
+        console.log('📝 Loading PRIMARY/JUNIOR fields');
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           take_home_marks: (editResult.take_home_marks ?? editResult.take_home_score ?? 0).toString(),
@@ -3994,7 +3999,7 @@ const ResultRecordingForm = ({
           note_copying_marks: (editResult.note_copying_marks ?? editResult.note_copying_score ?? 0).toString(),
           ca_total: (editResult.ca_total ?? editResult.total_ca_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: teacherRemark
+          remarks: extractedRemarks
         });
         
         if (editResult.physical_development || editResult.height_beginning) {
@@ -4007,10 +4012,11 @@ const ResultRecordingForm = ({
           });
         }
       } else {
+        console.log('📝 Loading DEFAULT fields');
         setAssessmentScores({
           ca_score: (editResult.ca_score ?? editResult.continuous_assessment_score ?? 0).toString(),
           exam_score: (editResult.exam_score ?? editResult.exam ?? 0).toString(),
-          remarks: teacherRemark
+          remarks: extractedRemarks
         });
       }
       
@@ -4172,32 +4178,38 @@ const ResultRecordingForm = ({
           teacher_remark: assessmentScores.remarks || '',
           status: formData.status,
           education_level,
-          student: formData.student,
-          subject: formData.subject,
-          exam_session: formData.exam_session,
         };
         
-        if (gsId) resultData.grading_system = gsId;
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          if (gsId) resultData.grading_system = gsId;
+        }
       } else {
         resultData = {
           ca_score,
           exam_score,
           total_score: totalScore,
           grade: getGrade(totalScore),
-          teacher_remark: assessmentScores.remarks || '',
+          remarks: assessmentScores.remarks || '',
           status: formData.status,
           education_level,
           class_statistics: classStatistics,
-          physical_development: physicalDevelopment,
-          student: formData.student,
-          subject: formData.subject,
-          exam_session: formData.exam_session,
+          physical_development: physicalDevelopment
         };
         
-        if (gsId) resultData.grading_system = gsId;
+        if (!editResult) {
+          resultData.student = formData.student;
+          resultData.subject = formData.subject;
+          resultData.exam_session = formData.exam_session;
+          resultData.grading_system = gsId ?? undefined;
+        } else {
+          if (gsId) resultData.grading_system = gsId;
+        }
       }
-
-      console.log('📤 Submitting result data:', resultData);
 
       if (editResult) {
         const candidates = [
@@ -4230,53 +4242,37 @@ const ResultRecordingForm = ({
             console.warn('Composite id lookup failed', e);
           }
         }
-        
         if (!finalId) {
           toast.error('Cannot update: missing result ID. Please refresh and try again.');
           throw new Error('Invalid result id for update');
         }
-        
-        console.log('📝 Updating result with ID:', finalId);
-        console.log('📝 Update payload:', resultData);
-        
-        const response = await ResultService.updateStudentResult(finalId, resultData, education_level);
-        console.log('✅ Update response:', response);
-        
+        await ResultService.updateStudentResult(finalId, resultData, education_level);
         toast.success('Result updated successfully!');
       } else {
-        await ResultService.createStudentResult(resultData, education_level);
-        toast.success('Result recorded successfully!');
+        try {
+          await ResultService.createStudentResult(resultData, education_level);
+          toast.success('Result recorded successfully!');
+        } catch (error: any) {
+          console.error('Error creating result:', error);
+          
+          if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
+            const errorMessage = error.response.data.non_field_errors[0];
+            if (errorMessage.includes('unique')) {
+              toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
+              return;
+            }
+          }
+          
+          const errorMessage = error.response?.data?.message || error.message || 'Failed to create result';
+          toast.error(errorMessage);
+          throw error;
+        }
       }
 
       onResultCreated();
       onClose();
-    } catch (error: any) {
-      console.error('❌ Error saving result:', error);
-      console.error('❌ Error response:', error.response?.data);
-      
-      if (editResult) {
-        const errorMessage = error.response?.data?.message || 
-                           error.response?.data?.error ||
-                           JSON.stringify(error.response?.data) ||
-                           error.message || 
-                           'Failed to update result';
-        toast.error(`Update failed: ${errorMessage}`);
-      } else {
-        if (error.response?.status === 400 && error.response?.data?.non_field_errors) {
-          const errorMessage = error.response.data.non_field_errors[0];
-          if (errorMessage.includes('unique')) {
-            toast.error('A result already exists for this student, subject, and exam session. Please edit the existing result instead.');
-            return;
-          }
-        }
-        
-        const errorMessage = error.response?.data?.message || 
-                           error.response?.data?.error ||
-                           JSON.stringify(error.response?.data) ||
-                           error.message || 
-                           'Failed to create result';
-        toast.error(errorMessage);
-      }
+    } catch (error) {
+      console.error('Error saving result:', error);
     } finally {
       setSaving(false);
     }
@@ -4357,7 +4353,7 @@ const ResultRecordingForm = ({
             exam_score,
             total_score: totalScore,
             grade: getGrade(totalScore),
-            teacher_remark: result.assessment_scores.remarks || '',
+            remarks: result.assessment_scores.remarks || '',
             status: 'DRAFT',
             education_level,
             class_statistics: result.class_statistics || {},
@@ -4809,7 +4805,8 @@ const ResultRecordingForm = ({
                         value={selectedClass}
                         onChange={(e) => {
                           setSelectedClass(e.target.value);
-                          handleClassChange(e.target.value, !!editResult);
+                          setFormData(prev => ({ ...prev, student: '' }));
+                          handleClassChange(e.target.value);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         required
@@ -4825,31 +4822,6 @@ const ResultRecordingForm = ({
                       {editResult && (
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           Cannot change class for existing result
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Student *
-                      </label>
-                      <select
-                        value={formData.student}
-                        onChange={(e) => setFormData(prev => ({ ...prev, student: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                        required
-                        disabled={!!editResult || !selectedClass || filteredStudents.length === 0}
-                      >
-                        <option value="">Select Student</option>
-                        {filteredStudents.map(student => (
-                          <option key={student.id} value={student.id}>
-                            {student.full_name}
-                          </option>
-                        ))}
-                      </select>
-                      {editResult && (
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Cannot change student for existing result
                         </p>
                       )}
                     </div>
@@ -4875,6 +4847,31 @@ const ResultRecordingForm = ({
                       {editResult && (
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           Cannot change exam session for existing result
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Student *
+                      </label>
+                      <select
+                        value={formData.student}
+                        onChange={(e) => setFormData(prev => ({ ...prev, student: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        required
+                        disabled={!!editResult || !selectedClass || filteredStudents.length === 0}
+                      >
+                        <option value="">Select Student</option>
+                        {filteredStudents.map(student => (
+                          <option key={student.id} value={student.id}>
+                            {student.full_name}
+                          </option>
+                        ))}
+                      </select>
+                      {editResult && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Cannot change student for existing result
                         </p>
                       )}
                     </div>
