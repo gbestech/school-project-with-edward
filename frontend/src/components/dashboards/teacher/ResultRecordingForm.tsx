@@ -3791,6 +3791,16 @@ const ResultRecordingForm = ({
     }
   };
 
+  useEffect(() => {
+  if (editResult) {
+    console.log('🔍 EDIT MODE ACTIVATED');
+    console.log('   editResult.id:', editResult.id);
+    console.log('   editResult.student:', editResult.student);
+    console.log('   editResult.student.id:', editResult.student?.id);
+    console.log('   Full editResult:', editResult);
+  }
+}, [editResult]);
+
   const handleClassChange = async (classId: string, isEditMode = false) => {
     if (!classId || !currentTeacherId) return;
 
@@ -3884,9 +3894,14 @@ const ResultRecordingForm = ({
       console.log('📝 Edit Result Data:', editResult);
       
       const studentId = (editResult.student?.id ?? editResult.student_id ?? editResult.student)?.toString();
-      const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
-      const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
+    const subjectId = (editResult.subject?.id ?? editResult.subject_id ?? editResult.subject)?.toString();
+    const examSessionId = (editResult.exam_session?.id ?? editResult.exam_session_id ?? editResult.exam_session)?.toString();
       
+// 🔍 ADD THIS: Verify the student ID is correct
+    console.log('🎯 Editing for Student ID:', studentId);
+    console.log('🎯 Subject ID:', subjectId);
+    console.log('🎯 Exam Session ID:', examSessionId);
+
       setFormData({
         student: studentId,
         subject: subjectId,
@@ -4232,11 +4247,20 @@ const ResultRecordingForm = ({
       
       let finalId = safeId;
 
- console.log('🚀 UPDATE REQUEST:', {
+      console.log('🚀 UPDATE REQUEST:', {
         url: `${education_level}/results/${finalId}/`,
         method: 'PUT',
-        data: resultData
+        data: resultData,
+        updating: {
+      resultId: finalId,
+      studentId: formData.student,  // Should be '93'
+      subjectId: formData.subject,
+      examSessionId: formData.exam_session
+    }
+  
       });
+
+      
 
       if (!finalId) {
         try {
