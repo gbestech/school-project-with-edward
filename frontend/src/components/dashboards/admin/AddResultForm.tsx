@@ -125,77 +125,75 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
   // Auto-calculation effect
   useEffect(() => {
-    if (!selectedStudent) return;
+  if (!selectedStudent) return;
 
-    const calculateFields = () => {
-      const newFormData = { ...formData };
-      const parseScore = (score: any) => parseFloat(score) || 0;
+  const calculateFields = () => {
+    const newFormData = { ...formData };
+    const parseScore = (score: any) => parseFloat(score) || 0;
 
-      switch (selectedStudent.education_level) {
-        case 'SENIOR_SECONDARY':
-          // Calculate total score (Test 1 + Test 2 + Test 3 + Exam)
-          const test1 = parseFloat(formData.first_test_score) || 0;
-          const test2 = parseFloat(formData.second_test_score) || 0;
-          const test3 = parseFloat(formData.third_test_score) || 0;
-          const exam = parseFloat(formData.exam_score) || 0;
-          const totalScore = test1 + test2 + test3 + exam;
-          
-          // Only auto-calculate if total_score is empty
-          if (totalScore > 0) {
-            newFormData.total_score = totalScore.toString();
-            newFormData.grade = generateGrade(totalScore);
-          }
-          break;
+    switch (selectedStudent.education_level) {
+      case 'SENIOR_SECONDARY':
+        const test1 = parseFloat(formData.first_test_score) || 0;
+        const test2 = parseFloat(formData.second_test_score) || 0;
+        const test3 = parseFloat(formData.third_test_score) || 0;
+        const exam = parseFloat(formData.exam_score) || 0;
+        const totalScore = test1 + test2 + test3 + exam;
+        
+        if (totalScore > 0) {
+          newFormData.total_score = totalScore.toString();
+          newFormData.grade = generateGrade(totalScore);
+        }
+        break;
 
-        case 'PRIMARY':
-        case 'JUNIOR_SECONDARY':
-          // Calculate CA Total
-          const ca = parseFloat(formData.continuous_assessment_score) || 0;
-          const takeHome = parseFloat(formData.take_home_test_score) || 0;
-          const appearance = parseFloat(formData.appearance_score) || 0;
-          const practical = parseFloat(formData.practical_score) || 0;
-          const project = parseFloat(formData.project_score) || 0;
-          const noteCopying = parseFloat(formData.note_copying_score) || 0;
-          const caTotal = ca + takeHome + appearance + practical + project + noteCopying;
-          
-          // Calculate Total Score
-          const examScore = parseFloat(formData.exam_score) || 0;
-          const totalScore2 = caTotal + examScore;
-          
-          // Only auto-calculate if fields are empty
-          if (caTotal > 0) {
-            newFormData.ca_total = caTotal.toString();
-          }
-          if (totalScore2 > 0) {
-            newFormData.total_score = totalScore2.toString();
-            newFormData.grade = generateGrade(totalScore2);
-          }
-          break;
+      case 'PRIMARY':
+      case 'JUNIOR_SECONDARY':
+        const ca = parseFloat(formData.continuous_assessment_score) || 0;
+        const takeHome = parseFloat(formData.take_home_test_score) || 0;
+        const appearance = parseFloat(formData.appearance_score) || 0;
+        const practical = parseFloat(formData.practical_score) || 0;
+        const project = parseFloat(formData.project_score) || 0;
+        const noteCopying = parseFloat(formData.note_copying_score) || 0;
+        const caTotal = ca + takeHome + appearance + practical + project + noteCopying;
+        
+        const examScore = parseFloat(formData.exam_score) || 0;
+        const totalScore2 = caTotal + examScore;
+        
+        if (caTotal > 0) {
+          newFormData.ca_total = caTotal.toString();
+        }
+        if (totalScore2 > 0) {
+          newFormData.total_score = totalScore2.toString();
+          newFormData.grade = generateGrade(totalScore2);
+        }
+        break;
 
+      case 'NURSERY':
+        // FIX: Use exam_score (which is the actual field being input) instead of mark_obtained
+        const nurseryScore = parseFloat(formData.exam_score) || 0;
+        const maxMarks = parseFloat(formData.max_marks_obtainable) || 100;
+        
+        if (nurseryScore > 0) {
+          newFormData.total_score = nurseryScore.toString();
+          // Calculate grade as percentage for nursery
+          const percentage = (nurseryScore / maxMarks) * 100;
+          newFormData.grade = generateGrade(percentage);
+        }
+        break;
+    }
 
-        case 'NURSERY':
-          // For nursery, total score is just the mark obtained
-          const markObtained = parseFloat(formData.exam_score) || 0;
-          if (markObtained > 0) {
-            newFormData.total_score = markObtained.toString();
-            newFormData.grade = generateGrade(markObtained);
-          }
-          break;
-      }
+    if (JSON.stringify(newFormData) !== JSON.stringify(formData)) {
+      setFormData(newFormData);
+    }
+  };
 
-      // Update form data if there are changes
-      if (JSON.stringify(newFormData) !== JSON.stringify(formData)) {
-        setFormData(newFormData);
-      }
-    };
-
-    calculateFields();
-  }, [
-    formData.first_test_score, formData.second_test_score, formData.third_test_score,
-    formData.continuous_assessment_score, formData.take_home_test_score, formData.appearance_score,
-    formData.practical_score, formData.project_score, formData.note_copying_score,
-    formData.exam_score, formData.mark_obtained, selectedStudent
-  ]);
+  calculateFields();
+}, [
+  formData.first_test_score, formData.second_test_score, formData.third_test_score,
+  formData.continuous_assessment_score, formData.take_home_test_score, formData.appearance_score,
+  formData.practical_score, formData.project_score, formData.note_copying_score,
+  formData.exam_score, formData.max_marks_obtainable, // Added max_marks_obtainable to dependencies
+  selectedStudent
+]);
 
   const themeClasses = {
     bgPrimary: isDarkMode ? 'bg-gray-900' : 'bg-white',
@@ -709,7 +707,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
                parseScore(formData.note_copying_score) + 
                parseScore(formData.exam_score);
       case 'NURSERY':
-      return parseScore(formData.mark_obtained);
+      return parseScore(formData.exam_score);
       default:
         return 0;
     }
@@ -791,26 +789,26 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
         };
         
       case 'NURSERY':
-        return {
-          ...basePayload,
-          max_marks_obtainable: parseNumericValue(formData.max_marks_obtainable),
-          mark_obtained: parseNumericValue(formData.mark_obtained),
-          total_score: parseNumericValue(formData.total_score),
-          grade: formData.grade || null,
-          position: formData.position ? parseInt(formData.position) : null,
-          class_average: parseNumericValue(formData.class_average) || null,
-          highest_in_class: parseNumericValue(formData.highest_in_class) || null,
-          lowest_in_class: parseNumericValue(formData.lowest_in_class) || null,
-          academic_comment: formData.academic_comment || formData.teacher_remark || '',
-          physical_development: formData.physical_development || '',
-          health: formData.health || '',
-          cleanliness: formData.cleanliness || '',
-          general_conduct: formData.general_conduct || '',
-          height_beginning: parseNumericValue(formData.height_beginning) || null,
-          height_end: parseNumericValue(formData.height_end) || null,
-          weight_beginning: parseNumericValue(formData.weight_beginning) || null,
-          weight_end: parseNumericValue(formData.weight_end) || null
-        };
+  return {
+    ...basePayload,
+    max_marks_obtainable: parseNumericValue(formData.max_marks_obtainable),
+    exam_score: parseNumericValue(formData.exam_score), // FIX: Use exam_score consistently
+    total_score: parseNumericValue(formData.total_score),
+    grade: formData.grade || null,
+    position: formData.position ? parseInt(formData.position) : null,
+    class_average: parseNumericValue(formData.class_average) || null,
+    highest_in_class: parseNumericValue(formData.highest_in_class) || null,
+    lowest_in_class: parseNumericValue(formData.lowest_in_class) || null,
+    academic_comment: formData.academic_comment || formData.teacher_remark || '',
+    physical_development: formData.physical_development || '',
+    health: formData.health || '',
+    cleanliness: formData.cleanliness || '',
+    general_conduct: formData.general_conduct || '',
+    height_beginning: parseNumericValue(formData.height_beginning) || null,
+    height_end: parseNumericValue(formData.height_end) || null,
+    weight_beginning: parseNumericValue(formData.weight_beginning) || null,
+    weight_end: parseNumericValue(formData.weight_end) || null
+  };
         
       default:
         throw new Error(`Invalid education level: ${selectedStudent.education_level}`);
@@ -917,106 +915,109 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
 
 // Nursery Academic Tab Component
   const renderNurseryAcademicFields = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InputField 
-          label="Max Marks Obtainable" 
-          field="max_marks_obtainable" 
-          min={1} 
-          max={100}
-          helpText="Maximum possible marks"
-        />
-        <InputField 
-          label="Mark Obtained" 
-          field="mark_obtained" 
-          min={0} 
-          max={parseFloat(formData.max_marks_obtainable) || 100}
-          helpText="Actual marks obtained"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <InputField 
-          label="Total Score" 
-          field="total_score" 
-          min={0} 
-          max={100}
-          helpText="Auto-calculated"
-          readOnly={true}
-        />
-        <InputField 
-          label="Grade" 
-          field="grade" 
-          min={0} 
-          max={100}
-          type="text"
-          helpText="Auto-generated"
-          readOnly={true}
-        />
-        <InputField 
-          label="Position" 
-          field="position" 
-          min={1} 
-          max={100}
-          helpText="Position in class"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <InputField 
-          label="Class Average" 
-          field="class_average" 
-          min={0} 
-          max={100}
-          helpText="Average score"
-        />
-        <InputField 
-          label="Highest in Class" 
-          field="highest_in_class" 
-          min={0} 
-          max={100}
-          helpText="Highest score"
-        />
-        <InputField 
-          label="Lowest in Class" 
-          field="lowest_in_class" 
-          min={0} 
-          max={100}
-          helpText="Lowest score"
-        />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>
-            Academic Comment
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              const newRemark = generateTeacherRemark(
-                Number(formData.total_score) || 0,
-                formData.grade || ''
-              );
-              setFormData(prev => ({ ...prev, academic_comment: newRemark }));
-            }}
-            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
-            disabled={loading}
-          >
-            Generate Comment
-          </button>
-        </div>
-        <textarea
-          value={formData.academic_comment}
-          onChange={(e) => handleInputChange('academic_comment', e.target.value)}
-          rows={3}
-          className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-          placeholder="Enter academic comment for the student..."
-          disabled={loading}
-        />
-      </div>
+  <div className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <InputField 
+        label="Max Marks Obtainable" 
+        field="max_marks_obtainable" 
+        min={1} 
+        max={100}
+        helpText="Maximum possible marks"
+      />
+      <InputField 
+        label="Mark Obtained" 
+        field="exam_score"  // FIX: Changed from "mark_obtained" to "exam_score"
+        min={0} 
+        max={parseFloat(formData.max_marks_obtainable) || 100}
+        helpText="Actual marks obtained"
+      />
     </div>
-  );
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <InputField 
+        label="Total Score" 
+        field="total_score" 
+        min={0} 
+        max={100}
+        helpText="Auto-calculated"
+        readOnly={true}
+      />
+      <div>
+        <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+          Grade <span className="text-xs text-blue-600 ml-2">(Auto-generated)</span>
+        </label>
+        <input
+          type="text"
+          value={formData.grade}
+          readOnly={true}
+          className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none bg-gray-100 dark:bg-gray-700 cursor-not-allowed`}
+          placeholder="Auto-generated"
+        />
+      </div>
+      <InputField 
+        label="Position" 
+        field="position" 
+        min={1} 
+        max={100}
+        helpText="Position in class"
+      />
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <InputField 
+        label="Class Average" 
+        field="class_average" 
+        min={0} 
+        max={100}
+        helpText="Average score"
+      />
+      <InputField 
+        label="Highest in Class" 
+        field="highest_in_class" 
+        min={0} 
+        max={100}
+        helpText="Highest score"
+      />
+      <InputField 
+        label="Lowest in Class" 
+        field="lowest_in_class" 
+        min={0} 
+        max={100}
+        helpText="Lowest score"
+      />
+    </div>
+
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>
+          Academic Comment
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            const newRemark = generateTeacherRemark(
+              Number(formData.total_score) || 0,
+              formData.grade || ''
+            );
+            setFormData(prev => ({ ...prev, academic_comment: newRemark }));
+          }}
+          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
+          disabled={loading}
+        >
+          Generate Comment
+        </button>
+      </div>
+      <textarea
+        value={formData.academic_comment}
+        onChange={(e) => handleInputChange('academic_comment', e.target.value)}
+        rows={3}
+        className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        placeholder="Enter academic comment for the student..."
+        disabled={loading}
+      />
+    </div>
+  </div>
+);
 
   // Nursery Physical Development Tab Component
   const renderNurseryPhysicalFields = () => (
