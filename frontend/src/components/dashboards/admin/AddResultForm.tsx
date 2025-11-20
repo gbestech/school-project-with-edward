@@ -7,7 +7,9 @@ import {
   Target,
   Star,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Heart,
+  BookOpen
 } from 'lucide-react';
 import { useGlobalTheme } from '@/contexts/GlobalThemeContext';
 import ResultService from '@/services/ResultService';
@@ -30,14 +32,6 @@ interface Student {
   classroom?: string | null;
   section_id?: number | null;
 }
-
-// export interface ExamSession {
-//   id: string;
-//   name: string;
-//   exam_type: string;
-//   term: string;
-//    academic_session?: AcademicSession | string | number;
-// }
 
 interface GradingSystem {
   id: string;
@@ -69,6 +63,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     stream: '',
     status: 'DRAFT',
     teacher_remark: '',
+    academic_comment: '',
     
     // Senior Secondary fields
     first_test_score: '',
@@ -97,10 +92,15 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     
     // Nursery specific
     max_marks_obtainable: '100',
+    mark_obtained: '',
     physical_development: '',
     health: '',
     cleanliness: '',
     general_conduct: '',
+    height_beginning: '',
+    height_end: 0,
+    weight_beginning: 0,
+    weight_end: 0
   });
 
   // Dropdown data
@@ -118,6 +118,10 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   const [selectedClassSection, setSelectedClassSection] = useState<string>('');
   const [availableClasses, setAvailableClasses] = useState<string[]>([]);
   const [availableClassSections, setAvailableClassSections] = useState<string[]>([]);
+  const [nurseryTab, setNurseryTab] = useState<'academic' | 'physical'>('academic');
+
+
+  const isNurseryStudent = selectedStudent?.education_level === 'NURSERY';
 
   // Auto-calculation effect
   useEffect(() => {
@@ -125,6 +129,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
 
     const calculateFields = () => {
       const newFormData = { ...formData };
+      const parseScore = (score: any) => parseFloat(score) || 0;
 
       switch (selectedStudent.education_level) {
         case 'SENIOR_SECONDARY':
@@ -136,8 +141,9 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
           const totalScore = test1 + test2 + test3 + exam;
           
           // Only auto-calculate if total_score is empty
-          if (!formData.total_score && totalScore > 0) {
+          if (totalScore > 0) {
             newFormData.total_score = totalScore.toString();
+            newFormData.grade = generateGrade(totalScore);
           }
           break;
 
@@ -157,19 +163,22 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
           const totalScore2 = caTotal + examScore;
           
           // Only auto-calculate if fields are empty
-          if (!formData.ca_total && caTotal > 0) {
+          if (caTotal > 0) {
             newFormData.ca_total = caTotal.toString();
           }
-          if (!formData.total_score && totalScore2 > 0) {
+          if (totalScore2 > 0) {
             newFormData.total_score = totalScore2.toString();
+            newFormData.grade = generateGrade(totalScore2);
           }
           break;
+
 
         case 'NURSERY':
           // For nursery, total score is just the mark obtained
           const markObtained = parseFloat(formData.exam_score) || 0;
-          if (!formData.total_score && markObtained > 0) {
+          if (markObtained > 0) {
             newFormData.total_score = markObtained.toString();
+            newFormData.grade = generateGrade(markObtained);
           }
           break;
       }
@@ -185,7 +194,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
     formData.first_test_score, formData.second_test_score, formData.third_test_score,
     formData.continuous_assessment_score, formData.take_home_test_score, formData.appearance_score,
     formData.practical_score, formData.project_score, formData.note_copying_score,
-    formData.exam_score, selectedStudent
+    formData.exam_score, formData.mark_obtained, selectedStudent
   ]);
 
   const themeClasses = {
@@ -207,21 +216,13 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   }, []);
 
   useEffect(() => {
-    console.log('🔍 [AddResultForm] useEffect triggered for selectedStudent:', selectedStudent);
-    console.log('🔍 [AddResultForm] selectedStudent type:', typeof selectedStudent);
-    console.log('🔍 [AddResultForm] selectedStudent education_level:', selectedStudent?.education_level);
-    
     if (selectedStudent?.education_level) {
-      console.log('🔍 [AddResultForm] Student selected, loading data for education level:', selectedStudent.education_level);
-      console.log('🔍 [AddResultForm] Full student object:', selectedStudent);
       loadSubjectsForEducationLevel(selectedStudent.education_level);
       loadGradingSystemsForEducationLevel(selectedStudent.education_level);
       if (selectedStudent.education_level === 'SENIOR_SECONDARY') {
         loadStreams();
       }
     } else {
-      console.log('🔍 [AddResultForm] No student selected or no education level');
-      console.log('🔍 [AddResultForm] selectedStudent:', selectedStudent);
       setSubjects([]);
     }
   }, [selectedStudent]);
@@ -229,7 +230,6 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   // Handle education level change
   useEffect(() => {
     if (selectedEducationLevel) {
-      console.log('🔍 [AddResultForm] Education level changed to:', selectedEducationLevel);
       setSelectedClass('');
       setSelectedClassSection('');
       setStudents([]);
@@ -259,9 +259,7 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
   // Handle class section change
   useEffect(() => {
     if (selectedEducationLevel && selectedClass && selectedClassSection) {
-      // For now, we'll filter students on the frontend since classroom filtering might not be supported by the API
-      // setStudents([]);
-      // loadStudentsByFilters(selectedEducationLevel, selectedClass, selectedClassSection);
+      
     }
   }, [selectedClassSection]);
 
@@ -272,13 +270,9 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
       // Only load exam sessions initially, students will be loaded based on filters
       const examSessionsResponse = await ResultService.getExamSessions();
       setExamSessions(examSessionsResponse);
-      console.log("Here is exam response", examSessionsResponse)
-      // Load some default subjects for all education levels as fallback
       try {
-        console.log('🔍 [AddResultForm] Loading fallback subjects...');
         const fallbackSubjects = await SubjectService.getSubjects({ is_active: true });
         if (Array.isArray(fallbackSubjects) && fallbackSubjects.length > 0) {
-          console.log('🔍 [AddResultForm] Loaded fallback subjects:', fallbackSubjects.length);
           setSubjects(fallbackSubjects);
         }
       } catch (error) {
@@ -321,11 +315,9 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
         console.log('🔍 [AddResultForm] Direct API response:', directResponse);
         
         if (directResponse && Array.isArray(directResponse)) {
-          console.log('🔍 [AddResultForm] Direct API returned array with', directResponse.length, 'subjects');
           setSubjects(directResponse);
           return;
         } else if (directResponse && directResponse.results && Array.isArray(directResponse.results)) {
-          console.log('🔍 [AddResultForm] Direct API returned results array with', directResponse.results.length, 'subjects');
           setSubjects(directResponse.results);
           return;
         } else {
@@ -336,13 +328,10 @@ const AddResultForm: React.FC<AddResultFormProps> = ({ onClose, onSuccess, preSe
       }
       
       // Fallback to SubjectService - use the specific method for education level
-      console.log('🔍 [AddResultForm] Trying SubjectService.getSubjectsByEducationLevel...');
       const subjectsResponse = await SubjectService.getSubjectsByEducationLevel(educationLevel);
       
-      console.log('🔍 [AddResultForm] SubjectService response:', subjectsResponse);
-      
       if (Array.isArray(subjectsResponse)) {
-        console.log('🔍 [AddResultForm] SubjectService returned array with', subjectsResponse.length, 'subjects');
+        
         setSubjects(subjectsResponse);
       } else {
         console.warn('🔍 [AddResultForm] Unexpected SubjectService response format:', subjectsResponse);
@@ -364,8 +353,6 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
       const gradingSystemsResponse = await api.get('/api/results/grading-systems/', {
         params: { education_level: educationLevel }
       });
-      
-      console.log("This is Grading System Response", gradingSystemsResponse);
       
       // Handle different response formats
       let systemsData = [];
@@ -417,12 +404,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
       const response = await api.get(`/api/students/students/?${params.toString()}`);
       const studentsData = response?.results || response || [];
       
-      console.log('🔍 [AddResultForm] API Response:', response);
-      console.log('🔍 [AddResultForm] Students Data:', studentsData);
-      console.log('🔍 [AddResultForm] First student structure:', studentsData[0]);
-      console.log('🔍 [AddResultForm] First student ID type:', typeof studentsData[0]?.id);
-      console.log('🔍 [AddResultForm] First student ID value:', studentsData[0]?.id);
-      
+           
       setStudents(studentsData);
       
       // Extract unique classes and sections for dropdowns
@@ -451,41 +433,41 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     // Define remark templates based on grade ranges
     const remarkTemplates = {
       'A': [
-        'Excellent performance! Outstanding work and dedication.',
-        'Exceptional achievement. Keep up the excellent work!',
-        'Outstanding performance. You are a model student.',
-        'Brilliant work! Your dedication is commendable.'
+        'Excellent.',
+        'Exceptional.',
+        'Outstanding.',
+        'Brilliant.'
       ],
       'B': [
-        'Very good performance. Well done!',
-        'Excellent work. Keep maintaining this standard.',
-        'Great achievement. Continue to excel.',
-        'Very good performance. You should be proud.'
+        'Very good.',
+        'Nice work.',
+        'Amazing.',
+        'Awesome.'
       ],
       'C': [
-        'Good performance. Keep up the good work.',
-        'Well done! Continue to improve.',
-        'Good effort. You are making progress.',
-        'Satisfactory performance. Keep working hard.'
+        'Good.',
+        'Well done!.',
+        'Good effort.',
+        'Satisfactory.'
       ],
       'D': [
-        'Fair performance. Room for improvement.',
-        'Average work. Try to do better next time.',
-        'Satisfactory performance. Keep working hard.',
-        'Fair effort. Focus on areas that need improvement.'
+        'Fair',
+        'Average',
+        'Working hard.',
+        'Improvement.'
       ],
       'E': [
-        'Below average performance. More effort needed.',
-        'Needs improvement. Focus on your studies.',
-        'Below expectations. Work harder next time.',
-        'Room for improvement. Keep working hard.'
+        'Do more.',
+        'Focus more.',
+        'Work.',
+        'Poor.'
       ],
      
       'F': [
-        'Failed. Immediate remedial action required.',
-        'Complete failure. Urgent academic intervention needed.',
-        'Failed grade. Parent consultation and support required.',
-        'Critical failure. Seek immediate academic help.'
+        'Failed.',
+        'Very poor.',
+        'Failed grade.',
+        'Critical.'
       ]
     };
 
@@ -541,14 +523,9 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
 
     // Handle student selection
     if (field === 'student') {
-      console.log('🔍 [AddResultForm] Looking for student with ID:', value);
-      console.log('🔍 [AddResultForm] Available students:', students.map(s => ({ id: s.id, name: s.full_name })));
-      console.log('🔍 [AddResultForm] Student ID types - value:', typeof value, 'students[0].id:', typeof students[0]?.id);
       
       const student = students.find(s => s.id.toString() === value);
-      console.log('🔍 [AddResultForm] Student selected:', student);
-      console.log('🔍 [AddResultForm] Student education level:', student?.education_level);
-      console.log('🔍 [AddResultForm] Setting selectedStudent to:', student);
+      
       setSelectedStudent(student || null);
       // Reset dependent fields when student changes
       setFormData(prev => ({
@@ -652,6 +629,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     return Object.keys(newErrors).length === 0;
   };
 
+
   // Helper function to check if a field is a score field
   const isScoreField = (field: string): boolean => {
     const scoreFields = [
@@ -731,7 +709,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
                parseScore(formData.note_copying_score) + 
                parseScore(formData.exam_score);
       case 'NURSERY':
-        return parseScore(formData.exam_score);
+      return parseScore(formData.mark_obtained);
       default:
         return 0;
     }
@@ -773,54 +751,66 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
       status: formData.status
     };
 
-    console.log('Building payload for education level:', selectedStudent.education_level);
-    console.log('Form data:', formData);
-
     switch (selectedStudent.education_level) {
       case 'SENIOR_SECONDARY':
-        const seniorPayload = {
+        return {
           ...basePayload,
           first_test_score: parseNumericValue(formData.first_test_score),
           second_test_score: parseNumericValue(formData.second_test_score),
           third_test_score: parseNumericValue(formData.third_test_score),
           exam_score: parseNumericValue(formData.exam_score),
+          total_score: parseNumericValue(formData.total_score),
+          grade: formData.grade || null,
+          position: formData.position ? parseInt(formData.position) : null,
+          class_average: parseNumericValue(formData.class_average) || null,
+          highest_in_class: parseNumericValue(formData.highest_in_class) || null,
+          lowest_in_class: parseNumericValue(formData.lowest_in_class) || null,
           teacher_remark: formData.teacher_remark || '',
           ...(formData.stream ? { stream: formData.stream } : {})
         };
-        console.log('Senior Secondary payload:', seniorPayload);
-        return seniorPayload;
         
       case 'PRIMARY':
       case 'JUNIOR_SECONDARY':
-        const primaryJuniorPayload = {
+        return {
           ...basePayload,
           continuous_assessment_score: parseNumericValue(formData.continuous_assessment_score),
           take_home_test_score: parseNumericValue(formData.take_home_test_score),
+          appearance_score: parseNumericValue(formData.appearance_score),
           practical_score: parseNumericValue(formData.practical_score),
           project_score: parseNumericValue(formData.project_score),
-           appearance_score: parseNumericValue(formData.appearance_score),
           note_copying_score: parseNumericValue(formData.note_copying_score),
           exam_score: parseNumericValue(formData.exam_score),
-          teacher_remark: formData.teacher_remark || '',
-          // FIXED: Include appearance_score for both PRIMARY and JUNIOR_SECONDARY
-         
+          ca_total: parseNumericValue(formData.ca_total),
+          total_score: parseNumericValue(formData.total_score),
+          grade: formData.grade || null,
+          position: formData.position ? parseInt(formData.position) : null,
+          class_average: parseNumericValue(formData.class_average) || null,
+          highest_in_class: parseNumericValue(formData.highest_in_class) || null,
+          lowest_in_class: parseNumericValue(formData.lowest_in_class) || null,
+          teacher_remark: formData.teacher_remark || ''
         };
-        console.log('Primary/Junior Secondary payload:', primaryJuniorPayload);
-        return primaryJuniorPayload;
         
       case 'NURSERY':
-        const nurseryPayload = {
+        return {
           ...basePayload,
           max_marks_obtainable: parseNumericValue(formData.max_marks_obtainable),
-          mark_obtained: parseNumericValue(formData.exam_score),
-          academic_comment: formData.teacher_remark || '',
+          mark_obtained: parseNumericValue(formData.mark_obtained),
+          total_score: parseNumericValue(formData.total_score),
+          grade: formData.grade || null,
+          position: formData.position ? parseInt(formData.position) : null,
+          class_average: parseNumericValue(formData.class_average) || null,
+          highest_in_class: parseNumericValue(formData.highest_in_class) || null,
+          lowest_in_class: parseNumericValue(formData.lowest_in_class) || null,
+          academic_comment: formData.academic_comment || formData.teacher_remark || '',
           physical_development: formData.physical_development || '',
           health: formData.health || '',
           cleanliness: formData.cleanliness || '',
-          general_conduct: formData.general_conduct || ''
+          general_conduct: formData.general_conduct || '',
+          height_beginning: parseNumericValue(formData.height_beginning) || null,
+          height_end: parseNumericValue(formData.height_end) || null,
+          weight_beginning: parseNumericValue(formData.weight_beginning) || null,
+          weight_end: parseNumericValue(formData.weight_end) || null
         };
-        console.log('Nursery payload:', nurseryPayload);
-        return nurseryPayload;
         
       default:
         throw new Error(`Invalid education level: ${selectedStudent.education_level}`);
@@ -830,10 +820,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form submission started...');
-    console.log('Current formData:', formData);
-    console.log('Selected student:', selectedStudent);
-    
+     
     if (!validateForm()) {
       toast.error('Please fix the errors in the form');
       return;
@@ -843,9 +830,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
       setLoading(true);
       
       const payload = buildPayload();
-      
-      console.log('Final payload being sent:', payload);
-      console.log('Education Level:', selectedStudent!.education_level);
+      console.log('Submitting payload:', payload);
       
       const response = await ResultService.createStudentResult(payload, selectedStudent!.education_level);
       
@@ -856,7 +841,6 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
       onClose();
     } catch (error: any) {
       console.error('Error creating result:', error);
-      console.error('Error response:', error.response?.data);
       
       // FIXED: Better error handling for different error structures
       let errorMessage = 'Failed to create result';
@@ -891,7 +875,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
   };
 
   // FIXED: Improved InputField component with better value handling
-  const InputField = ({ label, field, min, max, placeholder, step = "0.01", helpText, readOnly = false, type = "number" }: {
+  const InputField = ({ label, field, min = 0, max = 100, placeholder, step = "0.01", helpText, readOnly = false, type = "number" }: {
     label: string;
     field: string;
     min: number;
@@ -931,8 +915,266 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     );
   };
 
+// Nursery Academic Tab Component
+  const renderNurseryAcademicFields = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <InputField 
+          label="Max Marks Obtainable" 
+          field="max_marks_obtainable" 
+          min={1} 
+          max={100}
+          helpText="Maximum possible marks"
+        />
+        <InputField 
+          label="Mark Obtained" 
+          field="mark_obtained" 
+          min={0} 
+          max={parseFloat(formData.max_marks_obtainable) || 100}
+          helpText="Actual marks obtained"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <InputField 
+          label="Total Score" 
+          field="total_score" 
+          min={0} 
+          max={100}
+          helpText="Auto-calculated"
+          readOnly={true}
+        />
+        <InputField 
+          label="Grade" 
+          field="grade" 
+          min={0} 
+          max={100}
+          type="text"
+          helpText="Auto-generated"
+          readOnly={true}
+        />
+        <InputField 
+          label="Position" 
+          field="position" 
+          min={1} 
+          max={100}
+          helpText="Position in class"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <InputField 
+          label="Class Average" 
+          field="class_average" 
+          min={0} 
+          max={100}
+          helpText="Average score"
+        />
+        <InputField 
+          label="Highest in Class" 
+          field="highest_in_class" 
+          min={0} 
+          max={100}
+          helpText="Highest score"
+        />
+        <InputField 
+          label="Lowest in Class" 
+          field="lowest_in_class" 
+          min={0} 
+          max={100}
+          helpText="Lowest score"
+        />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className={`block text-sm font-medium ${themeClasses.textSecondary}`}>
+            Academic Comment
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const newRemark = generateTeacherRemark(
+                Number(formData.total_score) || 0,
+                formData.grade || ''
+              );
+              setFormData(prev => ({ ...prev, academic_comment: newRemark }));
+            }}
+            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
+            disabled={loading}
+          >
+            Generate Comment
+          </button>
+        </div>
+        <textarea
+          value={formData.academic_comment}
+          onChange={(e) => handleInputChange('academic_comment', e.target.value)}
+          rows={3}
+          className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          placeholder="Enter academic comment for the student..."
+          disabled={loading}
+        />
+      </div>
+    </div>
+  );
+
+  // Nursery Physical Development Tab Component
+  const renderNurseryPhysicalFields = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+            Physical Development
+          </label>
+          <select
+            value={formData.physical_development}
+            onChange={(e) => handleInputChange('physical_development', e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">Select Rating</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Very Good">Very Good</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+            Health
+          </label>
+          <select
+            value={formData.health}
+            onChange={(e) => handleInputChange('health', e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">Select Rating</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Very Good">Very Good</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+          </select>
+        </div>
+
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+            Cleanliness
+          </label>
+          <select
+            value={formData.cleanliness}
+            onChange={(e) => handleInputChange('cleanliness', e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">Select Rating</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Very Good">Very Good</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+          </select>
+        </div>
+        
+        <div>
+          <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
+            General Conduct
+          </label>
+          <select
+            value={formData.general_conduct}
+            onChange={(e) => handleInputChange('general_conduct', e.target.value)}
+            className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">Select Rating</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Very Good">Very Good</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Poor">Poor</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <h4 className={`text-md font-medium mb-3 ${themeClasses.textPrimary}`}>
+          Physical Measurements
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField
+            label="Height (Beginning) - cm"
+            field="height_beginning"
+            min={0}
+            max={200}
+            step="0.1"
+            helpText="Height at term start"
+          />
+          <InputField
+            label="Height (End) - cm"
+            field="height_end"
+            min={0}
+            max={200}
+            step="0.1"
+            helpText="Height at term end"
+          />
+          <InputField
+            label="Weight (Beginning) - kg"
+            field="weight_beginning"
+            min={0}
+            max={100}
+            step="0.1"
+            helpText="Weight at term start"
+          />
+          <InputField
+            label="Weight (End) - kg"
+            field="weight_end"
+            min={0}
+            max={100}
+            step="0.1"
+            helpText="Weight at term end"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  // Nursery Tabs Component
+  const renderNurseryTabs = () => (
+    <div>
+      <div className="flex mb-4 border-b border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          className={`px-6 py-3 font-medium focus:outline-none transition-colors flex items-center gap-2 ${
+            nurseryTab === 'academic'
+              ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          }`}
+          onClick={() => setNurseryTab('academic')}
+        >
+          <BookOpen size={18} />
+          Academic Results
+        </button>
+        <button
+          type="button"
+          className={`px-6 py-3 font-medium focus:outline-none transition-colors flex items-center gap-2 ${
+            nurseryTab === 'physical'
+              ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+          }`}
+          onClick={() => setNurseryTab('physical')}
+        >
+          <Heart size={18} />
+          Physical Assessment
+        </button>
+      </div>
+      
+      <div className="pt-4">
+        {nurseryTab === 'academic' ? renderNurseryAcademicFields() : renderNurseryPhysicalFields()}
+      </div>
+    </div>
+  );
+
+  
   const renderScoreFields = () => {
-    console.log('🔍 [AddResultForm] renderScoreFields called, selectedStudent:', selectedStudent);
     if (!selectedStudent) {
       return (
         <div className={`p-8 text-center ${themeClasses.textSecondary}`}>
@@ -972,10 +1214,26 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
             
             {/* Teacher Remark */}
             <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newRemark = generateTeacherRemark(
+                      Number(formData.total_score) || 0,
+                      formData.grade || ''
+                    );
+                    setFormData(prev => ({ ...prev, teacher_remark: newRemark }));
+                  }}
+                  className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
+                  disabled={loading}
+                >
+                  Generate Remark
+                </button>
+              </div>
               <textarea
                 value={formData.teacher_remark}
-                onChange={(e) => setFormData({ ...formData, teacher_remark: e.target.value })}
+                onChange={(e) => handleInputChange('teacher_remark', e.target.value)}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 rows={3}
                 placeholder="Enter teacher's remark..."
@@ -988,7 +1246,6 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
       case 'JUNIOR_SECONDARY':
         return (
           <div className="space-y-6">
-            {/* CA Components */}
             <div>
               <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Continuous Assessment Components</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1002,26 +1259,40 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
               </div>
             </div>
             
-            {/* Calculated Fields */}
             <div>
               <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InputField label="CA Total" field="ca_total" min={0} max={35} helpText="Sum of CA components" readOnly={true} />
-                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam Score" readOnly={true} />
-                <InputField label="Grade" field="grade" min={0} max={100} helpText="Auto-generated from total score" type="text" readOnly={true} />
+                <InputField label="CA Total" field="ca_total" min={0} max={40} helpText="Sum of CA components" readOnly={true} />
+                <InputField label="Total Score" field="total_score" min={0} max={100} helpText="CA Total + Exam" readOnly={true} />
+                <InputField label="Grade" field="grade" min={0} max={100} helpText="Auto-generated" type="text" readOnly={true} />
                 <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
-                <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
-                <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
-                <InputField label="Lowest in Class" field="lowest_in_class" min={0} max={100} helpText="Lowest score in class" />
+                <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average" />
+                <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score" />
+                <InputField label="Lowest in Class" field="lowest_in_class" min={0} max={100} helpText="Lowest score" />
               </div>
             </div>
             
-            {/* Teacher Remark */}
             <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300">Teacher Remark</h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newRemark = generateTeacherRemark(
+                      Number(formData.total_score) || 0,
+                      formData.grade || ''
+                    );
+                    setFormData(prev => ({ ...prev, teacher_remark: newRemark }));
+                  }}
+                  className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded transition-colors"
+                  disabled={loading}
+                >
+                  Generate Remark
+                </button>
+              </div>
               <textarea
                 value={formData.teacher_remark}
-                onChange={(e) => setFormData({ ...formData, teacher_remark: e.target.value })}
+                onChange={(e) => handleInputChange('teacher_remark', e.target.value)}
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 rows={3}
                 placeholder="Enter teacher's remark..."
@@ -1031,127 +1302,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
         );
 
       case 'NURSERY':
-        return (
-          <div className="space-y-6">
-            {/* Basic Scores */}
-            <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Assessment Scores</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField 
-                  label="Max Marks Obtainable" 
-                  field="max_marks_obtainable" 
-                  min={1} 
-                  max={100} 
-                />
-                <InputField 
-                  label="Mark Obtained" 
-                  field="exam_score" 
-                  min={0} 
-                  max={parseFloat(formData.max_marks_obtainable) || 100} 
-                />
-              </div>
-            </div>
-            
-            {/* Calculated Fields */}
-            <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Calculated Fields</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <InputField label="Grade" field="grade" min={0} max={100} helpText="Auto-generated from total score" type="text" readOnly={true} />
-                <InputField label="Position" field="position" min={1} max={100} helpText="Position in class" />
-                <InputField label="Class Average" field="class_average" min={0} max={100} helpText="Class average score" />
-                <InputField label="Highest in Class" field="highest_in_class" min={0} max={100} helpText="Highest score in class" />
-                <InputField label="Lowest in Class" field="lowest_in_class" min={0} max={100} helpText="Lowest score in class" />
-              </div>
-            </div>
-            
-            {/* Teacher Remark */}
-            <div>
-              <h4 className="text-lg font-medium mb-4 text-gray-700 dark:text-gray-300">Teacher Remark</h4>
-              <textarea
-                value={formData.teacher_remark}
-                onChange={(e) => setFormData({ ...formData, teacher_remark: e.target.value })}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                rows={3}
-                placeholder="Enter teacher's remark..."
-              />
-            </div>
-            
-            {/* Nursery Assessment Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                  Physical Development
-                </label>
-                <select
-                  value={formData.physical_development}
-                  onChange={(e) => handleInputChange('physical_development', e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                >
-                  <option value="">Select Rating</option>
-                  <option value="Excellent">Excellent</option>
-                  <option value="Very Good">Very Good</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                  Health
-                </label>
-                <select
-                  value={formData.health}
-                  onChange={(e) => handleInputChange('health', e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                >
-                  <option value="">Select Rating</option>
-                  <option value="Excellent">Excellent</option>
-                  <option value="Very Good">Very Good</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                  Cleanliness
-                </label>
-                <select
-                  value={formData.cleanliness}
-                  onChange={(e) => handleInputChange('cleanliness', e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                >
-                  <option value="">Select Rating</option>
-                  <option value="Excellent">Excellent</option>
-                  <option value="Very Good">Very Good</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${themeClasses.textSecondary}`}>
-                  General Conduct
-                </label>
-                <select
-                  value={formData.general_conduct}
-                  onChange={(e) => handleInputChange('general_conduct', e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border ${themeClasses.border} ${themeClasses.bgCard} ${themeClasses.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                >
-                  <option value="">Select Rating</option>
-                  <option value="Excellent">Excellent</option>
-                  <option value="Very Good">Very Good</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                  <option value="Poor">Poor</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        );
+        return renderNurseryTabs();
 
       default:
         return <div className="text-red-500">Unsupported education level</div>;
