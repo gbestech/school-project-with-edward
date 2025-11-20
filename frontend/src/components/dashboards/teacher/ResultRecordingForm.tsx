@@ -3433,7 +3433,6 @@
 
 // export default ResultRecordingForm;
 
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import TeacherDashboardService from '@/services/TeacherDashboardService';
@@ -4186,7 +4185,7 @@ const ResultRecordingForm = ({
           mark_obtained: parseFloat(assessmentScores.mark_obtained?.toString() || '0'),
           grade: getGrade(totalScore),
           remarks: assessmentScores.remarks || '',
-          teacher_remark: editResult.teacher_remark,
+          teacher_remark: assessmentScores.teacher_remark || assessmentScores.remarks || '',
           status: formData.status,
           education_level,
           physical_development: physicalDevelopment
@@ -4226,7 +4225,7 @@ const ResultRecordingForm = ({
           total_score: totalScore,
           grade: getGrade(totalScore),
           remarks: assessmentScores.remarks || '',
-          teacher_remark: editResult.teacher_remark,
+          teacher_remark: assessmentScores.teacher_remark || assessmentScores.remarks || '',
           status: formData.status,
           education_level,
           class_statistics: classStatistics,
@@ -4252,7 +4251,7 @@ const ResultRecordingForm = ({
           total_score: totalScore,
           grade: getGrade(totalScore),
           remarks: assessmentScores.remarks || '',
-          teacher_remark: editResult.teacher_remark,
+          teacher_remark: assessmentScores.teacher_remark || assessmentScores.remarks || '',
           status: formData.status,
           education_level,
         };
@@ -4401,7 +4400,7 @@ const ResultRecordingForm = ({
             mark_obtained: parseFloat(result.assessment_scores.mark_obtained?.toString() || '0'),
             grade: getGrade(totalScore),
             remarks: result.assessment_scores.remarks || '',
-            teacher_remark: result.assessment_scores.teacher_remark,
+            teacher_remark: result.assessment_scores.teacher_remark || result.assessment_scores.remarks || '',
             status: 'DRAFT',
             education_level,
             physical_development: result.physical_development || {}
@@ -4436,7 +4435,7 @@ const ResultRecordingForm = ({
             total_score: totalScore,
             grade: getGrade(totalScore),
             remarks: result.assessment_scores.remarks || '',
-            teacher_remark: editResult.teacher_remark,
+            teacher_remark: result.assessment_scores.teacher_remark || result.assessment_scores.remarks || '',
             status: 'DRAFT',
             education_level,
             class_statistics: result.class_statistics || {},
@@ -4457,7 +4456,7 @@ const ResultRecordingForm = ({
             total_score: totalScore,
             grade: getGrade(totalScore),
             remarks: result.assessment_scores.remarks || '',
-            teacher_remark: result.assessment_scores.teacher_remark || '',
+            teacher_remark: result.assessment_scores.teacher_remark || result.assessment_scores.remarks || '',
             status: 'DRAFT',
             education_level,
           };
