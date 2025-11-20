@@ -1146,7 +1146,7 @@ const handleUpdateExamSession = async (id: string) => {
                         </div>
                       </div>
                       
-                                                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
                          {/* Senior Secondary Display */}
                          {config.education_level === 'SENIOR_SECONDARY' && (
                            <div className="bg-blue-50 rounded-lg p-3">
@@ -1216,7 +1216,7 @@ const handleUpdateExamSession = async (id: string) => {
                            </div>
                          )}
                         
-                                                 {config.result_type === 'SESSION' ? (
+                          {config.result_type === 'SESSION' ? (
                            <div className="bg-green-50 rounded-lg p-3">
                              <h4 className="font-medium text-green-900 mb-2">Session Info</h4>
                              <div className="space-y-1 text-green-800">
