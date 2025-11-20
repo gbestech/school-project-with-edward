@@ -3509,12 +3509,14 @@ interface AssessmentScores {
   ca_total?: number | string;
   exam_score?: number | string;
   max_marks?: number | string;
+  max_marks_obtainable?: number | string;
   mark_obtained?: number | string;
   total?: number | string;
   position?: number | string;
   grade?: string;
   remarks?: string;
   teacher_remark?: string;
+  academic_comment?: string;
 }
 
 interface ClassStatistics {
@@ -3615,28 +3617,28 @@ const getAssessmentStructure = (educationLevel: string, scoringConfig?: any) => 
     }
 
     if (upperLevel === 'NURSERY') {
-      const totalMax = Number(scoringConfig.total_max_score) || 100;
-      return {
-        type: 'nursery',
-        fields: ['max_marks', 'mark_obtained'],
-        labels: ['Max Marks', 'Mark Obtained'],
-        maxValues: [totalMax, totalMax],
-        showPhysicalDevelopment: true,
-        showClassStatistics: false
-      };
-    }
+  const totalMax = Number(scoringConfig.total_max_score) || 100;
+  return {
+    type: 'nursery',
+    fields: ['max_marks_obtainable', 'mark_obtained'],
+    labels: [`Max Marks Obtainable (${totalMax})`, 'Mark Obtained'],
+    maxValues: [totalMax, totalMax],
+    showPhysicalDevelopment: true,
+    showClassStatistics: false
+  };
+}
   }
 
   switch (level) {
     case 'nursery':
-      return {
-        type: 'nursery',
-        fields: ['max_marks', 'mark_obtained'],
-        labels: ['Max Marks', 'Mark Obtained'],
-        maxValues: [100, 100],
-        showPhysicalDevelopment: true,
-        showClassStatistics: false
-      };
+  return {
+    type: 'nursery',
+    fields: ['max_marks_obtainable', 'mark_obtained'],
+    labels: ['Max Marks Obtainable (100)', 'Mark Obtained'],
+    maxValues: [100, 100],
+    showPhysicalDevelopment: true,
+    showClassStatistics: false
+  };
     case 'primary':
       return {
         type: 'primary',
@@ -3985,12 +3987,12 @@ const ResultRecordingForm = ({
           remarks: extractedRemarks
         });
       } else if (educationLevel.includes('NURSERY')) {
-        setAssessmentScores({
-          max_marks: (editResult.max_marks ?? 100).toString(),
-          mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
-          remarks: extractedRemarks,
-          teacher_remark: editResult.teacher_remark ?? extractedRemarks
-        });
+  setAssessmentScores({
+    max_marks_obtainable: (editResult.max_marks_obtainable ?? editResult.max_marks ?? 100).toString(),
+    mark_obtained: (editResult.mark_obtained ?? editResult.total_score ?? editResult.ca_score ?? 0).toString(),
+    remarks: extractedRemarks,
+    teacher_remark: editResult.teacher_remark ?? extractedRemarks
+  });
       } else if (educationLevel.includes('PRIMARY') || educationLevel.includes('JUNIOR')) {
         setAssessmentScores({
           ca_score: (editResult.continuous_assessment_score ?? editResult.ca_score ?? 0).toString(),
@@ -4177,29 +4179,23 @@ const ResultRecordingForm = ({
           if (gsId) resultData.grading_system = gsId;
         }
       } else if (structure.type === 'nursery') {
-        resultData = {
-          ca_score: parseFloat(assessmentScores.mark_obtained?.toString() || '0'),
-          exam_score: 0,
-          total_score: totalScore,
-          max_marks: parseFloat(assessmentScores.max_marks?.toString() || '100'),
-          mark_obtained: parseFloat(assessmentScores.mark_obtained?.toString() || '0'),
-          grade: getGrade(totalScore),
-          remarks: assessmentScores.remarks || '',
-          teacher_remark: assessmentScores.teacher_remark || assessmentScores.remarks || '',
-          status: formData.status,
-          education_level,
-          physical_development: physicalDevelopment
-        };
+    resultData = {
+      max_marks_obtainable: parseFloat(assessmentScores.max_marks_obtainable?.toString() || '100'),
+      mark_obtained: parseFloat(assessmentScores.mark_obtained?.toString() || '0'),
+      academic_comment: assessmentScores.remarks || assessmentScores.teacher_remark || '',
+      status: formData.status,
+      education_level,
+    };
         
         if (!editResult) {
-          resultData.student = formData.student;
-          resultData.subject = formData.subject;
-          resultData.exam_session = formData.exam_session;
-          resultData.grading_system = gsId ?? undefined;
-        } else {
-          if (gsId) resultData.grading_system = gsId;
-        }
-      } else if (structure.type === 'primary' || structure.type === 'junior') {
+    resultData.student = formData.student;
+    resultData.subject = formData.subject;
+    resultData.exam_session = formData.exam_session;
+    resultData.grading_system = gsId ?? undefined;
+  } else {
+    if (gsId) resultData.grading_system = gsId;
+  }
+} else if (structure.type === 'primary' || structure.type === 'junior') {
         // CRITICAL FIX: Include ALL individual CA fields
         const caScore = parseFloat(assessmentScores.ca_score?.toString() || '0');
         const takeHomeMarks = parseFloat(assessmentScores.take_home_marks?.toString() || '0');
@@ -4388,24 +4384,18 @@ const ResultRecordingForm = ({
             education_level,
           };
         } else if (structure.type === 'nursery') {
-          resultData = {
-            student: result.student_id.toString(),
-            subject: formData.subject,
-            exam_session: formData.exam_session,
-            grading_system: gsId ?? undefined,
-            ca_score: parseFloat(result.assessment_scores.mark_obtained?.toString() || '0'),
-            exam_score: 0,
-            total_score: totalScore,
-            max_marks: parseFloat(result.assessment_scores.max_marks?.toString() || '100'),
-            mark_obtained: parseFloat(result.assessment_scores.mark_obtained?.toString() || '0'),
-            grade: getGrade(totalScore),
-            remarks: result.assessment_scores.remarks || '',
-            teacher_remark: result.assessment_scores.teacher_remark || result.assessment_scores.remarks || '',
-            status: 'DRAFT',
-            education_level,
-            physical_development: result.physical_development || {}
-          };
-        } else if (structure.type === 'primary' || structure.type === 'junior') {
+    resultData = {
+    student: result.student_id.toString(),
+    subject: formData.subject,
+    exam_session: formData.exam_session,
+    grading_system: gsId ?? undefined,
+    max_marks_obtainable: parseFloat(result.assessment_scores.max_marks_obtainable?.toString() || '100'),
+    mark_obtained: parseFloat(result.assessment_scores.mark_obtained?.toString() || '0'),
+    academic_comment: result.assessment_scores.remarks || result.assessment_scores.teacher_remark || '',
+    status: 'DRAFT',
+    education_level,
+  };
+} else if (structure.type === 'primary' || structure.type === 'junior') {
           // CRITICAL FIX: Include ALL individual CA fields for bulk
           const caScore = parseFloat(result.assessment_scores.ca_score?.toString() || '0');
           const takeHomeMarks = parseFloat(result.assessment_scores.take_home_marks?.toString() || '0');
