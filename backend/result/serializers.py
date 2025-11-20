@@ -98,6 +98,14 @@ class ScoringConfigurationCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating ScoringConfiguration"""
 
     # Map frontend field names to backend field names - make them optional
+    # Nursery mapping
+    exam_max_score = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, allow_null=True
+    )
+    total_max_score = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, allow_null=True
+    )
+
     first_test_max_score = serializers.DecimalField(
         source="test1_max_score",
         max_digits=5,
