@@ -381,7 +381,6 @@ const handleDeleteGrade = async (id: string) => {
          delete formData.practical_max_score;
          delete formData.project_max_score;
          delete formData.note_copying_max_score;
-         delete formData.exam_max_score;
          delete formData.ca_weight_percentage;
          delete formData.exam_weight_percentage;
          console.log('After removing all fields except total_max_score for Nursery:', formData);
@@ -525,7 +524,6 @@ const handleDeleteGrade = async (id: string) => {
          delete formData.practical_max_score;
          delete formData.project_max_score;
          delete formData.note_copying_max_score;
-         delete formData.exam_max_score;
          delete formData.ca_weight_percentage;
          delete formData.exam_weight_percentage;
          console.log('After removing all fields except total_max_score for Nursery (update):', formData);
@@ -829,104 +827,6 @@ const handleDeleteGrade = async (id: string) => {
     });
   };
 
-  // // Exam Session Create/Update handlers
-  // const handleCreateExamSession = async () => {
-  //   try {
-  //     setSaving(true);
-  //     // Validate that academic session is selected
-  //   if (!examSessionForm.academic_session) {
-  //     toast.error('Please select an academic session');
-  //     setSaving(false);
-  //     return;
-  //   }
-    
-  //   // Validate exam type
-  //   if (!examSessionForm.exam_type) {
-  //     toast.error('Please select an exam type');
-  //     setSaving(false);
-  //     return;
-  //   }
-  //   // Validate term
-  //   if (!examSessionForm.term) {
-  //     toast.error('Please select a term');
-  //     setSaving(false);
-  //     return;
-  //   }
-
-  //   // Convert academic_session to string and prepare payload
-  //   const payload = {
-  //     ...examSessionForm,
-  //     academic_session: String(examSessionForm.academic_session)
-  //   };
-    
-  //   console.log('Creating exam session with payload:', payload);
-  //     await resultSettingsService.createExamSession(payload);
-  //     toast.success('Exam session created successfully');
-  //     setShowExamSessionForm(false);
-  //     resetExamSessionForm();
-  //     loadData();
-  //   } catch (error: any) {
-  //     console.error('Error creating exam session:', error);
-  //     if (error.response?.data) {
-  //       const errorData = error.response.data;
-  //       if (errorData.non_field_errors) {
-  //         toast.error(errorData.non_field_errors[0]);
-  //       } else if (typeof errorData === 'object') {
-  //         const errorMessages = Object.values(errorData).flat();
-  //         toast.error(errorMessages[0] as string);
-  //       } else {
-  //         toast.error('Failed to create exam session');
-  //       }
-  //     } else {
-  //       toast.error('Failed to create exam session');
-  //     }
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
-  // const handleUpdateExamSession = async (id: string) => {
-  //   try {
-  //     setSaving(true);
-
-  //     // Validate that academic session is selected
-  //   if (!examSessionForm.academic_session) {
-  //     toast.error('Please select an academic session');
-  //     setSaving(false);
-  //     return;
-  //   }
-    
-  //   // Convert academic_session to string and prepare payload
-  //   const payload = {
-  //     ...examSessionForm,
-  //     academic_session: String(examSessionForm.academic_session)
-  //   };
-    
-  //   console.log('Updating exam session with payload:', payload);
-  //     await resultSettingsService.updateExamSession(id, payload);
-  //     toast.success('Exam session updated successfully');
-  //     setShowExamSessionForm(false);
-  //     resetExamSessionForm();
-  //     loadData();
-  //   } catch (error: any) {
-  //     console.error('Error updating exam session:', error);
-  //     if (error.response?.data) {
-  //       const errorData = error.response.data;
-  //       if (errorData.non_field_errors) {
-  //         toast.error(errorData.non_field_errors[0]);
-  //       } else if (typeof errorData === 'object') {
-  //         const errorMessages = Object.values(errorData).flat();
-  //         toast.error(errorMessages[0] as string);
-  //       } else {
-  //         toast.error('Failed to update exam session');
-  //       }
-  //     } else {
-  //       toast.error('Failed to update exam session');
-  //     }
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
 // ✅ Exam Session Create/Update handlers
 const handleCreateExamSession = async () => {
   try {
