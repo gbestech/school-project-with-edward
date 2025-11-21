@@ -815,7 +815,7 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   
   if (!validateForm()) {
@@ -828,38 +828,62 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
     
     const payload = buildPayload();
     
-    // ADD THESE CONSOLE LOGS
     console.log('🔍 [AddResultForm] Full payload being submitted:', payload);
-    // Only attempt to read nursery-specific physical fields when the selected student's education level is NURSERY
-    if (selectedStudent?.education_level === 'NURSERY') {
-      const nurseryPayload = payload as any;
-      console.log('🔍 [AddResultForm] Nursery physical fields:', {
-        physical_development: nurseryPayload.physical_development,
-        health: nurseryPayload.health,
-        cleanliness: nurseryPayload.cleanliness,
-        general_conduct: nurseryPayload.general_conduct,
-        height_beginning: nurseryPayload.height_beginning,
-        height_end: nurseryPayload.height_end,
-        weight_beginning: nurseryPayload.weight_beginning,
-        weight_end: nurseryPayload.weight_end
-      });
-    }
     
+    // Create the result first
     const response = await ResultService.createStudentResult(payload, selectedStudent!.education_level);
     
-    // ADD THIS CONSOLE LOG
-    console.log('🔍 [AddResultForm] API Response:', response);
+    console.log('🔍 [AddResultForm] Result created:', response);
+    
+    // For nursery students, update the term report with physical development data
     if (selectedStudent?.education_level === 'NURSERY') {
-      const nurseryResponse = response as any;
-      console.log('🔍 [AddResultForm] Response physical fields:', {
-        physical_development: nurseryResponse.physical_development,
-        health: nurseryResponse.health,
-        cleanliness: nurseryResponse.cleanliness,
-        general_conduct: nurseryResponse.general_conduct
-      });
+      try {
+        // Extract physical development data from form
+        const physicalDevData = {
+          physical_development: formData.physical_development || '',
+          health: formData.health || '',
+          cleanliness: formData.cleanliness || '',
+          general_conduct: formData.general_conduct || '',
+          height_beginning: parseFloat(formData.height_beginning) || null,
+          height_end: parseFloat(formData.height_end.toString()) || null,
+          weight_beginning: parseFloat(formData.weight_beginning.toString()) || null,
+          weight_end: parseFloat(formData.weight_end.toString()) || null
+        };
+        
+        console.log('🔍 [AddResultForm] Updating term report with physical dev data:', physicalDevData);
+        
+        // Find or create the term report for this student and exam session
+        const termReportResponse = await api.get('/api/results/nursery/term-reports/', {
+          params: {
+            student: formData.student,
+            exam_session: formData.exam_session
+          }
+        });
+        
+        console.log('🔍 [AddResultForm] Term report lookup:', termReportResponse);
+        
+        const termReports = termReportResponse?.results || termReportResponse || [];
+        
+        if (termReports.length > 0) {
+          const termReportId = termReports[0].id;
+          
+          // Update the term report with physical development data
+          await api.patch(`/api/results/nursery/term-reports/${termReportId}/`, physicalDevData);
+          
+          console.log('✅ [AddResultForm] Term report updated with physical development data');
+          toast.success('Result and physical development data saved successfully!');
+        } else {
+          console.warn('⚠️ [AddResultForm] No term report found to update');
+          toast.warning('Result created but physical development data could not be saved. Please update it manually.');
+        }
+      } catch (physicalError) {
+        console.error('❌ [AddResultForm] Error saving physical development data:', physicalError);
+        toast.warning('Result created but physical development data could not be saved. Please update it manually.');
+      }
+    } else {
+      toast.success('Result created successfully!');
     }
     
-    toast.success('Result created successfully!');
     onSuccess();
     onClose();
   } catch (error: any) {

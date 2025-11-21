@@ -3020,6 +3020,35 @@ class NurseryTermReport(models.Model):
         blank=True, verbose_name="Physical Development Comment"
     )
 
+    height_beginning = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Height at Beginning (cm)",
+    )
+    height_end = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Height at End (cm)",
+    )
+    weight_beginning = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Weight at Beginning (kg)",
+    )
+    weight_end = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Weight at End (kg)",
+    )
+
     # Term Information
     next_term_begins = models.DateField(null=True, blank=True)
 
