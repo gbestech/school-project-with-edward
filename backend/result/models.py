@@ -2945,11 +2945,11 @@ class NurseryTermReport(models.Model):
     ]
 
     PHYSICAL_DEVELOPMENT_CHOICES = [
-        ("EXCELLENT", "Excellent"),
-        ("VERY GOOD", "Very Good"),
-        ("GOOD", "Good"),
-        ("FAIR", "Fair"),
-        ("POOR", "Poor"),
+        ("Excellent", "Excellent"),
+        ("Very Good", "Very Good"),
+        ("Good", "Good"),
+        ("Fair", "Fair"),
+        ("Poor", "Poor"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
