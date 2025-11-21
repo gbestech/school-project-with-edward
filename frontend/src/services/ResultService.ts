@@ -554,29 +554,61 @@ async getTermResults(params?: FilterParams) {
 
     // Normalize all reports to a common structure matching the UI interface
     const allReports = [
-      ...nursery.map((report: any) => ({
-        id: report.id,
-        student: report.student || {},
-        // academic_session: report.exam_session?.academic_session || {},
-         academic_session: this.extractSessionInfo(report),
-        term: report.exam_session?.term || 'N/A',
-        total_subjects: report.total_subjects || 0,
-        subjects_passed: 0, // Nursery doesn't track this separately
-        subjects_failed: 0,
-        total_score: report.total_marks_obtained || 0,
-        average_score: report.overall_percentage || 0,
-        gpa: 0, // Nursery doesn't use GPA
-        class_position: report.class_position || null,
-        total_students: report.total_students_in_class || 0,
-        status: report.status || 'DRAFT',
-        remarks: '',
-        next_term_begins: report.next_term_begins || null,
-        subject_results: report.subject_results || [],
-        created_at: report.created_at,
-        updated_at: report.updated_at,
-        overall_grade: calculateGrade(report.overall_percentage),
-        education_level: 'NURSERY',
-      })),
+      ...nursery.map((report: any) => {
+        console.log('🔍 [ResultService] Raw Nursery Term Report from API:', report);
+        console.log('🔍 [ResultService] Nursery fields:', {
+    total_marks_obtained: report.total_marks_obtained,
+    overall_percentage: report.overall_percentage,
+    subject_results: report.subject_results,
+    physical_development: report.physical_development,
+    health: report.health,
+    cleanliness: report.cleanliness,
+    general_conduct: report.general_conduct
+  });
+        return {
+    id: report.id,
+    student: report.student || {},
+    academic_session: this.extractSessionInfo(report),
+    term: report.exam_session?.term || 'N/A',
+    total_subjects: report.total_subjects || 0,
+    subjects_passed: 0,
+    subjects_failed: 0,
+    total_score: report.total_marks_obtained || 0,
+    average_score: report.overall_percentage || 0,
+    gpa: 0,
+    class_position: report.class_position || null,
+    total_students: report.total_students_in_class || 0,
+    status: report.status || 'DRAFT',
+    remarks: report.academic_comment || '', // ADDED: Include academic comment
+    next_term_begins: report.next_term_begins || null,
+    subject_results: (report.subject_results || []).map((sr: any) => ({
+      id: sr.id,
+      subject: sr.subject,
+      total_ca_score: 0, // Nursery doesn't have CA
+      ca_total: 0,
+      exam_score: sr.mark_obtained || sr.exam_score || 0, // FIX: Use mark_obtained
+      total_score: sr.mark_obtained || sr.exam_score || 0, // FIX: Use mark_obtained
+      percentage: sr.percentage || 0,
+      grade: sr.grade || 'N/A',
+      grade_point: sr.grade_point || 0,
+      is_passed: sr.is_passed,
+      status: sr.status
+    })),
+    created_at: report.created_at,
+    updated_at: report.updated_at,
+    overall_grade: calculateGrade(report.overall_percentage),
+    education_level: 'NURSERY',
+    // ADD THESE PHYSICAL DEVELOPMENT FIELDS
+    physical_development: report.physical_development,
+    health: report.health,
+    cleanliness: report.cleanliness,
+    general_conduct: report.general_conduct,
+    height_beginning: report.height_beginning,
+    height_end: report.height_end,
+    weight_beginning: report.weight_beginning,
+    weight_end: report.weight_end,
+  };
+}),
       ...primary.map((report: any) => ({
         id: report.id,
         student: report.student || {},

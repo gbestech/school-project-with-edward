@@ -91,6 +91,16 @@ interface Result {
   // Nursery specifics
   grade?: string;
   position?: number | string;
+
+  // ADD THESE NURSERY PHYSICAL DEVELOPMENT FIELDS
+  physical_development?: string;
+  health?: string;
+  cleanliness?: string;
+  general_conduct?: string;
+  height_beginning?: number | string;
+  height_end?: number | string;
+  weight_beginning?: number | string;
+  weight_end?: number | string;
 }
 
 interface StudentResultDetailProps {}
@@ -222,13 +232,6 @@ const loadData = async () => {
     setEditingResult(result);
   };
 
-  // // Handle status change
-  // const ENDPOINTS = {
-  //   NURSERY: 'nursery-results',
-  //   PRIMARY: 'primary-results',
-  //   JUNIOR_SECONDARY: 'junior-secondary-results',
-  //   SENIOR_SECONDARY: 'senior-secondary-results',
-  // } as const;
 
  const handleStatusChange = async (resultId: string, newStatus: ResultStatus, educationLevel: string) => {
   try {
@@ -550,7 +553,8 @@ case 'JUNIOR_SECONDARY':
       
       case 'NURSERY':
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
       <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
         <div className="flex items-center mb-2">
           <Award className="w-4 h-4 mr-2 text-green-500" />
@@ -616,6 +620,87 @@ case 'JUNIOR_SECONDARY':
         </div>
       </div>
     </div>
+{/* ADD THIS: Physical Development Section */}
+      {(result.physical_development || result.health || result.cleanliness || result.general_conduct) && (
+        <div className="mt-6">
+          <h4 className={`text-lg font-semibold mb-4 ${themeClasses.textPrimary}`}>
+            Physical Development & Health
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {result.physical_development && (
+              <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                <div className="flex items-center mb-2">
+                  <User className="w-4 h-4 mr-2 text-green-500" />
+                  <span className="text-sm font-medium">Physical Development</span>
+                </div>
+                <div className="text-lg font-bold">{result.physical_development}</div>
+              </div>
+            )}
+            
+            {result.health && (
+              <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                <div className="flex items-center mb-2">
+                  <Star className="w-4 h-4 mr-2 text-red-500" />
+                  <span className="text-sm font-medium">Health</span>
+                </div>
+                <div className="text-lg font-bold">{result.health}</div>
+              </div>
+            )}
+            
+            {result.cleanliness && (
+              <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                <div className="flex items-center mb-2">
+                  <Star className="w-4 h-4 mr-2 text-blue-500" />
+                  <span className="text-sm font-medium">Cleanliness</span>
+                </div>
+                <div className="text-lg font-bold">{result.cleanliness}</div>
+              </div>
+            )}
+            
+            {result.general_conduct && (
+              <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                <div className="flex items-center mb-2">
+                  <Trophy className="w-4 h-4 mr-2 text-purple-500" />
+                  <span className="text-sm font-medium">General Conduct</span>
+                </div>
+                <div className="text-lg font-bold">{result.general_conduct}</div>
+              </div>
+            )}
+          </div>
+          
+          {/* Physical Measurements */}
+          {(result.height_beginning || result.weight_beginning) && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {result.height_beginning && (
+                <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                  <span className="text-sm font-medium">Height (Start)</span>
+                  <div className="text-lg font-bold">{result.height_beginning} cm</div>
+                </div>
+              )}
+              {result.height_end && (
+                <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                  <span className="text-sm font-medium">Height (End)</span>
+                  <div className="text-lg font-bold">{result.height_end} cm</div>
+                </div>
+              )}
+              {result.weight_beginning && (
+                <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                  <span className="text-sm font-medium">Weight (Start)</span>
+                  <div className="text-lg font-bold">{result.weight_beginning} kg</div>
+                </div>
+              )}
+              {result.weight_end && (
+                <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+                  <span className="text-sm font-medium">Weight (End)</span>
+                  <div className="text-lg font-bold">{result.weight_end} kg</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+</>
+  
   );
       
       default:
