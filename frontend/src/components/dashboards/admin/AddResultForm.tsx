@@ -844,10 +844,10 @@ const handleSubmit = async (e: React.FormEvent) => {
           health: formData.health || '',
           cleanliness: formData.cleanliness || '',
           general_conduct: formData.general_conduct || '',
-          height_beginning: parseFloat(formData.height_beginning) || null,
-          height_end: parseFloat(formData.height_end.toString()) || null,
-          weight_beginning: parseFloat(formData.weight_beginning.toString()) || null,
-          weight_end: parseFloat(formData.weight_end.toString()) || null
+          height_beginning: parseFloat(String(formData.height_beginning)) || null,
+          height_end: parseFloat(String(formData.height_end)) || null,
+          weight_beginning: parseFloat(String(formData.weight_beginning)) || null,
+          weight_end: parseFloat(String(formData.weight_end)) || null
         };
         
         console.log('🔍 [AddResultForm] Updating term report with physical dev data:', physicalDevData);
