@@ -1385,9 +1385,44 @@ class NurseryResultSerializer(serializers.ModelSerializer):
     # Status display
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
+    # ADD THESE: Physical development fields from term report
+    physical_development = serializers.SerializerMethodField()
+    health = serializers.SerializerMethodField()
+    cleanliness = serializers.SerializerMethodField()
+    general_conduct = serializers.SerializerMethodField()
+    height_beginning = serializers.SerializerMethodField()
+    height_end = serializers.SerializerMethodField()
+    weight_beginning = serializers.SerializerMethodField()
+    weight_end = serializers.SerializerMethodField()
+
     class Meta:
         model = NurseryResult
         fields = "__all__"
+
+    # ADD THESE METHODS
+    def get_physical_development(self, obj):
+        return obj.term_report.physical_development if obj.term_report else None
+
+    def get_health(self, obj):
+        return obj.term_report.health if obj.term_report else None
+
+    def get_cleanliness(self, obj):
+        return obj.term_report.cleanliness if obj.term_report else None
+
+    def get_general_conduct(self, obj):
+        return obj.term_report.general_conduct if obj.term_report else None
+
+    def get_height_beginning(self, obj):
+        return obj.term_report.height_beginning if obj.term_report else None
+
+    def get_height_end(self, obj):
+        return obj.term_report.height_end if obj.term_report else None
+
+    def get_weight_beginning(self, obj):
+        return obj.term_report.weight_beginning if obj.term_report else None
+
+    def get_weight_end(self, obj):
+        return obj.term_report.weight_end if obj.term_report else None
 
 
 class NurseryResultCreateUpdateSerializer(serializers.ModelSerializer):
