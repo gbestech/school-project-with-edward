@@ -194,6 +194,21 @@ const EnhancedResultsManagement: React.FC = () => {
 
    
   const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
+
+
+    if (educationLevel === 'NURSERY') {
+    console.log('🔍 [EnhancedResultsManagement] Transforming nursery result:', result);
+    console.log('🔍 [EnhancedResultsManagement] Nursery physical fields from API:', {
+      physical_development: result.physical_development,
+      health: result.health,
+      cleanliness: result.cleanliness,
+      general_conduct: result.general_conduct,
+      height_beginning: result.height_beginning,
+      height_end: result.height_end,
+      weight_beginning: result.weight_beginning,
+      weight_end: result.weight_end
+    });
+  }
     // Extract session info properly
     const sessionName = result.exam_session?.academic_session_name || 
                        result.exam_session?.academic_session?.name || 

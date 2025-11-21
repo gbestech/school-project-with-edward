@@ -816,61 +816,84 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-     
-    if (!validateForm()) {
-      toast.error('Please fix the errors in the form');
-      return;
-    }
+  e.preventDefault();
+  
+  if (!validateForm()) {
+    toast.error('Please fix the errors in the form');
+    return;
+  }
 
-    try {
-      setLoading(true);
-      
-      const payload = buildPayload();
-      console.log('Submitting payload:', payload);
-      
-      const response = await ResultService.createStudentResult(payload, selectedStudent!.education_level);
-      
-      console.log('API Response:', response);
-      
-      toast.success('Result created successfully!');
-      onSuccess();
-      onClose();
-    } catch (error: any) {
-      console.error('Error creating result:', error);
-      
-      // FIXED: Better error handling for different error structures
-      let errorMessage = 'Failed to create result';
-      
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        if (typeof errorData === 'string') {
-          errorMessage = errorData;
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        } else if (typeof errorData === 'object') {
-          // Handle field-specific errors
-          const fieldErrors = Object.entries(errorData)
-            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-            .join('; ');
-          if (fieldErrors) {
-            errorMessage = fieldErrors;
-          }
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    
+    const payload = buildPayload();
+    
+    // ADD THESE CONSOLE LOGS
+    console.log('🔍 [AddResultForm] Full payload being submitted:', payload);
+    // Only attempt to read nursery-specific physical fields when the selected student's education level is NURSERY
+    if (selectedStudent?.education_level === 'NURSERY') {
+      const nurseryPayload = payload as any;
+      console.log('🔍 [AddResultForm] Nursery physical fields:', {
+        physical_development: nurseryPayload.physical_development,
+        health: nurseryPayload.health,
+        cleanliness: nurseryPayload.cleanliness,
+        general_conduct: nurseryPayload.general_conduct,
+        height_beginning: nurseryPayload.height_beginning,
+        height_end: nurseryPayload.height_end,
+        weight_beginning: nurseryPayload.weight_beginning,
+        weight_end: nurseryPayload.weight_end
+      });
     }
-  };
+    
+    const response = await ResultService.createStudentResult(payload, selectedStudent!.education_level);
+    
+    // ADD THIS CONSOLE LOG
+    console.log('🔍 [AddResultForm] API Response:', response);
+    if (selectedStudent?.education_level === 'NURSERY') {
+      const nurseryResponse = response as any;
+      console.log('🔍 [AddResultForm] Response physical fields:', {
+        physical_development: nurseryResponse.physical_development,
+        health: nurseryResponse.health,
+        cleanliness: nurseryResponse.cleanliness,
+        general_conduct: nurseryResponse.general_conduct
+      });
+    }
+    
+    toast.success('Result created successfully!');
+    onSuccess();
+    onClose();
+  } catch (error: any) {
+    console.error('Error creating result:', error);
+    
+    let errorMessage = 'Failed to create result';
+    
+    if (error.response?.data) {
+      const errorData = error.response.data;
+      if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (errorData.detail) {
+        errorMessage = errorData.detail;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      } else if (errorData.error) {
+        errorMessage = errorData.error;
+      } else if (typeof errorData === 'object') {
+        const fieldErrors = Object.entries(errorData)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('; ');
+        if (fieldErrors) {
+          errorMessage = fieldErrors;
+        }
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    toast.error(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // FIXED: Improved InputField component with better value handling
   const InputField = ({ label, field, min = 0, max = 100, placeholder, step = "0.01", helpText, readOnly = false, type = "number" }: {
