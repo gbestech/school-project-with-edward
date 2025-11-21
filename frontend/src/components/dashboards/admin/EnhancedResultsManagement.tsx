@@ -179,14 +179,9 @@ const EnhancedResultsManagement: React.FC = () => {
           other: statuses.filter(s => !['DRAFT', 'APPROVED', 'PUBLISHED'].includes(s)).length
         });
         
-        // Log sample results with their statuses
-        console.log('📊 Sample results with statuses:');
-        data.slice(0, 5).forEach((result: any, index: number) => {
-          console.log(`  ${index + 1}. ${result.student?.full_name} - ${viewMode === 'subject-results' ? result.subject_name : 'All Subjects'} - Status: ${result.status}`);
-        });
       }
       
-      console.log('=== END DEBUG ===');
+ 
       
       setStudentResults(data || []);
     } catch (err) {
@@ -209,6 +204,12 @@ const EnhancedResultsManagement: React.FC = () => {
       ? result.exam_session.academic_session 
       : { name: sessionName };
     
+    // Handle nursery-specific fields
+    const isNursery = educationLevel === 'NURSERY';
+    const examScore = result.exam_score || result.mark_obtained || 0;
+    const totalScore = result.total_score || examScore || 0;
+    const caTotal = isNursery ? 0 : (result.ca_total || result.total_ca_score || 0);
+    
     return {
       id: result.id,
       student: result.student,
@@ -217,20 +218,21 @@ const EnhancedResultsManagement: React.FC = () => {
       total_subjects: 1,
       subjects_passed: result.is_passed ? 1 : 0,
       subjects_failed: result.is_passed ? 0 : 1,
-      total_score: result.total_score || 0,
-      average_score: result.percentage || result.total_percentage || 0,
+      total_score: totalScore,
+      average_score: result.percentage || result.total_percentage || totalScore,
       gpa: result.grade_point || 0,
-      class_position: null,
+      class_position: result.position || null,
       total_students: 0,
       status: result.status,
-      remarks: result.class_teacher_remark || result.teacher_remark || '',
+      remarks: result.class_teacher_remark || result.teacher_remark || result.academic_comment || '',
       subject_results: [{
         id: result.id,
         subject: result.subject,
-        total_ca_score: result.ca_total || result.total_ca_score || 0,
-        exam_score: result.exam_score || 0,
-        total_score: result.total_score || 0,
-        percentage: result.percentage || result.total_percentage || 0,
+        total_ca_score: caTotal,
+        ca_total: caTotal,
+        exam_score: examScore,
+        total_score: totalScore,
+        percentage: result.percentage || result.total_percentage || totalScore,
         grade: result.grade || 'N/A',
         grade_point: result.grade_point || 0,
         is_passed: result.is_passed,
@@ -240,7 +242,7 @@ const EnhancedResultsManagement: React.FC = () => {
       updated_at: result.updated_at,
       education_level: educationLevel,
       subject_name: result.subject?.name || 'N/A',
-      overall_grade: result.grade || 'N/A', // Add this line to preserve the grade
+      overall_grade: result.grade || 'N/A',
     } as any;
   };
 
@@ -404,6 +406,7 @@ const EnhancedResultsManagement: React.FC = () => {
     if (grade === 'A' || grade === 'A+') return 'text-green-600';
     if (grade === 'B' || grade === 'B+') return 'text-blue-600';
     if (grade === 'C' || grade === 'C+') return 'text-yellow-600';
+    if (grade === 'D' || grade === 'D+') return 'text-purple-600';
     return 'text-red-600';
   };
 

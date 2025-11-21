@@ -549,38 +549,74 @@ case 'JUNIOR_SECONDARY':
        
       
       case 'NURSERY':
-        return (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Award className="w-4 h-4 mr-2 text-green-500" />
-                <span className="text-sm font-medium">Exam Score</span>
-              </div>
-              <div className="text-2xl font-bold">{result.exam_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Star className="w-4 h-4 mr-2 text-blue-500" />
-                <span className="text-sm font-medium">Total Score</span>
-              </div>
-              <div className="text-2xl font-bold">{result.total_score || 0}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
-                <span className="text-sm font-medium">Grade</span>
-              </div>
-              <div className="text-2xl font-bold">{result.grade || 'N/A'}</div>
-            </div>
-            <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
-              <div className="flex items-center mb-2">
-                <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
-                <span className="text-sm font-medium">Position</span>
-              </div>
-              <div className="text-2xl font-bold">{result.position || 'N/A'}</div>
-            </div>
-          </div>
-        );
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Award className="w-4 h-4 mr-2 text-green-500" />
+          <span className="text-sm font-medium">Exam Score</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.exam_score).toFixed(2)}</div>
+      </div>
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Star className="w-4 h-4 mr-2 text-blue-500" />
+          <span className="text-sm font-medium">Total Score</span>
+        </div>
+        <div className="text-2xl font-bold">{safeNumber(result.total_score).toFixed(2)}</div>
+      </div>
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
+          <span className="text-sm font-medium">Grade</span>
+        </div>
+        <div className="text-2xl font-bold">{result.grade || 'N/A'}</div>
+      </div>
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
+          <span className="text-sm font-medium">Position</span>
+        </div>
+        <div className="text-2xl font-bold">{result.position || 'N/A'}</div>
+      </div>
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <TrendingUp className="w-4 h-4 mr-2 text-purple-500" />
+          <span className="text-sm font-medium">Class Average</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.class_average) > 0 ? 
+            safeNumber(result.class_average).toFixed(2) : 
+            <span className="text-gray-500 text-sm">Not Available</span>
+          }
+        </div>
+      </div>
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <Trophy className="w-4 h-4 mr-2 text-yellow-500" />
+          <span className="text-sm font-medium">Highest in Class</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.highest_in_class) > 0 ? 
+            safeNumber(result.highest_in_class).toFixed(2) : 
+            <span className="text-gray-500 text-sm">Not Available</span>
+          }
+        </div>
+      </div>
+      <div className={`p-4 rounded-lg ${themeClasses.bgSecondary} border ${themeClasses.border}`}>
+        <div className="flex items-center mb-2">
+          <TrendingDown className="w-4 h-4 mr-2 text-red-500" />
+          <span className="text-sm font-medium">Lowest in Class</span>
+        </div>
+        <div className="text-2xl font-bold">
+          {safeNumber(result.lowest_in_class) > 0 ? 
+            safeNumber(result.lowest_in_class).toFixed(2) : 
+            <span className="text-gray-500 text-sm">Not Available</span>
+          }
+        </div>
+      </div>
+    </div>
+  );
       
       default:
         return (
