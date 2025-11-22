@@ -792,7 +792,8 @@ const loadGradingSystemsForEducationLevel = async (educationLevel: string) => {
   return {
     ...basePayload,
     max_marks_obtainable: parseNumericValue(formData.max_marks_obtainable),
-    exam_score: parseNumericValue(formData.exam_score), // FIX: Use exam_score consistently
+    mark_obtained: parseNumericValue(formData.exam_score), // FIX: Send as mark_obtained to API
+    exam_score: parseNumericValue(formData.exam_score), // Also send exam_score for compatibility
     total_score: parseNumericValue(formData.total_score),
     grade: formData.grade || null,
     position: formData.position ? parseInt(formData.position) : null,
