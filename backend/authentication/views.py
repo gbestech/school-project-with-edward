@@ -54,10 +54,6 @@ logger = logging.getLogger(__name__)
 # ============== REGISTRATION AND VERIFICATION VIEWS ==============
 
 
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-
-
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterView(generics.CreateAPIView):
     """User registration view - creates inactive user and sends verification code"""
@@ -337,28 +333,6 @@ def check_verification_status_post(request):
         )
 
 
-# @api_view(["GET"])
-# @permission_classes([permissions.IsAuthenticated])
-# def user_profile(request):
-#     """Get current user profile"""
-#     user = request.user
-#     return Response(
-#         {
-#             "id": user.id,
-#             "email": user.email,
-#             "username": user.username,
-#             "first_name": user.first_name,
-#             "last_name": user.last_name,
-#             "role": user.role,
-#             "is_active": user.is_active,
-#             "date_joined": user.date_joined,
-#             "phone": user.phone,
-#             "phone_number": user.phone_number,
-#         },
-#         status=status.HTTP_200_OK,
-#     )
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def user_profile(request):
@@ -447,45 +421,6 @@ def list_admins(request):
             {"detail": f"Failed to list admins: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
-
-# @api_view(["GET"])
-# @permission_classes([IsAdminUser])
-# def list_admins(request):
-#     """List all admin users"""
-#     try:
-#         admins = User.objects.filter(role="admin").order_by("-date_joined")
-
-#         admin_list = []
-#         for admin in admins:
-#             admin_list.append(
-#                 {
-#                     "id": admin.id,
-#                     "username": admin.username,
-#                     "email": admin.email,
-#                     "first_name": admin.first_name,
-#                     "last_name": admin.last_name,
-#                     "full_name": getattr(
-#                         admin, "full_name", f"{admin.first_name} {admin.last_name}"
-#                     ),
-#                     "role": getattr(admin, "role", "user"),
-#                     "full_name": admin.full_name,
-#                     "is_active": admin.is_active,
-#                     "is_staff": admin.is_staff,
-#                     "is_superuser": admin.is_superuser,
-#                     "date_joined": admin.date_joined,
-#                     "last_login": admin.last_login,
-#                     "phone": getattr(admin, "phone", None),
-#                 }
-#             )
-
-#         return Response(admin_list, status=status.HTTP_200_OK)
-#     except Exception as e:
-#         logger.error(f"Error listing admins: {str(e)}")
-#         return Response(
-#             {"detail": f"Failed to list admins: {str(e)}"},
-#             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#         )
 
 
 @api_view(["POST"])
@@ -937,80 +872,6 @@ def resend_verification_view(request):
             status=status.HTTP_200_OK,
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# @method_decorator(csrf_exempt, name="dispatch")
-# class DebugLoginView(View):
-#     def post(self, request):
-#         try:
-#             # Log the raw request
-#             logger.info(f"Raw body: {request.body}")
-#             logger.info(f"Content type: {request.content_type}")
-#             logger.info(f"Headers: {dict(request.headers)}")
-
-#             # Try to parse JSON
-#             try:
-#                 data = json.loads(request.body)
-#                 logger.info(f"Parsed data: {data}")
-#             except json.JSONDecodeError as e:
-#                 return JsonResponse(
-#                     {
-#                         "error": "JSON decode error",
-#                         "details": str(e),
-#                         "body": request.body.decode("utf-8"),
-#                     },
-#                     status=400,
-#                 )
-
-#             # Check what fields we got
-#             email = data.get("email")
-#             password = data.get("password")
-
-#             logger.info(f"Email: {email}")
-#             logger.info(f"Password: {'*' * len(password) if password else 'None'}")
-
-#             if not email:
-#                 return JsonResponse({"error": "Email is required"}, status=400)
-
-#             if not password:
-#                 return JsonResponse({"error": "Password is required"}, status=400)
-
-#             # Try to authenticate
-#             user = authenticate(request, email=email, password=password)
-
-#             if user is not None:
-#                 return JsonResponse(
-#                     {
-#                         "message": "Authentication successful",
-#                         "user_id": user.id,
-#                         "username": user.username,
-#                         "email": user.email,
-#                         "is_active": user.is_active,
-#                     }
-#                 )
-#             else:
-#                 # Check if user exists
-#                 try:
-#                     user_exists = User.objects.get(email=email)
-#                     return JsonResponse(
-#                         {
-#                             "error": "Authentication failed",
-#                             "user_exists": True,
-#                             "user_active": user_exists.is_active,
-#                         },
-#                         status=401,
-#                     )
-#                 except User.DoesNotExist:
-#                     return JsonResponse(
-#                         {"error": "Authentication failed", "user_exists": False},
-#                         status=401,
-#                     )
-
-#         except Exception as e:
-#             logger.error(f"Debug login error: {str(e)}")
-#             return JsonResponse(
-#                 {"error": "Server error", "details": str(e)}, status=500
-#             )
 
 
 class DebugLoginView(APIView):

@@ -6,13 +6,13 @@ export type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
 import {
   AcademicSession,  
   ExamSessionInfo, 
-NurseryResultData,
-PrimaryResultData,
-JuniorSecondaryResultData,
-SeniorSecondaryResultData,
-SeniorSecondarySessionResultData,
-StandardResult,
-StudentTermResult,
+  NurseryResultData,
+  PrimaryResultData,
+  JuniorSecondaryResultData,
+  SeniorSecondaryResultData,
+  SeniorSecondarySessionResultData,
+  StandardResult,
+  StudentTermResult,
 } from '../types/types'
 
 export interface ResultComment {
@@ -80,27 +80,82 @@ class ResultService {
 
 
 // Helper function to extract session info properly
+// private extractSessionInfo(report: any): AcademicSession | undefined {
+//   // Try to get session from exam_session
+//   const examSession = report.exam_session;
+//   console.log("This is Exam Session", examSession)
+//   if (!examSession) return undefined;
+  
+//   // If exam_session.academic_session is an object (the full session data)
+//   if (examSession.academic_session && typeof examSession.academic_session === 'object') {
+//     return examSession.academic_session as AcademicSession;
+//   }
+  
+//   // If exam_session.academic_session is just an ID, construct an object from available data
+//   if (examSession.academic_session_name) {
+//     return {
+//       id: examSession.academic_session,
+//       name: examSession.academic_session_name
+//     } as AcademicSession;
+//   }
+  
+//   console.log("Could not extract academic session from exam_session") 
+//   return undefined;
+// }
+
 private extractSessionInfo(report: any): AcademicSession | undefined {
-  // Try to get session from exam_session
+  if (!report) return undefined;
+  
   const examSession = report.exam_session;
-  console.log("This is Exam Session", examSession)
-  if (!examSession) return undefined;
   
-  // If exam_session.academic_session is an object (the full session data)
-  if (examSession.academic_session && typeof examSession.academic_session === 'object') {
-    return examSession.academic_session as AcademicSession;
-  }
-  
-  // If exam_session.academic_session is just an ID, construct an object from available data
-  if (examSession.academic_session_name) {
+  // Case 1: exam_session is just an ID (string/number)
+  if (typeof examSession === 'string' || typeof examSession === 'number') {
     return {
-      id: examSession.academic_session,
-      name: examSession.academic_session_name
+      id: examSession.toString(),
+      name: report.academic_session_name || report.session_name || 'Unknown'
     } as AcademicSession;
   }
   
-  console.log("Could not extract academic session from exam_session") 
+  // Case 2: exam_session is an object
+  if (examSession && typeof examSession === 'object') {
+    // Nested academic_session object
+    if (examSession.academic_session && typeof examSession.academic_session === 'object') {
+      return examSession.academic_session as AcademicSession;
+    }
+    
+    // academic_session as ID with name
+    if (examSession.academic_session_name) {
+      return {
+        id: examSession.academic_session?.toString() || '',
+        name: examSession.academic_session_name
+      } as AcademicSession;
+    }
+  }
+  
+  // Case 3: Direct academic_session field on report
+  if (report.academic_session) {
+    if (typeof report.academic_session === 'object') {
+      return report.academic_session;
+    }
+    return {
+      id: report.academic_session.toString(),
+      name: report.academic_session_name || 'Unknown'
+    } as AcademicSession;
+  }
+  
   return undefined;
+}
+
+// Add status validation
+private isValidStatusTransition(currentStatus: ResultStatus, newStatus: ResultStatus): boolean {
+  const validTransitions: Record<ResultStatus, ResultStatus[]> = {
+    'DRAFT': ['SUBMITTED', 'DRAFT'],
+    'SUBMITTED': ['APPROVED', 'DRAFT', 'SUBMITTED'],
+    'APPROVED': ['PUBLISHED', 'SUBMITTED', 'APPROVED'],
+    'PUBLISHED': ['PUBLISHED'] // Published is final
+  };
+  
+  return validTransitions[currentStatus]?.includes(newStatus) ?? false;
 }
 
   // Data transformation methods - ADDED: Missing transform methods
@@ -296,7 +351,7 @@ private extractSessionInfo(report: any): AcademicSession | undefined {
       console.error('Error fetching nursery results:', error);
       return [];
     }
-  }
+  } 
 
   async getPrimaryResults(params?: FilterParams): Promise<PrimaryResultData[]> {
     try {

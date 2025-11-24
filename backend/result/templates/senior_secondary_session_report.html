@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ student.name }} - Session Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; background-color: #f9f9f9; margin:0; padding:0; }
+        .container { max-width: 900px; margin: 20px auto; background-color:#fff; padding:20px 30px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+        .header, .student-info, .summary, .remarks { text-align:center; margin-bottom:20px; }
+        .school-logo { width:80px; height:80px; object-fit:contain; border-radius:50%; }
+        h1,h2,h3 { margin:5px 0; }
+        table { width:100%; border-collapse:collapse; font-size:0.9rem; }
+        th, td { border:1px solid #333; padding:5px; text-align:center; }
+        th { background-color:#f0f0f0; }
+        .pass { background-color:#d4edda; color:#155724; font-weight:bold; }
+        .fail { background-color:#f8d7da; color:#721c24; font-weight:bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        {% if school.logo %}
+            <img src="{{ school.logo }}" alt="School Logo" class="school-logo">
+        {% else %}
+            <div class="school-logo" style="background-color:#007bff;color:white;display:flex;align-items:center;justify-content:center;">LOGO</div>
+        {% endif %}
+        <h1>{{ school.name|upper }}</h1>
+        <p>{{ school.address }}</p>
+        <p>{{ school.phone }} | {{ school.email }}</p>
+        {% if school.motto %}<p><em>{{ school.motto }}</em></p>{% endif %}
+        <h2>STUDENT'S SESSION REPORT</h2>
+        <p>{{ academic_session.name }} Academic Session</p>
+    </div>
+
+    <div class="student-info">
+        <h3>{{ student.name|upper }} ({{ student.admission_number }})</h3>
+        <p>Class: {{ student.class }} | Age: {{ student.age }} | No in Class: {{ total_students }}</p>
+    </div>
+
+    <div class="summary">
+        <p>Average Score: {{ average_score }} | Grade: {{ overall_grade }}</p>
+        <p class="{{ "pass" if is_passed else "fail" }}">Result: {{ "PASS" if is_passed else "FAIL" }}</p>
+        <p>Position in Class: {{ class_position }} of {{ total_students }}</p>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Subject</th>
+            <th>Term 1</th>
+            <th>Term 2</th>
+            <th>Term 3</th>
+            <th>Total</th>
+            <th>Class Avg</th>
+            <th>Highest</th>
+            <th>Lowest</th>
+            <th>Position</th>
+            <th>Grade</th>
+            <th>Teacher Remark</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for subject in subjects %}
+        <tr>
+            <td>{{ subject.subject.name }}</td>
+            <td>{{ subject.term1_score }}</td>
+            <td>{{ subject.term2_score }}</td>
+            <td>{{ subject.term3_score }}</td>
+            <td>{{ subject.total_score }}</td>
+            <td>{{ subject.class_average }}</td>
+            <td>{{ subject.highest_in_class }}</td>
+            <td>{{ subject.lowest_in_class }}</td>
+            <td>{{ subject.position }}</td>
+            <td>{{ subject.grade }}</td>
+            <td>{{ subject.teacher_remark }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="remarks">
+        <div><strong>Class Teacher's Remark:</strong> {{ class_teacher_remark }}</div>
+        <div><strong>Head Teacher's Remark:</strong> {{ head_teacher_remark }}</div>
+    </div>
+</div>
+</body>
+</html>

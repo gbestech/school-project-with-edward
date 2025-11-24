@@ -1,8 +1,3 @@
-
-  // ==========================================
-// SCHOOL MANAGEMENT SYSTEM TYPES - CORRECTED
-// ==========================================
-
 // import { User } from '@/services/AuthService';
 import { ReactNode, ComponentType } from 'react';
 
@@ -21,6 +16,65 @@ export enum UserRole {
   JUNIOR_SECONDARY_ADMIN = 'junior_secondary_admin',
   SENIOR_SECONDARY_ADMIN = 'senior_secondary_admin',
   SECONDARY_ADMIN = 'secondary_admin'
+}
+
+export interface ApiResponse<T> {
+  results: T[];
+  count: number;
+  next: string | null;
+  previous: string | null;
+}
+
+export interface TermReportSubjectResult {
+  id: string;
+  subject: Subject;
+  total_ca_score: number;
+  ca_total: number;
+  exam_score: number;
+  total_score: number;
+  percentage: number;
+  grade: string;
+  grade_point: number;
+  is_passed: boolean;
+  status: ResultStatus;
+}
+
+export interface NurseryPhysicalDevelopment {
+  physical_development?: string;
+  health?: string;
+  cleanliness?: string;
+  general_conduct?: string;
+  height_beginning?: number;
+  height_end?: number;
+  weight_beginning?: number;
+  weight_end?: number;
+}
+
+export interface TermReport {
+  id: string;
+  student: Student;
+  academic_session?: AcademicSession;
+  term: string;
+  total_subjects: number;
+  subjects_passed: number;
+  subjects_failed: number;
+  total_score: number;
+  average_score: number;
+  gpa: number;
+  class_position: number | null;
+  total_students: number;
+  status: ResultStatus;
+  remarks: string;
+  next_term_begins: string | null;
+  subject_results: TermReportSubjectResult[];
+  created_at: string;
+  updated_at: string;
+  overall_grade: string;
+  education_level: string;
+}
+
+export interface NurseryTermReport extends TermReport, NurseryPhysicalDevelopment {
+  education_level: 'NURSERY';
 }
 
 export enum Gender {

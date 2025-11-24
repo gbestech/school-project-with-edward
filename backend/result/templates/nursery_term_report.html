@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ student.name }} - Nursery Report</title>
+<style>
+body { font-family: Arial; color:#333; background:#f9f9f9; margin:0; padding:0; }
+.container { max-width:700px; margin:20px auto; background:#fff; padding:20px; box-shadow:0 0 8px rgba(0,0,0,0.1);}
+.header, .student-info, .summary, .remarks { text-align:center; margin-bottom:15px; }
+.school-logo { width:50px; height:50px; border-radius:50%; object-fit:contain; }
+h1,h2,h3 { margin:4px 0; }
+table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+th, td { border:1px solid #333; padding:4px; text-align:center; }
+th { background:#eaeaea; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        {% if school.logo %}<img src="{{ school.logo }}" class="school-logo">{% endif %}
+        <h1>{{ school.name|upper }}</h1>
+        <p>{{ school.address }} | {{ school.phone }}</p>
+        <h2>NURSERY TERM REPORT</h2>
+        <p>{{ term.name }} Term, {{ academic_session.name }} Session</p>
+    </div>
+    <div class="student-info">
+        <h3>{{ student.name|upper }} ({{ student.admission_number }})</h3>
+        <p>Class: {{ student.class }} | Age: {{ student.age }}</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Activity</th><th>Score</th><th>Remark</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for subject in subjects %}
+        <tr>
+            <td>{{ subject.subject.name }}</td>
+            <td>{{ subject.total_score }}</td>
+            <td>{{ subject.teacher_remark }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="remarks">
+        <div><strong>Class Teacher:</strong> {{ class_teacher_remark }}</div>
+        <div><strong>Head Teacher:</strong> {{ head_teacher_remark }}</div>
+    </div>
+</div>
+</body>
+</html>

@@ -1991,6 +1991,10 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from django.http import HttpResponse
+import tempfile
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Avg, Count, Max, Min, F, Case, When, DecimalField
 from django.shortcuts import get_object_or_404
@@ -1999,6 +2003,9 @@ from django.db import transaction
 from decimal import Decimal
 import logging
 from utils.section_filtering import SectionFilterMixin
+from .report_generation import get_report_generator
+from .serializers import ReportGenerationSerializer
+
 
 from .models import (
     StudentResult,
@@ -2007,6 +2014,7 @@ from .models import (
     ResultSheet,
     AssessmentScore,
     ResultComment,
+    ResultTemplate,
     GradingSystem,
     Grade,
     AssessmentType,
@@ -2053,10 +2061,38 @@ from .serializers import (
     SeniorSecondarySessionReportSerializer,
     ConsolidatedTermReportSerializer,
     ConsolidatedResultSerializer,
+    ResultCommentCreateSerializer,
+    ResultTemplateCreateUpdateSerializer,
+    ResultTemplateSerializer,
+    BulkStatusUpdateSerializer,
+    PublishResultSerializer,
+    StudentMinimalSerializer,
+    SubjectPerformanceSerializer,
+    BulkResultUpdateSerializer,
+    ResultExportSerializer,
+    ResultImportSerializer,
+    BulkReportGenerationSerializer,
+    ReportGenerationSerializer,
 )
 from students.models import Student
 from academics.models import AcademicSession, Term
 from classroom.models import Stream
+from schoolSettings.models import SchoolSettings
+from django.shortcuts import get_object_or_404
+from subject.models import Subject
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+from weasyprint import HTML
+import tempfile
+
+from .serializers import ReportGenerationSerializer
+from subject.models import Subject
+
 
 logger = logging.getLogger(__name__)
 
@@ -2137,6 +2173,39 @@ def get_next_term_begins_date(exam_session):
     except Exception as e:
         logger.error(f"Error getting next term begins date: {e}")
         return None
+
+
+def check_user_permission(user, permission_name):
+    """Check if user has specific permission"""
+    if user.is_superuser or user.is_staff:
+        return True
+
+    # Check for role-based permissions
+    role = getattr(user, "role", None)
+    if role in ["admin", "superadmin", "principal"]:
+        return True
+
+    # Check Django permissions
+    return user.has_perm(permission_name)
+
+
+def validate_result_for_approval(result):
+    """Validate that result is ready for approval"""
+    errors = []
+
+    # Check if scores are valid
+    if not result.total_score or result.total_score < 0:
+        errors.append("Total score is invalid")
+
+    # Check if exam score exists
+    if not hasattr(result, "exam_score") or result.exam_score is None:
+        errors.append("Exam score is missing")
+
+    # Check if grade is calculated
+    if not result.grade:
+        errors.append("Grade has not been calculated")
+
+    return errors
 
 
 # ===== BASE CONFIGURATION VIEWSETS =====
@@ -2323,6 +2392,7 @@ class ScoringConfigurationViewSet(viewsets.ModelViewSet):
         return Response(ScoringConfigurationSerializer(config).data)
 
 
+# ====================================================================================
 # SENIOR SECONDARY VIEWSETS
 # ====================================================================================
 
@@ -2533,27 +2603,55 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                request.data["entered_by"] = request.user.id
+                student_id = request.data.get("student")
+                if student_id:  # ✅ Proper indentation
+                    student = Student.objects.get(id=student_id)
+                    expected_level = student.education_level
+                    if expected_level != "SENIOR_SECONDARY":
+                        return Response(
+                            {
+                                "error": f"Student's education level is {expected_level}, expected SENIOR_SECONDARY."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
+                request.data["entered_by"] = request.user.id
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializer(result)
+                detailed_serializer = SeniorSecondarySessionResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
-        except Exception as e:
-            logger.error(f"Failed to create result: {str(e)}")
+
+        except Student.DoesNotExist:
             return Response(
-                {"error": f"Failed to create result: {str(e)}"},
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Failed to create session result: {str(e)}")
+            return Response(
+                {"error": f"Failed to create session result: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
     def update(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
-                instance = self.get_object()
+                instance = self.get_object()  # ✅ Get instance first
+
+                # Check if modifying published results
+                if instance.status == "PUBLISHED" and not check_user_permission(
+                    request.user, "results.change_published_results"
+                ):
+                    return Response(
+                        {
+                            "error": "You don't have permission to modify published results"
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
                 serializer = self.get_serializer(
                     instance, data=request.data, partial=kwargs.get("partial", False)
                 )
@@ -2571,6 +2669,36 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
+        result = self.get_object()
+        # Check permission
+        user_role = self.get_user_role()
+        if user_role not in [
+            "admin",
+            "superadmin",
+            "principal",
+            "senior_secondary_admin",
+        ]:
+            return Response(
+                {"error": "You don't have permission to approve results"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Validate data before approving
+        if not result.total_score or result.total_score < 0:
+            return Response(
+                {"error": "Cannot approve result with invalid scores"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate current status allows approval
+        if result.status not in ["DRAFT", "SUBMITTED"]:
+            return Response(
+                {
+                    "error": "Invalid status transition",
+                    "detail": f"Cannot approve result with status '{result.status}'. Only DRAFT or SUBMITTED results can be approved.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         with transaction.atomic():
             result = self.get_object()
             result.status = "APPROVED"
@@ -2714,7 +2842,7 @@ class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelView
                 "student",
                 "student__user",
                 "subject",
-                "exam_session",
+                "academic_session",
                 "grading_system",
                 "entered_by",
                 "approved_by",
@@ -2889,6 +3017,19 @@ class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelView
     def create(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+                if expected_level != "SENIOR_SECONDARY":
+                    return Response(
+                        {
+                            "error": f"Student's education level is {expected_level}, expected SENIOR_SECONDARY."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                request.data["entered_by"] = request.user.id
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
@@ -2897,6 +3038,11 @@ class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelView
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
+
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             logger.error(f"Failed to create session result: {str(e)}")
             return Response(
@@ -2924,7 +3070,6 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
         )
 
         user = self.request.user
-
         # ===== SUPER ADMIN / STAFF =====
         if user.is_superuser or user.is_staff:
             logger.info(
@@ -3636,6 +3781,17 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+                if expected_level != "JUNIOR_SECONDARY":
+                    return Response(
+                        {
+                            "error": f"Student's education level is {expected_level}, expected JUNIOR_SECONDARY."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 request.data["entered_by"] = request.user.id
 
                 serializer = self.get_serializer(data=request.data)
@@ -3646,6 +3802,11 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
         except Exception as e:
             logger.error(f"Failed to create result: {str(e)}")
             return Response(
@@ -3656,6 +3817,18 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+
+                if expected_level != "JUNIOR_SECONDARY":
+                    return Response(
+                        {
+                            "error": f"Student's education level is {expected_level}, expected JUNIOR_SECONDARY."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 instance = self.get_object()
                 serializer = self.get_serializer(
                     instance, data=request.data, partial=kwargs.get("partial", False)
@@ -3665,6 +3838,11 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
                 detailed_serializer = JuniorSecondaryResultSerializer(result)
                 return Response(detailed_serializer.data)
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
         except Exception as e:
             logger.error(f"Failed to update result: {str(e)}")
             return Response(
@@ -3674,6 +3852,38 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
+
+        result = self.get_object()
+
+        # Check permission
+        user_role = self.get_user_role()
+        if user_role not in [
+            "admin",
+            "superadmin",
+            "principal",
+            "senior_secondary_admin",
+        ]:
+            return Response(
+                {"error": "You don't have permission to approve results"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Validate data before approving
+        if not result.total_score or result.total_score < 0:
+            return Response(
+                {"error": "Cannot approve result with invalid scores"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate current status allows approval
+        if result.status not in ["DRAFT", "SUBMITTED"]:
+            return Response(
+                {
+                    "error": "Invalid status transition",
+                    "detail": f"Cannot approve result with status '{result.status}'. Only DRAFT or SUBMITTED results can be approved.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         with transaction.atomic():
             result = self.get_object()
             result.status = "APPROVED"
@@ -4393,16 +4603,33 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+
+                if expected_level != "PRIMARY":
+                    return Response(
+                        {
+                            "error": f"Student education level mismatch. Expected PRIMARY but got {expected_level}."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 request.data["entered_by"] = request.user.id
 
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializer(result)
+                detailed_serializer = PrimaryResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             logger.error(f"Failed to create result: {str(e)}")
             return Response(
@@ -4413,6 +4640,19 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+
+                if expected_level != "PRIMARY":
+                    return Response(
+                        {
+                            "error": f"Student education level mismatch. Expected PRIMARY but got {expected_level}."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 instance = self.get_object()
                 serializer = self.get_serializer(
                     instance, data=request.data, partial=kwargs.get("partial", False)
@@ -4422,6 +4662,10 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
                 detailed_serializer = PrimaryResultSerializer(result)
                 return Response(detailed_serializer.data)
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             logger.error(f"Failed to update result: {str(e)}")
             return Response(
@@ -4431,6 +4675,38 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
+
+        result = self.get_object()
+
+        # Check permission
+        user_role = self.get_user_role()
+        if user_role not in [
+            "admin",
+            "superadmin",
+            "principal",
+            "senior_secondary_admin",
+        ]:
+            return Response(
+                {"error": "You don't have permission to approve results"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Validate data before approving
+        if not result.total_score or result.total_score < 0:
+            return Response(
+                {"error": "Cannot approve result with invalid scores"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate current status allows approval
+        if result.status not in ["DRAFT", "SUBMITTED"]:
+            return Response(
+                {
+                    "error": "Invalid status transition",
+                    "detail": f"Cannot approve result with status '{result.status}'. Only DRAFT or SUBMITTED results can be approved.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         with transaction.atomic():
             result = self.get_object()
             result.status = "APPROVED"
@@ -5148,16 +5424,35 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+
+                if expected_level != "NURSERY":
+                    return Response(
+                        {
+                            "error": f"Student education level mismatch. Expected NURSERY but got {expected_level}."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 request.data["entered_by"] = request.user.id
 
                 serializer = self.get_serializer(data=request.data)
                 serializer.is_valid(raise_exception=True)
                 result = serializer.save()
 
-                detailed_serializer = JuniorSecondaryResultSerializer(result)
+                detailed_serializer = NurseryResultSerializer(result)
                 return Response(
                     detailed_serializer.data, status=status.HTTP_201_CREATED
                 )
+        except Student.DoesNotExist:
+            logger.error(f"Student with id {student_id} does not exist.")
+            return Response(
+                {"error": f"Student with id {student_id} does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         except Exception as e:
             logger.error(f"Failed to create result: {str(e)}")
             return Response(
@@ -5168,6 +5463,19 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
+
+                student_id = request.data.get("student")
+            if student_id:
+                student = Student.objects.get(id=student_id)
+                expected_level = student.education_level
+
+                if expected_level != "NURSERY":
+                    return Response(
+                        {
+                            "error": f"Student education level mismatch. Expected NURSERY but got {expected_level}."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 instance = self.get_object()
                 serializer = self.get_serializer(
                     instance, data=request.data, partial=kwargs.get("partial", False)
@@ -5177,6 +5485,12 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
                 detailed_serializer = NurseryResultSerializer(result)
                 return Response(detailed_serializer.data)
+        except Student.DoesNotExist:
+            logger.error(f"Student with id {student_id} does not exist.")
+            return Response(
+                {"error": f"Student with id {student_id} does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
             logger.error(f"Failed to update result: {str(e)}")
             return Response(
@@ -5186,6 +5500,38 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
+
+        result = self.get_object()
+
+        # Check permission
+        user_role = self.get_user_role()
+        if user_role not in [
+            "admin",
+            "superadmin",
+            "principal",
+            "senior_secondary_admin",
+        ]:
+            return Response(
+                {"error": "You don't have permission to approve results"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Validate data before approving
+        if not result.total_score or result.total_score < 0:
+            return Response(
+                {"error": "Cannot approve result with invalid scores"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate current status allows approval
+        if result.status not in ["DRAFT", "SUBMITTED"]:
+            return Response(
+                {
+                    "error": "Invalid status transition",
+                    "detail": f"Cannot approve result with status '{result.status}'. Only DRAFT or SUBMITTED results can be approved.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         with transaction.atomic():
             result = self.get_object()
             result.status = "APPROVED"
@@ -5739,6 +6085,7 @@ class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         """Create a new student result with automatic calculations"""
         try:
             with transaction.atomic():
+
                 request.data["entered_by"] = request.user.id
 
                 serializer = self.get_serializer(data=request.data)
@@ -5825,6 +6172,38 @@ class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
+
+        result = self.get_object()
+
+        # Check permission
+        user_role = self.get_user_role()
+        if user_role not in [
+            "admin",
+            "superadmin",
+            "principal",
+            "senior_secondary_admin",
+        ]:
+            return Response(
+                {"error": "You don't have permission to approve results"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Validate data before approving
+        if not result.total_score or result.total_score < 0:
+            return Response(
+                {"error": "Cannot approve result with invalid scores"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate current status allows approval
+        if result.status not in ["DRAFT", "SUBMITTED"]:
+            return Response(
+                {
+                    "error": "Invalid status transition",
+                    "detail": f"Cannot approve result with status '{result.status}'. Only DRAFT or SUBMITTED results can be approved.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         """Approve a student result"""
         try:
             with transaction.atomic():
@@ -6199,11 +6578,17 @@ class AssessmentScoreViewSet(viewsets.ModelViewSet):
 
 
 class ResultCommentViewSet(viewsets.ModelViewSet):
-    queryset = ResultComment.objects.all()
-    serializer_class = ResultCommentSerializer
+    """ViewSet for managing result comments"""
+
+    queryset = ResultComment.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["student_result", "term_result", "comment_type"]
+    filterset_fields = ["student_result", "term_result", "comment_type", "commented_by"]
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return ResultCommentCreateSerializer
+        return ResultCommentSerializer
 
     def get_queryset(self):
         return (
@@ -6211,3 +6596,605 @@ class ResultCommentViewSet(viewsets.ModelViewSet):
             .get_queryset()
             .select_related("student_result", "term_result", "commented_by")
         )
+
+    def perform_create(self, serializer):
+        serializer.save(commented_by=self.request.user)
+
+
+class ResultTemplateViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing result templates"""
+
+    queryset = ResultTemplate.objects.all().order_by("-created_at")
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["template_type", "education_level", "is_active"]
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return ResultTemplateCreateUpdateSerializer
+        return ResultTemplateSerializer
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request, pk=None):
+        """Activate a result template"""
+        template = self.get_object()
+        template.is_active = True
+        template.save()
+        return Response(ResultTemplateSerializer(template).data)
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request, pk=None):
+        """Deactivate a result template"""
+        template = self.get_object()
+        template.is_active = False
+        template.save()
+        return Response(ResultTemplateSerializer(template).data)
+
+
+class BulkResultOperationsViewSet(viewsets.ViewSet):
+    """ViewSet for bulk result operations"""
+
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def bulk_update(self, request):
+        """Bulk update multiple results"""
+        serializer = BulkResultUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        results_data = serializer.validated_data["results"]
+        updated_results = []
+        errors = []
+
+        try:
+            with transaction.atomic():
+                for result_data in results_data:
+                    result_id = result_data.pop("id")
+                    try:
+                        # Determine education level and update accordingly
+                        education_level = result_data.get(
+                            "education_level", "SENIOR_SECONDARY"
+                        )
+
+                        if education_level == "SENIOR_SECONDARY":
+                            result = SeniorSecondaryResult.objects.get(id=result_id)
+                            update_serializer = (
+                                SeniorSecondaryResultCreateUpdateSerializer(
+                                    result, data=result_data, partial=True
+                                )
+                            )
+                        elif education_level == "JUNIOR_SECONDARY":
+                            result = JuniorSecondaryResult.objects.get(id=result_id)
+                            update_serializer = (
+                                JuniorSecondaryResultCreateUpdateSerializer(
+                                    result, data=result_data, partial=True
+                                )
+                            )
+                        elif education_level == "PRIMARY":
+                            result = PrimaryResult.objects.get(id=result_id)
+                            update_serializer = PrimaryResultCreateUpdateSerializer(
+                                result, data=result_data, partial=True
+                            )
+                        else:  # NURSERY
+                            result = NurseryResult.objects.get(id=result_id)
+                            update_serializer = NurseryResultCreateUpdateSerializer(
+                                result, data=result_data, partial=True
+                            )
+
+                        update_serializer.is_valid(raise_exception=True)
+                        updated_result = update_serializer.save()
+                        updated_results.append(str(updated_result.id))
+
+                    except Exception as e:
+                        errors.append({"id": result_id, "error": str(e)})
+
+                return Response(
+                    {
+                        "message": f"Successfully updated {len(updated_results)} results",
+                        "updated_ids": updated_results,
+                        "errors": errors,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        except Exception as e:
+            logger.error(f"Bulk update failed: {str(e)}")
+            return Response(
+                {"error": f"Bulk update failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=False, methods=["post"])
+    def bulk_status_update(self, request):
+        """Bulk update status of multiple results"""
+        serializer = BulkStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result_ids = serializer.validated_data["result_ids"]
+        new_status = serializer.validated_data["status"]
+        comment = serializer.validated_data.get("comment", "")
+
+        try:
+            with transaction.atomic():
+                # Update across all result types
+                total_updated = 0
+
+                for model in [
+                    SeniorSecondaryResult,
+                    JuniorSecondaryResult,
+                    PrimaryResult,
+                    NurseryResult,
+                ]:
+                    updated = model.objects.filter(id__in=result_ids).update(
+                        status=new_status
+                    )
+                    total_updated += updated
+
+                return Response(
+                    {
+                        "message": f"Successfully updated status for {total_updated} results",
+                        "status": new_status,
+                        "comment": comment,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        except Exception as e:
+            logger.error(f"Bulk status update failed: {str(e)}")
+            return Response(
+                {"error": f"Bulk status update failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=False, methods=["post"])
+    def bulk_publish_results(self, request):
+        """Bulk publish results with notifications"""
+        serializer = PublishResultSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result_ids = serializer.validated_data["result_ids"]
+        publish_date = serializer.validated_data.get("publish_date", timezone.now())
+        send_notifications = serializer.validated_data.get("send_notifications", True)
+
+        try:
+            with transaction.atomic():
+                total_published = 0
+
+                for model in [
+                    SeniorSecondaryResult,
+                    JuniorSecondaryResult,
+                    PrimaryResult,
+                    NurseryResult,
+                ]:
+                    published = model.objects.filter(id__in=result_ids).update(
+                        status="PUBLISHED",
+                        published_by=request.user,
+                        published_date=publish_date,
+                    )
+                    total_published += published
+
+                # TODO: Implement notification logic if send_notifications is True
+
+                return Response(
+                    {
+                        "message": f"Successfully published {total_published} results",
+                        "published_date": publish_date,
+                        "notifications_sent": send_notifications,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        except Exception as e:
+            logger.error(f"Bulk publish failed: {str(e)}")
+            return Response(
+                {"error": f"Bulk publish failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ResultAnalyticsViewSet(viewsets.ViewSet):
+    """ViewSet for result analytics and statistics"""
+
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["get"])
+    def subject_performance(self, request):
+        """Get subject performance statistics"""
+        exam_session_id = request.query_params.get("exam_session_id")
+        education_level = request.query_params.get("education_level")
+
+        if not exam_session_id:
+            return Response(
+                {"error": "exam_session_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Determine which model to use based on education level
+        model_map = {
+            "SENIOR_SECONDARY": SeniorSecondaryResult,
+            "JUNIOR_SECONDARY": JuniorSecondaryResult,
+            "PRIMARY": PrimaryResult,
+            "NURSERY": NurseryResult,
+        }
+
+        model = model_map.get(education_level, SeniorSecondaryResult)
+
+        results = (
+            model.objects.filter(
+                exam_session_id=exam_session_id, status__in=["APPROVED", "PUBLISHED"]
+            )
+            .values("subject__id", "subject__name", "subject__code")
+            .annotate(
+                total_students=Count("student", distinct=True),
+                average_score=Avg("total_score"),
+                highest_score=Max("total_score"),
+                lowest_score=Min("total_score"),
+                students_passed=Count("id", filter=Q(is_passed=True)),
+                students_failed=Count("id", filter=Q(is_passed=False)),
+            )
+        )
+
+        performance_data = []
+        for result in results:
+            pass_rate = (
+                (result["students_passed"] / result["total_students"] * 100)
+                if result["total_students"] > 0
+                else 0
+            )
+            performance_data.append(
+                {
+                    "subject_id": result["subject__id"],
+                    "subject_name": result["subject__name"],
+                    "subject_code": result["subject__code"],
+                    "total_students": result["total_students"],
+                    "average_score": (
+                        round(result["average_score"], 2)
+                        if result["average_score"]
+                        else 0
+                    ),
+                    "highest_score": result["highest_score"],
+                    "lowest_score": result["lowest_score"],
+                    "pass_rate": round(pass_rate, 2),
+                    "students_passed": result["students_passed"],
+                    "students_failed": result["students_failed"],
+                }
+            )
+
+        serializer = SubjectPerformanceSerializer(performance_data, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def student_performance_trend(self, request):
+        """Get student performance trend across terms"""
+        student_id = request.query_params.get("student_id")
+        academic_session_id = request.query_params.get("academic_session_id")
+
+        if not student_id:
+            return Response(
+                {"error": "student_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            student = Student.objects.get(id=student_id)
+            education_level = student.education_level
+
+            # Get term reports based on education level
+            if education_level == "SENIOR_SECONDARY":
+                term_reports = SeniorSecondaryTermReport.objects.filter(
+                    student=student
+                ).select_related("exam_session")
+            elif education_level == "JUNIOR_SECONDARY":
+                term_reports = JuniorSecondaryTermReport.objects.filter(
+                    student=student
+                ).select_related("exam_session")
+            elif education_level == "PRIMARY":
+                term_reports = PrimaryTermReport.objects.filter(
+                    student=student
+                ).select_related("exam_session")
+            else:
+                term_reports = NurseryTermReport.objects.filter(
+                    student=student
+                ).select_related("exam_session")
+
+            if academic_session_id:
+                term_reports = term_reports.filter(
+                    exam_session__academic_session_id=academic_session_id
+                )
+
+            term_scores = []
+            for report in term_reports:
+                term_scores.append(
+                    {
+                        "term": report.exam_session.term,
+                        "average_score": (
+                            float(report.average_score) if report.average_score else 0
+                        ),
+                        "total_score": (
+                            float(report.total_score) if report.total_score else 0
+                        ),
+                        "class_position": report.class_position,
+                    }
+                )
+
+            # Calculate trend
+            if len(term_scores) >= 2:
+                first_score = term_scores[0]["average_score"]
+                last_score = term_scores[-1]["average_score"]
+                percentage_change = (
+                    ((last_score - first_score) / first_score * 100)
+                    if first_score > 0
+                    else 0
+                )
+
+                if percentage_change > 5:
+                    trend = "IMPROVING"
+                elif percentage_change < -5:
+                    trend = "DECLINING"
+                else:
+                    trend = "STABLE"
+            else:
+                percentage_change = 0
+                trend = "STABLE"
+
+            response_data = {
+                "student": StudentMinimalSerializer(student).data,
+                "term_scores": term_scores,
+                "average_score": (
+                    sum(s["average_score"] for s in term_scores) / len(term_scores)
+                    if term_scores
+                    else 0
+                ),
+                "trend": trend,
+                "percentage_change": round(percentage_change, 2),
+                "best_subject": None,  # TODO: Implement
+                "worst_subject": None,  # TODO: Implement
+            }
+
+            return Response(response_data)
+
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=["get"])
+    def class_performance(self, request):
+        """Get class-level performance summary"""
+        exam_session_id = request.query_params.get("exam_session_id")
+        student_class = request.query_params.get("student_class")
+        education_level = request.query_params.get("education_level")
+
+        if not all([exam_session_id, student_class, education_level]):
+            return Response(
+                {
+                    "error": "exam_session_id, student_class, and education_level are required"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Get appropriate term report model
+        report_model_map = {
+            "SENIOR_SECONDARY": SeniorSecondaryTermReport,
+            "JUNIOR_SECONDARY": JuniorSecondaryTermReport,
+            "PRIMARY": PrimaryTermReport,
+            "NURSERY": NurseryTermReport,
+        }
+
+        report_model = report_model_map.get(education_level)
+        if not report_model:
+            return Response(
+                {"error": "Invalid education level"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        term_reports = report_model.objects.filter(
+            exam_session_id=exam_session_id,
+            student__student_class=student_class,
+            status__in=["APPROVED", "PUBLISHED"],
+        ).select_related("student")
+
+        if not term_reports.exists():
+            return Response(
+                {"error": "No results found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        total_students = term_reports.count()
+        class_average = (
+            term_reports.aggregate(Avg("average_score"))["average_score__avg"] or 0
+        )
+
+        # Calculate pass rate (assuming passing is average >= 50)
+        passed_count = term_reports.filter(average_score__gte=50).count()
+        pass_rate = (passed_count / total_students * 100) if total_students > 0 else 0
+
+        # Get top performers
+        top_performers = term_reports.order_by("-average_score")[:5]
+        top_performers_data = [
+            {
+                "student_id": str(report.student.id),
+                "student_name": report.student.full_name,
+                "average_score": (
+                    float(report.average_score) if report.average_score else 0
+                ),
+                "class_position": report.class_position,
+            }
+            for report in top_performers
+        ]
+
+        response_data = {
+            "student_class": student_class,
+            "education_level": education_level,
+            "total_students": total_students,
+            "class_average": round(class_average, 2),
+            "pass_rate": round(pass_rate, 2),
+            "top_performers": top_performers_data,
+            "subject_performance": [],  # TODO: Add subject breakdown
+        }
+
+        return Response(response_data)
+
+    @action(detail=False, methods=["get"])
+    def result_summary(self, request):
+        """Get overall result summary dashboard"""
+        exam_session_id = request.query_params.get("exam_session_id")
+
+        if not exam_session_id:
+            return Response(
+                {"error": "exam_session_id is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        summary = {
+            "total_results": 0,
+            "published_results": 0,
+            "pending_approval": 0,
+            "draft_results": 0,
+            "overall_pass_rate": 0,
+            "average_class_performance": 0,
+            "top_performing_class": None,
+            "subjects_summary": [],
+        }
+
+        # Aggregate across all education levels
+        for model in [
+            SeniorSecondaryResult,
+            JuniorSecondaryResult,
+            PrimaryResult,
+            NurseryResult,
+        ]:
+            results = model.objects.filter(exam_session_id=exam_session_id)
+
+            summary["total_results"] += results.count()
+            summary["published_results"] += results.filter(status="PUBLISHED").count()
+            summary["pending_approval"] += results.filter(status="SUBMITTED").count()
+            summary["draft_results"] += results.filter(status="DRAFT").count()
+
+        # Calculate overall pass rate
+        total_passed = 0
+        for model in [
+            SeniorSecondaryResult,
+            JuniorSecondaryResult,
+            PrimaryResult,
+            NurseryResult,
+        ]:
+            total_passed += model.objects.filter(
+                exam_session_id=exam_session_id, is_passed=True
+            ).count()
+
+        summary["overall_pass_rate"] = round(
+            (
+                (total_passed / summary["total_results"] * 100)
+                if summary["total_results"] > 0
+                else 0
+            ),
+            2,
+        )
+
+        return Response(summary)
+
+
+class ResultImportExportViewSet(viewsets.ViewSet):
+    """ViewSet for importing and exporting results"""
+
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["post"])
+    def import_results(self, request):
+        """Import results from file"""
+        serializer = ResultImportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # TODO: Implement CSV/Excel import logic
+        return Response(
+            {"message": "Import functionality to be implemented", "status": "pending"},
+            status=status.HTTP_501_NOT_IMPLEMENTED,
+        )
+
+    @action(detail=False, methods=["post"])
+    def export_results(self, request):
+        """Export results to file"""
+        serializer = ResultExportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # TODO: Implement CSV/Excel/PDF export logic
+        return Response(
+            {"message": "Export functionality to be implemented", "status": "pending"},
+            status=status.HTTP_501_NOT_IMPLEMENTED,
+        )
+
+
+class ReportGenerationViewSet(viewsets.ViewSet):
+    """Dynamic ViewSet for generating student reports"""
+
+    permission_classes = [IsAuthenticated]
+
+    TEMPLATE_MAPPING = {
+        # Term Reports
+        ("NURSERY", "term"): "result/templates/nursery_term_report.html",
+        ("PRIMARY", "term"): "result/templates/primary_term_report.html",
+        (
+            "JUNIOR_SECONDARY",
+            "term",
+        ): "result/templates/junior_secondary_term_report.html",
+        (
+            "SENIOR_SECONDARY",
+            "term",
+        ): "result/templates/senior_secondary_term_report.html",
+        # Session Reports (only for secondary levels in this example)
+        (
+            "SENIOR_SECONDARY",
+            "session",
+        ): "result/templates/senior_secondary_session_report.html",
+    }
+
+    @action(detail=False, methods=["post"])
+    def generate_report(self, request):
+        """
+        Generate a student report (term/session) dynamically.
+        Payload example:
+        {
+            "student_id": 1,
+            "education_level": "SENIOR_SECONDARY",
+            "report_type": "term"  # or "session"
+        }
+        """
+        serializer = ReportGenerationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        student_id = serializer.validated_data["student_id"]
+        education_level = serializer.validated_data["education_level"]
+        report_type = serializer.validated_data.get("report_type", "term")
+
+        try:
+            generator = get_report_generator(education_level, request)
+            return generator.generate_term_report(student_id)
+        except Exception as e:
+            # If external generator fails, return error
+            return Response(
+                {"error": f"Failed to generate report: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=False, methods=["post"])
+    def bulk_generate_reports(self, request):
+        """Bulk generate PDF reports"""
+        serializer = BulkReportGenerationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        student_ids = serializer.validated_data.get("student_ids", [])
+        exam_session_id = serializer.validated_data["exam_session_id"]
+        education_level = serializer.validated_data["education_level"]
+
+        try:
+            generator = get_report_generator(education_level, request)
+            reports = []
+
+            for student_id in student_ids:
+                pdf = generator.generate_term_report(student_id)
+                reports.append(pdf)
+
+            # Return ZIP file or individual PDFs
+            return Response(
+                {"message": f"Generated {len(reports)} reports", "reports": reports}
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
