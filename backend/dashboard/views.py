@@ -14,7 +14,7 @@ from django.db.models import Q
 import datetime
 import logging
 
-from utils.section_filtering import AutoSectionFilterMixin
+from utils.section_filtering import AutoSectionFilterMixin, SectionFilterMixin
 from students.models import Student
 from teacher.models import Teacher
 from classroom.models import Classroom
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 # === DASHBOARD VIEW (Class-based with AutoSectionFilterMixin) ===
-class DashboardViewSet(AutoSectionFilterMixin, viewsets.ViewSet):
+class DashboardViewSet(SectionFilterMixin, viewsets.ViewSet):
     """
     Dashboard statistics with automatic section filtering
     """
