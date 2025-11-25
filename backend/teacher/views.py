@@ -1,6 +1,7 @@
 # from rest_framework import viewsets, status, permissions
 
 from utils.section_filtering import AutoSectionFilterMixin
+
 # from rest_framework.decorators import action
 # from rest_framework.response import Response
 # from django.shortcuts import get_object_or_404
@@ -230,7 +231,6 @@ from utils.section_filtering import AutoSectionFilterMixin
 queryset = super().get_queryset()
 
 
-
 # Apply additional filters
 #         """
 #         Filter queryset based on user permissions and section access.
@@ -308,7 +308,6 @@ queryset = super().get_queryset()
 queryset = super().get_queryset()
 
 
-
 # Apply additional filters
 #         queryset = AssignmentRequest.objects.all()
 
@@ -372,7 +371,6 @@ queryset = super().get_queryset()
 # Apply section filtering
 
 queryset = super().get_queryset()
-
 
 
 # Apply additional filters
@@ -633,13 +631,13 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         TokenAuthentication,
         SessionAuthentication,
     ]
-    permission_classes = [TeacherModulePermission]
+    permission_classes = [IsAuthenticated, TeacherModulePermission]
 
+    # ---------------------------------------------------------
+    # SECTION – ACCESS CONTROL HELPERS
+    # ---------------------------------------------------------
     def _get_section_education_levels(self, user):
-        """
-        Helper method to get education levels based on user's section/role
-        Returns a list of education levels the user can access
-        """
+
         SECTION_TO_EDUCATION_LEVEL = {
             "nursery": ["NURSERY"],
             "primary": ["PRIMARY"],
@@ -656,32 +654,24 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             "secondary_admin": "secondary",
         }
 
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
-            user_section = ROLE_TO_SECTION[user.role]
-
+        # Pick section from user.section or fallback to role
+        user_section = user.section or ROLE_TO_SECTION.get(user.role)
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
+    # ---------------------------------------------------------
+    # CREATE TEACHER
+    # ---------------------------------------------------------
     def create(self, request, *args, **kwargs):
-        """Override create to include generated credentials in response"""
-        print(f"TeacherViewSet.create called")
-        print(f"User: {request.user}")
-        print(f"Is authenticated: {request.user.is_authenticated}")
-        print(f"Request data keys: {list(request.data.keys())}")
 
-        # Validate required fields before serialization
         required_fields = [
             "user_email",
             "user_first_name",
             "user_last_name",
             "employee_id",
         ]
-        missing_fields = [
-            field for field in required_fields if not request.data.get(field)
-        ]
+        missing_fields = [f for f in required_fields if not request.data.get(f)]
 
         if missing_fields:
-            print(f"Missing required fields: {missing_fields}")
             return Response(
                 {
                     "error": "Missing required fields",
@@ -691,210 +681,105 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # For section admins, validate teacher's section matches admin's section
         user = request.user
+
+        # Section admin restrictions
         if user.is_staff and user.is_section_admin:
             teacher_section = request.data.get("section")
             admin_section = user.section
 
-            # Map section to education levels for validation
-            education_levels = self._get_section_education_levels(user)
-
-            # If teacher section is provided, validate it
-            if teacher_section:
-                # Teacher section should match admin's manageable sections
-                valid_sections = []
-                if admin_section == "nursery":
-                    valid_sections = ["nursery"]
-                elif admin_section == "primary":
-                    valid_sections = ["primary"]
-                elif admin_section == "junior_secondary":
-                    valid_sections = ["junior_secondary"]
-                elif admin_section == "senior_secondary":
-                    valid_sections = ["senior_secondary"]
-                elif admin_section == "secondary":
-                    valid_sections = [
-                        "junior_secondary",
-                        "senior_secondary",
-                        "secondary",
-                    ]
-
-                if teacher_section not in valid_sections:
-                    return Response(
-                        {
-                            "error": f"You can only create teachers in your section ({', '.join(valid_sections)})"
-                        },
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-
-        serializer = self.get_serializer(data=request.data)
-
-        if not serializer.is_valid():
-            print(f"Serializer validation errors: {serializer.errors}")
-            return Response(
-                {"error": "Validation failed", "details": serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            print(f"Serializer valid, saving teacher...")
-            teacher = serializer.save()
-            print(f"Teacher saved successfully with ID: {teacher.id}")
-
-            response_data = {
-                "id": teacher.id,
-                "employee_id": teacher.employee_id,
-                "staff_type": teacher.staff_type,
-                "level": teacher.level,
-                "phone_number": teacher.phone_number,
-                "address": teacher.address,
-                "date_of_birth": (
-                    teacher.date_of_birth.isoformat() if teacher.date_of_birth else None
-                ),
-                "hire_date": (
-                    teacher.hire_date.isoformat() if teacher.hire_date else None
-                ),
-                "qualification": teacher.qualification,
-                "specialization": teacher.specialization,
-                "photo": teacher.photo,
-                "is_active": teacher.is_active,
-                "created_at": teacher.created_at.isoformat(),
-                "updated_at": teacher.updated_at.isoformat(),
-                "full_name": f"{teacher.user.first_name} {teacher.user.last_name}",
-                "email_readonly": teacher.user.email,
-                "username": teacher.user.username,
-                "user": {
-                    "id": teacher.user.id,
-                    "first_name": teacher.user.first_name,
-                    "last_name": teacher.user.last_name,
-                    "email": teacher.user.email,
-                    "username": teacher.user.username,
-                    "date_joined": (
-                        teacher.user.date_joined.isoformat()
-                        if teacher.user.date_joined
-                        else None
-                    ),
-                    "is_active": teacher.user.is_active,
-                },
+            valid_map = {
+                "nursery": ["nursery"],
+                "primary": ["primary"],
+                "junior_secondary": ["junior_secondary"],
+                "senior_secondary": ["senior_secondary"],
+                "secondary": ["junior_secondary", "senior_secondary", "secondary"],
             }
 
-            if hasattr(serializer, "context") and "user_password" in serializer.context:
-                response_data["user_password"] = serializer.context["user_password"]
-                response_data["user_username"] = serializer.context.get(
-                    "user_username", ""
+            valid_sections = valid_map.get(admin_section, [])
+
+            if teacher_section not in valid_sections:
+                return Response(
+                    {
+                        "error": f"You can only create teachers in your section "
+                        f"({', '.join(valid_sections)})"
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
                 )
-                print(f"Credentials added to response")
-                print(f"Username: {serializer.context['user_username']}")
-            else:
-                print(f"No credentials found in serializer context")
 
-            return Response(response_data, status=status.HTTP_201_CREATED)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        except Exception as e:
-            print(f"Error in create method: {e}")
-            import traceback
+        teacher = serializer.save()
 
-            print(f"Full traceback: {traceback.format_exc()}")
-            return Response(
-                {"error": "Failed to create teacher", "message": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        # Build clean API response
+        response = {
+            "id": teacher.id,
+            "employee_id": teacher.employee_id,
+            "staff_type": teacher.staff_type,
+            "level": teacher.level,
+            "is_active": teacher.is_active,
+            "created_at": teacher.created_at,
+            "updated_at": teacher.updated_at,
+            "full_name": f"{teacher.user.first_name} {teacher.user.last_name}",
+            "email": teacher.user.email,
+            "username": teacher.user.username,
+            "user": {
+                "id": teacher.user.id,
+                "email": teacher.user.email,
+                "first_name": teacher.user.first_name,
+                "last_name": teacher.user.last_name,
+            },
+        }
 
+        # Include generated credentials if present
+        if "user_password" in serializer.context:
+            response["user_password"] = serializer.context["user_password"]
+            response["username"] = serializer.context.get("user_username", "")
+
+        return Response(response, status=status.HTTP_201_CREATED)
+
+    # ---------------------------------------------------------
+    # FILTERING TEACHERS BASED ON USER PERMISSIONS
+    # ---------------------------------------------------------
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
-        """
-        Filter queryset based on user permissions and section access.
-        - Superadmin: See all teachers
-        - Section Admin: See only teachers in their section (based on assignments)
-        - Regular Staff: See all teachers
-        - Teacher: See only their own profile
-        """
         user = self.request.user
-        print(f"[TeacherViewSet] get_queryset called for user: {user}")
 
         if not user.is_authenticated:
-            print("User not authenticated — returning none.")
             return Teacher.objects.none()
 
-        # 🟩 Superadmin — full access
+        # SUPERADMIN – sees all
         if user.is_superuser:
-            queryset = Teacher.objects.select_related("user").all()
-            print(f"Superadmin user — total teachers: {queryset.count()}")
+            return Teacher.objects.select_related("user").all()
 
-        # 🟨 Section Admin — see only teachers in their section
-        elif user.is_staff and user.is_section_admin:
-            education_levels = self._get_section_education_levels(user)
-
-            if not education_levels:
-                print(f"Section admin {user.username} has no valid section")
-                return Teacher.objects.none()
-
-            # Get teachers who have assignments in the section's education levels
-            from classroom.models import ClassroomTeacherAssignment
+        # SECTION ADMIN – restricted to their education levels
+        if user.is_staff and user.is_section_admin:
+            levels = self._get_section_education_levels(user)
 
             teacher_ids = (
                 ClassroomTeacherAssignment.objects.filter(
-                    classroom__section__grade_level__education_level__in=education_levels,
+                    classroom__section__grade_level__education_level__in=levels,
                     is_active=True,
                 )
                 .values_list("teacher_id", flat=True)
                 .distinct()
             )
 
-            queryset = Teacher.objects.select_related("user").filter(id__in=teacher_ids)
-
-            print(
-                f"Section admin {user.username} ({user.role}) — "
-                f"education_levels: {education_levels}, "
-                f"teachers count: {queryset.count()}"
+            return (
+                Teacher.objects.select_related("user")
+                .filter(id__in=teacher_ids)
+                .distinct()
             )
 
-        # 🟩 Regular staff — full access
-        elif user.is_staff:
-            queryset = Teacher.objects.select_related("user").all()
-            print(f"Regular staff user — total teachers: {queryset.count()}")
+        # STAFF – see all teachers
+        if user.is_staff:
+            return Teacher.objects.select_related("user").all()
 
-        # 🟦 Teacher — see only their own profile
-        elif hasattr(user, "teacher"):
-            queryset = Teacher.objects.select_related("user").filter(user=user)
-            print(f"Teacher user — restricted to self: {queryset.count()}")
+        # TEACHER – only their profile
+        if hasattr(user, "teacher"):
+            return Teacher.objects.select_related("user").filter(user=user)
 
-        # 🟥 Others — no access
-        else:
-            print("Non-teacher, non-admin user — returning none.")
-            return Teacher.objects.none()
-
-        # Apply search filter
-        search = self.request.query_params.get("search")
-        if search:
-            print(f"Applying search filter: {search}")
-            queryset = queryset.filter(
-                models.Q(user__first_name__icontains=search)
-                | models.Q(user__last_name__icontains=search)
-                | models.Q(employee_id__icontains=search)
-            ).distinct()
-
-        # Apply level filter
-        level = self.request.query_params.get("level")
-        if level:
-            queryset = queryset.filter(level=level)
-            print(f"Filtered by level={level}, count={queryset.count()}")
-
-        # Apply status filter
-        status_filter = self.request.query_params.get("status")
-        if status_filter:
-            if status_filter == "active":
-                queryset = queryset.filter(is_active=True)
-            elif status_filter == "inactive":
-                queryset = queryset.filter(is_active=False)
-            print(f"Filtered by status={status_filter}, count={queryset.count()}")
-
-        print(f"Final queryset count: {queryset.count()}")
-        return queryset
+        return Teacher.objects.none()
 
 
 class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
@@ -930,7 +815,7 @@ class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
         # Apply section filtering
         queryset = super().get_queryset()
-        
+
         # Apply additional filters
         """
         Filter assignment requests based on user role.
@@ -1046,7 +931,7 @@ class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
         # Apply section filtering
         queryset = super().get_queryset()
-        
+
         # Apply additional filters
         """
         Filter teacher schedules based on user role.
