@@ -2484,22 +2484,64 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
+        # Super admin sees everything
         if user.is_superuser:
+            logger.info(f"✅ Superuser {user.username} - Full access to all exams")
             return queryset
 
-        # Section admin filtering
-        if user.is_staff and getattr(user, "is_section_admin", False):
+        # Get user role
+        role = (
+            self.get_user_role()
+            if hasattr(self, "get_user_role")
+            else getattr(user, "role", None)
+        )
+
+        logger.info(f"📋 User {user.username} has role: {role}")
+
+        # Admin/Principal sees everything
+        if role in ["admin", "superadmin", "principal"]:
+            logger.info(f"✅ Admin {user.username} - Full access to all exams")
+            return queryset
+
+        # Section admin filtering - FIXED
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+            "secondary_admin",
+        ]:
             education_levels = self._get_section_education_levels(user)
+            logger.info(
+                f"🔒 Section admin '{role}' - restricted to: {education_levels}"
+            )
+
             if not education_levels:
+                logger.warning(f"❌ No education levels for {user.username}")
                 return queryset.none()
-            return queryset.filter(grade_level__education_level__in=education_levels)
+
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Filtered Exams: {filtered.count()} of {queryset.count()}")
+            return filtered
 
         # Teacher filtering
-        if hasattr(user, "teacher"):
-            return queryset.filter(teacher_id=user.teacher.id)
+        if role == "teacher" or hasattr(user, "teacher"):
+            try:
+                from teacher.models import Teacher
 
-        # Staff access
+                teacher = Teacher.objects.get(user=user)
+                filtered = queryset.filter(teacher_id=teacher.id)
+                logger.info(f"✅ Teacher can see {filtered.count()} exams")
+                return filtered
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for {user.username}")
+                return queryset.none()
+
+        # Staff access (general staff without specific role)
         if user.is_staff:
+            logger.info(f"✅ Staff {user.username} - Full access")
             return queryset
 
         # Student/Parent filtering
@@ -2511,11 +2553,18 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             education_levels = list(set(education_levels))
 
             if not education_levels:
+                logger.warning(f"❌ No education level access for {user.username}")
                 return queryset.none()
 
-            return queryset.filter(grade_level__education_level__in=education_levels)
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Student/Parent can see {filtered.count()} exams")
+            return filtered
 
-        return queryset
+        # Default: no access
+        logger.warning(f"❌ No access rules matched for {user.username}")
+        return queryset.none()
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -3374,19 +3423,94 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """
-        Return all exam schedules.
-        Admin/Staff see everything, others see based on permissions.
-        """
+        """Apply section filtering"""
         queryset = super().get_queryset()
         user = self.request.user
 
-        # 🟢 ADMINS/STAFF: See all schedules
-        if user.is_superuser or user.is_staff:
+        if not user.is_authenticated:
+            return queryset.none()
+
+        # Super admin sees everything
+        if user.is_superuser:
+            logger.info(f"✅ Superuser {user.username} - Full access to all exams")
             return queryset
 
-        # 🟢 For other users, return all schedules
-        return queryset
+        # Get user role
+        role = (
+            self.get_user_role()
+            if hasattr(self, "get_user_role")
+            else getattr(user, "role", None)
+        )
+
+        logger.info(f"📋 User {user.username} has role: {role}")
+
+        # Admin/Principal sees everything
+        if role in ["admin", "superadmin", "principal"]:
+            logger.info(f"✅ Admin {user.username} - Full access to all exams")
+            return queryset
+
+        # Section admin filtering - FIXED
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+            "secondary_admin",
+        ]:
+            education_levels = self._get_section_education_levels(user)
+            logger.info(
+                f"🔒 Section admin '{role}' - restricted to: {education_levels}"
+            )
+
+            if not education_levels:
+                logger.warning(f"❌ No education levels for {user.username}")
+                return queryset.none()
+
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Filtered Exams: {filtered.count()} of {queryset.count()}")
+            return filtered
+
+        # Teacher filtering
+        if role == "teacher" or hasattr(user, "teacher"):
+            try:
+                from teacher.models import Teacher
+
+                teacher = Teacher.objects.get(user=user)
+                filtered = queryset.filter(teacher_id=teacher.id)
+                logger.info(f"✅ Teacher can see {filtered.count()} exams")
+                return filtered
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for {user.username}")
+                return queryset.none()
+
+        # Staff access (general staff without specific role)
+        if user.is_staff:
+            logger.info(f"✅ Staff {user.username} - Full access")
+            return queryset
+
+        # Student/Parent filtering
+        if hasattr(self, "get_user_section_access"):
+            section_access = self.get_user_section_access()
+            education_levels = []
+            for section in section_access:
+                education_levels.extend(self._get_section_education_levels(section))
+            education_levels = list(set(education_levels))
+
+            if not education_levels:
+                logger.warning(f"❌ No education level access for {user.username}")
+                return queryset.none()
+
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Student/Parent can see {filtered.count()} exams")
+            return filtered
+
+        # Default: no access
+        logger.warning(f"❌ No access rules matched for {user.username}")
+        return queryset.none()
 
     @action(detail=True, methods=["get"])
     def exams(self, request, pk=None):
@@ -3517,22 +3641,64 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
+        # Super admin sees everything
         if user.is_superuser:
+            logger.info(f"✅ Superuser {user.username} - Full access to all exams")
             return queryset
 
-        # Section admin filtering
-        if user.is_staff and getattr(user, "is_section_admin", False):
+        # Get user role
+        role = (
+            self.get_user_role()
+            if hasattr(self, "get_user_role")
+            else getattr(user, "role", None)
+        )
+
+        logger.info(f"📋 User {user.username} has role: {role}")
+
+        # Admin/Principal sees everything
+        if role in ["admin", "superadmin", "principal"]:
+            logger.info(f"✅ Admin {user.username} - Full access to all exams")
+            return queryset
+
+        # Section admin filtering - FIXED
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+            "secondary_admin",
+        ]:
             education_levels = self._get_section_education_levels(user)
+            logger.info(
+                f"🔒 Section admin '{role}' - restricted to: {education_levels}"
+            )
+
             if not education_levels:
+                logger.warning(f"❌ No education levels for {user.username}")
                 return queryset.none()
-            return queryset.filter(grade_level__education_level__in=education_levels)
+
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Filtered Exams: {filtered.count()} of {queryset.count()}")
+            return filtered
 
         # Teacher filtering
-        if hasattr(user, "teacher"):
-            return queryset.filter(teacher_id=user.teacher.id)
+        if role == "teacher" or hasattr(user, "teacher"):
+            try:
+                from teacher.models import Teacher
 
-        # Staff access
+                teacher = Teacher.objects.get(user=user)
+                filtered = queryset.filter(teacher_id=teacher.id)
+                logger.info(f"✅ Teacher can see {filtered.count()} exams")
+                return filtered
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for {user.username}")
+                return queryset.none()
+
+        # Staff access (general staff without specific role)
         if user.is_staff:
+            logger.info(f"✅ Staff {user.username} - Full access")
             return queryset
 
         # Student/Parent filtering
@@ -3544,11 +3710,18 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             education_levels = list(set(education_levels))
 
             if not education_levels:
+                logger.warning(f"❌ No education level access for {user.username}")
                 return queryset.none()
 
-            return queryset.filter(grade_level__education_level__in=education_levels)
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Student/Parent can see {filtered.count()} exams")
+            return filtered
 
-        return queryset
+        # Default: no access
+        logger.warning(f"❌ No access rules matched for {user.username}")
+        return queryset.none()
 
     @action(detail=False, methods=["post"])
     def bulk_register(self, request):
@@ -3750,22 +3923,64 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
+        # Super admin sees everything
         if user.is_superuser:
+            logger.info(f"✅ Superuser {user.username} - Full access to all exams")
             return queryset
 
-        # Section admin filtering
-        if user.is_staff and getattr(user, "is_section_admin", False):
+        # Get user role
+        role = (
+            self.get_user_role()
+            if hasattr(self, "get_user_role")
+            else getattr(user, "role", None)
+        )
+
+        logger.info(f"📋 User {user.username} has role: {role}")
+
+        # Admin/Principal sees everything
+        if role in ["admin", "superadmin", "principal"]:
+            logger.info(f"✅ Admin {user.username} - Full access to all exams")
+            return queryset
+
+        # Section admin filtering - FIXED
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+            "secondary_admin",
+        ]:
             education_levels = self._get_section_education_levels(user)
+            logger.info(
+                f"🔒 Section admin '{role}' - restricted to: {education_levels}"
+            )
+
             if not education_levels:
+                logger.warning(f"❌ No education levels for {user.username}")
                 return queryset.none()
-            return queryset.filter(grade_level__education_level__in=education_levels)
+
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Filtered Exams: {filtered.count()} of {queryset.count()}")
+            return filtered
 
         # Teacher filtering
-        if hasattr(user, "teacher"):
-            return queryset.filter(teacher_id=user.teacher.id)
+        if role == "teacher" or hasattr(user, "teacher"):
+            try:
+                from teacher.models import Teacher
 
-        # Staff access
+                teacher = Teacher.objects.get(user=user)
+                filtered = queryset.filter(teacher_id=teacher.id)
+                logger.info(f"✅ Teacher can see {filtered.count()} exams")
+                return filtered
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for {user.username}")
+                return queryset.none()
+
+        # Staff access (general staff without specific role)
         if user.is_staff:
+            logger.info(f"✅ Staff {user.username} - Full access")
             return queryset
 
         # Student/Parent filtering
@@ -3777,11 +3992,18 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             education_levels = list(set(education_levels))
 
             if not education_levels:
+                logger.warning(f"❌ No education level access for {user.username}")
                 return queryset.none()
 
-            return queryset.filter(grade_level__education_level__in=education_levels)
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Student/Parent can see {filtered.count()} exams")
+            return filtered
 
-        return queryset
+        # Default: no access
+        logger.warning(f"❌ No access rules matched for {user.username}")
+        return queryset.none()
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -3878,22 +4100,64 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
+        # Super admin sees everything
         if user.is_superuser:
+            logger.info(f"✅ Superuser {user.username} - Full access to all exams")
             return queryset
 
-        # Section admin filtering
-        if user.is_staff and getattr(user, "is_section_admin", False):
+        # Get user role
+        role = (
+            self.get_user_role()
+            if hasattr(self, "get_user_role")
+            else getattr(user, "role", None)
+        )
+
+        logger.info(f"📋 User {user.username} has role: {role}")
+
+        # Admin/Principal sees everything
+        if role in ["admin", "superadmin", "principal"]:
+            logger.info(f"✅ Admin {user.username} - Full access to all exams")
+            return queryset
+
+        # Section admin filtering - FIXED
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+            "secondary_admin",
+        ]:
             education_levels = self._get_section_education_levels(user)
+            logger.info(
+                f"🔒 Section admin '{role}' - restricted to: {education_levels}"
+            )
+
             if not education_levels:
+                logger.warning(f"❌ No education levels for {user.username}")
                 return queryset.none()
-            return queryset.filter(grade_level__education_level__in=education_levels)
+
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Filtered Exams: {filtered.count()} of {queryset.count()}")
+            return filtered
 
         # Teacher filtering
-        if hasattr(user, "teacher"):
-            return queryset.filter(teacher_id=user.teacher.id)
+        if role == "teacher" or hasattr(user, "teacher"):
+            try:
+                from teacher.models import Teacher
 
-        # Staff access
+                teacher = Teacher.objects.get(user=user)
+                filtered = queryset.filter(teacher_id=teacher.id)
+                logger.info(f"✅ Teacher can see {filtered.count()} exams")
+                return filtered
+            except Teacher.DoesNotExist:
+                logger.warning(f"❌ Teacher object not found for {user.username}")
+                return queryset.none()
+
+        # Staff access (general staff without specific role)
         if user.is_staff:
+            logger.info(f"✅ Staff {user.username} - Full access")
             return queryset
 
         # Student/Parent filtering
@@ -3905,11 +4169,18 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
             education_levels = list(set(education_levels))
 
             if not education_levels:
+                logger.warning(f"❌ No education level access for {user.username}")
                 return queryset.none()
 
-            return queryset.filter(grade_level__education_level__in=education_levels)
+            filtered = queryset.filter(
+                grade_level__education_level__in=education_levels
+            )
+            logger.info(f"✅ Student/Parent can see {filtered.count()} exams")
+            return filtered
 
-        return queryset
+        # Default: no access
+        logger.warning(f"❌ No access rules matched for {user.username}")
+        return queryset.none()
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
