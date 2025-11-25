@@ -209,19 +209,18 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Return teachers filtered by section access if applicable"""
-        # Start from mixin's get_queryset if available
-        if hasattr(super(), "get_queryset"):
-            queryset = (
-                super().get_queryset() or Teacher.objects.select_related("user").all()
-            )
-        else:
-            queryset = Teacher.objects.select_related("user").all()
+        # Start with base queryset
+        queryset = Teacher.objects.select_related("user").all()
 
+        # Apply mixin filtering if available
+        if hasattr(super(), "get_queryset"):
+            queryset = super().get_queryset() or queryset
+
+        # Optional: user-based filtering
         user = self.request.user
         if not user.is_authenticated:
             return Teacher.objects.none()
 
-        # Section admin filtering
         if getattr(user, "is_section_admin", False):
             allowed_levels = self._get_section_education_levels(user)
             queryset = queryset.filter(level__in=allowed_levels)
