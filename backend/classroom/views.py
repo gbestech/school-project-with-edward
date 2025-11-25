@@ -1,5 +1,4 @@
 # views.py
-# views.py
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -42,9 +41,6 @@ from subject.serializers import SubjectSerializer
 from academics.serializers import AcademicSessionSerializer, TermSerializer
 
 from .serializers import (
-    ClassroomSerializer,
-    ClassroomDetailSerializer,
-    ClassroomTeacherAssignmentSerializer,
     StudentEnrollmentSerializer,
     ClassScheduleSerializer,
     GradeLevelSerializer,
@@ -56,6 +52,11 @@ from subject.serializers import (
     SubjectListSerializer,
     SubjectCreateUpdateSerializer,
     SubjectEducationLevelSerializer,
+)
+from classroom.serializers import (
+    ClassroomSerializer,
+    ClassroomDetailSerializer,
+    ClassroomTeacherAssignmentSerializer,
 )
 
 logger = logging.getLogger(__name__)
