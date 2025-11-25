@@ -16,12 +16,15 @@ from django.utils import timezone
 from django.conf import settings
 import logging
 
-from utils.section_filtering import AutoSectionFilterMixin
-
-from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
+from utils.section_filtering import AutoSectionFilterMixin, SectionFilterMixin
 from academics.models import AcademicSession, Term
-from subject.models import Subject
-
+from subject.models import (
+    Subject,
+    SUBJECT_CATEGORY_CHOICES,
+    EDUCATION_LEVELS,
+    NURSERY_LEVELS,
+    SS_SUBJECT_TYPES,
+)
 from .models import (
     GradeLevel,
     Classroom,
@@ -32,17 +35,15 @@ from .models import (
     Stream,
 )
 from students.models import Student
-
 from teacher.models import Teacher
-from subject.models import (
-    SUBJECT_CATEGORY_CHOICES,
-    EDUCATION_LEVELS,
-    NURSERY_LEVELS,
-    SS_SUBJECT_TYPES,
-)
-from subject.serializers import SubjectSerializer
-from academics.serializers import AcademicSessionSerializer, TermSerializer
 
+from subject.serializers import (
+    SubjectSerializer,
+    SubjectListSerializer,
+    SubjectCreateUpdateSerializer,
+    SubjectEducationLevelSerializer,
+)
+from academics.serializers import AcademicSessionSerializer, TermSerializer
 from .serializers import (
     ClassroomSerializer,
     ClassroomDetailSerializer,
@@ -53,11 +54,6 @@ from .serializers import (
     SectionSerializer,
     TeacherSerializer,
     StreamSerializer,
-)
-from subject.serializers import (
-    SubjectListSerializer,
-    SubjectCreateUpdateSerializer,
-    SubjectEducationLevelSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +66,7 @@ logger = logging.getLogger(__name__)
 class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for GradeLevel model"""
 
-    permission_classes = []  # Allow public access
+    permission_classes = []
     serializer_class = GradeLevelSerializer
     filter_backends = [
         DjangoFilterBackend,
@@ -82,20 +78,11 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["order", "name"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
+        queryset = super().get_queryset()
         return queryset
 
     @action(detail=True, methods=["get"])
     def subjects(self, request, pk=None):
-        """Get subjects for a specific grade level"""
         grade = self.get_object()
         subjects = Subject.objects.filter(grade_levels=grade)
         serializer = SubjectSerializer(subjects, many=True)
@@ -103,19 +90,14 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
-        """Get students for a specific grade level"""
-        # Placeholder - implement when student model is available
         return Response({"message": "Students endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def classrooms(self, request, pk=None):
-        """Get classrooms for a specific grade level"""
-        # Placeholder - implement when classroom model is available
         return Response({"message": "Classrooms endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def sections(self, request, pk=None):
-        """Get sections for a specific grade level"""
         grade = self.get_object()
         sections = Section.objects.filter(grade_level=grade)
         serializer = SectionSerializer(sections, many=True)
@@ -123,28 +105,24 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def nursery_grades(self, request):
-        """Get nursery grade levels"""
         grades = GradeLevel.objects.filter(education_level="NURSERY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def primary_grades(self, request):
-        """Get primary grade levels"""
         grades = GradeLevel.objects.filter(education_level="PRIMARY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def junior_secondary_grades(self, request):
-        """Get junior secondary grade levels"""
         grades = GradeLevel.objects.filter(education_level="JUNIOR_SECONDARY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def senior_secondary_grades(self, request):
-        """Get senior secondary grade levels"""
         grades = GradeLevel.objects.filter(education_level="SENIOR_SECONDARY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
@@ -165,15 +143,9 @@ class SectionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "grade_level__order"]
 
     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return Section.objects.select_related("grade_level").all()
 
 
@@ -192,15 +164,9 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "stream_type", "created_at"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return queryset
 
     @action(detail=False, methods=["get"])
@@ -230,15 +196,9 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["user__first_name", "user__last_name", "hire_date"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return Teacher.objects.select_related("user").all()
 
     @action(detail=True, methods=["get"])
@@ -306,15 +266,9 @@ class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return []  # Placeholder - implement when Student model is available
 
     @action(detail=True, methods=["get"])
@@ -353,15 +307,9 @@ class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "code", "subject_order"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return queryset
 
     @action(detail=False, methods=["get"])
@@ -435,15 +383,9 @@ class SubjectAnalyticsViewSet(AutoSectionFilterMixin, viewsets.ReadOnlyModelView
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return queryset
 
 
@@ -454,15 +396,9 @@ class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return queryset
 
 
@@ -489,48 +425,7 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     # Apply section filtering
     queryset = super().get_queryset()
-    
-    # Apply additional filters
-    #     """Filter classrooms based on user's role, section, and education level"""
-    #     queryset = Classroom.objects.select_related(
-    #         "section__grade_level", "academic_session", "term", "class_teacher__user"
-    #     ).prefetch_related("students", "subject_teachers", "schedules")
 
-    #     # Apply section-based filtering
-    #     user = self.request.user
-
-    #     # Super Admin sees everything
-    #     if user.role == "superadmin" or user.is_superuser:
-    #         return queryset
-
-    #     # Apply section filtering for all other users (including section admins and teachers)
-    #     try:
-    #         filtered_queryset = self.filter_classrooms_by_section_access(queryset)
-
-    #         # ✅ Now handle level-based logic
-    #         education_level = self.request.query_params.get("education_level", "").upper()
-
-    #         # If the request explicitly filters by level
-    #         if education_level in ["NURSERY", "PRIMARY"]:
-    #             # Include only classrooms that belong to these levels
-    #             filtered_queryset = filtered_queryset.filter(
-    #                 section__grade_level__education_level=education_level
-    #             ).distinct()
-
-    #             # Prefetch only the class teacher (avoid subject teacher duplicates)
-    #             filtered_queryset = filtered_queryset.prefetch_related(
-    #                 "class_teacher__user"
-    #             )
-    #         return filtered_queryset
-    #     except Exception as e:
-    #         # Log the error in production
-    #         import logging
-
-    #         logger = logging.getLogger(__name__)
-    #         logger.error(f"Section filtering error for user {user.username}: {str(e)}")
-
-    #         # Return empty queryset on error (safer than returning all)
-    #         return queryset.none()
     def get_queryset(self):
         """Filter classrooms based on user's role, section, and education level"""
         queryset = Classroom.objects.select_related(
@@ -594,40 +489,6 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             return ClassroomDetailSerializer
         return ClassroomSerializer
 
-    # @action(detail=True, methods=["get"])
-    # def students(self, request, pk=None):
-    #     """Get students for a specific classroom"""
-    #     try:
-    #         classroom = self.get_object()
-
-    #         print(
-    #             f"🔍 Fetching students for classroom: {classroom.name} (ID: {classroom.id})"
-    #         )
-
-    #         # ✅ CORRECT: Use StudentEnrollment to get related students
-    #         # This is the proper relationship defined in your models
-    #         enrollments = StudentEnrollment.objects.filter(
-    #             classroom=classroom, is_active=True
-    #         ).select_related("student__user")
-
-    #         # Extract students from enrollments
-    #         students = [enrollment.student for enrollment in enrollments]
-
-    #         print(f"✅ Found {len(students)} students via StudentEnrollment")
-
-    #         from students.serializers import StudentListSerializer
-
-    #         serializer = StudentListSerializer(students, many=True)
-    #         return Response(serializer.data)
-
-    #     except Exception as e:
-    #         logger.error(f"Error fetching classroom students: {str(e)}")
-    #         import traceback
-
-    #         traceback.print_exc()
-    #         return Response(
-    #             {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-    #         )
     # 🔍 DEBUG LOGGING ADDED ABOVE
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
@@ -790,9 +651,6 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             assignment = ClassroomTeacherAssignment.objects.create(
                 classroom=classroom, teacher=teacher, subject=subject
             )
-
-            # For nursery and primary classes, set the class_teacher field
-            # This ensures the single teacher system works properly
             if classroom.section.grade_level.education_level in ["NURSERY", "PRIMARY"]:
                 classroom.class_teacher = teacher
                 classroom.save()
@@ -942,10 +800,10 @@ class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelVi
 
     def get_queryset(self):
 
-            # Apply section filtering
-            queryset = super().get_queryset()
-            
-            # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+
+        # Apply additional filters
         return ClassroomTeacherAssignment.objects.select_related(
             "classroom", "teacher__user", "subject"
         ).filter(is_active=True)
@@ -1029,10 +887,10 @@ class StudentEnrollmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
 
-            # Apply section filtering
-            queryset = super().get_queryset()
-            
-            # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+
+        # Apply additional filters
         return StudentEnrollment.objects.select_related(
             "student__user", "classroom"
         ).filter(is_active=True)
@@ -1112,15 +970,9 @@ class ClassScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
+        # Apply section filtering
+        queryset = super().get_queryset()
+        # Apply additional filters
         return []  # Placeholder - implement when model is available
 
     @action(detail=False, methods=["get"])
