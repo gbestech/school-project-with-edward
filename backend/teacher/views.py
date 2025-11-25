@@ -1003,13 +1003,117 @@ class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return Response({"status": "Request cancelled"})
 
 
-class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
-    queryset = TeacherSchedule.objects.all()
-    serializer_class = TeacherScheduleSerializer
+from rest_framework import viewsets, permissions, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Teacher
+from .serializers import (
+    TeacherSerializer,
+    ClassroomSerializer,
+    SubjectSerializer,
+    ClassScheduleSerializer,
+)
+from .mixins import AutoSectionFilterMixin
+from classroom.models import ClassSchedule
+
+
+class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """ViewSet for Teacher model"""
+
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TeacherSerializer
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = ["is_active", "specialization"]
+    search_fields = ["user__first_name", "user__last_name", "employee_id"]
+    ordering_fields = ["user__first_name", "user__last_name", "hire_date"]
+
+    def get_queryset(self):
+        """Return teachers filtered by section access if applicable"""
+        # Start with base queryset
+        queryset = Teacher.objects.select_related("user").all()
+
+        # Apply mixin filtering if available
+        if hasattr(super(), "get_queryset"):
+            # Only call super() inside method
+            parent_qs = super().get_queryset()
+            if parent_qs is not None:
+                queryset = parent_qs
+
+        # Optional: user-based filtering
+        user = self.request.user
+        if not user.is_authenticated:
+            return Teacher.objects.none()
+
+        if getattr(user, "is_section_admin", False):
+            allowed_levels = self._get_section_education_levels(user)
+            queryset = queryset.filter(level__in=allowed_levels)
+
+        return queryset
+
+    @action(detail=True, methods=["get"])
+    def classes(self, request, pk=None):
+        """Get classes for a specific teacher"""
+        teacher = self.get_object()
+        primary_classes = teacher.primary_classes.all()
+        assigned_classes = teacher.assigned_classes.all()
+
+        primary_serializer = ClassroomSerializer(primary_classes, many=True)
+        assigned_serializer = ClassroomSerializer(assigned_classes, many=True)
+
+        return Response(
+            {
+                "primary_classes": primary_serializer.data,
+                "assigned_classes": assigned_serializer.data,
+            }
+        )
+
+    @action(detail=True, methods=["get"])
+    def subjects(self, request, pk=None):
+        """Get subjects for a specific teacher"""
+        teacher = self.get_object()
+        assignments = teacher.classroomteacherassignment_set.filter(
+            is_active=True
+        ).select_related("subject")
+        subjects = [assignment.subject for assignment in assignments]
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def schedule(self, request, pk=None):
+        """Get schedule for a specific teacher"""
+        teacher = self.get_object()
+        schedules = ClassSchedule.objects.filter(
+            teacher=teacher, is_active=True
+        ).select_related("classroom", "subject")
+        serializer = ClassScheduleSerializer(schedules, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def workload(self, request, pk=None):
+        """Get workload for a specific teacher"""
+        teacher = self.get_object()
+        primary_classes_count = teacher.primary_classes.count()
+        assigned_classes_count = teacher.assigned_classes.count()
+        total_subjects = teacher.classroomteacherassignment_set.filter(
+            is_active=True
+        ).count()
+
+        return Response(
+            {
+                "primary_classes_count": primary_classes_count,
+                "assigned_classes_count": assigned_classes_count,
+                "total_subjects": total_subjects,
+                "total_workload": primary_classes_count + assigned_classes_count,
+            }
+        )
 
     def _get_section_education_levels(self, user):
-        """Helper method to get education levels based on user's section/role"""
+        """Helper to get section levels for section admins"""
         SECTION_TO_EDUCATION_LEVEL = {
             "nursery": ["NURSERY"],
             "primary": ["PRIMARY"],
@@ -1026,124 +1130,11 @@ class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             "secondary_admin": "secondary",
         }
 
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
+        user_section = getattr(user, "section", None)
+        if not user_section and getattr(user, "role", None) in ROLE_TO_SECTION:
             user_section = ROLE_TO_SECTION[user.role]
 
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
-
-    def get_queryset(self):
-        """
-        Filter teacher schedules based on user role.
-        - Superadmin: See all schedules
-        - Section Admin: See schedules for teachers in their section
-        - Teacher: See only their own schedule
-        """
-        # Apply section filtering from AutoSectionFilterMixin
-        queryset = super().get_queryset()
-        user = self.request.user
-
-        # Superadmin - see all
-        if user.is_superuser or (user.is_staff and not user.is_section_admin):
-            pass
-
-        # Section admin - see schedules for their section's teachers
-        elif user.is_staff and user.is_section_admin:
-            education_levels = self._get_section_education_levels(user)
-            if education_levels:
-                from classroom.models import ClassroomTeacherAssignment
-
-                teacher_ids = (
-                    ClassroomTeacherAssignment.objects.filter(
-                        classroom__section__grade_level__education_level__in=education_levels,
-                        is_active=True,
-                    )
-                    .values_list("teacher_id", flat=True)
-                    .distinct()
-                )
-
-                queryset = queryset.filter(teacher_id__in=teacher_ids)
-            else:
-                queryset = queryset.none()
-
-        # Teacher - see only their own schedule
-        elif hasattr(user, "teacher"):
-            queryset = queryset.filter(teacher__user=user)
-
-        # Others - no access
-        else:
-            queryset = queryset.none()
-
-        # Apply additional filters
-        teacher_id = self.request.query_params.get("teacher_id", None)
-        if teacher_id:
-            queryset = queryset.filter(teacher_id=teacher_id)
-
-        academic_session = self.request.query_params.get("academic_session", None)
-        if academic_session:
-            queryset = queryset.filter(academic_session=academic_session)
-
-        term = self.request.query_params.get("term", None)
-        if term:
-            queryset = queryset.filter(term=term)
-
-        day_of_week = self.request.query_params.get("day_of_week", None)
-        if day_of_week:
-            queryset = queryset.filter(day_of_week=day_of_week)
-
-        return queryset
-
-    @action(detail=False, methods=["get"])
-    def weekly_schedule(self, request):
-        teacher_id = request.query_params.get("teacher_id")
-        if not teacher_id:
-            return Response(
-                {"error": "teacher_id is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
-        schedules = self.get_queryset().filter(teacher_id=teacher_id, is_active=True)
-        weekly_schedule = {}
-        days = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ]
-        for day in days:
-            weekly_schedule[day] = schedules.filter(day_of_week=day).order_by(
-                "start_time"
-            )
-        serializer = self.get_serializer(schedules, many=True)
-        return Response(
-            {"weekly_schedule": weekly_schedule, "schedules": serializer.data}
-        )
-
-    @action(detail=False, methods=["post"])
-    def bulk_create(self, request):
-        teacher_id = request.data.get("teacher_id")
-        schedules_data = request.data.get("schedules", [])
-        if not teacher_id or not schedules_data:
-            return Response(
-                {"error": "teacher_id and schedules are required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        created_schedules = []
-        for schedule_data in schedules_data:
-            schedule_data["teacher"] = teacher_id
-            serializer = self.get_serializer(data=schedule_data)
-            if serializer.is_valid():
-                schedule = serializer.save()
-                created_schedules.append(schedule)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(
-            {
-                "message": f"Created {len(created_schedules)} schedule entries",
-                "schedules": self.get_serializer(created_schedules, many=True).data,
-            }
-        )
 
 
 class AssignmentManagementViewSet(viewsets.ViewSet):
