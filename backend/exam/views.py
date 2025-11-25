@@ -2442,16 +2442,20 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             if section_name in SECTION_TO_EDUCATION_LEVEL:
                 return SECTION_TO_EDUCATION_LEVEL[section_name]
 
-            # Get from classrooms
+            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
             try:
                 from classroom.models import Classroom
 
-                return list(
+                education_levels = list(
                     Classroom.objects.filter(section=user_or_section)
                     .values_list("education_level", flat=True)
                     .distinct()
                 )
-            except:
+                return education_levels if education_levels else []
+            except Exception as e:
+                logger.warning(
+                    f"Error getting education levels for section {user_or_section}: {e}"
+                )
                 return []
 
         # String
@@ -3457,16 +3461,20 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             if section_name in SECTION_TO_EDUCATION_LEVEL:
                 return SECTION_TO_EDUCATION_LEVEL[section_name]
 
-            # Get from classrooms
+            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
             try:
                 from classroom.models import Classroom
 
-                return list(
+                education_levels = list(
                     Classroom.objects.filter(section=user_or_section)
                     .values_list("education_level", flat=True)
                     .distinct()
                 )
-            except:
+                return education_levels if education_levels else []
+            except Exception as e:
+                logger.warning(
+                    f"Error getting education levels for section {user_or_section}: {e}"
+                )
                 return []
 
         # String
@@ -3672,16 +3680,20 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             if section_name in SECTION_TO_EDUCATION_LEVEL:
                 return SECTION_TO_EDUCATION_LEVEL[section_name]
 
-            # Get from classrooms
+            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
             try:
                 from classroom.models import Classroom
 
-                return list(
+                education_levels = list(
                     Classroom.objects.filter(section=user_or_section)
                     .values_list("education_level", flat=True)
                     .distinct()
                 )
-            except:
+                return education_levels if education_levels else []
+            except Exception as e:
+                logger.warning(
+                    f"Error getting education levels for section {user_or_section}: {e}"
+                )
                 return []
 
         # String
@@ -3782,16 +3794,20 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
             if section_name in SECTION_TO_EDUCATION_LEVEL:
                 return SECTION_TO_EDUCATION_LEVEL[section_name]
 
-            # Get from classrooms
+            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
             try:
                 from classroom.models import Classroom
 
-                return list(
+                education_levels = list(
                     Classroom.objects.filter(section=user_or_section)
                     .values_list("education_level", flat=True)
                     .distinct()
                 )
-            except:
+                return education_levels if education_levels else []
+            except Exception as e:
+                logger.warning(
+                    f"Error getting education levels for section {user_or_section}: {e}"
+                )
                 return []
 
         # String
