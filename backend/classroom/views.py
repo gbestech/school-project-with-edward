@@ -1277,413 +1277,18 @@
 #         return breakdown
 
 
-# # ==============================================================================
-# # QUICK SEARCH VIEW
-# # ==============================================================================
-# class SubjectQuickSearchView(APIView):
-#     """
-#     Lightweight search endpoint for autocomplete and quick lookups
-#     """
-
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request):
-#         """
-#         Quick search for subjects with minimal data transfer
-
-#         Query Parameters:
-#         - q: Search query (minimum 2 characters)
-#         - limit: Maximum results (default: 10, max: 25)
-#         - education_level: Filter by education level
-#         - category: Filter by category
-#         """
-#         query = request.query_params.get("q", "").strip()
-#         if len(query) < 2:
-#             return Response(
-#                 {
-#                     "error": "Search query must be at least 2 characters long",
-#                     "suggestions": [],
-#                 }
-#             )
-
-#         # Parse limit
-#         try:
-#             limit = min(int(request.query_params.get("limit", 10)), 25)
-#         except ValueError:
-#             limit = 10
-
-#         # Build search queryset
-#         search_filter = (
-#             Q(name__icontains=query)
-#             | Q(short_name__icontains=query)
-#             | Q(code__icontains=query)
-#             | Q(description__icontains=query)
-#         )
-
-#         queryset = Subject.objects.filter(
-#             search_filter, is_active=True, is_discontinued=False
-#         )
-
-#         # Apply additional filters
-#         education_level = request.query_params.get("education_level")
-#         if education_level:
-#             queryset = queryset.filter(education_levels__contains=[education_level])
-
-#         category = request.query_params.get("category")
-#         if category:
-#             queryset = queryset.filter(category=category)
-
-#         # Get results
-#         subjects = queryset.values(
-#             "id",
-#             "name",
-#             "short_name",
-#             "code",
-#             "category",
-#             "education_levels",
-#             "is_compulsory",
-#             "is_cross_cutting",
-#             "is_activity_based",
-#             "credit_hours",
-#         ).order_by("name")[:limit]
-
-#         # Format results
-#         suggestions = []
-#         for subject in subjects:
-#             display_name = subject["short_name"] or subject["name"]
-
-#             # Build education levels display
-#             education_display = []
-#             if subject["education_levels"]:
-#                 level_dict = dict(EDUCATION_LEVELS)
-#                 education_display = [
-#                     level_dict.get(level, level)
-#                     for level in subject["education_levels"]
-#                 ]
-
-#             # Build badges
-#             badges = []
-#             if subject["is_compulsory"]:
-#                 badges.append("Compulsory")
-#             if subject["is_cross_cutting"]:
-#                 badges.append("Cross-cutting")
-#             if subject["is_activity_based"]:
-#                 badges.append("Activity-based")
-
-#             suggestions.append(
-#                 {
-#                     "id": subject["id"],
-#                     "name": subject["name"],
-#                     "display_name": display_name,
-#                     "code": subject["code"],
-#                     "label": f"{display_name} ({subject['code']})",
-#                     "category": dict(SUBJECT_CATEGORY_CHOICES).get(subject["category"]),
-#                     "education_levels": ", ".join(education_display),
-#                     "credit_hours": subject["credit_hours"],
-#                     "badges": badges,
-#                 }
-#             )
-
-#         return Response(
-#             {
-#                 "query": query,
-#                 "count": len(suggestions),
-#                 "total_found": queryset.count(),
-#                 "suggestions": suggestions,
-#             }
-#         )
-
-
-# # ==============================================================================
-# # SUBJECT COMPARISON VIEW
-# # ==============================================================================
-# class SubjectComparisonView(APIView):
-#     """
-#     Compare multiple subjects side by side
-#     """
-
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request):
-#         """
-#         Compare subjects by their IDs
-
-#         Request body:
-#         {
-#             "subject_ids": [1, 2, 3, ...]
-#         }
-#         """
-#         subject_ids = request.data.get("subject_ids", [])
-
-#         if not subject_ids or not isinstance(subject_ids, list):
-#             return Response(
-#                 {"error": "Please provide a list of subject_ids in the request body"},
-#                 status=400,
-#             )
-
-#         if len(subject_ids) > 5:
-#             return Response(
-#                 {"error": "Maximum 5 subjects can be compared at once"}, status=400
-#             )
-
-#         # Get subjects
-#         subjects = Subject.objects.filter(
-#             id__in=subject_ids, is_active=True
-#         ).prefetch_related("prerequisites", "grade_levels")
-
-#         if not subjects:
-#             return Response(
-#                 {"error": "No valid subjects found for the provided IDs"}, status=404
-#             )
-
-#         # Build comparison data
-#         comparison_data = []
-#         for subject in subjects:
-#             comparison_data.append(
-#                 {
-#                     "id": subject.id,
-#                     "name": subject.name,
-#                     "short_name": subject.short_name,
-#                     "code": subject.code,
-#                     "category": {
-#                         "code": subject.category,
-#                         "name": subject.get_category_display(),
-#                         "icon": subject.get_category_display_with_icon(),
-#                     },
-#                     "education_levels": {
-#                         "codes": subject.education_levels,
-#                         "display": subject.education_levels_display,
-#                     },
-#                     "academic_info": {
-#                         "is_compulsory": subject.is_compulsory,
-#                         "is_core": subject.is_core,
-#                         "is_cross_cutting": subject.is_cross_cutting,
-#                         "credit_hours": subject.credit_hours,
-#                         "practical_hours": subject.practical_hours,
-#                         "total_weekly_hours": subject.total_weekly_hours,
-#                         "pass_mark": subject.pass_mark,
-#                     },
-#                     "practical_requirements": {
-#                         "has_practical": subject.has_practical,
-#                         "requires_lab": subject.requires_lab,
-#                         "requires_special_equipment": subject.requires_special_equipment,
-#                         "equipment_notes": subject.equipment_notes,
-#                     },
-#                     "teaching_requirements": {
-#                         "requires_specialist_teacher": subject.requires_specialist_teacher,
-#                     },
-#                     "assessment": {
-#                         "has_continuous_assessment": subject.has_continuous_assessment,
-#                         "has_final_exam": subject.has_final_exam,
-#                     },
-#                     "prerequisites": {
-#                         "count": subject.prerequisites.count(),
-#                         "subjects": [
-#                             {
-#                                 "id": prereq.id,
-#                                 "name": prereq.display_name,
-#                                 "code": prereq.code,
-#                             }
-#                             for prereq in subject.prerequisites.all()
-#                         ],
-#                     },
-#                     "special_attributes": {
-#                         "is_activity_based": subject.is_activity_based,
-#                         "nursery_levels": (
-#                             subject.nursery_levels_display
-#                             if subject.is_nursery_subject
-#                             else None
-#                         ),
-#                         "ss_subject_type": (
-#                             subject.get_ss_subject_type_display()
-#                             if subject.ss_subject_type
-#                             else None
-#                         ),
-#                     },
-#                 }
-#             )
-
-#         return Response(
-#             {
-#                 "comparison_count": len(comparison_data),
-#                 "subjects": comparison_data,
-#                 "summary": {
-#                     "total_credit_hours": sum(s.credit_hours for s in subjects),
-#                     "total_practical_hours": sum(s.practical_hours for s in subjects),
-#                     "subjects_with_practicals": sum(
-#                         1 for s in subjects if s.has_practical
-#                     ),
-#                     "compulsory_subjects": sum(1 for s in subjects if s.is_compulsory),
-#                     "cross_cutting_subjects": sum(
-#                         1 for s in subjects if s.is_cross_cutting
-#                     ),
-#                 },
-#             }
-#         )
-
-
-# # ==============================================================================
-# # UTILITY FUNCTIONS
-# # ==============================================================================
-# def clear_subject_caches():
-#     """
-#     Enhanced helper function to clear all subject-related caches
-#     """
-#     cache_keys = [
-#         # Legacy cache keys
-#         "subjects_statistics",
-#         "subjects_statistics_v2",
-#         "subjects_by_category",
-#         "subjects_by_category_v2",
-#         "active_subjects_count",
-#         # New cache keys from enhanced model
-#         "subjects_cache_v1",
-#         "subjects_by_category_v3",
-#         "subjects_by_education_level_v2",
-#         "nursery_subjects_v1",
-#         "ss_subjects_by_type_v1",
-#         "cross_cutting_subjects_v1",
-#         "subject_statistics_v1",
-#         # Pattern-based cache clearing
-#         "subject_*",
-#         "education_level_*",
-#         "nursery_*",
-#         "ss_*",
-#     ]
-
-#     try:
-#         cache.delete_many(cache_keys)
-
-#         # If using Redis or similar, also clear pattern-based keys
-#         if hasattr(cache, "delete_pattern"):
-#             patterns = ["subject_*", "education_*", "nursery_*", "ss_*"]
-#             for pattern in patterns:
-#                 cache.delete_pattern(pattern)
-
-#         logger.info("Subject caches cleared successfully")
-#         return True
-#     except Exception as e:
-#         logger.error(f"Error clearing subject caches: {str(e)}")
-#         return False
-
-
-# @api_view(["POST"])
-# @permission_classes([IsAdminUser])
-# def clear_caches_endpoint(request):
-#     """
-#     API endpoint to manually clear caches (admin only)
-#     """
-#     success = clear_subject_caches()
-
-#     if success:
-#         return Response(
-#             {
-#                 "status": "success",
-#                 "message": "Subject caches cleared successfully",
-#                 "timestamp": timezone.now().isoformat(),
-#             }
-#         )
-#     else:
-#         return Response(
-#             {
-#                 "status": "error",
-#                 "message": "Failed to clear some caches",
-#                 "timestamp": timezone.now().isoformat(),
-#             },
-#             status=500,
-#         )
-
-
-# # ==============================================================================
-# # SYSTEM INFO ENDPOINT
-# # ==============================================================================
-# @api_view(["GET"])
-# @permission_classes([IsAuthenticated])
-# def system_info(request):
-#     """
-#     Get comprehensive system information about the subjects API
-#     """
-#     try:
-#         # Get database statistics
-#         total_subjects = Subject.objects.count()
-#         active_subjects = Subject.objects.filter(is_active=True).count()
-#         discontinued_subjects = Subject.objects.filter(is_discontinued=True).count()
-
-#         # Education level statistics
-#         education_stats = {}
-#         for level_code, level_name in EDUCATION_LEVELS:
-#             count = Subject.objects.filter(
-#                 education_levels__contains=[level_code], is_active=True
-#             ).count()
-#             education_stats[level_code] = {"name": level_name, "count": count}
-
-#         # Category statistics
-#         category_stats = {}
-#         for category_code, category_name in SUBJECT_CATEGORY_CHOICES:
-#             count = Subject.objects.filter(
-#                 category=category_code, is_active=True
-#             ).count()
-#             category_stats[category_code] = {"name": category_name, "count": count}
-
-#         return Response(
-#             {
-#                 "system": {
-#                     "service_name": "Nigerian Education Subjects API",
-#                     "version": "v2.0",
-#                     "timestamp": timezone.now().isoformat(),
-#                 },
-#                 "database": {
-#                     "total_subjects": total_subjects,
-#                     "active_subjects": active_subjects,
-#                     "discontinued_subjects": discontinued_subjects,
-#                     "utilization_rate": (
-#                         f"{(active_subjects/total_subjects*100):.1f}%"
-#                         if total_subjects > 0
-#                         else "0%"
-#                     ),
-#                 },
-#                 "education_system": {
-#                     "levels": education_stats,
-#                     "categories": category_stats,
-#                     "special_counts": {
-#                         "cross_cutting": Subject.objects.filter(
-#                             is_cross_cutting=True, is_active=True
-#                         ).count(),
-#                         "activity_based": Subject.objects.filter(
-#                             is_activity_based=True, is_active=True
-#                         ).count(),
-#                         "with_practicals": Subject.objects.filter(
-#                             has_practical=True, is_active=True
-#                         ).count(),
-#                         "requires_specialist": Subject.objects.filter(
-#                             requires_specialist_teacher=True, is_active=True
-#                         ).count(),
-#                     },
-#                 },
-#                 "configuration": {
-#                     "education_levels": dict(EDUCATION_LEVELS),
-#                     "nursery_levels": dict(NURSERY_LEVELS),
-#                     "ss_subject_types": dict(SS_SUBJECT_TYPES),
-#                     "subject_categories": dict(SUBJECT_CATEGORY_CHOICES),
-#                 },
-#             }
-#         )
-#     except Exception as e:
-#         logger.error(f"System info endpoint failed: {str(e)}")
-#         return Response(
-#             {
-#                 "error": "Failed to retrieve system information",
-#                 "timestamp": timezone.now().isoformat(),
-#             },
-#             status=500,
-#         )
 # views.py - FIXED VERSION
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.views import APIView
+from rest_framework.decorators import action, api_view, permission_classes
+from django.utils.decorators import method_decorator
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django_filters.rest_framework import DjangoFilterBackend
+from django.views.decorators.cache import cache_page
 from django.db.models import Q, Count
+from django.utils import timezone
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 import logging
 
@@ -1713,7 +1318,13 @@ from .serializers import (
     StreamSerializer,
 )
 from teacher.serializers import TeacherSerializer
-from subject.serializers import SubjectSerializer
+from subject.serializers import SubjectSerializer, SubjectEducationLevelSerializer
+from subject.models import (
+    SUBJECT_CATEGORY_CHOICES,
+    EDUCATION_LEVELS,
+    NURSERY_LEVELS,
+    SS_SUBJECT_TYPES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -2841,3 +2452,542 @@ class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         # Let mixin handle section filtering
         queryset = super().get_queryset()
         return queryset.order_by("name")
+
+
+class SubjectByEducationLevelView(APIView):
+    """
+    Enhanced view for retrieving subjects by education level with detailed information
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(cache_page(60 * 10))
+    def get(self, request):
+        """
+        Get subjects filtered by education level with comprehensive information
+        """
+
+        level = request.query_params.get("level")
+        if not level:
+            return Response(
+                {
+                    "error": "Missing 'level' query parameter.",
+                    "valid_levels": [code for code, _ in EDUCATION_LEVELS],
+                    "example": "/api/v1/subjects/by-level/?level=PRIMARY",
+                },
+                status=400,
+            )
+
+        # Validate education level
+        valid_levels = [code for code, _ in EDUCATION_LEVELS]
+        if level not in valid_levels:
+            return Response(
+                {
+                    "error": f"Invalid education level: {level}",
+                    "valid_levels": valid_levels,
+                },
+                status=400,
+            )
+
+        # Base queryset
+        queryset = Subject.objects.filter(
+            education_levels__contains=[level]
+        ).prefetch_related("grade_levels", "prerequisites")
+
+        # Additional filters
+        active_only = request.query_params.get("active_only", "true").lower() == "true"
+        include_discontinued = (
+            request.query_params.get("include_discontinued", "false").lower() == "true"
+        )
+
+        if active_only:
+            queryset = queryset.filter(is_active=True)
+
+        if not include_discontinued:
+            queryset = queryset.filter(is_discontinued=False)
+
+        # Nursery level filter
+        nursery_level = request.query_params.get("nursery_level")
+        if nursery_level and level == "NURSERY":
+            valid_nursery_levels = [code for code, _ in NURSERY_LEVELS]
+            if nursery_level in valid_nursery_levels:
+                queryset = queryset.filter(nursery_levels__contains=[nursery_level])
+
+        # SS subject type filter
+        ss_type = request.query_params.get("ss_type")
+        if ss_type and level == "SENIOR_SECONDARY":
+            valid_ss_types = [code for code, _ in SS_SUBJECT_TYPES]
+            if ss_type in valid_ss_types:
+                queryset = queryset.filter(ss_subject_type=ss_type)
+
+        # Category filter
+        category = request.query_params.get("category")
+        if category:
+            valid_categories = [code for code, _ in SUBJECT_CATEGORY_CHOICES]
+            if category in valid_categories:
+                queryset = queryset.filter(category=category)
+
+        queryset = queryset.order_by("category", "subject_order", "name")
+
+        serializer = SubjectEducationLevelSerializer(
+            queryset, many=True, context={"request": request}
+        )
+
+        response_data = {
+            "education_level": {
+                "code": level,
+                "name": dict(EDUCATION_LEVELS).get(level, level),
+            },
+            "filters_applied": {
+                "active_only": active_only,
+                "include_discontinued": include_discontinued,
+                "nursery_level": nursery_level,
+                "ss_type": ss_type,
+                "category": category,
+            },
+            "summary": {
+                "total_count": queryset.count(),
+                "compulsory_count": queryset.filter(is_compulsory=True).count(),
+                "elective_count": queryset.filter(is_compulsory=False).count(),
+                "with_practicals": queryset.filter(has_practical=True).count(),
+                "activity_based": queryset.filter(is_activity_based=True).count(),
+                "cross_cutting": queryset.filter(is_cross_cutting=True).count(),
+                "requires_specialist": queryset.filter(
+                    requires_specialist_teacher=True
+                ).count(),
+            },
+            "subjects": serializer.data,
+        }
+
+        if level == "NURSERY":
+            response_data["nursery_breakdown"] = self._get_nursery_breakdown(queryset)
+        elif level == "SENIOR_SECONDARY":
+            response_data["ss_breakdown"] = self._get_ss_breakdown(queryset)
+
+        return Response(response_data)
+
+    def _get_nursery_breakdown(self, queryset):
+        breakdown = {}
+        for level_code, level_name in NURSERY_LEVELS:
+            level_subjects = queryset.filter(nursery_levels__contains=[level_code])
+            breakdown[level_code] = {
+                "name": level_name,
+                "count": level_subjects.count(),
+                "activity_based_count": level_subjects.filter(
+                    is_activity_based=True
+                ).count(),
+            }
+        return breakdown
+
+    def _get_ss_breakdown(self, queryset):
+        breakdown = {}
+        for type_code, type_name in SS_SUBJECT_TYPES:
+            type_subjects = queryset.filter(ss_subject_type=type_code)
+            breakdown[type_code] = {
+                "name": type_name,
+                "count": type_subjects.count(),
+                "compulsory_count": type_subjects.filter(is_compulsory=True).count(),
+            }
+        return breakdown
+
+
+# ==============================================================================
+# QUICK SEARCH VIEW
+# ==============================================================================
+class SubjectQuickSearchView(APIView):
+    """
+    Lightweight search endpoint for autocomplete and quick lookups
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Quick search for subjects with minimal data transfer
+
+        Query Parameters:
+        - q: Search query (minimum 2 characters)
+        - limit: Maximum results (default: 10, max: 25)
+        - education_level: Filter by education level
+        - category: Filter by category
+        """
+        query = request.query_params.get("q", "").strip()
+        if len(query) < 2:
+            return Response(
+                {
+                    "error": "Search query must be at least 2 characters long",
+                    "suggestions": [],
+                }
+            )
+
+        # Parse limit
+        try:
+            limit = min(int(request.query_params.get("limit", 10)), 25)
+        except ValueError:
+            limit = 10
+
+        # Build search queryset
+        search_filter = (
+            Q(name__icontains=query)
+            | Q(short_name__icontains=query)
+            | Q(code__icontains=query)
+            | Q(description__icontains=query)
+        )
+
+        queryset = Subject.objects.filter(
+            search_filter, is_active=True, is_discontinued=False
+        )
+
+        # Apply additional filters
+        education_level = request.query_params.get("education_level")
+        if education_level:
+            queryset = queryset.filter(education_levels__contains=[education_level])
+
+        category = request.query_params.get("category")
+        if category:
+            queryset = queryset.filter(category=category)
+
+        # Get results
+        subjects = queryset.values(
+            "id",
+            "name",
+            "short_name",
+            "code",
+            "category",
+            "education_levels",
+            "is_compulsory",
+            "is_cross_cutting",
+            "is_activity_based",
+            "credit_hours",
+        ).order_by("name")[:limit]
+
+        # Format results
+        suggestions = []
+        for subject in subjects:
+            display_name = subject["short_name"] or subject["name"]
+
+            # Build education levels display
+            education_display = []
+            if subject["education_levels"]:
+                level_dict = dict(EDUCATION_LEVELS)
+                education_display = [
+                    level_dict.get(level, level)
+                    for level in subject["education_levels"]
+                ]
+
+            # Build badges
+            badges = []
+            if subject["is_compulsory"]:
+                badges.append("Compulsory")
+            if subject["is_cross_cutting"]:
+                badges.append("Cross-cutting")
+            if subject["is_activity_based"]:
+                badges.append("Activity-based")
+
+            suggestions.append(
+                {
+                    "id": subject["id"],
+                    "name": subject["name"],
+                    "display_name": display_name,
+                    "code": subject["code"],
+                    "label": f"{display_name} ({subject['code']})",
+                    "category": dict(SUBJECT_CATEGORY_CHOICES).get(subject["category"]),
+                    "education_levels": ", ".join(education_display),
+                    "credit_hours": subject["credit_hours"],
+                    "badges": badges,
+                }
+            )
+
+        return Response(
+            {
+                "query": query,
+                "count": len(suggestions),
+                "total_found": queryset.count(),
+                "suggestions": suggestions,
+            }
+        )
+
+
+# ==============================================================================
+# SUBJECT COMPARISON VIEW
+# ==============================================================================
+class SubjectComparisonView(APIView):
+    """
+    Compare multiple subjects side by side
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Compare subjects by their IDs
+
+        Request body:
+        {
+            "subject_ids": [1, 2, 3, ...]
+        }
+        """
+        subject_ids = request.data.get("subject_ids", [])
+
+        if not subject_ids or not isinstance(subject_ids, list):
+            return Response(
+                {"error": "Please provide a list of subject_ids in the request body"},
+                status=400,
+            )
+
+        if len(subject_ids) > 5:
+            return Response(
+                {"error": "Maximum 5 subjects can be compared at once"}, status=400
+            )
+
+        # Get subjects
+        subjects = Subject.objects.filter(
+            id__in=subject_ids, is_active=True
+        ).prefetch_related("prerequisites", "grade_levels")
+
+        if not subjects:
+            return Response(
+                {"error": "No valid subjects found for the provided IDs"}, status=404
+            )
+
+        # Build comparison data
+        comparison_data = []
+        for subject in subjects:
+            comparison_data.append(
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "short_name": subject.short_name,
+                    "code": subject.code,
+                    "category": {
+                        "code": subject.category,
+                        "name": subject.get_category_display(),
+                        "icon": subject.get_category_display_with_icon(),
+                    },
+                    "education_levels": {
+                        "codes": subject.education_levels,
+                        "display": subject.education_levels_display,
+                    },
+                    "academic_info": {
+                        "is_compulsory": subject.is_compulsory,
+                        "is_core": subject.is_core,
+                        "is_cross_cutting": subject.is_cross_cutting,
+                        "credit_hours": subject.credit_hours,
+                        "practical_hours": subject.practical_hours,
+                        "total_weekly_hours": subject.total_weekly_hours,
+                        "pass_mark": subject.pass_mark,
+                    },
+                    "practical_requirements": {
+                        "has_practical": subject.has_practical,
+                        "requires_lab": subject.requires_lab,
+                        "requires_special_equipment": subject.requires_special_equipment,
+                        "equipment_notes": subject.equipment_notes,
+                    },
+                    "teaching_requirements": {
+                        "requires_specialist_teacher": subject.requires_specialist_teacher,
+                    },
+                    "assessment": {
+                        "has_continuous_assessment": subject.has_continuous_assessment,
+                        "has_final_exam": subject.has_final_exam,
+                    },
+                    "prerequisites": {
+                        "count": subject.prerequisites.count(),
+                        "subjects": [
+                            {
+                                "id": prereq.id,
+                                "name": prereq.display_name,
+                                "code": prereq.code,
+                            }
+                            for prereq in subject.prerequisites.all()
+                        ],
+                    },
+                    "special_attributes": {
+                        "is_activity_based": subject.is_activity_based,
+                        "nursery_levels": (
+                            subject.nursery_levels_display
+                            if subject.is_nursery_subject
+                            else None
+                        ),
+                        "ss_subject_type": (
+                            subject.get_ss_subject_type_display()
+                            if subject.ss_subject_type
+                            else None
+                        ),
+                    },
+                }
+            )
+
+        return Response(
+            {
+                "comparison_count": len(comparison_data),
+                "subjects": comparison_data,
+                "summary": {
+                    "total_credit_hours": sum(s.credit_hours for s in subjects),
+                    "total_practical_hours": sum(s.practical_hours for s in subjects),
+                    "subjects_with_practicals": sum(
+                        1 for s in subjects if s.has_practical
+                    ),
+                    "compulsory_subjects": sum(1 for s in subjects if s.is_compulsory),
+                    "cross_cutting_subjects": sum(
+                        1 for s in subjects if s.is_cross_cutting
+                    ),
+                },
+            }
+        )
+
+
+# ==============================================================================
+# UTILITY FUNCTIONS
+# ==============================================================================
+def clear_subject_caches():
+    """
+    Enhanced helper function to clear all subject-related caches
+    """
+    cache_keys = [
+        # Legacy cache keys
+        "subjects_statistics",
+        "subjects_statistics_v2",
+        "subjects_by_category",
+        "subjects_by_category_v2",
+        "active_subjects_count",
+        # New cache keys from enhanced model
+        "subjects_cache_v1",
+        "subjects_by_category_v3",
+        "subjects_by_education_level_v2",
+        "nursery_subjects_v1",
+        "ss_subjects_by_type_v1",
+        "cross_cutting_subjects_v1",
+        "subject_statistics_v1",
+        # Pattern-based cache clearing
+        "subject_*",
+        "education_level_*",
+        "nursery_*",
+        "ss_*",
+    ]
+
+    try:
+        cache.delete_many(cache_keys)
+
+        # If using Redis or similar, also clear pattern-based keys
+        if hasattr(cache, "delete_pattern"):
+            patterns = ["subject_*", "education_*", "nursery_*", "ss_*"]
+            for pattern in patterns:
+                cache.delete_pattern(pattern)
+
+        logger.info("Subject caches cleared successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error clearing subject caches: {str(e)}")
+        return False
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def clear_caches_endpoint(request):
+    """
+    API endpoint to manually clear caches (admin only)
+    """
+    success = clear_subject_caches()
+
+    if success:
+        return Response(
+            {
+                "status": "success",
+                "message": "Subject caches cleared successfully",
+                "timestamp": timezone.now().isoformat(),
+            }
+        )
+    else:
+        return Response(
+            {
+                "status": "error",
+                "message": "Failed to clear some caches",
+                "timestamp": timezone.now().isoformat(),
+            },
+            status=500,
+        )
+
+
+# ==============================================================================
+# SYSTEM INFO ENDPOINT
+# ==============================================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def system_info(request):
+    """
+    Get comprehensive system information about the subjects API
+    """
+    try:
+        # Get database statistics
+        total_subjects = Subject.objects.count()
+        active_subjects = Subject.objects.filter(is_active=True).count()
+        discontinued_subjects = Subject.objects.filter(is_discontinued=True).count()
+
+        # Education level statistics
+        education_stats = {}
+        for level_code, level_name in EDUCATION_LEVELS:
+            count = Subject.objects.filter(
+                education_levels__contains=[level_code], is_active=True
+            ).count()
+            education_stats[level_code] = {"name": level_name, "count": count}
+
+        # Category statistics
+        category_stats = {}
+        for category_code, category_name in SUBJECT_CATEGORY_CHOICES:
+            count = Subject.objects.filter(
+                category=category_code, is_active=True
+            ).count()
+            category_stats[category_code] = {"name": category_name, "count": count}
+
+        return Response(
+            {
+                "system": {
+                    "service_name": "Nigerian Education Subjects API",
+                    "version": "v2.0",
+                    "timestamp": timezone.now().isoformat(),
+                },
+                "database": {
+                    "total_subjects": total_subjects,
+                    "active_subjects": active_subjects,
+                    "discontinued_subjects": discontinued_subjects,
+                    "utilization_rate": (
+                        f"{(active_subjects/total_subjects*100):.1f}%"
+                        if total_subjects > 0
+                        else "0%"
+                    ),
+                },
+                "education_system": {
+                    "levels": education_stats,
+                    "categories": category_stats,
+                    "special_counts": {
+                        "cross_cutting": Subject.objects.filter(
+                            is_cross_cutting=True, is_active=True
+                        ).count(),
+                        "activity_based": Subject.objects.filter(
+                            is_activity_based=True, is_active=True
+                        ).count(),
+                        "with_practicals": Subject.objects.filter(
+                            has_practical=True, is_active=True
+                        ).count(),
+                        "requires_specialist": Subject.objects.filter(
+                            requires_specialist_teacher=True, is_active=True
+                        ).count(),
+                    },
+                },
+                "configuration": {
+                    "education_levels": dict(EDUCATION_LEVELS),
+                    "nursery_levels": dict(NURSERY_LEVELS),
+                    "ss_subject_types": dict(SS_SUBJECT_TYPES),
+                    "subject_categories": dict(SUBJECT_CATEGORY_CHOICES),
+                },
+            }
+        )
+    except Exception as e:
+        logger.error(f"System info endpoint failed: {str(e)}")
+        return Response(
+            {
+                "error": "Failed to retrieve system information",
+                "timestamp": timezone.now().isoformat(),
+            },
+            status=500,
+        )
