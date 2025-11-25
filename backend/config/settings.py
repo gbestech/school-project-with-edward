@@ -208,29 +208,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # DATABASE
 # ============================================
 
-# DATABASE_URL = os.getenv("DATABASE_URL")
-
-# if DATABASE_URL:
-#     DATABASES = {
-#         "default": dj_database_url.parse(
-#             DATABASE_URL,
-#             conn_max_age=60,
-#             ssl_require=True,
-#         )
-#     }
-#     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
-# else:
-#     DATABASES = {
-#         "default": {
-#             "ENGINE": "django.db.backends.sqlite3",
-#             "NAME": BASE_DIR / "db.sqlite3",
-#         }
-#     }
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # Parse the database URL
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
@@ -238,64 +218,16 @@ if DATABASE_URL:
             ssl_require=True,
         )
     }
-
-    # Configure SSL and connection options
-    DATABASES["default"]["OPTIONS"] = {
-        "sslmode": "require",
-        "connect_timeout": 10,
-    }
-
-    # FIX: Force IPv4 resolution to avoid "Network is unreachable" errors
-    # Render's network sometimes has IPv6 routing issues
-    db_host = DATABASES["default"].get("HOST", "")
-
-    # Check if host is an IPv6 address (contains colons)
-    if db_host and ":" in db_host and not db_host.startswith("["):
-        print(f"⚠️  Detected IPv6 address: {db_host}")
-        print("   Attempting to resolve to IPv4...")
-
-        import socket
-
-        try:
-            # Try to get IPv4 address
-            addr_info = socket.getaddrinfo(
-                db_host, None, socket.AF_INET, socket.SOCK_STREAM  # Force IPv4
-            )
-
-            if addr_info:
-                ipv4_host = addr_info[0][4][0]
-                DATABASES["default"]["HOST"] = ipv4_host
-                print(f"✅ Resolved to IPv4: {ipv4_host}")
-        except socket.gaierror as e:
-            print(f"❌ Failed to resolve to IPv4: {e}")
-            print("   Trying hostname resolution...")
-
-            # Alternative: Try to extract hostname from connection string
-            # and let psycopg3 handle the resolution
-            try:
-                # Parse DATABASE_URL to get the hostname
-                from urllib.parse import urlparse
-
-                parsed = urlparse(DATABASE_URL)
-
-                if parsed.hostname:
-                    # Use the hostname instead of IP
-                    DATABASES["default"]["HOST"] = parsed.hostname
-                    print(f"   Using hostname: {parsed.hostname}")
-            except Exception as parse_error:
-                print(f"   Hostname extraction failed: {parse_error}")
-
-    # Additional connection health checks
-    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
-
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
 else:
-    # Local development fallback
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
 # Cloudinary Configuration
 # ============================================
 # CLOUDINARY CONFIGURATION
