@@ -209,14 +209,12 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         queryset = Teacher.objects.select_related("user").all()
         if hasattr(super(), "get_queryset"):
             queryset = super().get_queryset() or queryset
-
         user = self.request.user
         if not user.is_authenticated:
             return Teacher.objects.none()
         if getattr(user, "is_section_admin", False):
             allowed_levels = self._get_section_education_levels(user)
             queryset = queryset.filter(level__in=allowed_levels)
-
         return queryset
 
     @action(detail=True, methods=["get"])
