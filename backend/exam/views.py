@@ -2453,7 +2453,7 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         # Apply filtering for authenticated users
         user = self.request.user
         if not user.is_authenticated:
-            return queryset.none()  # Or return empty if user is anonymous
+            return queryset.none()  # Return empty queryset for anonymous users
 
         # 🟢 SUPERADMIN: Access all exams
         if user.is_superuser:
@@ -2499,7 +2499,8 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 return queryset.none()
 
             logger.info(
-                f"User {user.username} accessing exams for sections: {section_access}, education levels: {education_levels}"
+                f"User {user.username} accessing exams for sections: {section_access}, "
+                f"education levels: {education_levels}"
             )
             queryset = queryset.filter(
                 grade_level__education_level__in=education_levels
@@ -3488,11 +3489,15 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             logger.info(
                 f"Section admin {user.username} accessing registrations for education levels: {education_levels}"
             )
-            return queryset.filter(exam__grade_level__education_level__in=education_levels)
+            return queryset.filter(
+                exam__grade_level__education_level__in=education_levels
+            )
 
         # 🟢 TEACHERS: Filter registrations for their own exams
         if hasattr(user, "teacher"):
-            logger.info(f"Teacher {user.username} accessing registrations for their exams")
+            logger.info(
+                f"Teacher {user.username} accessing registrations for their exams"
+            )
             return queryset.filter(exam__teacher=user.teacher)
 
         # 🟢 REGULAR STAFF: Access all registrations
@@ -3500,7 +3505,7 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             logger.info(f"Staff {user.username} accessing all registrations")
             return queryset
 
-        # 🟢 STUDENTS/PARENTS: Filter registrations based on their section access
+        # 🟢 STUDENTS/PARENTS: Filter registrations based on section access
         if hasattr(self, "get_user_section_access"):
             section_access = self.get_user_section_access()
             education_levels = []
@@ -3513,12 +3518,14 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 return queryset.none()
 
             logger.info(
-                f"User {user.username} accessing registrations for sections: {section_access}, education levels: {education_levels}"
+                f"User {user.username} accessing registrations for sections: {section_access}, "
+                f"education levels: {education_levels}"
             )
-            queryset = queryset.filter(exam__grade_level__education_level__in=education_levels)
+            queryset = queryset.filter(
+                exam__grade_level__education_level__in=education_levels
+            )
 
         return queryset
-
 
     @action(detail=False, methods=["post"])
     def bulk_register(self, request):
@@ -3674,7 +3681,7 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         queryset = super().get_queryset()
         user = self.request.user
 
-        # Filter by query parameters
+        # Filter by query parameters if provided
         exam_id = self.request.query_params.get("exam_id")
         student_id = self.request.query_params.get("student_id")
         subject_id = self.request.query_params.get("subject_id")
@@ -3730,12 +3737,12 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 return queryset.none()
 
             logger.info(
-                f"User {user.username} accessing results for sections: {section_access}, education levels: {education_levels}"
+                f"User {user.username} accessing results for sections: {section_access}, "
+                f"education levels: {education_levels}"
             )
             queryset = queryset.filter(student__education_level__in=education_levels)
 
         return queryset
-
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -3782,65 +3789,69 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
-    """Filter by exam, with section-based access control"""
-    queryset = super().get_queryset()
-    user = self.request.user
+        """Filter by exam, with section-based access control"""
+        queryset = super().get_queryset()
+        user = self.request.user
 
-    # Filter by query parameters
-    exam_id = self.request.query_params.get("exam_id")
-    if exam_id:
-        queryset = queryset.filter(exam_id=exam_id)
+        # Filter by query parameter if provided
+        exam_id = self.request.query_params.get("exam_id")
+        if exam_id:
+            queryset = queryset.filter(exam_id=exam_id)
 
-    # Return empty queryset for anonymous users
-    if not user.is_authenticated:
-        return queryset.none()
-
-    # 🟢 SUPERADMIN: Access all statistics
-    if user.is_superuser:
-        logger.info(f"Superadmin {user.username} accessing all statistics")
-        return queryset
-
-    # 🟢 SECTION ADMINS: Access statistics for their section
-    if user.is_staff and getattr(user, "is_section_admin", False):
-        education_levels = self._get_section_education_levels(user)
-        if not education_levels:
-            logger.warning(f"Section admin {user.username} has no valid section")
+        # Return empty queryset for anonymous users
+        if not user.is_authenticated:
             return queryset.none()
 
-        logger.info(
-            f"Section admin {user.username} accessing statistics for education levels: {education_levels}"
-        )
-        return queryset.filter(exam__grade_level__education_level__in=education_levels)
+        # 🟢 SUPERADMIN: Access all statistics
+        if user.is_superuser:
+            logger.info(f"Superadmin {user.username} accessing all statistics")
+            return queryset
 
-    # 🟢 TEACHERS: Access statistics for their exams
-    if hasattr(user, "teacher"):
-        logger.info(f"Teacher {user.username} accessing statistics for their exams")
-        return queryset.filter(exam__teacher=user.teacher)
+        # 🟢 SECTION ADMINS: Access statistics for their section
+        if user.is_staff and getattr(user, "is_section_admin", False):
+            education_levels = self._get_section_education_levels(user)
+            if not education_levels:
+                logger.warning(f"Section admin {user.username} has no valid section")
+                return queryset.none()
 
-    # 🟢 REGULAR STAFF: Access all statistics
-    if user.is_staff:
-        logger.info(f"Staff {user.username} accessing all statistics")
+            logger.info(
+                f"Section admin {user.username} accessing statistics for education levels: {education_levels}"
+            )
+            return queryset.filter(
+                exam__grade_level__education_level__in=education_levels
+            )
+
+        # 🟢 TEACHERS: Access statistics for their exams
+        if hasattr(user, "teacher"):
+            logger.info(f"Teacher {user.username} accessing statistics for their exams")
+            return queryset.filter(exam__teacher=user.teacher)
+
+        # 🟢 REGULAR STAFF: Access all statistics
+        if user.is_staff:
+            logger.info(f"Staff {user.username} accessing all statistics")
+            return queryset
+
+        # 🟢 STUDENTS/PARENTS: Filter based on section access
+        if hasattr(self, "get_user_section_access"):
+            section_access = self.get_user_section_access()
+            education_levels = []
+            for section in section_access:
+                education_levels.extend(self._get_section_education_levels(section))
+                education_levels = list(set(education_levels))  # Remove duplicates
+
+            if not education_levels:
+                logger.info(f"User {user.username} has no section access")
+                return queryset.none()
+
+            logger.info(
+                f"User {user.username} accessing statistics for sections: {section_access}, "
+                f"education levels: {education_levels}"
+            )
+            queryset = queryset.filter(
+                exam__grade_level__education_level__in=education_levels
+            )
+
         return queryset
-
-    # 🟢 STUDENTS/PARENTS: Filter based on section access
-    if hasattr(self, "get_user_section_access"):
-        section_access = self.get_user_section_access()
-        education_levels = []
-        for section in section_access:
-            education_levels.extend(self._get_section_education_levels(section))
-        education_levels = list(set(education_levels))  # Remove duplicates
-
-        if not education_levels:
-            logger.info(f"User {user.username} has no section access")
-            return queryset.none()
-
-        logger.info(
-            f"User {user.username} accessing statistics for sections: {section_access}, education levels: {education_levels}"
-        )
-        queryset = queryset.filter(exam__grade_level__education_level__in=education_levels)
-
-    return queryset
-
 
     @action(detail=False, methods=["get"])
     def summary(self, request):
