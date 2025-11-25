@@ -1288,6 +1288,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.views.decorators.cache import cache_page
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.conf import settings
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 import logging
@@ -2452,6 +2453,68 @@ class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         # Let mixin handle section filtering
         queryset = super().get_queryset()
         return queryset.order_by("name")
+
+
+@api_view(["GET"])
+def health_check(request):
+    """
+    Enhanced health check endpoint for monitoring API status with system information
+    """
+    try:
+        # Basic database connectivity check
+        total_subjects = Subject.objects.count()
+        active_subjects = Subject.objects.filter(is_active=True).count()
+
+        # Check cache connectivity
+        cache_key = "health_check_test"
+        cache.set(cache_key, "test", 10)
+        cache_working = cache.get(cache_key) == "test"
+        cache.delete(cache_key)
+
+        return Response(
+            {
+                "status": "healthy",
+                "timestamp": timezone.now().isoformat(),
+                "version": "v2.0",
+                "service": "nigerian-education-subjects-api",
+                "system_info": {
+                    "database": {
+                        "connected": True,
+                        "total_subjects": total_subjects,
+                        "active_subjects": active_subjects,
+                    },
+                    "cache": {
+                        "connected": cache_working,
+                        "backend": getattr(settings, "CACHES", {})
+                        .get("default", {})
+                        .get("BACKEND", "unknown"),
+                    },
+                    "education_system": {
+                        "total_education_levels": len(EDUCATION_LEVELS),
+                        "total_subject_categories": len(SUBJECT_CATEGORY_CHOICES),
+                        "nursery_levels": len(NURSERY_LEVELS),
+                        "ss_subject_types": len(SS_SUBJECT_TYPES),
+                    },
+                },
+                "endpoints": {
+                    "subjects": "/api/v1/subjects/",
+                    "analytics": "/api/v1/analytics/subjects/",
+                    "management": "/api/v1/management/subjects/",
+                    "health": "/api/v1/health/",
+                },
+            }
+        )
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return Response(
+            {
+                "status": "unhealthy",
+                "timestamp": timezone.now().isoformat(),
+                "error": str(e),
+                "service": "nigerian-education-subjects-api",
+            },
+            status=500,
+        )
 
 
 class SubjectByEducationLevelView(APIView):
