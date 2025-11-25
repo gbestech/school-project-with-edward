@@ -1,155 +1,369 @@
-from django.shortcuts import render
-from rest_framework.decorators import api_view, permission_classes
+"""
+Complete solution showing both function-based and class-based view approaches
+"""
+
+# ============================================================================
+# OPTION 1: CLASS-BASED VIEWS (RECOMMENDED - Uses AutoSectionFilterMixin)
+# ============================================================================
+
+from rest_framework import viewsets, generics
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db.models import Q
+import datetime
+import logging
 
+from utils.section_filtering import AutoSectionFilterMixin
 from students.models import Student
 from teacher.models import Teacher
 from classroom.models import Classroom
+from parent.models import ParentProfile, Message
 from attendance.models import Attendance
-from parent.models import Message, ParentProfile
-from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
-import datetime
+
+logger = logging.getLogger(__name__)
+
+
+# === DASHBOARD VIEW (Class-based with AutoSectionFilterMixin) ===
+class DashboardViewSet(AutoSectionFilterMixin, viewsets.ViewSet):
+    """
+    Dashboard statistics with automatic section filtering
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        """
+        Get dashboard statistics filtered by section access
+        """
+        user = request.user
+        role = self.get_user_role()
+        allowed_education_levels = self.get_user_education_level_access()
+
+        logger.info(
+            f"📊 Dashboard stats requested by {user.username} "
+            f"(role: {role}, levels: {allowed_education_levels})"
+        )
+
+        # If no access, return zeros
+        if not allowed_education_levels:
+            logger.warning(f"❌ No education level access for {user.username}")
+            return Response(
+                {
+                    "total_students": 0,
+                    "active_students": 0,
+                    "inactive_students": 0,
+                    "total_teachers": 0,
+                    "active_teachers": 0,
+                    "inactive_teachers": 0,
+                    "total_classes": 0,
+                    "total_messages": 0,
+                    "total_parents": 0,
+                    "active_parents": 0,
+                    "inactive_parents": 0,
+                    "attendance_today": 0,
+                    "user_role": role,
+                    "access_levels": allowed_education_levels,
+                }
+            )
+
+        try:
+            # === Apply automatic filtering using the mixin ===
+            students_queryset = self.apply_section_filters(Student.objects.all())
+            classrooms_queryset = self.apply_section_filters(Classroom.objects.all())
+            teachers_queryset = self.apply_section_filters(Teacher.objects.all())
+            parents_queryset = self.apply_section_filters(ParentProfile.objects.all())
+            messages_queryset = self.apply_section_filters(Message.objects.all())
+            attendance_queryset = self.apply_section_filters(Attendance.objects.all())
+
+            # Compile statistics
+            stats = {
+                "total_students": students_queryset.count(),
+                "active_students": students_queryset.filter(is_active=True).count(),
+                "inactive_students": students_queryset.filter(is_active=False).count(),
+                "total_teachers": teachers_queryset.count(),
+                "active_teachers": teachers_queryset.filter(is_active=True).count(),
+                "inactive_teachers": teachers_queryset.filter(is_active=False).count(),
+                "total_classes": classrooms_queryset.count(),
+                "total_messages": messages_queryset.count(),
+                "total_parents": parents_queryset.count(),
+                "active_parents": parents_queryset.filter(user__is_active=True).count(),
+                "inactive_parents": parents_queryset.filter(
+                    user__is_active=False
+                ).count(),
+                "attendance_today": attendance_queryset.filter(
+                    date=datetime.date.today()
+                ).count(),
+                # Metadata
+                "user_role": role,
+                "access_levels": allowed_education_levels,
+            }
+
+            logger.info(
+                f"✅ Dashboard stats: Students={stats['total_students']}, "
+                f"Teachers={stats['total_teachers']}, Classes={stats['total_classes']}"
+            )
+
+            return Response(stats)
+
+        except Exception as e:
+            logger.error(f"❌ Error getting dashboard stats: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    "error": str(e),
+                    "total_students": 0,
+                    "active_students": 0,
+                    "inactive_students": 0,
+                    "total_teachers": 0,
+                    "active_teachers": 0,
+                    "inactive_teachers": 0,
+                    "total_classes": 0,
+                    "total_messages": 0,
+                    "total_parents": 0,
+                    "active_parents": 0,
+                    "inactive_parents": 0,
+                    "attendance_today": 0,
+                }
+            )
+
+
+# === TEACHER LIST VIEW ===
+class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """
+    Teacher ViewSet with automatic section filtering.
+    Section admins only see teachers in their sections.
+    """
+
+    queryset = Teacher.objects.all()
+    permission_classes = [IsAuthenticated]
+    # serializer_class = TeacherSerializer  # Add your serializer
+
+    # That's it! AutoSectionFilterMixin automatically filters get_queryset()
+    # No need to override get_queryset() - the mixin does it automatically
+
+
+# === PARENT LIST VIEW ===
+class ParentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """
+    Parent ViewSet with automatic section filtering.
+    Section admins only see parents whose children are in their sections.
+    """
+
+    queryset = ParentProfile.objects.all()
+    permission_classes = [IsAuthenticated]
+    # serializer_class = ParentSerializer  # Add your serializer
+
+    # AutoSectionFilterMixin handles everything automatically!
+
+
+# === CLASSROOM LIST VIEW ===
+class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """
+    Classroom ViewSet with automatic section filtering.
+    Section admins only see classrooms in their sections.
+    """
+
+    queryset = Classroom.objects.all()
+    permission_classes = [IsAuthenticated]
+    # serializer_class = ClassroomSerializer  # Add your serializer
+
+    # AutoSectionFilterMixin handles everything automatically!
+
+
+# === STUDENT LIST VIEW ===
+class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """
+    Student ViewSet with automatic section filtering.
+    """
+
+    queryset = Student.objects.all()
+    permission_classes = [IsAuthenticated]
+    # serializer_class = StudentSerializer  # Add your serializer
+
+
+# === MESSAGE LIST VIEW ===
+class MessageViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """
+    Message ViewSet with automatic section filtering.
+    """
+
+    queryset = Message.objects.all()
+    permission_classes = [IsAuthenticated]
+    # serializer_class = MessageSerializer  # Add your serializer
+
+
+# ============================================================================
+# OPTION 2: FUNCTION-BASED VIEWS (If you prefer @api_view)
+# ============================================================================
+
+from rest_framework.decorators import api_view, permission_classes
+from utils.section_filtering import SectionFilterMixin
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def dashboard_stats(request):
-    # Create a temporary instance to use section filtering methods
-    class TempSectionFilter:
+def dashboard_stats_function(request):
+    """
+    Dashboard statistics - Function-based view version
+    Uses SectionFilterMixin manually
+    """
+
+    # Create mixin instance
+    class TempFilter(SectionFilterMixin):
         def __init__(self, request):
             self.request = request
-        
-        def get_user_section_access(self):
-            """Get the sections the current user has access to."""
-            user = self.request.user
-            
-            # Super admins have access to all sections
-            if user.is_superuser and user.is_staff:
-                return {
-                    'primary': True,
-                    'secondary': True,
-                    'nursery': True
-                }
-            
-            # Get user's active role assignments
-            from schoolSettings.models import UserRole
-            user_roles = UserRole.objects.filter(
-                user=user,
-                is_active=True
-            )
-            
-            section_access = {
-                'primary': False,
-                'secondary': False,
-                'nursery': False
+
+    filter_helper = TempFilter(request)
+
+    # Get role and access levels
+    role = filter_helper.get_user_role()
+    allowed_levels = filter_helper.get_user_education_level_access()
+
+    logger.info(f"📊 Dashboard for {request.user.username} (role: {role})")
+
+    if not allowed_levels:
+        return Response(
+            {
+                "total_students": 0,
+                "total_teachers": 0,
+                "total_classes": 0,
+                "total_parents": 0,
+                "total_messages": 0,
+                "user_role": role,
+                "access_levels": [],
             }
-            
-            for user_role in user_roles:
-                if user_role.is_expired():
-                    continue
-                    
-                if user_role.primary_section_access:
-                    section_access['primary'] = True
-                if user_role.secondary_section_access:
-                    section_access['secondary'] = True
-                if user_role.nursery_section_access:
-                    section_access['nursery'] = True
-            
-            return section_access
-        
-        def get_education_levels_for_sections(self, section_access):
-            """Map section access to education levels."""
-            education_levels = []
-            
-            if section_access['primary']:
-                education_levels.append('PRIMARY')
-            if section_access['secondary']:
-                education_levels.extend(['JUNIOR_SECONDARY', 'SENIOR_SECONDARY'])
-            if section_access['nursery']:
-                education_levels.append('NURSERY')
-                
-            return education_levels
-    
-    # Initialize section filter
-    section_filter = TempSectionFilter(request)
-    section_access = section_filter.get_user_section_access()
-    education_levels = section_filter.get_education_levels_for_sections(section_access)
-    
-    # Filter querysets based on section access
-    if not education_levels:
-        # User has no section access, return zeros
-        return Response({
-            "total_students": 0,
-            "active_students": 0,
-            "inactive_students": 0,
-            "total_teachers": 0,
-            "active_teachers": 0,
-            "inactive_teachers": 0,
-            "total_classes": 0,
-            "total_messages": 0,
-            "total_parents": 0,
-            "active_parents": 0,
-            "inactive_parents": 0,
-            "attendance_today": 0,
-        })
-    
-    # Filter students by education level
-    students_queryset = Student.objects.filter(education_level__in=education_levels)
-    
-    # Filter teachers by their classroom assignments
-    from django.db.models import Q
-    
-    # Build Q objects for teacher filtering
-    all_education_levels = ['PRIMARY', 'JUNIOR_SECONDARY', 'SENIOR_SECONDARY', 'NURSERY']
-    disallowed_levels = [level for level in all_education_levels if level not in education_levels]
-    
-    # Teachers with assignments in allowed education levels only
-    teachers_with_allowed_assignments_q = Q(
-        classroomteacherassignment__classroom__section__grade_level__education_level__in=education_levels,
-        classroomteacherassignment__is_active=True
-    )
-    
-    # Exclude teachers who also have assignments in disallowed education levels
-    if disallowed_levels:
-        teachers_with_allowed_assignments_q = teachers_with_allowed_assignments_q & ~Q(
-            classroomteacherassignment__classroom__section__grade_level__education_level__in=disallowed_levels,
-            classroomteacherassignment__is_active=True
         )
-    
-    # Teachers with no assignments
-    teachers_with_no_assignments_q = Q(classroomteacherassignment__isnull=True)
-    
-    # Combine both conditions
-    teachers_queryset = Teacher.objects.filter(
-        teachers_with_allowed_assignments_q | teachers_with_no_assignments_q
-    ).distinct()
-    
-    # Filter classrooms by education level
-    classrooms_queryset = Classroom.objects.filter(
-        section__grade_level__education_level__in=education_levels
-    )
-    
-    # Filter attendance by student's education level
-    attendance_queryset = Attendance.objects.filter(
-        student__education_level__in=education_levels
-    )
-    
+
+    try:
+        # Apply filtering manually
+        students = filter_helper.apply_section_filters(Student.objects.all())
+        teachers = filter_helper.apply_section_filters(Teacher.objects.all())
+        classrooms = filter_helper.apply_section_filters(Classroom.objects.all())
+        parents = filter_helper.apply_section_filters(ParentProfile.objects.all())
+        messages = filter_helper.apply_section_filters(Message.objects.all())
+        attendance = filter_helper.apply_section_filters(Attendance.objects.all())
+
+        return Response(
+            {
+                "total_students": students.count(),
+                "active_students": students.filter(is_active=True).count(),
+                "inactive_students": students.filter(is_active=False).count(),
+                "total_teachers": teachers.count(),
+                "active_teachers": teachers.filter(is_active=True).count(),
+                "inactive_teachers": teachers.filter(is_active=False).count(),
+                "total_classes": classrooms.count(),
+                "total_parents": parents.count(),
+                "active_parents": parents.filter(user__is_active=True).count(),
+                "inactive_parents": parents.filter(user__is_active=False).count(),
+                "total_messages": messages.count(),
+                "attendance_today": attendance.filter(
+                    date=datetime.date.today()
+                ).count(),
+                "user_role": role,
+                "access_levels": allowed_levels,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Error: {str(e)}", exc_info=True)
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def teacher_list_function(request):
+    """Get filtered teacher list"""
+
+    class TempFilter(SectionFilterMixin):
+        def __init__(self, request):
+            self.request = request
+
+    filter_helper = TempFilter(request)
+    teachers = filter_helper.apply_section_filters(Teacher.objects.all())
+
+    # Serialize and return
+    # teacher_data = TeacherSerializer(teachers, many=True).data
     return Response(
         {
-            "total_students": students_queryset.count(),
-            "active_students": students_queryset.filter(is_active=True).count(),
-            "inactive_students": students_queryset.filter(is_active=False).count(),
-            "total_teachers": teachers_queryset.count(),
-            "active_teachers": teachers_queryset.filter(is_active=True).count(),
-            "inactive_teachers": teachers_queryset.filter(is_active=False).count(),
-            "total_classes": classrooms_queryset.count(),
-            "total_messages": Message.objects.count(),  # Messages are not section-specific
-            "total_parents": ParentProfile.objects.count(),  # Parents are not section-specific
-            "active_parents": ParentProfile.objects.filter(user__is_active=True).count(),
-            "inactive_parents": ParentProfile.objects.filter(user__is_active=False).count(),
-            "attendance_today": attendance_queryset.filter(
-                date=datetime.date.today()
-            ).count(),
+            "count": teachers.count(),
+            # "results": teacher_data
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def parent_list_function(request):
+    """Get filtered parent list"""
+
+    class TempFilter(SectionFilterMixin):
+        def __init__(self, request):
+            self.request = request
+
+    filter_helper = TempFilter(request)
+    parents = filter_helper.apply_section_filters(ParentProfile.objects.all())
+
+    return Response(
+        {
+            "count": parents.count(),
+            # "results": ParentSerializer(parents, many=True).data
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def classroom_list_function(request):
+    """Get filtered classroom list"""
+
+    class TempFilter(SectionFilterMixin):
+        def __init__(self, request):
+            self.request = request
+
+    filter_helper = TempFilter(request)
+    classrooms = filter_helper.apply_section_filters(Classroom.objects.all())
+
+    return Response(
+        {
+            "count": classrooms.count(),
+            # "results": ClassroomSerializer(classrooms, many=True).data
+        }
+    )
+
+
+# ============================================================================
+# URL CONFIGURATION
+# ============================================================================
+
+"""
+# For Class-based views (urls.py):
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'dashboard', DashboardViewSet, basename='dashboard')
+router.register(r'teachers', TeacherViewSet, basename='teacher')
+router.register(r'parents', ParentViewSet, basename='parent')
+router.register(r'classrooms', ClassroomViewSet, basename='classroom')
+router.register(r'students', StudentViewSet, basename='student')
+router.register(r'messages', MessageViewSet, basename='message')
+
+urlpatterns = router.urls
+
+# Access dashboard stats at: /api/dashboard/stats/
+# Access teachers at: /api/teachers/
+# Access parents at: /api/parents/
+# etc.
+"""
+
+"""
+# For Function-based views (urls.py):
+from django.urls import path
+
+urlpatterns = [
+    path('dashboard/stats/', dashboard_stats_function, name='dashboard-stats'),
+    path('teachers/', teacher_list_function, name='teacher-list'),
+    path('parents/', parent_list_function, name='parent-list'),
+    path('classrooms/', classroom_list_function, name='classroom-list'),
+]
+"""
