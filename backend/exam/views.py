@@ -3793,7 +3793,7 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
         queryset = super().get_queryset()
         user = self.request.user
 
-        # Filter by query parameter if provided
+        # Filter by query parameters
         exam_id = self.request.query_params.get("exam_id")
         if exam_id:
             queryset = queryset.filter(exam_id=exam_id)
@@ -3837,15 +3837,14 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
             education_levels = []
             for section in section_access:
                 education_levels.extend(self._get_section_education_levels(section))
-                education_levels = list(set(education_levels))  # Remove duplicates
+            education_levels = list(set(education_levels))  # Remove duplicates
 
             if not education_levels:
                 logger.info(f"User {user.username} has no section access")
                 return queryset.none()
 
             logger.info(
-                f"User {user.username} accessing statistics for sections: {section_access}, "
-                f"education levels: {education_levels}"
+                f"User {user.username} accessing statistics for sections: {section_access}, education levels: {education_levels}"
             )
             queryset = queryset.filter(
                 exam__grade_level__education_level__in=education_levels
