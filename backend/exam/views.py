@@ -2409,21 +2409,27 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             return ExamCreateUpdateSerializer
         return ExamDetailSerializer
 
-    def _get_section_education_levels(self, user):
+    def _get_section_education_levels(self, user_or_section):
         """
-        Helper method to get education levels based on user's section/role
-        Returns a list of education levels the user can access
+        Universal helper method to get education levels based on user's section/role
+        Works with User objects, Section model instances, or section name strings
+
+        Args:
+            user_or_section: User object, Section model instance, or section name string
+
+        Returns:
+            List of education level names (e.g., ['PRIMARY', 'NURSERY'])
         """
-        # Map user sections to education levels
+        # Map sections to education levels
         SECTION_TO_EDUCATION_LEVEL = {
             "nursery": ["NURSERY"],
             "primary": ["PRIMARY"],
             "junior_secondary": ["JUNIOR_SECONDARY"],
             "senior_secondary": ["SENIOR_SECONDARY"],
-            "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],  # Both JSS and SSS
+            "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
         }
 
-        # Map user roles to sections (for backward compatibility)
+        # Map user roles to sections
         ROLE_TO_SECTION = {
             "nursery_admin": "nursery",
             "primary_admin": "primary",
@@ -2432,13 +2438,53 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             "secondary_admin": "secondary",
         }
 
-        # Get section from user.section first, fallback to role mapping
-        user_section = user.section
-        if not user_section and user.role in ROLE_TO_SECTION:
-            user_section = ROLE_TO_SECTION[user.role]
+        # CASE 1: User object (has 'section' and 'role' attributes)
+        if hasattr(user_or_section, "section") and hasattr(user_or_section, "role"):
+            user_section = user_or_section.section
 
-        # Return education levels for the user's section
-        return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
+            # Fallback to role-based mapping if no section
+            if not user_section and user_or_section.role in ROLE_TO_SECTION:
+                user_section = ROLE_TO_SECTION[user_or_section.role]
+
+            logger.info(
+                f"🔍 Getting section access for {user_or_section.username} with section: {user_section}"
+            )
+            return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
+
+        # CASE 2: Section model instance (has 'name' attribute)
+        elif hasattr(user_or_section, "name"):
+            section_name = user_or_section.name.lower()
+
+            # Direct mapping if section name matches
+            if section_name in SECTION_TO_EDUCATION_LEVEL:
+                logger.info(f"🔒 Section admin access for {section_name.upper()}")
+                return SECTION_TO_EDUCATION_LEVEL[section_name]
+
+            # Fallback: Get education levels from classrooms
+            try:
+                from classroom.models import Classroom
+
+                education_levels = list(
+                    Classroom.objects.filter(section=user_or_section)
+                    .values_list("education_level", flat=True)
+                    .distinct()
+                )
+                logger.info(
+                    f"🔒 Section {section_name} education levels from classrooms: {education_levels}"
+                )
+                return education_levels
+            except Exception as e:
+                logger.error(
+                    f"❌ Error getting education levels for section {section_name}: {e}"
+                )
+                return []
+
+        # CASE 3: String (section name)
+        else:
+            section_name = str(user_or_section).lower()
+            result = SECTION_TO_EDUCATION_LEVEL.get(section_name, [])
+            logger.info(f"🔍 Section string '{section_name}' mapped to: {result}")
+            return result
 
     def _get_section_education_levels(self, section):
         """
