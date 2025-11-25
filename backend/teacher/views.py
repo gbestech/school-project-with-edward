@@ -228,7 +228,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 
 # Apply section filtering
 
-queryset = super().get_queryset()
+# queryset = super().get_queryset()
 
 
 # Apply additional filters
