@@ -2025,7 +2025,7 @@ class SubjectMinimalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = ["id", "name", "code", "subject_type"]
+        fields = ["id", "name", "code"]
 
 
 class AcademicSessionMinimalSerializer(serializers.ModelSerializer):
