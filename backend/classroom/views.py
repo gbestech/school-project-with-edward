@@ -273,6 +273,113 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         )
 
 
+# Add these missing viewsets back to your new views.py:
+
+
+class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """ViewSet for Student model - placeholder for future implementation"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubjectSerializer  # Temporary placeholder
+
+    def get_queryset(self):
+        """Placeholder - implement when Student model operations are needed"""
+        return Student.objects.none()
+
+    @action(detail=True, methods=["get"])
+    def current_class(self, request, pk=None):
+        """Get current class for a specific student"""
+        return Response({"message": "Current class endpoint not implemented yet"})
+
+    @action(detail=True, methods=["get"])
+    def subjects(self, request, pk=None):
+        """Get subjects for a specific student"""
+        return Response({"message": "Subjects endpoint not implemented yet"})
+
+    @action(detail=True, methods=["get"])
+    def schedule(self, request, pk=None):
+        """Get schedule for a specific student"""
+        return Response({"message": "Schedule endpoint not implemented yet"})
+
+    @action(detail=True, methods=["get"])
+    def enrollment_history(self, request, pk=None):
+        """Get enrollment history for a specific student"""
+        return Response({"message": "Enrollment history endpoint not implemented yet"})
+
+
+class SubjectAnalyticsViewSet(AutoSectionFilterMixin, viewsets.ReadOnlyModelViewSet):
+    """ViewSet for Subject analytics (read-only)"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubjectSerializer
+
+    def get_queryset(self):
+        return Subject.objects.all()
+
+
+class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """ViewSet for Subject management (admin only)"""
+
+    permission_classes = [IsAdminUser]
+    serializer_class = SubjectSerializer
+
+    def get_queryset(self):
+        return Subject.objects.all()
+
+
+class ClassScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """ViewSet for ClassSchedule model"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ClassScheduleSerializer
+
+    def get_queryset(self):
+        """Get schedules with filtering applied"""
+        base_queryset = ClassSchedule.objects.select_related(
+            "classroom", "subject", "teacher__user"
+        ).filter(is_active=True)
+        return base_queryset
+
+    @action(detail=False, methods=["get"])
+    def by_classroom(self, request):
+        """Get schedules by classroom"""
+        classroom_id = request.query_params.get("classroom_id")
+        if not classroom_id:
+            return Response(
+                {"error": "classroom_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        schedules = self.get_queryset().filter(classroom_id=classroom_id)
+        serializer = self.get_serializer(schedules, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_teacher(self, request):
+        """Get schedules by teacher"""
+        teacher_id = request.query_params.get("teacher_id")
+        if not teacher_id:
+            return Response(
+                {"error": "teacher_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        schedules = self.get_queryset().filter(teacher_id=teacher_id)
+        serializer = self.get_serializer(schedules, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def by_subject(self, request):
+        """Get schedules by subject"""
+        subject_id = request.query_params.get("subject_id")
+        if not subject_id:
+            return Response(
+                {"error": "subject_id parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        schedules = self.get_queryset().filter(subject_id=subject_id)
+        serializer = self.get_serializer(schedules, many=True)
+        return Response(serializer.data)
+
+
 class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Subject model"""
 
