@@ -180,13 +180,13 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "stream_type", "created_at"]
 
     def get_queryset(self):
-        base_queryset = Section.objects.all()
+        base_queryset = Stream.objects.all()  # Changed from Section.objects
         queryset = (
             super().get_queryset()
             if hasattr(super(), "get_queryset")
             else base_queryset
         )
-        return queryset.order_by("grade_level__order", "name")
+        return queryset.order_by("name")
 
     @action(detail=False, methods=["get"])
     def by_type(self, request):
@@ -203,6 +203,7 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Teacher model"""
 
+    queryset = Teacher.objects.all()
     permission_classes = [IsAuthenticated]
     serializer_class = TeacherSerializer
     filter_backends = [
@@ -215,13 +216,14 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["user__first_name", "user__last_name", "hire_date"]
 
     def get_queryset(self):
-        base_queryset = Section.objects.all()
+        # ✅ FIXED: Use Teacher.objects instead of Section.objects
+        base_queryset = Teacher.objects.select_related("user").all()
         queryset = (
             super().get_queryset()
             if hasattr(super(), "get_queryset")
             else base_queryset
         )
-        return queryset.order_by("grade_level__order", "name")
+        return queryset.order_by("user__first_name", "user__last_name")
 
     @action(detail=True, methods=["get"])
     def classes(self, request, pk=None):
@@ -332,13 +334,13 @@ class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "code", "subject_order"]
 
     def get_queryset(self):
-        base_queryset = Classroom.objects.all()
+        base_queryset = Subject.objects.all()  # Changed from Classroom.objects
         queryset = (
             super().get_queryset()
             if hasattr(super(), "get_queryset")
             else base_queryset
         )
-        return queryset.order_by("section__grade_level__order", "name")
+        return queryset.order_by("name")
 
     @action(detail=False, methods=["get"])
     def by_category(self, request):
@@ -843,13 +845,15 @@ class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelVi
     serializer_class = ClassroomTeacherAssignmentSerializer
 
     def get_queryset(self):
-        base_queryset = Classroom.objects.all()
+        base_queryset = (
+            ClassroomTeacherAssignment.objects.all()
+        )  # Changed from Classroom.objects
         queryset = (
             super().get_queryset()
             if hasattr(super(), "get_queryset")
             else base_queryset
         )
-        return queryset.order_by("section__grade_level__order", "name")
+        return queryset.order_by("classroom__name")
 
     def create(self, request, *args, **kwargs):
         """Override create to add debugging"""
@@ -929,13 +933,15 @@ class StudentEnrollmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = StudentEnrollmentSerializer
 
     def get_queryset(self):
-        base_queryset = Classroom.objects.all()
+        base_queryset = (
+            StudentEnrollment.objects.all()
+        )  # Changed from Classroom.objects
         queryset = (
             super().get_queryset()
             if hasattr(super(), "get_queryset")
             else base_queryset
         )
-        return queryset.order_by("section__grade_level__order", "name")
+        return queryset.order_by("student__user__first_name")
 
     @action(detail=False, methods=["get"])
     def by_academic_year(self, request):
@@ -1012,13 +1018,13 @@ class ClassScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-        base_queryset = Classroom.objects.all()
+        base_queryset = ClassSchedule.objects.all()  # Changed from Classroom.objects
         queryset = (
             super().get_queryset()
             if hasattr(super(), "get_queryset")
             else base_queryset
         )
-        return queryset.order_by("section__grade_level__order", "name")
+        return queryset.order_by("day_of_week", "start_time")
 
     @action(detail=False, methods=["get"])
     def by_classroom(self, request):
