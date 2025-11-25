@@ -1,6 +1,4 @@
 # from rest_framework import viewsets, status, filters
-
-from utils.section_filtering import AutoSectionFilterMixin
 # from rest_framework.decorators import action
 # from rest_framework.response import Response
 # from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -162,7 +160,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 
 
 # # ===== BASE CONFIGURATION VIEWSETS =====
-# class GradingSystemViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class GradingSystemViewSet(viewsets.ModelViewSet):
 #     queryset = GradingSystem.objects.all()
 #     serializer_class = GradingSystemSerializer
 #     permission_classes = [IsAuthenticated]
@@ -190,7 +188,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 #         return Response(GradingSystemSerializer(grading_system).data)
 
 
-# class GradeViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class GradeViewSet(viewsets.ModelViewSet):
 #     queryset = Grade.objects.all()
 #     serializer_class = GradeSerializer
 #     permission_classes = [IsAuthenticated]
@@ -201,7 +199,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 #         return super().get_queryset().select_related("grading_system")
 
 
-# class AssessmentTypeViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class AssessmentTypeViewSet(viewsets.ModelViewSet):
 #     queryset = AssessmentType.objects.all()
 #     serializer_class = AssessmentTypeSerializer
 #     permission_classes = [IsAuthenticated]
@@ -210,7 +208,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 #     search_fields = ["name", "code"]
 
 
-# class ExamSessionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class ExamSessionViewSet(viewsets.ModelViewSet):
 #     queryset = ExamSession.objects.all()
 #     serializer_class = ExamSessionSerializer
 #     permission_classes = [IsAuthenticated]
@@ -288,7 +286,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 
 
 # # ===== SCORING CONFIGURATION VIEWSET =====
-# class ScoringConfigurationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class ScoringConfigurationViewSet(viewsets.ModelViewSet):
 #     """ViewSet for Scoring Configuration"""
 
 #     queryset = ScoringConfiguration.objects.all().order_by("education_level", "name")
@@ -1873,7 +1871,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 
 
 # # ===== SUPPORTING VIEWSETS =====
-# class ResultSheetViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class ResultSheetViewSet(viewsets.ModelViewSet):
 #     queryset = ResultSheet.objects.all()
 #     serializer_class = ResultSheetSerializer
 #     permission_classes = [IsAuthenticated]
@@ -1962,7 +1960,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 #             )
 
 
-# class AssessmentScoreViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class AssessmentScoreViewSet(viewsets.ModelViewSet):
 #     queryset = AssessmentScore.objects.all()
 #     serializer_class = AssessmentScoreSerializer
 #     permission_classes = [IsAuthenticated]
@@ -1975,7 +1973,7 @@ from utils.section_filtering import AutoSectionFilterMixin
 #         )
 
 
-# class ResultCommentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class ResultCommentViewSet(viewsets.ModelViewSet):
 #     queryset = ResultComment.objects.all()
 #     serializer_class = ResultCommentSerializer
 #     permission_classes = [IsAuthenticated]
@@ -2212,7 +2210,7 @@ def validate_result_for_approval(result):
 
 
 # ===== BASE CONFIGURATION VIEWSETS =====
-class GradingSystemViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class GradingSystemViewSet(viewsets.ModelViewSet):
     queryset = GradingSystem.objects.all()
     serializer_class = GradingSystemSerializer
     permission_classes = [IsAuthenticated]
@@ -2238,7 +2236,7 @@ class GradingSystemViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return Response(GradingSystemSerializer(grading_system).data)
 
 
-class GradeViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class GradeViewSet(viewsets.ModelViewSet):
     queryset = Grade.objects.all()
     serializer_class = GradeSerializer
     permission_classes = [IsAuthenticated]
@@ -2249,7 +2247,7 @@ class GradeViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return super().get_queryset().select_related("grading_system")
 
 
-class AssessmentTypeViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class AssessmentTypeViewSet(viewsets.ModelViewSet):
     queryset = AssessmentType.objects.all()
     serializer_class = AssessmentTypeSerializer
     permission_classes = [IsAuthenticated]
@@ -2258,7 +2256,7 @@ class AssessmentTypeViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     search_fields = ["name", "code"]
 
 
-class ExamSessionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class ExamSessionViewSet(viewsets.ModelViewSet):
     queryset = ExamSession.objects.all()
     serializer_class = ExamSessionSerializer
     permission_classes = [IsAuthenticated]
@@ -2333,7 +2331,7 @@ class ExamSessionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
 
 # ===== SCORING CONFIGURATION VIEWSET =====
-class ScoringConfigurationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class ScoringConfigurationViewSet(viewsets.ModelViewSet):
     queryset = ScoringConfiguration.objects.all().order_by("education_level", "name")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -6500,7 +6498,7 @@ class StudentTermResultViewSet(
 
 
 # ===== SUPPORTING VIEWSETS =====
-class ResultSheetViewSet(AutoSectionFilterMixin, TeacherPortalCheckMixin, viewsets.ModelViewSet):
+class ResultSheetViewSet(TeacherPortalCheckMixin, viewsets.ModelViewSet):
     queryset = ResultSheet.objects.all()
     serializer_class = ResultSheetSerializer
     permission_classes = [IsAuthenticated]
@@ -6589,7 +6587,7 @@ class ResultSheetViewSet(AutoSectionFilterMixin, TeacherPortalCheckMixin, viewse
             )
 
 
-class AssessmentScoreViewSet(AutoSectionFilterMixin, TeacherPortalCheckMixin, viewsets.ModelViewSet):
+class AssessmentScoreViewSet(TeacherPortalCheckMixin, viewsets.ModelViewSet):
     queryset = AssessmentScore.objects.all()
     serializer_class = AssessmentScoreSerializer
     permission_classes = [IsAuthenticated]
@@ -6602,7 +6600,7 @@ class AssessmentScoreViewSet(AutoSectionFilterMixin, TeacherPortalCheckMixin, vi
         )
 
 
-class ResultCommentViewSet(AutoSectionFilterMixin, TeacherPortalCheckMixin, viewsets.ModelViewSet):
+class ResultCommentViewSet(TeacherPortalCheckMixin, viewsets.ModelViewSet):
     """ViewSet for managing result comments"""
 
     queryset = ResultComment.objects.all().order_by("-created_at")
@@ -6626,7 +6624,7 @@ class ResultCommentViewSet(AutoSectionFilterMixin, TeacherPortalCheckMixin, view
         serializer.save(commented_by=self.request.user)
 
 
-class ResultTemplateViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class ResultTemplateViewSet(viewsets.ModelViewSet):
     """ViewSet for managing result templates"""
 
     queryset = ResultTemplate.objects.all().order_by("-created_at")

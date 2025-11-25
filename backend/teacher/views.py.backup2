@@ -223,15 +223,6 @@ from utils.section_filtering import AutoSectionFilterMixin
 #     # In teachers/views.py - Updated get_queryset() method
 
 #     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
 #         """
 #         Filter queryset based on user permissions and section access.
 #         - Admins/staff see all teachers.
@@ -301,15 +292,6 @@ queryset = super().get_queryset()
 #     permission_classes = [permissions.IsAuthenticated]
 
 #     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
 #         queryset = AssignmentRequest.objects.all()
 
 #         # Filter by teacher
@@ -367,15 +349,6 @@ queryset = super().get_queryset()
 #     permission_classes = [permissions.IsAuthenticated]
 
 #     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
 #         queryset = TeacherSchedule.objects.all()
 #         teacher_id = self.request.query_params.get("teacher_id", None)
 #         if teacher_id:
@@ -801,11 +774,6 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             )
 
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
         """
         Filter queryset based on user permissions and section access.
         - Superadmin: See all teachers
@@ -927,11 +895,6 @@ class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
         """
         Filter assignment requests based on user role.
         - Superadmin: See all requests
@@ -1043,11 +1006,6 @@ class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
         """
         Filter teacher schedules based on user role.
         - Superadmin: See all schedules

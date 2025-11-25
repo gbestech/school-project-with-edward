@@ -423,6 +423,7 @@
 
 
 # utils/section_filtering.py - FIXED VERSION
+# utils/section_filtering.py - FIXED VERSION
 from django.db.models import Q
 from classroom.models import Section
 import logging
@@ -792,9 +793,12 @@ class SectionFilterMixin:
                 allowed_classrooms = Classroom.objects.filter(
                     section__grade_level__education_level__in=allowed_education_levels
                 )
+
+                # Filter teachers by classroom assignments
+                # Note: Teachers don't have direct 'classroom' field, only through assignments
                 return queryset.filter(
                     Q(classroomteacherassignment__classroom__in=allowed_classrooms)
-                    | Q(classroom__in=allowed_classrooms)
+                    | Q(assigned_classes__in=allowed_classrooms)
                 ).distinct()
 
             # ATTENDANCE MODELS

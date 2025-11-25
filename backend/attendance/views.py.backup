@@ -15,10 +15,8 @@ from classroom.models import Section
 from parent.models import ParentProfile
 from schoolSettings.permissions import HasAttendancePermission, HasAttendancePermissionOrReadOnly
 
-from utils.section_filtering import AutoSectionFilterMixin
 
-
-class AttendanceViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class AttendanceViewSet(viewsets.ModelViewSet):
     serializer_class = AttendanceSerializer
     queryset = Attendance.objects.all()
     permission_classes = [IsAuthenticated]
@@ -48,29 +46,20 @@ class AttendanceViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             raise
 
     def get_queryset(self):
-
-
-        # Apply section filtering
-
-        queryset = super().get_queryset()
-
-        
-
-        # Apply additional filters
         user = self.request.user
 
         # If parent, restrict to only their children's attendance
         if user.is_authenticated and user.role == "parent":
             try:
                 parent_profile = ParentProfile.objects.get(user=user)
-                return queryset.filter(
+                return Attendance.objects.filter(
                     student__in=parent_profile.children.all()
                 )
             except ParentProfile.DoesNotExist:
                 return Attendance.objects.none()
 
         # Other roles: return all
-        return queryset
+        return Attendance.objects.all()
 
     @action(detail=False, methods=["post"], url_path="import-csv")
     def import_csv(self, request):

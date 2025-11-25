@@ -1,6 +1,4 @@
 # from rest_framework import viewsets, status, permissions
-
-from utils.section_filtering import AutoSectionFilterMixin
 # from rest_framework.decorators import action
 # from rest_framework.response import Response
 # from django.shortcuts import get_object_or_404
@@ -223,15 +221,6 @@ from utils.section_filtering import AutoSectionFilterMixin
 #     # In teachers/views.py - Updated get_queryset() method
 
 #     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
 #         """
 #         Filter queryset based on user permissions and section access.
 #         - Admins/staff see all teachers.
@@ -295,21 +284,12 @@ queryset = super().get_queryset()
 
 
 # # Keep your other ViewSets as they are...
-# class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class AssignmentRequestViewSet(viewsets.ModelViewSet):
 #     queryset = AssignmentRequest.objects.all()
 #     serializer_class = AssignmentRequestSerializer
 #     permission_classes = [permissions.IsAuthenticated]
 
 #     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
 #         queryset = AssignmentRequest.objects.all()
 
 #         # Filter by teacher
@@ -361,21 +341,12 @@ queryset = super().get_queryset()
 #         return Response({"status": "Request cancelled"})
 
 
-# class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+# class TeacherScheduleViewSet(viewsets.ModelViewSet):
 #     queryset = TeacherSchedule.objects.all()
 #     serializer_class = TeacherScheduleSerializer
 #     permission_classes = [permissions.IsAuthenticated]
 
 #     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
 #         queryset = TeacherSchedule.objects.all()
 #         teacher_id = self.request.query_params.get("teacher_id", None)
 #         if teacher_id:
@@ -801,11 +772,6 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             )
 
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
         """
         Filter queryset based on user permissions and section access.
         - Superadmin: See all teachers
@@ -897,7 +863,7 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return queryset
 
 
-class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class AssignmentRequestViewSet(viewsets.ModelViewSet):
     queryset = AssignmentRequest.objects.all()
     serializer_class = AssignmentRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -927,11 +893,6 @@ class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
         """
         Filter assignment requests based on user role.
         - Superadmin: See all requests
@@ -1013,7 +974,7 @@ class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return Response({"status": "Request cancelled"})
 
 
-class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class TeacherScheduleViewSet(viewsets.ModelViewSet):
     queryset = TeacherSchedule.objects.all()
     serializer_class = TeacherScheduleSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1043,11 +1004,6 @@ class TeacherScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
     def get_queryset(self):
-
-        # Apply section filtering
-        queryset = super().get_queryset()
-        
-        # Apply additional filters
         """
         Filter teacher schedules based on user role.
         - Superadmin: See all schedules

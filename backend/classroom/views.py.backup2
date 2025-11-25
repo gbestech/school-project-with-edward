@@ -82,16 +82,7 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["order", "name"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
-        return queryset
+        return GradeLevel.objects.all()
 
     @action(detail=True, methods=["get"])
     def subjects(self, request, pk=None):
@@ -165,15 +156,6 @@ class SectionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "grade_level__order"]
 
     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
         return Section.objects.select_related("grade_level").all()
 
 
@@ -192,16 +174,7 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "stream_type", "created_at"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
-        return queryset
+        return Stream.objects.all()
 
     @action(detail=False, methods=["get"])
     def by_type(self, request):
@@ -230,15 +203,6 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["user__first_name", "user__last_name", "hire_date"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
         return Teacher.objects.select_related("user").all()
 
     @action(detail=True, methods=["get"])
@@ -306,15 +270,6 @@ class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
         return []  # Placeholder - implement when Student model is available
 
     @action(detail=True, methods=["get"])
@@ -353,16 +308,7 @@ class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "code", "subject_order"]
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
-        return queryset
+        return Subject.objects.all()
 
     @action(detail=False, methods=["get"])
     def by_category(self, request):
@@ -435,16 +381,7 @@ class SubjectAnalyticsViewSet(AutoSectionFilterMixin, viewsets.ReadOnlyModelView
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
-        return queryset
+        return Subject.objects.all()
 
 
 class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
@@ -454,16 +391,7 @@ class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-
-
-# Apply section filtering
-
-queryset = super().get_queryset()
-
-
-
-# Apply additional filters
-        return queryset
+        return Subject.objects.all()
 
 
 class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
@@ -486,11 +414,6 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "created_at", "current_enrollment"]
 
     # def get_queryset(self):
-
-    # Apply section filtering
-    queryset = super().get_queryset()
-    
-    # Apply additional filters
     #     """Filter classrooms based on user's role, section, and education level"""
     #     queryset = Classroom.objects.select_related(
     #         "section__grade_level", "academic_session", "term", "class_teacher__user"
@@ -941,11 +864,6 @@ class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelVi
     serializer_class = ClassroomTeacherAssignmentSerializer
 
     def get_queryset(self):
-
-            # Apply section filtering
-            queryset = super().get_queryset()
-            
-            # Apply additional filters
         return ClassroomTeacherAssignment.objects.select_related(
             "classroom", "teacher__user", "subject"
         ).filter(is_active=True)
@@ -1028,11 +946,6 @@ class StudentEnrollmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = StudentEnrollmentSerializer
 
     def get_queryset(self):
-
-            # Apply section filtering
-            queryset = super().get_queryset()
-            
-            # Apply additional filters
         return StudentEnrollment.objects.select_related(
             "student__user", "classroom"
         ).filter(is_active=True)
@@ -1112,15 +1025,6 @@ class ClassScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-
-
-    # Apply section filtering
-
-    queryset = super().get_queryset()
-
-    
-
-    # Apply additional filters
         return []  # Placeholder - implement when model is available
 
     @action(detail=False, methods=["get"])
