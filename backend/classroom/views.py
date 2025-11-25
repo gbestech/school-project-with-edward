@@ -369,6 +369,400 @@ class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return queryset
 
 
+class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+    """ViewSet for Classroom model"""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ClassroomSerializer
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_fields = [
+        "section__grade_level__education_level",
+        "is_active",
+        "academic_session",
+        "term",
+    ]
+    search_fields = ["name", "section__name", "section__grade_level__name"]
+    ordering_fields = ["name", "created_at", "current_enrollment"]
+
+    # def get_queryset(self):
+
+    # Apply section filtering
+    queryset = super().get_queryset()
+
+    def get_queryset(self):
+        """Filter classrooms based on user's role, section, and education level"""
+        queryset = Classroom.objects.select_related(
+            "section__grade_level",
+            "academic_session",
+            "term",
+            "class_teacher__user",
+        ).prefetch_related(
+            "students",
+            "schedules",
+            "subject_teachers__user",
+        )
+
+        user = self.request.user
+
+        # Super Admin sees everything
+        if user.role == "superadmin" or user.is_superuser:
+            return queryset
+
+        try:
+            # Apply section filtering for all other users
+            filtered_queryset = self.filter_classrooms_by_section_access(queryset)
+
+            # ✅ Explicitly separate Nursery/Primary vs Secondary levels
+            nursery_primary_classes = filtered_queryset.filter(
+                section__grade_level__education_level__in=["NURSERY", "PRIMARY"]
+            )
+
+            secondary_classes = filtered_queryset.filter(
+                section__grade_level__education_level__in=[
+                    "JUNIOR_SECONDARY",
+                    "SENIOR_SECONDARY",
+                ]
+            )
+
+            # ✅ Prefetch differently based on section
+            nursery_primary_classes = nursery_primary_classes.prefetch_related(
+                "class_teacher__user"
+            )
+
+            secondary_classes = secondary_classes.prefetch_related(
+                "subject_teachers__user"
+            )
+
+            # ✅ Combine both sets into a single queryset (union)
+            combined_queryset = nursery_primary_classes.union(
+                secondary_classes, all=True
+            )
+
+            return combined_queryset.order_by("section__grade_level__order")
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Section filtering error for user {user.username}: {str(e)}")
+            return queryset.none()
+
+    def get_serializer_class(self):
+        if self.action in ["retrieve", "list"]:
+            return ClassroomDetailSerializer
+        return ClassroomSerializer
+
+    #         )
+    # 🔍 DEBUG LOGGING ADDED ABOVE
+    @action(detail=True, methods=["get"])
+    def students(self, request, pk=None):
+        """Get students for a specific classroom"""
+        try:
+            # ✅ FIX: Get classroom directly without section filtering
+            # The teacher already has access if they can see it in their list
+            classroom = Classroom.objects.select_related("section__grade_level").get(
+                pk=pk
+            )
+
+            print(
+                f"🔍 Fetching students for classroom: {classroom.name} (ID: {classroom.id})"
+            )
+
+            # ✅ CORRECT: Use StudentEnrollment to get related students
+            enrollments = StudentEnrollment.objects.filter(
+                classroom=classroom, is_active=True
+            ).select_related("student__user")
+
+            # Extract students from enrollments
+            students = [enrollment.student for enrollment in enrollments]
+
+            print(f"✅ Found {len(students)} students via StudentEnrollment")
+
+            from students.serializers import StudentListSerializer
+
+            serializer = StudentListSerializer(students, many=True)
+            return Response(serializer.data)
+
+        except Classroom.DoesNotExist:
+            return Response(
+                {"error": "Classroom not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error fetching classroom students: {str(e)}")
+            import traceback
+
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["get"])
+    def teachers(self, request, pk=None):
+        """Get teachers for a specific classroom"""
+        classroom = self.get_object()
+        assignments = classroom.classroomteacherassignment_set.filter(
+            is_active=True
+        ).select_related("teacher__user", "subject")
+        serializer = ClassroomTeacherAssignmentSerializer(assignments, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def subjects(self, request, pk=None):
+        """Get subjects for a specific classroom"""
+        classroom = self.get_object()
+        subjects = Subject.objects.filter(
+            classroomteacherassignment__classroom=classroom,
+            classroomteacherassignment__is_active=True,
+        ).distinct()
+        serializer = SubjectSerializer(subjects, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"])
+    def schedule(self, request, pk=None):
+        """Get schedule for a specific classroom"""
+        classroom = self.get_object()
+        schedules = classroom.schedules.filter(is_active=True).select_related(
+            "subject", "teacher__user"
+        )
+        serializer = ClassScheduleSerializer(schedules, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def statistics(self, request):
+        """Get classroom statistics"""
+        total_classrooms = Classroom.objects.count()
+        active_classrooms = Classroom.objects.filter(is_active=True).count()
+        total_enrollment = sum(c.current_enrollment for c in Classroom.objects.all())
+        avg_enrollment = (
+            total_enrollment / total_classrooms if total_classrooms > 0 else 0
+        )
+
+        # By education level
+        nursery_count = Classroom.objects.filter(
+            section__grade_level__education_level="NURSERY"
+        ).count()
+        primary_count = Classroom.objects.filter(
+            section__grade_level__education_level="PRIMARY"
+        ).count()
+        secondary_count = Classroom.objects.filter(
+            section__grade_level__education_level="SECONDARY"
+        ).count()
+
+        return Response(
+            {
+                "total_classrooms": total_classrooms,
+                "active_classrooms": active_classrooms,
+                "total_enrollment": total_enrollment,
+                "average_enrollment": round(avg_enrollment, 1),
+                "by_education_level": {
+                    "nursery": nursery_count,
+                    "primary": primary_count,
+                    "secondary": secondary_count,
+                },
+            }
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Override destroy to return a proper JSON response"""
+        classroom = self.get_object()
+        classroom_name = classroom.name
+
+        # Delete the classroom
+        classroom.delete()
+
+        return Response(
+            {
+                "message": f"Classroom {classroom_name} has been successfully deleted",
+                "status": "success",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"])
+    def assign_teacher(self, request, pk=None):
+        """Assign a teacher to a classroom for a specific subject"""
+        classroom = self.get_object()
+        teacher_id = request.data.get("teacher_id")
+        subject_id = request.data.get("subject_id")
+
+        if not teacher_id or not subject_id:
+            return Response(
+                {"error": "Both teacher_id and subject_id are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from teacher.models import Teacher
+            from subject.models import Subject
+
+            teacher = Teacher.objects.get(id=teacher_id)
+            subject = Subject.objects.get(id=subject_id)
+
+            # Check if this specific teacher is already assigned to this specific subject in this classroom
+            existing_assignment = ClassroomTeacherAssignment.objects.filter(
+                classroom=classroom, teacher=teacher, subject=subject, is_active=True
+            ).first()
+
+            if existing_assignment:
+                return Response(
+                    {
+                        "error": f"Teacher {teacher.user.full_name} is already assigned to {subject.name} in this classroom"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Create new assignment
+            assignment = ClassroomTeacherAssignment.objects.create(
+                classroom=classroom, teacher=teacher, subject=subject
+            )
+
+            # For nursery and primary classes, set the class_teacher field
+            # This ensures the single teacher system works properly
+            if classroom.section.grade_level.education_level in ["NURSERY", "PRIMARY"]:
+                classroom.class_teacher = teacher
+                classroom.save()
+
+            serializer = ClassroomTeacherAssignmentSerializer(assignment)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Teacher.DoesNotExist:
+            return Response(
+                {"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Subject.DoesNotExist:
+            return Response(
+                {"error": "Subject not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["post"])
+    def remove_teacher(self, request, pk=None):
+        """Remove a teacher assignment from a classroom"""
+        classroom = self.get_object()
+        teacher_id = request.data.get("teacher_id")
+        subject_id = request.data.get("subject_id")
+
+        if not teacher_id or not subject_id:
+            return Response(
+                {"error": "Both teacher_id and subject_id are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            assignment = ClassroomTeacherAssignment.objects.get(
+                classroom=classroom,
+                teacher_id=teacher_id,
+                subject_id=subject_id,
+                is_active=True,
+            )
+            assignment.is_active = False
+            assignment.save()
+
+            # For nursery and primary classes, clear the class_teacher field if no more assignments
+            if classroom.section.grade_level.education_level in ["NURSERY", "PRIMARY"]:
+                remaining_assignments = classroom.classroomteacherassignment_set.filter(
+                    is_active=True
+                ).count()
+                if remaining_assignments == 0:
+                    classroom.class_teacher = None
+                    classroom.save()
+
+            return Response({"message": "Teacher assignment removed successfully"})
+
+        except ClassroomTeacherAssignment.DoesNotExist:
+            return Response(
+                {"error": "Teacher assignment not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["post"])
+    def enroll_student(self, request, pk=None):
+        """Enroll a student in this classroom"""
+        classroom = self.get_object()
+        student_id = request.data.get("student_id")
+
+        if not student_id:
+            return Response(
+                {"error": "student_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            from students.models import Student
+
+            student = Student.objects.get(id=student_id)
+
+            # Check if student is already enrolled in this classroom
+            existing_enrollment = StudentEnrollment.objects.filter(
+                student=student, classroom=classroom, is_active=True
+            ).first()
+
+            if existing_enrollment:
+                return Response(
+                    {
+                        "error": f"Student {student.user.full_name} is already enrolled in this classroom"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Create enrollment
+            enrollment = StudentEnrollment.objects.create(
+                student=student, classroom=classroom
+            )
+
+            serializer = StudentEnrollmentSerializer(enrollment)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Student.DoesNotExist:
+            return Response(
+                {"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=["post"])
+    def unenroll_student(self, request, pk=None):
+        """Unenroll a student from this classroom"""
+        classroom = self.get_object()
+        student_id = request.data.get("student_id")
+
+        if not student_id:
+            return Response(
+                {"error": "student_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            enrollment = StudentEnrollment.objects.get(
+                student_id=student_id, classroom=classroom, is_active=True
+            )
+            enrollment.is_active = False
+            enrollment.save()
+
+            return Response({"message": "Student unenrolled successfully"})
+
+        except StudentEnrollment.DoesNotExist:
+            return Response(
+                {"error": "Student enrollment not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for ClassroomTeacherAssignment model"""
 
