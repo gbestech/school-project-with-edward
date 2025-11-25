@@ -8,7 +8,7 @@ from teacher.models import Teacher
 from classroom.models import Classroom
 from attendance.models import Attendance
 from parent.models import Message, ParentProfile
-from utils.section_filtering import SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 import datetime
 
 

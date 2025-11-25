@@ -1,4 +1,4 @@
-# utils/section_filtering.py
+# utils/section_filtering.py - ENHANCED VERSION
 from django.db.models import Q
 from classroom.models import Section
 import logging
@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 class SectionFilterMixin:
     """
-    Mixin to filter querysets based on user's section and role.
+    Enhanced mixin to automatically filter querysets based on user's section and role.
+    Now includes automatic queryset filtering in get_queryset().
     """
 
     def get_user_role(self):
@@ -40,6 +41,14 @@ class SectionFilterMixin:
                     return "admin"
                 if "secondary_admin" in role_names:
                     return "secondary_admin"
+                if "nursery_admin" in role_names:
+                    return "nursery_admin"
+                if "primary_admin" in role_names:
+                    return "primary_admin"
+                if "junior_secondary_admin" in role_names:
+                    return "junior_secondary_admin"
+                if "senior_secondary_admin" in role_names:
+                    return "senior_secondary_admin"
                 if "teacher" in role_names:
                     return "teacher"
                 if "student" in role_names:
@@ -85,26 +94,23 @@ class SectionFilterMixin:
                 ]
             )
 
-        # Section Admins see only their section
-        if hasattr(user, "is_section_admin") and user.is_section_admin:
-            if hasattr(user, "section") and user.section:
-                section_to_edu = {
-                    "nursery": "NURSERY",
-                    "primary": "PRIMARY",
-                    "junior_secondary": "JUNIOR_SECONDARY",
-                    "senior_secondary": "SENIOR_SECONDARY",
-                }
-                edu_level = section_to_edu.get(
-                    user.section.lower()
-                    if isinstance(user.section, str)
-                    else user.section
-                )
-
-                if edu_level:
-                    logger.info(f"Section admin access for {edu_level}")
-                    return Section.objects.filter(
-                        grade_level__education_level=edu_level
-                    )
+        # Section-specific admins
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+        ]:
+            role_to_education_level = {
+                "nursery_admin": "NURSERY",
+                "primary_admin": "PRIMARY",
+                "junior_secondary_admin": "JUNIOR_SECONDARY",
+                "senior_secondary_admin": "SENIOR_SECONDARY",
+            }
+            edu_level = role_to_education_level.get(role)
+            if edu_level:
+                logger.info(f"Section admin access for {edu_level}")
+                return Section.objects.filter(grade_level__education_level=edu_level)
 
         # Teachers see sections of their assigned classrooms
         if role == "teacher":
@@ -170,173 +176,9 @@ class SectionFilterMixin:
         logger.info(f"Education levels from sections: {education_levels}")
         return education_levels
 
-    def filter_students_by_section_access(self, queryset):
-        """Filter students based on user's role and section"""
-        user = self.request.user
-        role = self.get_user_role()
-
-        # Super Admin sees everything
-        if role == "superadmin" or user.is_superuser or user.is_staff:
-            return queryset
-
-        # Admin/Principal sees everything
-        if role in ["admin", "principal"]:
-            return queryset
-
-        # Secondary Admin sees both JSS and SSS
-        if role == "secondary_admin":
-            return queryset.filter(
-                education_level__in=["JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
-            )
-
-        # Section Admins see only their section
-        if hasattr(user, "is_section_admin") and user.is_section_admin:
-            if hasattr(user, "section") and user.section:
-                section_to_edu = {
-                    "nursery": "NURSERY",
-                    "primary": "PRIMARY",
-                    "junior_secondary": "JUNIOR_SECONDARY",
-                    "senior_secondary": "SENIOR_SECONDARY",
-                }
-                edu_level = section_to_edu.get(
-                    user.section.lower()
-                    if isinstance(user.section, str)
-                    else user.section
-                )
-
-                if edu_level:
-                    return queryset.filter(education_level=edu_level)
-
-        # Teachers see only students in their assigned classes
-        if role == "teacher":
-            try:
-                from teacher.models import Teacher
-                from classroom.models import Classroom, StudentEnrollment
-
-                teacher = Teacher.objects.get(user=user)
-
-                assigned_classrooms = Classroom.objects.filter(
-                    Q(class_teacher=teacher)
-                    | Q(classroomteacherassignment__teacher=teacher)
-                ).distinct()
-
-                student_ids = StudentEnrollment.objects.filter(
-                    classroom__in=assigned_classrooms, is_active=True
-                ).values_list("student_id", flat=True)
-
-                return queryset.filter(id__in=student_ids)
-            except Teacher.DoesNotExist:
-                logger.warning(f"Teacher not found for user {user.username}")
-                return queryset.none()
-            except Exception as e:
-                logger.error(f"Error filtering students by teacher: {str(e)}")
-                return queryset.none()
-
-        # Students see only themselves
-        if role == "student":
-            try:
-                from students.models import Student
-
-                student = Student.objects.get(user=user)
-                return queryset.filter(id=student.id)
-            except:
-                return queryset.none()
-
-        # Parents see only their children
-        if role == "parent":
-            try:
-                from parent.models import Parent
-
-                parent = Parent.objects.get(user=user)
-                return queryset.filter(parents=parent)
-            except:
-                return queryset.none()
-
-        # Default: no access
-        logger.warning(f"No student access for user {user.username} with role {role}")
-        return queryset.none()
-
-    def filter_classrooms_by_section_access(self, queryset):
-        """Filter classrooms based on user's role and section"""
-        user = self.request.user
-        role = self.get_user_role()
-
-        # Super Admin sees everything
-        if role == "superadmin" or user.is_superuser or user.is_staff:
-            return queryset
-
-        # Admin/Principal sees everything
-        if role in ["admin", "principal"]:
-            return queryset
-
-        # Secondary Admin sees both JSS and SSS classrooms
-        if role == "secondary_admin":
-            return queryset.filter(
-                section__grade_level__education_level__in=[
-                    "JUNIOR_SECONDARY",
-                    "SENIOR_SECONDARY",
-                ]
-            )
-
-        # Section Admins see only their section's classrooms
-        if hasattr(user, "is_section_admin") and user.is_section_admin:
-            if hasattr(user, "section") and user.section:
-                section_to_edu = {
-                    "nursery": "NURSERY",
-                    "primary": "PRIMARY",
-                    "junior_secondary": "JUNIOR_SECONDARY",
-                    "senior_secondary": "SENIOR_SECONDARY",
-                }
-                edu_level = section_to_edu.get(
-                    user.section.lower()
-                    if isinstance(user.section, str)
-                    else user.section
-                )
-
-                if edu_level:
-                    return queryset.filter(
-                        section__grade_level__education_level=edu_level
-                    )
-
-        # Teachers see only their assigned classrooms
-        if role == "teacher":
-            try:
-                from teacher.models import Teacher
-
-                teacher = Teacher.objects.get(user=user)
-
-                return queryset.filter(
-                    Q(class_teacher=teacher)
-                    | Q(classroomteacherassignment__teacher=teacher)
-                ).distinct()
-            except Teacher.DoesNotExist:
-                logger.warning(f"Teacher not found for user {user.username}")
-                return queryset.none()
-            except Exception as e:
-                logger.error(f"Error filtering classrooms: {str(e)}")
-                return queryset.none()
-
-        # Students see classrooms they're enrolled in
-        if role == "student":
-            try:
-                from students.models import Student
-                from classroom.models import StudentEnrollment
-
-                student = Student.objects.get(user=user)
-                classroom_ids = StudentEnrollment.objects.filter(
-                    student=student, is_active=True
-                ).values_list("classroom_id", flat=True)
-
-                return queryset.filter(id__in=classroom_ids)
-            except:
-                return queryset.none()
-
-        # Default: no access
-        logger.warning(f"No classroom access for user {user.username} with role {role}")
-        return queryset.none()
-
     def get_user_education_level_access(self):
-        """Returns the specific education levels the user has access to.
+        """
+        Returns the specific education levels the user has access to.
         More granular than section access.
         """
         user = self.request.user
@@ -361,31 +203,18 @@ class SectionFilterMixin:
             logger.info("Secondary admin - JSS and SSS")
             return ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"]
 
-        # Check for section-specific admin roles
-        if hasattr(user, "is_section_admin") and user.is_section_admin:
-            if hasattr(user, "section"):
-                section_name = (
-                    user.section.lower()
-                    if isinstance(user.section, str)
-                    else str(user.section).lower()
-                )
+        # Section-specific admins
+        section_admin_mapping = {
+            "nursery_admin": ["NURSERY"],
+            "primary_admin": ["PRIMARY"],
+            "junior_secondary_admin": ["JUNIOR_SECONDARY"],
+            "senior_secondary_admin": ["SENIOR_SECONDARY"],
+        }
 
-                section_mapping = {
-                    "nursery": ["NURSERY"],
-                    "nursery_admin": ["NURSERY"],
-                    "primary": ["PRIMARY"],
-                    "primary_admin": ["PRIMARY"],
-                    "junior_secondary": ["JUNIOR_SECONDARY"],
-                    "junior_secondary_admin": ["JUNIOR_SECONDARY"],
-                    "senior_secondary": ["SENIOR_SECONDARY"],
-                    "senior_secondary_admin": ["SENIOR_SECONDARY"],
-                    "secondary": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
-                    "secondary_admin": ["JUNIOR_SECONDARY", "SENIOR_SECONDARY"],
-                }
-
-                levels = section_mapping.get(section_name, [])
-                logger.info(f"Section admin for {section_name} - access: {levels}")
-                return levels
+        if role in section_admin_mapping:
+            levels = section_admin_mapping[role]
+            logger.info(f"Section admin {role} - access: {levels}")
+            return levels
 
         # For teachers, get from their assigned classrooms/subjects
         if role == "teacher":
@@ -418,3 +247,176 @@ class SectionFilterMixin:
 
         logger.warning(f"No education level access for user {user.username}")
         return []
+
+    def apply_section_filters(self, queryset):
+        """
+        🔥 NEW: Automatically apply section-based filtering to any queryset.
+        This is the core method that enforces section restrictions.
+        """
+        user = self.request.user
+        role = self.get_user_role()
+
+        # Get the model name to determine how to filter
+        model_name = queryset.model.__name__
+
+        logger.info(
+            f"Applying section filters for {user.username} (role: {role}) on {model_name}"
+        )
+
+        # Super admins and general admins see everything
+        if role in ["superadmin", "admin", "principal"] or user.is_superuser:
+            logger.info(f"✅ Admin access - no filtering applied")
+            return queryset
+
+        # Get user's allowed education levels
+        allowed_education_levels = self.get_user_education_level_access()
+
+        if not allowed_education_levels:
+            logger.warning(f"❌ No education level access for {user.username}")
+            return queryset.none()
+
+        logger.info(f"🔒 Restricting to education levels: {allowed_education_levels}")
+
+        # Apply filters based on model type
+        try:
+            # STUDENT MODELS
+            if model_name == "Student":
+                return queryset.filter(education_level__in=allowed_education_levels)
+
+            # CLASSROOM MODELS
+            elif model_name == "Classroom":
+                return queryset.filter(
+                    grade_level__education_level__in=allowed_education_levels
+                )
+
+            # ENROLLMENT MODELS
+            elif model_name == "StudentEnrollment":
+                return queryset.filter(
+                    student__education_level__in=allowed_education_levels
+                )
+
+            # SUBJECT MODELS
+            elif model_name == "Subject":
+                return queryset.filter(education_level__in=allowed_education_levels)
+
+            # GRADE LEVEL MODELS
+            elif model_name == "GradeLevel":
+                return queryset.filter(education_level__in=allowed_education_levels)
+
+            # EXAM/RESULT MODELS
+            elif model_name in ["ExamSession", "Exam"]:
+                return queryset.filter(
+                    Q(education_level__in=allowed_education_levels)
+                    | Q(grade_level__education_level__in=allowed_education_levels)
+                )
+
+            elif model_name in [
+                "SeniorSecondaryResult",
+                "SeniorSecondaryTermReport",
+                "SeniorSecondarySessionResult",
+            ]:
+                if "SENIOR_SECONDARY" in allowed_education_levels:
+                    return queryset
+                return queryset.none()
+
+            elif model_name in ["JuniorSecondaryResult", "JuniorSecondaryTermReport"]:
+                if "JUNIOR_SECONDARY" in allowed_education_levels:
+                    return queryset
+                return queryset.none()
+
+            elif model_name in ["PrimaryResult", "PrimaryTermReport"]:
+                if "PRIMARY" in allowed_education_levels:
+                    return queryset
+                return queryset.none()
+
+            elif model_name in ["NurseryResult", "NurseryTermReport"]:
+                if "NURSERY" in allowed_education_levels:
+                    return queryset
+                return queryset.none()
+
+            # TEACHER MODELS (teachers should see all teachers in their education levels)
+            elif model_name == "Teacher":
+                from classroom.models import Classroom
+
+                # Get classrooms in allowed education levels
+                allowed_classrooms = Classroom.objects.filter(
+                    grade_level__education_level__in=allowed_education_levels
+                )
+                return queryset.filter(
+                    Q(classroomteacherassignment__classroom__in=allowed_classrooms)
+                    | Q(classroom__in=allowed_classrooms)
+                ).distinct()
+
+            # ATTENDANCE MODELS
+            elif model_name == "Attendance":
+                return queryset.filter(
+                    student__education_level__in=allowed_education_levels
+                )
+
+            # TIMETABLE MODELS
+            elif model_name == "Timetable":
+                return queryset.filter(
+                    classroom__grade_level__education_level__in=allowed_education_levels
+                )
+
+            # DEFAULT: Try common foreign key relationships
+            else:
+                # Try student relationship
+                if hasattr(queryset.model, "student"):
+                    return queryset.filter(
+                        student__education_level__in=allowed_education_levels
+                    )
+
+                # Try classroom relationship
+                elif hasattr(queryset.model, "classroom"):
+                    return queryset.filter(
+                        classroom__grade_level__education_level__in=allowed_education_levels
+                    )
+
+                # Try education_level field directly
+                elif hasattr(queryset.model, "education_level"):
+                    return queryset.filter(education_level__in=allowed_education_levels)
+
+                # If no recognizable relationship, log warning and return empty
+                logger.warning(f"⚠️ No section filtering rule for model {model_name}")
+                return queryset
+
+        except Exception as e:
+            logger.error(f"❌ Error applying section filters: {str(e)}", exc_info=True)
+            return queryset
+
+    def filter_students_by_section_access(self, queryset):
+        """Filter students based on user's role and section"""
+        return self.apply_section_filters(queryset)
+
+    def filter_classrooms_by_section_access(self, queryset):
+        """Filter classrooms based on user's role and section"""
+        return self.apply_section_filters(queryset)
+
+
+# 🔥 NEW: Automatic Section Enforcement Mixin
+class AutoSectionFilterMixin(SectionFilterMixin):
+    """
+    Enhanced mixin that AUTOMATICALLY applies section filtering to get_queryset().
+    Just add this mixin to any ViewSet and section filtering is enforced automatically.
+    """
+
+    def get_queryset(self):
+        """
+        Override get_queryset to automatically apply section filtering.
+        This ensures ALL queries are filtered by section.
+        """
+        # Get the base queryset (from parent class or model)
+        if hasattr(super(), "get_queryset"):
+            queryset = super().get_queryset()
+        else:
+            queryset = (
+                self.queryset.all()
+                if hasattr(self, "queryset")
+                else self.model.objects.all()
+            )
+
+        # Apply section-based filtering
+        filtered_queryset = self.apply_section_filters(queryset)
+
+        return filtered_queryset

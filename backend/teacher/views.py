@@ -11,7 +11,7 @@
 # )
 # from classroom.models import GradeLevel, Section
 # from subject.models import Subject
-# from utils.section_filtering import SectionFilterMixin
+# from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 # from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 # from rest_framework_simplejwt.authentication import JWTAuthentication
 # from django.db import models
@@ -102,7 +102,7 @@
 #         return self.has_permission(request, view)
 
 
-# class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     queryset = Teacher.objects.select_related("user").all()
 #     serializer_class = TeacherSerializer
 #     # Add JWT authentication support
@@ -504,7 +504,7 @@ from .serializers import (
 )
 from classroom.models import GradeLevel, Section
 from subject.models import Subject
-from utils.section_filtering import SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db import models
@@ -596,7 +596,7 @@ class TeacherModulePermission(permissions.BasePermission):
         return self.has_permission(request, view)
 
 
-class TeacherViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     queryset = Teacher.objects.select_related("user").all()
     serializer_class = TeacherSerializer
     authentication_classes = [

@@ -10,7 +10,7 @@
 # from io import TextIOWrapper
 # import csv
 # from datetime import datetime, timedelta
-# from utils.section_filtering import SectionFilterMixin
+# from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 # import logging
 
 # # Import models
@@ -71,7 +71,7 @@
 #     return render(request, "exams/exam_schedule_form.html", {"form": form})
 
 
-# class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """
 #     Streamlined ViewSet for managing exams
 #     """
@@ -991,7 +991,7 @@
 #         )
 
 
-# # class ExamScheduleViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# # class ExamScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 # #     """ViewSet for exam schedules"""
 
 # #     queryset = ExamSchedule.objects.all()
@@ -1117,7 +1117,7 @@
 #         )
 
 
-# class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for exam registrations"""
 
 #     queryset = ExamRegistration.objects.select_related("exam", "student")
@@ -1270,7 +1270,7 @@
 #         )
 
 
-# class ResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for exam results"""
 
 #     queryset = StudentResult.objects.select_related("exam", "student", "subject")
@@ -1408,7 +1408,7 @@
 # from io import TextIOWrapper
 # import csv
 # from datetime import datetime, timedelta
-# from utils.section_filtering import SectionFilterMixin
+# from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 # import logging
 
 # # Import models
@@ -1469,7 +1469,7 @@
 #     return render(request, "exams/exam_schedule_form.html", {"form": form})
 
 
-# class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """
 #     Streamlined ViewSet for managing exams with section-based filtering
 #     """
@@ -2320,7 +2320,7 @@ from django.utils import timezone
 from io import TextIOWrapper
 import csv
 from datetime import datetime, timedelta
-from utils.section_filtering import SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 import logging
 
 # Import models
@@ -2381,7 +2381,7 @@ def create_exam_schedule(request):
     return render(request, "exams/exam_schedule_form.html", {"form": form})
 
 
-class ExamViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """
     Streamlined ViewSet for managing exams with section-based filtering
     """
@@ -3414,7 +3414,7 @@ class ExamScheduleViewSet(viewsets.ModelViewSet):
         )
 
 
-class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for exam registrations with section filtering"""
 
     queryset = ExamRegistration.objects.select_related("exam", "student")
@@ -3613,7 +3613,7 @@ class ExamRegistrationViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         )
 
 
-class ResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for exam results with section filtering"""
 
     queryset = StudentResult.objects.select_related("exam", "student", "subject")

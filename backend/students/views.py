@@ -7,7 +7,7 @@ from schoolSettings.permissions import (
     HasStudentsPermission,
     HasStudentsPermissionOrReadOnly,
 )
-from utils.section_filtering import SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 from django.db.models import Avg, Count, Q
 from classroom.models import ClassSchedule, Classroom, Section, GradeLevel
 from django.shortcuts import get_object_or_404
@@ -321,7 +321,7 @@ def student_schedule_view(request):
         return Response({"error": f"Failed to fetch schedule: {str(e)}"}, status=500)
 
 
-class StudentViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     permission_classes = [HasStudentsPermissionOrReadOnly]
     filter_backends = [
         DjangoFilterBackend,

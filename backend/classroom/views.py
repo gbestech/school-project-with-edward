@@ -16,7 +16,7 @@ from django.utils import timezone
 from django.conf import settings
 import logging
 
-from utils.section_filtering import SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 from academics.models import AcademicSession, Term
 from subject.models import Subject
 
@@ -392,7 +392,7 @@ class SubjectManagementViewSet(viewsets.ModelViewSet):
         return Subject.objects.all()
 
 
-class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Classroom model"""
 
     permission_classes = [IsAuthenticated]

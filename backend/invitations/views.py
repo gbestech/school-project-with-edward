@@ -9,6 +9,7 @@ from .serializers import InvitationSerializer
 
 
 from utils.email import send_email_via_brevo  # your helper
+from utils.section_filtering import AutoSectionFilterMixin
 from django.conf import settings
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.exceptions import NotFound

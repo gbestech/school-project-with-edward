@@ -1,4 +1,5 @@
 from utils.email import send_email_via_brevo
+from utils.section_filtering import AutoSectionFilterMixin
 from django.http import JsonResponse
 
 

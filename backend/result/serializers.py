@@ -1996,6 +1996,9 @@ from .models import (
 class StudentMinimalSerializer(serializers.ModelSerializer):
     """Minimal student serializer to avoid circular imports"""
 
+    admission_number = serializers.CharField(
+        source="registration_number", read_only=True
+    )
     full_name = serializers.CharField(read_only=True)
     student_class_display = serializers.CharField(
         source="get_student_class_display", read_only=True

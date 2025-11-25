@@ -9,7 +9,7 @@
 # from django.db import transaction
 # from decimal import Decimal
 # import logging
-# from utils.section_filtering import SectionFilterMixin
+# from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 
 # from .models import (
 #     StudentResult,
@@ -357,7 +357,7 @@
 
 
 # # ===== LEGACY STUDENT RESULT VIEWSET =====
-# class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class StudentResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """Base StudentResult ViewSet - mainly for legacy support"""
 
 #     queryset = StudentResult.objects.all()
@@ -520,7 +520,7 @@
 #             )
 
 
-# class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class StudentTermResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     queryset = StudentTermResult.objects.all()
 #     serializer_class = StudentTermResultSerializer
 #     permission_classes = [IsAuthenticated]
@@ -754,7 +754,7 @@
 
 
 # # ===== SENIOR SECONDARY VIEWSETS =====
-# class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class SeniorSecondaryTermReportViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for consolidated Senior Secondary term reports"""
 
 #     queryset = SeniorSecondaryTermReport.objects.all().order_by("-created_at")
@@ -858,7 +858,7 @@
 #             )
 
 
-# class SeniorSecondarySessionReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class SeniorSecondarySessionReportViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for consolidated Senior Secondary session reports"""
 
 #     queryset = SeniorSecondarySessionReport.objects.all().order_by("-created_at")
@@ -964,7 +964,7 @@
 #             )
 
 
-# class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class SeniorSecondaryResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for Senior Secondary results"""
 
 #     queryset = SeniorSecondaryResult.objects.all().order_by("-created_at")
@@ -1180,7 +1180,7 @@
 #         return Response(list(grade_stats))
 
 
-# class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class SeniorSecondarySessionResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for Senior Secondary session results"""
 
 #     queryset = SeniorSecondarySessionResult.objects.all().order_by("-created_at")
@@ -1235,7 +1235,7 @@
 
 
 # # ===== JUNIOR SECONDARY VIEWSETS =====
-# class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class JuniorSecondaryTermReportViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for consolidated Junior Secondary term reports"""
 
 #     queryset = JuniorSecondaryTermReport.objects.all().order_by("-created_at")
@@ -1307,7 +1307,7 @@
 #             )
 
 
-# class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class JuniorSecondaryResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for Junior Secondary results"""
 
 #     queryset = JuniorSecondaryResult.objects.all().order_by("-created_at")
@@ -1438,7 +1438,7 @@
 
 
 # # ===== PRIMARY VIEWSETS =====
-# class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class PrimaryTermReportViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for consolidated Primary term reports"""
 
 #     queryset = PrimaryTermReport.objects.all().order_by("-created_at")
@@ -1510,7 +1510,7 @@
 #             )
 
 
-# class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class PrimaryResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for Primary results"""
 
 #     queryset = PrimaryResult.objects.all().order_by("-created_at")
@@ -1639,7 +1639,7 @@
 
 
 # # ===== NURSERY VIEWSETS =====
-# class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class NurseryTermReportViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for consolidated Nursery term reports"""
 
 #     queryset = NurseryTermReport.objects.all().order_by("-created_at")
@@ -1711,7 +1711,7 @@
 #             )
 
 
-# class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+# class NurseryResultViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
 #     """ViewSet for Nursery results"""
 
 #     queryset = NurseryResult.objects.all().order_by("-created_at")
@@ -2002,9 +2002,10 @@ from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
 import logging
-from utils.section_filtering import SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 from .report_generation import get_report_generator
 from .serializers import ReportGenerationSerializer
+from utils.teacher_portal_permissions import TeacherPortalCheckMixin
 
 
 from .models import (
@@ -2397,7 +2398,9 @@ class ScoringConfigurationViewSet(viewsets.ModelViewSet):
 # ====================================================================================
 
 
-class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class SeniorSecondaryResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = SeniorSecondaryResult.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -2818,7 +2821,9 @@ class SeniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return Response(list(grade_stats))
 
 
-class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class SeniorSecondarySessionResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = SeniorSecondarySessionResult.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -3051,7 +3056,9 @@ class SeniorSecondarySessionResultViewSet(SectionFilterMixin, viewsets.ModelView
             )
 
 
-class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class SeniorSecondaryTermReportViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = SeniorSecondaryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -3445,7 +3452,9 @@ class SeniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
             )
 
 
-class SeniorSecondarySessionReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class SeniorSecondarySessionReportViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = SeniorSecondarySessionReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -3576,7 +3585,9 @@ class SeniorSecondarySessionReportViewSet(SectionFilterMixin, viewsets.ModelView
             )
 
 
-class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class JuniorSecondaryResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = JuniorSecondaryResult.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -4003,7 +4014,9 @@ class JuniorSecondaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return Response(list(grade_stats))
 
 
-class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class JuniorSecondaryTermReportViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = JuniorSecondaryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -4398,7 +4411,9 @@ class JuniorSecondaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet
             )
 
 
-class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class PrimaryResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = PrimaryResult.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -4824,7 +4839,7 @@ class PrimaryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return Response(list(grade_stats))
 
 
-class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class PrimaryTermReportViewSet(TeacherPortalCheckMixin, AutoSectionFilterMixin, viewsets.ModelViewSet):
     queryset = PrimaryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -5219,7 +5234,9 @@ class PrimaryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             )
 
 
-class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class NurseryResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = NurseryResult.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -5649,7 +5666,9 @@ class NurseryResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
         return Response(list(grade_stats))
 
 
-class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class NurseryTermReportViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = NurseryTermReport.objects.all().order_by("-created_at")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -6045,7 +6064,9 @@ class NurseryTermReportViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
 
 # ===== LEGACY STUDENT RESULT VIEWSET =====
-class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class StudentResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     """Base StudentResult ViewSet - mainly for legacy support"""
 
     queryset = StudentResult.objects.all()
@@ -6241,7 +6262,9 @@ class StudentResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
             )
 
 
-class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
+class StudentTermResultViewSet(
+    TeacherPortalCheckMixin, SectionFilterMixin, viewsets.ModelViewSet
+):
     queryset = StudentTermResult.objects.all()
     serializer_class = StudentTermResultSerializer
     permission_classes = [IsAuthenticated]
@@ -6475,7 +6498,7 @@ class StudentTermResultViewSet(SectionFilterMixin, viewsets.ModelViewSet):
 
 
 # ===== SUPPORTING VIEWSETS =====
-class ResultSheetViewSet(viewsets.ModelViewSet):
+class ResultSheetViewSet(TeacherPortalCheckMixin, viewsets.ModelViewSet):
     queryset = ResultSheet.objects.all()
     serializer_class = ResultSheetSerializer
     permission_classes = [IsAuthenticated]
@@ -6564,7 +6587,7 @@ class ResultSheetViewSet(viewsets.ModelViewSet):
             )
 
 
-class AssessmentScoreViewSet(viewsets.ModelViewSet):
+class AssessmentScoreViewSet(TeacherPortalCheckMixin, viewsets.ModelViewSet):
     queryset = AssessmentScore.objects.all()
     serializer_class = AssessmentScoreSerializer
     permission_classes = [IsAuthenticated]
@@ -6577,7 +6600,7 @@ class AssessmentScoreViewSet(viewsets.ModelViewSet):
         )
 
 
-class ResultCommentViewSet(viewsets.ModelViewSet):
+class ResultCommentViewSet(TeacherPortalCheckMixin, viewsets.ModelViewSet):
     """ViewSet for managing result comments"""
 
     queryset = ResultComment.objects.all().order_by("-created_at")
