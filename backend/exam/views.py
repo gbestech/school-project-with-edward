@@ -2440,6 +2440,21 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         # Return education levels for the user's section
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
+    def _get_section_education_levels(self, section):
+        """
+        Returns the education level(s) for a given Section object.
+        """
+        # If it's a User object
+        if hasattr(section, "section"):
+            section_obj = section.section
+        else:  # Already a Section object
+            section_obj = section
+
+        if not section_obj:
+            return []
+
+        return [section_obj.education_level.name]
+
     def get_queryset(self):
         """Optimize queryset for list view with section filtering"""
         queryset = super().get_queryset()
@@ -3457,6 +3472,21 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
+    def _get_section_education_levels(self, section):
+        """
+        Returns the education level(s) for a given Section object.
+        """
+        # If it's a User object
+        if hasattr(section, "section"):
+            section_obj = section.section
+        else:  # Already a Section object
+            section_obj = section
+
+        if not section_obj:
+            return []
+
+        return [section_obj.education_level.name]
+
     def get_queryset(self):
         """Filter queryset by student or exam, with section-based access control"""
         queryset = super().get_queryset()
@@ -3676,6 +3706,21 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
+    def _get_section_education_levels(self, section):
+        """
+        Returns the education level(s) for a given Section object.
+        """
+        # If it's a User object
+        if hasattr(section, "section"):
+            section_obj = section.section
+        else:  # Already a Section object
+            section_obj = section
+
+        if not section_obj:
+            return []
+
+        return [section_obj.education_level.name]
+
     def get_queryset(self):
         """Filter by exam, student, or subject, with section-based access control"""
         queryset = super().get_queryset()
@@ -3787,6 +3832,21 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
             user_section = ROLE_TO_SECTION[user.role]
 
         return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
+
+    def _get_section_education_levels(self, section):
+        """
+        Returns the education level(s) for a given Section object.
+        """
+        # If it's a User object
+        if hasattr(section, "section"):
+            section_obj = section.section
+        else:  # Already a Section object
+            section_obj = section
+
+        if not section_obj:
+            return []
+
+        return [section_obj.education_level.name]
 
     def get_queryset(self):
         """Filter by exam, with section-based access control"""
