@@ -16,15 +16,10 @@ from django.utils import timezone
 from django.conf import settings
 import logging
 
-from utils.section_filtering import AutoSectionFilterMixin, SectionFilterMixin
+from utils.section_filtering import SectionFilterMixin
 from academics.models import AcademicSession, Term
-from subject.models import (
-    Subject,
-    SUBJECT_CATEGORY_CHOICES,
-    EDUCATION_LEVELS,
-    NURSERY_LEVELS,
-    SS_SUBJECT_TYPES,
-)
+from subject.models import Subject
+
 from .models import (
     GradeLevel,
     Classroom,
@@ -35,14 +30,17 @@ from .models import (
     Stream,
 )
 from students.models import Student
+
 from teacher.models import Teacher
-from subject.serializers import (
-    SubjectSerializer,
-    SubjectListSerializer,
-    SubjectCreateUpdateSerializer,
-    SubjectEducationLevelSerializer,
+from subject.models import (
+    SUBJECT_CATEGORY_CHOICES,
+    EDUCATION_LEVELS,
+    NURSERY_LEVELS,
+    SS_SUBJECT_TYPES,
 )
+from subject.serializers import SubjectSerializer
 from academics.serializers import AcademicSessionSerializer, TermSerializer
+
 from .serializers import (
     ClassroomSerializer,
     ClassroomDetailSerializer,
@@ -54,19 +52,23 @@ from .serializers import (
     TeacherSerializer,
     StreamSerializer,
 )
+from subject.serializers import (
+    SubjectListSerializer,
+    SubjectCreateUpdateSerializer,
+    SubjectEducationLevelSerializer,
+)
 
 logger = logging.getLogger(__name__)
-
 
 # ==============================================================================
 # BASIC VIEWSETS FOR CLASSROOM APP
 # ==============================================================================
 
 
-class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class GradeLevelViewSet(viewsets.ModelViewSet):
     """ViewSet for GradeLevel model"""
 
-    permission_classes = []
+    permission_classes = []  # Allow public access
     serializer_class = GradeLevelSerializer
     filter_backends = [
         DjangoFilterBackend,
@@ -78,12 +80,11 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["order", "name"]
 
     def get_queryset(self):
-        """Apply automatic section filtering"""
-        queryset = super().get_queryset()
-        return queryset
+        return GradeLevel.objects.all()
 
     @action(detail=True, methods=["get"])
     def subjects(self, request, pk=None):
+        """Get subjects for a specific grade level"""
         grade = self.get_object()
         subjects = Subject.objects.filter(grade_levels=grade)
         serializer = SubjectSerializer(subjects, many=True)
@@ -91,14 +92,19 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
+        """Get students for a specific grade level"""
+        # Placeholder - implement when student model is available
         return Response({"message": "Students endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def classrooms(self, request, pk=None):
+        """Get classrooms for a specific grade level"""
+        # Placeholder - implement when classroom model is available
         return Response({"message": "Classrooms endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def sections(self, request, pk=None):
+        """Get sections for a specific grade level"""
         grade = self.get_object()
         sections = Section.objects.filter(grade_level=grade)
         serializer = SectionSerializer(sections, many=True)
@@ -106,33 +112,37 @@ class GradeLevelViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def nursery_grades(self, request):
+        """Get nursery grade levels"""
         grades = GradeLevel.objects.filter(education_level="NURSERY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def primary_grades(self, request):
+        """Get primary grade levels"""
         grades = GradeLevel.objects.filter(education_level="PRIMARY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def junior_secondary_grades(self, request):
+        """Get junior secondary grade levels"""
         grades = GradeLevel.objects.filter(education_level="JUNIOR_SECONDARY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def senior_secondary_grades(self, request):
+        """Get senior secondary grade levels"""
         grades = GradeLevel.objects.filter(education_level="SENIOR_SECONDARY")
         serializer = GradeLevelSerializer(grades, many=True)
         return Response(serializer.data)
 
 
-class SectionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class SectionViewSet(viewsets.ModelViewSet):
     """ViewSet for Section model"""
 
-    permission_classes = []
+    permission_classes = []  # Allow public access for section loading
     serializer_class = SectionSerializer
     filter_backends = [
         DjangoFilterBackend,
@@ -144,15 +154,13 @@ class SectionViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "grade_level__order"]
 
     def get_queryset(self):
-        """Apply section filtering"""
-        queryset = super().get_queryset()
         return Section.objects.select_related("grade_level").all()
 
 
-class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class StreamViewSet(viewsets.ModelViewSet):
     """ViewSet for Stream model"""
 
-    permission_classes = []
+    permission_classes = []  # Allow public access for streams
     serializer_class = StreamSerializer
     filter_backends = [
         DjangoFilterBackend,
@@ -164,11 +172,11 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "stream_type", "created_at"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        return Stream.objects.all()
 
     @action(detail=False, methods=["get"])
     def by_type(self, request):
+        """Get streams by type"""
         stream_type = request.query_params.get("stream_type")
         if stream_type:
             streams = Stream.objects.filter(stream_type=stream_type, is_active=True)
@@ -178,7 +186,7 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class TeacherViewSet(viewsets.ModelViewSet):
     """ViewSet for Teacher model"""
 
     permission_classes = [IsAuthenticated]
@@ -193,11 +201,11 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["user__first_name", "user__last_name", "hire_date"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         return Teacher.objects.select_related("user").all()
 
     @action(detail=True, methods=["get"])
     def classes(self, request, pk=None):
+        """Get classes for a specific teacher"""
         teacher = self.get_object()
         primary_classes = teacher.primary_classes.all()
         assigned_classes = teacher.assigned_classes.all()
@@ -214,6 +222,7 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def subjects(self, request, pk=None):
+        """Get subjects for a specific teacher"""
         teacher = self.get_object()
         assignments = teacher.classroomteacherassignment_set.filter(
             is_active=True
@@ -224,6 +233,7 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def schedule(self, request, pk=None):
+        """Get schedule for a specific teacher"""
         teacher = self.get_object()
         schedules = ClassSchedule.objects.filter(
             teacher=teacher, is_active=True
@@ -233,12 +243,14 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def workload(self, request, pk=None):
+        """Get workload for a specific teacher"""
         teacher = self.get_object()
         primary_classes_count = teacher.primary_classes.count()
         assigned_classes_count = teacher.assigned_classes.count()
         total_subjects = teacher.classroomteacherassignment_set.filter(
             is_active=True
         ).count()
+
         return Response(
             {
                 "primary_classes_count": primary_classes_count,
@@ -249,34 +261,37 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         )
 
 
-class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class StudentViewSet(viewsets.ModelViewSet):
     """ViewSet for Student model"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return []  # Placeholder
+        return []  # Placeholder - implement when Student model is available
 
     @action(detail=True, methods=["get"])
     def current_class(self, request, pk=None):
+        """Get current class for a specific student"""
         return Response({"message": "Current class endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def subjects(self, request, pk=None):
+        """Get subjects for a specific student"""
         return Response({"message": "Subjects endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def schedule(self, request, pk=None):
+        """Get schedule for a specific student"""
         return Response({"message": "Schedule endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def enrollment_history(self, request, pk=None):
+        """Get enrollment history for a specific student"""
         return Response({"message": "Enrollment history endpoint not implemented yet"})
 
 
-class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class SubjectViewSet(viewsets.ModelViewSet):
     """ViewSet for Subject model"""
 
     permission_classes = [IsAuthenticated]
@@ -291,25 +306,28 @@ class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "code", "subject_order"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        return Subject.objects.all()
 
     @action(detail=False, methods=["get"])
     def by_category(self, request):
+        """Get subjects grouped by category"""
         return Response({"message": "By category endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def by_education_level(self, request):
+        """Get subjects grouped by education level"""
         return Response({"message": "By education level endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def nursery_subjects(self, request):
+        """Get nursery subjects"""
         subjects = Subject.objects.filter(education_levels__contains=["NURSERY"])
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def senior_secondary_subjects(self, request):
+        """Get senior secondary subjects"""
         subjects = Subject.objects.filter(
             education_levels__contains=["SENIOR_SECONDARY"]
         )
@@ -318,58 +336,63 @@ class SubjectViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def cross_cutting_subjects(self, request):
+        """Get cross-cutting subjects"""
         subjects = Subject.objects.filter(is_cross_cutting=True)
         serializer = SubjectSerializer(subjects, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
     def for_grade(self, request):
+        """Get subjects for a specific grade"""
         return Response({"message": "For grade endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def search_suggestions(self, request):
+        """Get search suggestions"""
         return Response({"message": "Search suggestions endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def statistics(self, request):
+        """Get subject statistics"""
         return Response({"message": "Statistics endpoint not implemented yet"})
 
     @action(detail=True, methods=["post"])
     def check_availability(self, request, pk=None):
+        """Check subject availability"""
         return Response({"message": "Check availability endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def prerequisites(self, request, pk=None):
+        """Get prerequisites for a subject"""
         return Response({"message": "Prerequisites endpoint not implemented yet"})
 
     @action(detail=True, methods=["get"])
     def education_levels(self, request, pk=None):
+        """Get education levels for a subject"""
         return Response({"message": "Education levels endpoint not implemented yet"})
 
 
-class SubjectAnalyticsViewSet(AutoSectionFilterMixin, viewsets.ReadOnlyModelViewSet):
+class SubjectAnalyticsViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for Subject analytics (read-only)"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        return Subject.objects.all()
 
 
-class SubjectManagementViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class SubjectManagementViewSet(viewsets.ModelViewSet):
     """ViewSet for Subject management (admin only)"""
 
     permission_classes = [IsAdminUser]
     serializer_class = SubjectSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset
+        return Subject.objects.all()
 
 
-class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class ClassroomViewSet(SectionFilterMixin, viewsets.ModelViewSet):
     """ViewSet for Classroom model"""
 
     permission_classes = [IsAuthenticated]
@@ -389,10 +412,46 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["name", "created_at", "current_enrollment"]
 
     # def get_queryset(self):
+    #     """Filter classrooms based on user's role, section, and education level"""
+    #     queryset = Classroom.objects.select_related(
+    #         "section__grade_level", "academic_session", "term", "class_teacher__user"
+    #     ).prefetch_related("students", "subject_teachers", "schedules")
 
-    # Apply section filtering
-    queryset = super().get_queryset()
+    #     # Apply section-based filtering
+    #     user = self.request.user
 
+    #     # Super Admin sees everything
+    #     if user.role == "superadmin" or user.is_superuser:
+    #         return queryset
+
+    #     # Apply section filtering for all other users (including section admins and teachers)
+    #     try:
+    #         filtered_queryset = self.filter_classrooms_by_section_access(queryset)
+
+    #         # ✅ Now handle level-based logic
+    #         education_level = self.request.query_params.get("education_level", "").upper()
+
+    #         # If the request explicitly filters by level
+    #         if education_level in ["NURSERY", "PRIMARY"]:
+    #             # Include only classrooms that belong to these levels
+    #             filtered_queryset = filtered_queryset.filter(
+    #                 section__grade_level__education_level=education_level
+    #             ).distinct()
+
+    #             # Prefetch only the class teacher (avoid subject teacher duplicates)
+    #             filtered_queryset = filtered_queryset.prefetch_related(
+    #                 "class_teacher__user"
+    #             )
+    #         return filtered_queryset
+    #     except Exception as e:
+    #         # Log the error in production
+    #         import logging
+
+    #         logger = logging.getLogger(__name__)
+    #         logger.error(f"Section filtering error for user {user.username}: {str(e)}")
+
+    #         # Return empty queryset on error (safer than returning all)
+    #         return queryset.none()
     def get_queryset(self):
         """Filter classrooms based on user's role, section, and education level"""
         queryset = Classroom.objects.select_related(
@@ -456,6 +515,39 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             return ClassroomDetailSerializer
         return ClassroomSerializer
 
+    # @action(detail=True, methods=["get"])
+    # def students(self, request, pk=None):
+    #     """Get students for a specific classroom"""
+    #     try:
+    #         classroom = self.get_object()
+
+    #         print(
+    #             f"🔍 Fetching students for classroom: {classroom.name} (ID: {classroom.id})"
+    #         )
+
+    #         # ✅ CORRECT: Use StudentEnrollment to get related students
+    #         # This is the proper relationship defined in your models
+    #         enrollments = StudentEnrollment.objects.filter(
+    #             classroom=classroom, is_active=True
+    #         ).select_related("student__user")
+
+    #         # Extract students from enrollments
+    #         students = [enrollment.student for enrollment in enrollments]
+
+    #         print(f"✅ Found {len(students)} students via StudentEnrollment")
+
+    #         from students.serializers import StudentListSerializer
+
+    #         serializer = StudentListSerializer(students, many=True)
+    #         return Response(serializer.data)
+
+    #     except Exception as e:
+    #         logger.error(f"Error fetching classroom students: {str(e)}")
+    #         import traceback
+
+    #         traceback.print_exc()
+    #         return Response(
+    #             {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
     #         )
     # 🔍 DEBUG LOGGING ADDED ABOVE
     @action(detail=True, methods=["get"])
@@ -763,27 +855,27 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             )
 
 
-class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class ClassroomTeacherAssignmentViewSet(viewsets.ModelViewSet):
     """ViewSet for ClassroomTeacherAssignment model"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = ClassroomTeacherAssignmentSerializer
 
     def get_queryset(self):
-        # Apply section filtering
-        queryset = super().get_queryset()
         return ClassroomTeacherAssignment.objects.select_related(
             "classroom", "teacher__user", "subject"
         ).filter(is_active=True)
 
     def create(self, request, *args, **kwargs):
         """Override create to add debugging"""
-        logger.debug("Received data: %s", request.data)
+        print("🔍 Received data:", request.data)
+        print("🔍 Data keys:", list(request.data.keys()))
         return super().create(request, *args, **kwargs)
 
     @action(detail=False, methods=["get"])
     def by_academic_year(self, request):
         """Get assignments by academic session"""
+        # ✅ Changed parameter name to academic_session_id
         academic_session_id = request.query_params.get("academic_session_id")
         if not academic_session_id:
             return Response(
@@ -814,6 +906,7 @@ class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelVi
     @action(detail=False, methods=["get"])
     def workload_analysis(self, request):
         """Get workload analysis"""
+        # Get teacher workload statistics
         teacher_workload = (
             self.get_queryset()
             .values("teacher__user__first_name", "teacher__user__last_name")
@@ -844,17 +937,13 @@ class ClassroomTeacherAssignmentViewSet(AutoSectionFilterMixin, viewsets.ModelVi
         )
 
 
-# ================================
-# StudentEnrollment ViewSet
-# ================================
-class StudentEnrollmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class StudentEnrollmentViewSet(viewsets.ModelViewSet):
     """ViewSet for StudentEnrollment model"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = StudentEnrollmentSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
         return StudentEnrollment.objects.select_related(
             "student__user", "classroom"
         ).filter(is_active=True)
@@ -894,20 +983,25 @@ class StudentEnrollmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"])
     def statistics(self, request):
         """Get enrollment statistics"""
-        qs = self.get_queryset()
-        total_enrollments = qs.count()
-        active_students = qs.filter(student__is_active=True).count()
+        total_enrollments = self.get_queryset().count()
+        active_students = self.get_queryset().filter(student__is_active=True).count()
 
         # By education level
-        nursery_enrollments = qs.filter(
-            classroom__section__grade_level__education_level="NURSERY"
-        ).count()
-        primary_enrollments = qs.filter(
-            classroom__section__grade_level__education_level="PRIMARY"
-        ).count()
-        secondary_enrollments = qs.filter(
-            classroom__section__grade_level__education_level="SECONDARY"
-        ).count()
+        nursery_enrollments = (
+            self.get_queryset()
+            .filter(classroom__section__grade_level__education_level="NURSERY")
+            .count()
+        )
+        primary_enrollments = (
+            self.get_queryset()
+            .filter(classroom__section__grade_level__education_level="PRIMARY")
+            .count()
+        )
+        secondary_enrollments = (
+            self.get_queryset()
+            .filter(classroom__section__grade_level__education_level="SECONDARY")
+            .count()
+        )
 
         return Response(
             {
@@ -922,55 +1016,60 @@ class StudentEnrollmentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         )
 
 
-# ================================
-# ClassSchedule ViewSet (Placeholder)
-# ================================
-class ClassScheduleViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
+class ClassScheduleViewSet(viewsets.ModelViewSet):
     """ViewSet for ClassSchedule model"""
 
     permission_classes = [IsAuthenticated]
     serializer_class = SubjectSerializer  # Placeholder
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return []  # Implement when model is available
+        return []  # Placeholder - implement when model is available
 
     @action(detail=False, methods=["get"])
     def by_classroom(self, request):
+        """Get schedules by classroom"""
         return Response({"message": "By classroom endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def by_teacher(self, request):
+        """Get schedules by teacher"""
         return Response({"message": "By teacher endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def by_subject(self, request):
+        """Get schedules by subject"""
         return Response({"message": "By subject endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def conflicts(self, request):
+        """Get schedule conflicts"""
         return Response({"message": "Conflicts endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def daily_schedule(self, request):
+        """Get daily schedule"""
         return Response({"message": "Daily schedule endpoint not implemented yet"})
 
     @action(detail=False, methods=["get"])
     def weekly_schedule(self, request):
+        """Get weekly schedule"""
         return Response({"message": "Weekly schedule endpoint not implemented yet"})
 
 
-# ================================
+# ==============================================================================
 # HEALTH CHECK ENDPOINT
-# ================================
+# ==============================================================================
 @api_view(["GET"])
 def health_check(request):
-    """Enhanced health check endpoint"""
+    """
+    Enhanced health check endpoint for monitoring API status with system information
+    """
     try:
+        # Basic database connectivity check
         total_subjects = Subject.objects.count()
         active_subjects = Subject.objects.filter(is_active=True).count()
 
-        # Cache check
+        # Check cache connectivity
         cache_key = "health_check_test"
         cache.set(cache_key, "test", 10)
         cache_working = cache.get(cache_key) == "test"
@@ -1022,16 +1121,29 @@ def health_check(request):
         )
 
 
-# ================================
-# SubjectByEducationLevel View
-# ================================
+# ==============================================================================
+# ENHANCED EDUCATION LEVEL VIEW
+# ==============================================================================
 class SubjectByEducationLevelView(APIView):
-    """Enhanced view for retrieving subjects by education level"""
+    """
+    Enhanced view for retrieving subjects by education level with detailed information
+    """
 
     permission_classes = [IsAuthenticated]
 
     @method_decorator(cache_page(60 * 10))
     def get(self, request):
+        """
+        Get subjects filtered by education level with comprehensive information
+
+        Query Parameters:
+        - level: Education level (NURSERY, PRIMARY, JUNIOR_SECONDARY, SENIOR_SECONDARY)
+        - nursery_level: Specific nursery level (PRE_NURSERY, NURSERY_1, NURSERY_2)
+        - ss_type: Senior Secondary subject type
+        - category: Subject category
+        - active_only: Boolean to filter active subjects only (default: true)
+        - include_discontinued: Boolean to include discontinued subjects (default: false)
+        """
         level = request.query_params.get("level")
         if not level:
             return Response(
@@ -1043,6 +1155,7 @@ class SubjectByEducationLevelView(APIView):
                 status=400,
             )
 
+        # Validate education level
         valid_levels = [code for code, _ in EDUCATION_LEVELS]
         if level not in valid_levels:
             return Response(
@@ -1053,10 +1166,12 @@ class SubjectByEducationLevelView(APIView):
                 status=400,
             )
 
+        # Base queryset
         queryset = Subject.objects.filter(
             education_levels__contains=[level]
         ).prefetch_related("grade_levels", "prerequisites")
 
+        # Apply additional filters
         active_only = request.query_params.get("active_only", "true").lower() == "true"
         include_discontinued = (
             request.query_params.get("include_discontinued", "false").lower() == "true"
@@ -1064,35 +1179,47 @@ class SubjectByEducationLevelView(APIView):
 
         if active_only:
             queryset = queryset.filter(is_active=True)
+
         if not include_discontinued:
             queryset = queryset.filter(is_discontinued=False)
 
+        # Nursery level filtering
         nursery_level = request.query_params.get("nursery_level")
         if nursery_level and level == "NURSERY":
             valid_nursery_levels = [code for code, _ in NURSERY_LEVELS]
             if nursery_level in valid_nursery_levels:
                 queryset = queryset.filter(nursery_levels__contains=[nursery_level])
 
+        # Senior Secondary type filtering
         ss_type = request.query_params.get("ss_type")
         if ss_type and level == "SENIOR_SECONDARY":
             valid_ss_types = [code for code, _ in SS_SUBJECT_TYPES]
             if ss_type in valid_ss_types:
                 queryset = queryset.filter(ss_subject_type=ss_type)
 
+        # Category filtering
         category = request.query_params.get("category")
         if category:
             valid_categories = [code for code, _ in SUBJECT_CATEGORY_CHOICES]
             if category in valid_categories:
                 queryset = queryset.filter(category=category)
 
+        # Order subjects appropriately
         queryset = queryset.order_by("category", "subject_order", "name")
+
+        # Serialize data
         serializer = SubjectEducationLevelSerializer(
             queryset, many=True, context={"request": request}
         )
 
+        # Build response with metadata
         level_name = dict(EDUCATION_LEVELS).get(level, level)
+
         response_data = {
-            "education_level": {"code": level, "name": level_name},
+            "education_level": {
+                "code": level,
+                "name": level_name,
+            },
             "filters_applied": {
                 "active_only": active_only,
                 "include_discontinued": include_discontinued,
@@ -1114,6 +1241,7 @@ class SubjectByEducationLevelView(APIView):
             "subjects": serializer.data,
         }
 
+        # Add level-specific information
         if level == "NURSERY":
             response_data["nursery_breakdown"] = self._get_nursery_breakdown(queryset)
         elif level == "SENIOR_SECONDARY":
@@ -1122,6 +1250,7 @@ class SubjectByEducationLevelView(APIView):
         return Response(response_data)
 
     def _get_nursery_breakdown(self, queryset):
+        """Get breakdown of nursery subjects by nursery levels"""
         breakdown = {}
         for level_code, level_name in NURSERY_LEVELS:
             level_subjects = queryset.filter(nursery_levels__contains=[level_code])
@@ -1135,6 +1264,7 @@ class SubjectByEducationLevelView(APIView):
         return breakdown
 
     def _get_ss_breakdown(self, queryset):
+        """Get breakdown of Senior Secondary subjects by type"""
         breakdown = {}
         for type_code, type_name in SS_SUBJECT_TYPES:
             type_subjects = queryset.filter(ss_subject_type=type_code)
@@ -1151,14 +1281,14 @@ class SubjectByEducationLevelView(APIView):
 # ==============================================================================
 class SubjectQuickSearchView(APIView):
     """
-    Lightweight search endpoint for autocomplete and quick lookups.
+    Lightweight search endpoint for autocomplete and quick lookups
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """
-        Quick search for subjects with minimal data transfer.
+        Quick search for subjects with minimal data transfer
 
         Query Parameters:
         - q: Search query (minimum 2 characters)
@@ -1188,11 +1318,12 @@ class SubjectQuickSearchView(APIView):
             | Q(code__icontains=query)
             | Q(description__icontains=query)
         )
+
         queryset = Subject.objects.filter(
             search_filter, is_active=True, is_discontinued=False
         )
 
-        # Additional filters
+        # Apply additional filters
         education_level = request.query_params.get("education_level")
         if education_level:
             queryset = queryset.filter(education_levels__contains=[education_level])
@@ -1201,7 +1332,7 @@ class SubjectQuickSearchView(APIView):
         if category:
             queryset = queryset.filter(category=category)
 
-        # Limit results
+        # Get results
         subjects = queryset.values(
             "id",
             "name",
@@ -1219,11 +1350,16 @@ class SubjectQuickSearchView(APIView):
         suggestions = []
         for subject in subjects:
             display_name = subject["short_name"] or subject["name"]
+
             # Build education levels display
-            education_display = [
-                dict(EDUCATION_LEVELS).get(level, level)
-                for level in subject.get("education_levels", [])
-            ]
+            education_display = []
+            if subject["education_levels"]:
+                level_dict = dict(EDUCATION_LEVELS)
+                education_display = [
+                    level_dict.get(level, level)
+                    for level in subject["education_levels"]
+                ]
+
             # Build badges
             badges = []
             if subject["is_compulsory"]:
@@ -1257,19 +1393,19 @@ class SubjectQuickSearchView(APIView):
         )
 
 
-# =====================================================================
+# ==============================================================================
 # SUBJECT COMPARISON VIEW
-# =====================================================================
+# ==============================================================================
 class SubjectComparisonView(APIView):
     """
-    Compare multiple subjects side by side.
+    Compare multiple subjects side by side
     """
 
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         """
-        Compare subjects by their IDs.
+        Compare subjects by their IDs
 
         Request body:
         {
@@ -1278,7 +1414,7 @@ class SubjectComparisonView(APIView):
         """
         subject_ids = request.data.get("subject_ids", [])
 
-        if not isinstance(subject_ids, list) or not subject_ids:
+        if not subject_ids or not isinstance(subject_ids, list):
             return Response(
                 {"error": "Please provide a list of subject_ids in the request body"},
                 status=400,
@@ -1286,19 +1422,20 @@ class SubjectComparisonView(APIView):
 
         if len(subject_ids) > 5:
             return Response(
-                {"error": "Maximum 5 subjects can be compared at once"},
-                status=400,
+                {"error": "Maximum 5 subjects can be compared at once"}, status=400
             )
 
+        # Get subjects
         subjects = Subject.objects.filter(
             id__in=subject_ids, is_active=True
         ).prefetch_related("prerequisites", "grade_levels")
 
-        if not subjects.exists():
+        if not subjects:
             return Response(
                 {"error": "No valid subjects found for the provided IDs"}, status=404
             )
 
+        # Build comparison data
         comparison_data = []
         for subject in subjects:
             comparison_data.append(
@@ -1353,7 +1490,7 @@ class SubjectComparisonView(APIView):
                         "is_activity_based": subject.is_activity_based,
                         "nursery_levels": (
                             subject.nursery_levels_display
-                            if getattr(subject, "is_nursery_subject", False)
+                            if subject.is_nursery_subject
                             else None
                         ),
                         "ss_subject_type": (
@@ -1384,19 +1521,21 @@ class SubjectComparisonView(APIView):
         )
 
 
-# =====================================================================
-# CACHE UTILITY
-# =====================================================================
+# ==============================================================================
+# UTILITY FUNCTIONS
+# ==============================================================================
 def clear_subject_caches():
     """
-    Enhanced helper function to clear all subject-related caches.
+    Enhanced helper function to clear all subject-related caches
     """
     cache_keys = [
+        # Legacy cache keys
         "subjects_statistics",
         "subjects_statistics_v2",
         "subjects_by_category",
         "subjects_by_category_v2",
         "active_subjects_count",
+        # New cache keys from enhanced model
         "subjects_cache_v1",
         "subjects_by_category_v3",
         "subjects_by_education_level_v2",
@@ -1404,6 +1543,7 @@ def clear_subject_caches():
         "ss_subjects_by_type_v1",
         "cross_cutting_subjects_v1",
         "subject_statistics_v1",
+        # Pattern-based cache clearing
         "subject_*",
         "education_level_*",
         "nursery_*",
@@ -1412,9 +1552,13 @@ def clear_subject_caches():
 
     try:
         cache.delete_many(cache_keys)
+
+        # If using Redis or similar, also clear pattern-based keys
         if hasattr(cache, "delete_pattern"):
-            for pattern in ["subject_*", "education_*", "nursery_*", "ss_*"]:
+            patterns = ["subject_*", "education_*", "nursery_*", "ss_*"]
+            for pattern in patterns:
                 cache.delete_pattern(pattern)
+
         logger.info("Subject caches cleared successfully")
         return True
     except Exception as e:
@@ -1426,55 +1570,59 @@ def clear_subject_caches():
 @permission_classes([IsAdminUser])
 def clear_caches_endpoint(request):
     """
-    API endpoint to manually clear caches (admin only).
+    API endpoint to manually clear caches (admin only)
     """
     success = clear_subject_caches()
-    status_code = 200 if success else 500
-    return Response(
-        {
-            "status": "success" if success else "error",
-            "message": (
-                "Subject caches cleared successfully"
-                if success
-                else "Failed to clear some caches"
-            ),
-            "timestamp": timezone.now().isoformat(),
-        },
-        status=status_code,
-    )
+
+    if success:
+        return Response(
+            {
+                "status": "success",
+                "message": "Subject caches cleared successfully",
+                "timestamp": timezone.now().isoformat(),
+            }
+        )
+    else:
+        return Response(
+            {
+                "status": "error",
+                "message": "Failed to clear some caches",
+                "timestamp": timezone.now().isoformat(),
+            },
+            status=500,
+        )
 
 
-# =====================================================================
+# ==============================================================================
 # SYSTEM INFO ENDPOINT
-# =====================================================================
+# ==============================================================================
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def system_info(request):
     """
-    Get comprehensive system information about the subjects API.
+    Get comprehensive system information about the subjects API
     """
     try:
+        # Get database statistics
         total_subjects = Subject.objects.count()
         active_subjects = Subject.objects.filter(is_active=True).count()
         discontinued_subjects = Subject.objects.filter(is_discontinued=True).count()
 
-        education_stats = {
-            code: {
-                "name": name,
-                "count": Subject.objects.filter(
-                    education_levels__contains=[code], is_active=True
-                ).count(),
-            }
-            for code, name in EDUCATION_LEVELS
-        }
+        # Education level statistics
+        education_stats = {}
+        for level_code, level_name in EDUCATION_LEVELS:
+            count = Subject.objects.filter(
+                education_levels__contains=[level_code], is_active=True
+            ).count()
+            education_stats[level_code] = {"name": level_name, "count": count}
 
-        category_stats = {
-            code: {
-                "name": name,
-                "count": Subject.objects.filter(category=code, is_active=True).count(),
-            }
-            for code, name in SUBJECT_CATEGORY_CHOICES
-        }
+        # Category statistics
+        category_stats = {}
+        for category_code, category_name in SUBJECT_CATEGORY_CHOICES:
+            count = Subject.objects.filter(
+                category=category_code, is_active=True
+            ).count()
+            category_stats[category_code] = {"name": category_name, "count": count}
 
         return Response(
             {
@@ -1489,7 +1637,7 @@ def system_info(request):
                     "discontinued_subjects": discontinued_subjects,
                     "utilization_rate": (
                         f"{(active_subjects/total_subjects*100):.1f}%"
-                        if total_subjects
+                        if total_subjects > 0
                         else "0%"
                     ),
                 },
