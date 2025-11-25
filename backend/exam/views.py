@@ -2436,31 +2436,45 @@ class ExamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 user_section = ROLE_TO_SECTION[user_or_section.role]
             return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
-        # Section model instance
-        elif hasattr(user_or_section, "name"):
-            section_name = user_or_section.name.lower()
-            if section_name in SECTION_TO_EDUCATION_LEVEL:
-                return SECTION_TO_EDUCATION_LEVEL[section_name]
-
-            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
-            try:
-                from classroom.models import Classroom
-
-                education_levels = list(
-                    Classroom.objects.filter(section=user_or_section)
-                    .values_list("education_level", flat=True)
-                    .distinct()
-                )
-                return education_levels if education_levels else []
-            except Exception as e:
-                logger.warning(
-                    f"Error getting education levels for section {user_or_section}: {e}"
-                )
-                return []
-
-        # String
+        # Section model instance OR string containing section/classroom name
+        section_name = None
+        if hasattr(user_or_section, "name"):
+            section_name = str(user_or_section.name).lower()
         else:
-            return SECTION_TO_EDUCATION_LEVEL.get(str(user_or_section).lower(), [])
+            section_name = str(user_or_section).lower()
+
+        # First try the exact match in our mapping
+        if section_name in SECTION_TO_EDUCATION_LEVEL:
+            return SECTION_TO_EDUCATION_LEVEL[section_name]
+
+        # If not an exact match, parse the name to detect education level
+        # Handle names like "Primary 1 - Section A", "Nursery 2 - Section B", etc.
+        if (
+            "nursery" in section_name
+            or "pre-nursery" in section_name
+            or "pre nursery" in section_name
+        ):
+            return ["NURSERY"]
+        elif "primary" in section_name:
+            return ["PRIMARY"]
+        elif (
+            "jss" in section_name
+            or "junior secondary" in section_name
+            or "js" in section_name
+        ):
+            return ["JUNIOR_SECONDARY"]
+        elif (
+            "sss" in section_name
+            or "senior secondary" in section_name
+            or "ss" in section_name
+        ):
+            return ["SENIOR_SECONDARY"]
+
+        # Last resort: log and return empty list
+        logger.warning(
+            f"Could not determine education level for section: {section_name}"
+        )
+        return []
 
     def get_queryset(self):
         """Apply section filtering"""
@@ -3455,31 +3469,45 @@ class ExamRegistrationViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 user_section = ROLE_TO_SECTION[user_or_section.role]
             return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
-        # Section model instance
-        elif hasattr(user_or_section, "name"):
-            section_name = user_or_section.name.lower()
-            if section_name in SECTION_TO_EDUCATION_LEVEL:
-                return SECTION_TO_EDUCATION_LEVEL[section_name]
-
-            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
-            try:
-                from classroom.models import Classroom
-
-                education_levels = list(
-                    Classroom.objects.filter(section=user_or_section)
-                    .values_list("education_level", flat=True)
-                    .distinct()
-                )
-                return education_levels if education_levels else []
-            except Exception as e:
-                logger.warning(
-                    f"Error getting education levels for section {user_or_section}: {e}"
-                )
-                return []
-
-        # String
+        # Section model instance OR string containing section/classroom name
+        section_name = None
+        if hasattr(user_or_section, "name"):
+            section_name = str(user_or_section.name).lower()
         else:
-            return SECTION_TO_EDUCATION_LEVEL.get(str(user_or_section).lower(), [])
+            section_name = str(user_or_section).lower()
+
+        # First try the exact match in our mapping
+        if section_name in SECTION_TO_EDUCATION_LEVEL:
+            return SECTION_TO_EDUCATION_LEVEL[section_name]
+
+        # If not an exact match, parse the name to detect education level
+        # Handle names like "Primary 1 - Section A", "Nursery 2 - Section B", etc.
+        if (
+            "nursery" in section_name
+            or "pre-nursery" in section_name
+            or "pre nursery" in section_name
+        ):
+            return ["NURSERY"]
+        elif "primary" in section_name:
+            return ["PRIMARY"]
+        elif (
+            "jss" in section_name
+            or "junior secondary" in section_name
+            or "js" in section_name
+        ):
+            return ["JUNIOR_SECONDARY"]
+        elif (
+            "sss" in section_name
+            or "senior secondary" in section_name
+            or "ss" in section_name
+        ):
+            return ["SENIOR_SECONDARY"]
+
+        # Last resort: log and return empty list
+        logger.warning(
+            f"Could not determine education level for section: {section_name}"
+        )
+        return []
 
     def get_queryset(self):
         """Apply section filtering"""
@@ -3674,31 +3702,45 @@ class ResultViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 user_section = ROLE_TO_SECTION[user_or_section.role]
             return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
-        # Section model instance
-        elif hasattr(user_or_section, "name"):
-            section_name = user_or_section.name.lower()
-            if section_name in SECTION_TO_EDUCATION_LEVEL:
-                return SECTION_TO_EDUCATION_LEVEL[section_name]
-
-            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
-            try:
-                from classroom.models import Classroom
-
-                education_levels = list(
-                    Classroom.objects.filter(section=user_or_section)
-                    .values_list("education_level", flat=True)
-                    .distinct()
-                )
-                return education_levels if education_levels else []
-            except Exception as e:
-                logger.warning(
-                    f"Error getting education levels for section {user_or_section}: {e}"
-                )
-                return []
-
-        # String
+        # Section model instance OR string containing section/classroom name
+        section_name = None
+        if hasattr(user_or_section, "name"):
+            section_name = str(user_or_section.name).lower()
         else:
-            return SECTION_TO_EDUCATION_LEVEL.get(str(user_or_section).lower(), [])
+            section_name = str(user_or_section).lower()
+
+        # First try the exact match in our mapping
+        if section_name in SECTION_TO_EDUCATION_LEVEL:
+            return SECTION_TO_EDUCATION_LEVEL[section_name]
+
+        # If not an exact match, parse the name to detect education level
+        # Handle names like "Primary 1 - Section A", "Nursery 2 - Section B", etc.
+        if (
+            "nursery" in section_name
+            or "pre-nursery" in section_name
+            or "pre nursery" in section_name
+        ):
+            return ["NURSERY"]
+        elif "primary" in section_name:
+            return ["PRIMARY"]
+        elif (
+            "jss" in section_name
+            or "junior secondary" in section_name
+            or "js" in section_name
+        ):
+            return ["JUNIOR_SECONDARY"]
+        elif (
+            "sss" in section_name
+            or "senior secondary" in section_name
+            or "ss" in section_name
+        ):
+            return ["SENIOR_SECONDARY"]
+
+        # Last resort: log and return empty list
+        logger.warning(
+            f"Could not determine education level for section: {section_name}"
+        )
+        return []
 
     def get_queryset(self):
         """Apply section filtering"""
@@ -3788,31 +3830,45 @@ class ExamStatisticsViewSet(SectionFilterMixin, viewsets.ReadOnlyModelViewSet):
                 user_section = ROLE_TO_SECTION[user_or_section.role]
             return SECTION_TO_EDUCATION_LEVEL.get(user_section, [])
 
-        # Section model instance
-        elif hasattr(user_or_section, "name"):
-            section_name = user_or_section.name.lower()
-            if section_name in SECTION_TO_EDUCATION_LEVEL:
-                return SECTION_TO_EDUCATION_LEVEL[section_name]
-
-            # Get from classrooms - FIXED: This should be the fallback, not try to access education_level directly
-            try:
-                from classroom.models import Classroom
-
-                education_levels = list(
-                    Classroom.objects.filter(section=user_or_section)
-                    .values_list("education_level", flat=True)
-                    .distinct()
-                )
-                return education_levels if education_levels else []
-            except Exception as e:
-                logger.warning(
-                    f"Error getting education levels for section {user_or_section}: {e}"
-                )
-                return []
-
-        # String
+        # Section model instance OR string containing section/classroom name
+        section_name = None
+        if hasattr(user_or_section, "name"):
+            section_name = str(user_or_section.name).lower()
         else:
-            return SECTION_TO_EDUCATION_LEVEL.get(str(user_or_section).lower(), [])
+            section_name = str(user_or_section).lower()
+
+        # First try the exact match in our mapping
+        if section_name in SECTION_TO_EDUCATION_LEVEL:
+            return SECTION_TO_EDUCATION_LEVEL[section_name]
+
+        # If not an exact match, parse the name to detect education level
+        # Handle names like "Primary 1 - Section A", "Nursery 2 - Section B", etc.
+        if (
+            "nursery" in section_name
+            or "pre-nursery" in section_name
+            or "pre nursery" in section_name
+        ):
+            return ["NURSERY"]
+        elif "primary" in section_name:
+            return ["PRIMARY"]
+        elif (
+            "jss" in section_name
+            or "junior secondary" in section_name
+            or "js" in section_name
+        ):
+            return ["JUNIOR_SECONDARY"]
+        elif (
+            "sss" in section_name
+            or "senior secondary" in section_name
+            or "ss" in section_name
+        ):
+            return ["SENIOR_SECONDARY"]
+
+        # Last resort: log and return empty list
+        logger.warning(
+            f"Could not determine education level for section: {section_name}"
+        )
+        return []
 
     def get_queryset(self):
         """Apply section filtering"""
