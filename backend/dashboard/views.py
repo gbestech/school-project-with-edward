@@ -1,11 +1,3 @@
-"""
-Complete solution showing both function-based and class-based view approaches
-"""
-
-# ============================================================================
-# OPTION 1: CLASS-BASED VIEWS (RECOMMENDED - Uses AutoSectionFilterMixin)
-# ============================================================================
-
 from rest_framework import viewsets, generics
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -24,8 +16,7 @@ from attendance.models import Attendance
 logger = logging.getLogger(__name__)
 
 
-# === DASHBOARD VIEW (Class-based with AutoSectionFilterMixin) ===
-class DashboardViewSet(SectionFilterMixin, viewsets.ViewSet):
+class DashboardViewSet(AutoSectionFilterMixin, viewsets.ViewSet):
     """
     Dashboard statistics with automatic section filtering
     """
