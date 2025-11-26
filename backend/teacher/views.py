@@ -780,9 +780,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Replace TeacherModulePermission in teacher/views.py with this:
+
+from rest_framework import permissions as drf_permissions
+
+
 class TeacherModulePermission(drf_permissions.BasePermission):
     """
-    Custom permission to check if user has teachers module permission.
+    🔥 UPDATED: Custom permission to check if user has teachers module permission.
+    Now includes section admins.
     """
 
     def has_permission(self, request, view):
@@ -799,6 +805,24 @@ class TeacherModulePermission(drf_permissions.BasePermission):
         if user.is_staff:
             return True
 
+        # 🔥 NEW: Section admins have access
+        if hasattr(user, "role") and user.role:
+            role = user.role.lower()
+            section_admin_roles = [
+                "admin",
+                "principal",
+                "secondary_admin",
+                "nursery_admin",
+                "primary_admin",
+                "junior_secondary_admin",
+                "senior_secondary_admin",
+            ]
+            if role in section_admin_roles:
+                # Section admins can read, create, update teachers in their section
+                # The AutoSectionFilterMixin handles showing only their section's teachers
+                if request.method in ["GET", "POST", "PUT", "PATCH"]:
+                    return True
+
         # Teachers can view and edit their own profile
         if hasattr(user, "teacher"):
             if request.method in drf_permissions.SAFE_METHODS or request.method in [
@@ -807,7 +831,9 @@ class TeacherModulePermission(drf_permissions.BasePermission):
             ]:
                 return True
 
-        # Check role-based permission
+        # Check role-based permission (for custom permission system)
+        from schoolSettings.models import UserRole
+
         method_to_permission = {
             "GET": "read",
             "POST": "write",
@@ -841,6 +867,23 @@ class TeacherModulePermission(drf_permissions.BasePermission):
         # Admins/staff full access
         if user.is_superuser or user.is_staff:
             return True
+
+        # 🔥 NEW: Section admins have access
+        if hasattr(user, "role") and user.role:
+            role = user.role.lower()
+            if any(
+                admin in role
+                for admin in [
+                    "admin",
+                    "primary_admin",
+                    "nursery_admin",
+                    "junior_secondary_admin",
+                    "senior_secondary_admin",
+                    "secondary_admin",
+                ]
+            ):
+                # AutoSectionFilterMixin ensures they only see teachers in their section
+                return True
 
         # Teachers can view and edit their own profile (but not delete)
         if hasattr(user, "teacher") and getattr(obj, "user", None) == user:
