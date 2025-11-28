@@ -1,0 +1,28 @@
+2025-11-28 14:35:19.315 WAT [14360] LOG:  starting PostgreSQL 18.1 on x86_64-windows, compiled by msvc-19.44.35219, 64-bit
+2025-11-28 14:35:19.327 WAT [14360] LOG:  could not bind IPv6 address "::1": Permission denied
+2025-11-28 14:35:19.328 WAT [14360] LOG:  could not bind IPv4 address "127.0.0.1": Permission denied
+2025-11-28 14:35:19.328 WAT [14360] WARNING:  could not create listen socket for "localhost"
+2025-11-28 14:35:19.328 WAT [14360] FATAL:  could not create any TCP/IP sockets
+2025-11-28 14:35:19.331 WAT [14360] LOG:  database system is shut down
+2025-11-28 14:36:51.033 WAT [13524] LOG:  starting PostgreSQL 18.1 on x86_64-windows, compiled by msvc-19.44.35219, 64-bit
+2025-11-28 14:36:51.038 WAT [13524] LOG:  could not bind IPv6 address "::1": Permission denied
+2025-11-28 14:36:51.038 WAT [13524] LOG:  could not bind IPv4 address "127.0.0.1": Permission denied
+2025-11-28 14:36:51.039 WAT [13524] WARNING:  could not create listen socket for "localhost"
+2025-11-28 14:36:51.039 WAT [13524] FATAL:  could not create any TCP/IP sockets
+2025-11-28 14:36:51.041 WAT [13524] LOG:  database system is shut down
+2025-11-28 14:37:19.622 WAT [23520] LOG:  starting PostgreSQL 18.1 on x86_64-windows, compiled by msvc-19.44.35219, 64-bit
+2025-11-28 14:37:19.627 WAT [23520] LOG:  could not bind IPv6 address "::1": Permission denied
+2025-11-28 14:37:19.627 WAT [23520] LOG:  could not bind IPv4 address "127.0.0.1": Permission denied
+2025-11-28 14:37:19.627 WAT [23520] WARNING:  could not create listen socket for "localhost"
+2025-11-28 14:37:19.627 WAT [23520] FATAL:  could not create any TCP/IP sockets
+2025-11-28 14:37:19.629 WAT [23520] LOG:  database system is shut down
+2025-11-28 14:43:24.955 WAT [20020] LOG:  starting PostgreSQL 18.1 on x86_64-windows, compiled by msvc-19.44.35219, 64-bit
+2025-11-28 14:43:24.965 WAT [20020] LOG:  listening on IPv6 address "::1", port 5433
+2025-11-28 14:43:24.965 WAT [20020] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2025-11-28 14:43:25.111 WAT [11196] LOG:  database system was shut down at 2025-11-28 14:34:56 WAT
+2025-11-28 14:43:25.122 WAT [20020] LOG:  database system is ready to accept connections
+2025-11-28 14:44:26.612 WAT [27472] FATAL:  role "postgres" does not exist
+2025-11-28 14:45:19.737 WAT [4424] FATAL:  database "HomePC" does not exist
+2025-11-28 14:47:05.628 WAT [19868] FATAL:  database "HomePC" does not exist
+2025-11-28 14:48:25.085 WAT [13580] LOG:  checkpoint starting: time
+2025-11-28 14:50:18.781 WAT [13580] LOG:  checkpoint complete: wrote 1046 buffers (6.4%), wrote 3 SLRU buffers; 1 WAL file(s) added, 0 removed, 0 recycled; write=113.502 s, sync=0.155 s, total=113.697 s; sync files=319, longest=0.002 s, average=0.001 s; distance=5010 kB, estimate=5010 kB; lsn=0/1CD5BE8, redo lsn=0/1CD5B58

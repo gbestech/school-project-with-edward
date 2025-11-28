@@ -16,6 +16,13 @@ class SchoolSettings(models.Model):
     school_phone = models.CharField(max_length=20, blank=True, null=True)
     school_email = models.EmailField(blank=True, null=True)
     school_motto = models.CharField(max_length=500, blank=True, null=True)
+    
+    # NEW FIELD: School Code for username generation
+    school_code = models.CharField(
+        max_length=10,
+        default='SCH',
+        help_text="Short code used in username generation (e.g., AIS, GTS, HIS, KCS)"
+    )
 
     # UPDATED: Change from ImageField to URLField for Cloudinary
     logo = models.URLField(
@@ -93,7 +100,20 @@ class SchoolSettings(models.Model):
         verbose_name_plural = "School Settings"
 
     def __str__(self):
-        return f"Settings for {self.school_name}"
+        return f"Settings for {self.school_name} ({self.school_code})"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one SchoolSettings instance exists
+        if not self.pk and SchoolSettings.objects.exists():
+            # Update existing instead of creating new
+            existing = SchoolSettings.objects.first()
+            self.pk = existing.pk
+        
+        # Always uppercase the school code
+        if self.school_code:
+            self.school_code = self.school_code.upper().strip()
+        
+        super().save(*args, **kwargs)
 
 
 class CommunicationSettings(models.Model):

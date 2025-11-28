@@ -1994,7 +1994,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.template.loader import render_to_string
-from weasyprint import HTML
 from django.http import HttpResponse
 import tempfile
 from django_filters.rest_framework import DjangoFilterBackend
@@ -2008,7 +2007,6 @@ from utils.section_filtering import SectionFilterMixin, AutoSectionFilterMixin
 from .report_generation import get_report_generator
 from .serializers import ReportGenerationSerializer
 from utils.teacher_portal_permissions import TeacherPortalCheckMixin
-
 
 from .models import (
     StudentResult,
@@ -2090,7 +2088,6 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.http import HttpResponse
-from weasyprint import HTML
 import tempfile
 
 from .serializers import ReportGenerationSerializer

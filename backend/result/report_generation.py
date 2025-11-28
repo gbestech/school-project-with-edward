@@ -4,7 +4,7 @@ Complete implementation for PDF report generation using WeasyPrint
 """
 from django.template.loader import render_to_string
 from django.http import HttpResponse
-
+import os
 import tempfile
 import logging
 from datetime import datetime
@@ -22,15 +22,26 @@ from students.models import Student
 from schoolSettings.models import SchoolSettings
 from django.conf import settings
 
+# try:
+#     from weasyprint import HTML
+# except Exception as e:
+#     HTML = None
+
+# if HTML is None:
+#     raise RuntimeError(
+#         "WeasyPrint is not available on this environment. Check apt packages."
+#     )
 try:
-    from weasyprint import HTML
-except Exception as e:
+    if os.getenv("DISABLE_WEASYPRINT") == "true":
+        HTML = None
+    else:
+        from weasyprint import HTML
+except Exception:
     HTML = None
 
 if HTML is None:
-    raise RuntimeError(
-        "WeasyPrint is not available on this environment. Check apt packages."
-    )
+    logging.warning("WeasyPrint disabled or not available in production")
+
 
 logger = logging.getLogger(__name__)
 

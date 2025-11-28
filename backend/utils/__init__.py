@@ -1,16 +1,22 @@
 from datetime import datetime
 
-def generate_unique_username(role: str, registration_number: str = None, employee_id: str = None) -> str:
-    from users.models import CustomUser  # Import inside the function to avoid AppRegistryNotReady
+
+def generate_unique_username(role: str, registration_number: str = None, employee_id: str = None, school_code: str = None) -> str:
     """
     Generate a unique username in the format:
-    PREFIX/GTS/MONTH/YEAR/ID
-    PREFIX: STU (student), TCH (teacher), PAR (parent), ADM (admin)
-    GTS: God's Treasure Schools
-    MONTH: 3-letter uppercase month (JUL, AUG, etc.)
-    YEAR: last two digits (25, 26, etc.)
-    ID: registration_number for students, employee_id for teachers, auto-increment for others
+    PREFIX/SCHOOL_CODE/MONTH/YEAR/ID
+    
+    Args:
+        role: User role (student, teacher, parent, admin)
+        registration_number: For students
+        employee_id: For teachers
+        school_code: Override school code (if None, will fetch from SchoolSettings)
+    
+    Returns:
+        Generated username string
     """
+    from users.models import CustomUser  # Import inside the function to avoid AppRegistryNotReady
+    
     prefix_map = {
         'student': 'STU',
         'teacher': 'TCH',
@@ -18,15 +24,25 @@ def generate_unique_username(role: str, registration_number: str = None, employe
         'admin': 'ADM',
     }
     prefix = prefix_map.get(role.lower(), 'USR')
-    school = 'GTS'
+    
+    # Get school code from parameter or database
+    if school_code is None:
+        try:
+            from schoolSettings.models import SchoolSettings
+            settings = SchoolSettings.objects.first()
+            school_code = settings.school_code if settings else "SCH"
+        except Exception:
+            # Fallback if SchoolSettings doesn't exist or database not ready
+            school_code = "SCH"
+    
     now = datetime.now()
-    month = now.strftime('%b').upper()  # e.g., 'JUL'
+    month = now.strftime('%b').upper()  # e.g., 'NOV'
     year = now.strftime('%y')           # e.g., '25'
 
     # Determine the ID part based on role and provided data
     if role.lower() == 'student' and registration_number:
         # Use registration number for students, but ensure uniqueness
-        base_username = f"{prefix}/{school}/{month}/{year}/{registration_number}"
+        base_username = f"{prefix}/{school_code}/{month}/{year}/{registration_number}"
         
         # Check if this exact username already exists
         if CustomUser.objects.filter(username=base_username).exists():
@@ -40,7 +56,7 @@ def generate_unique_username(role: str, registration_number: str = None, employe
             
     elif role.lower() == 'teacher' and employee_id:
         # Use employee ID for teachers, but ensure uniqueness
-        base_username = f"{prefix}/{school}/{month}/{year}/{employee_id}"
+        base_username = f"{prefix}/{school_code}/{month}/{year}/{employee_id}"
         
         # Check if this exact username already exists
         if CustomUser.objects.filter(username=base_username).exists():
@@ -54,7 +70,7 @@ def generate_unique_username(role: str, registration_number: str = None, employe
             
     else:
         # For parents and admins, or when no specific ID is provided, use auto-increment
-        pattern = f"{prefix}/{school}/{month}/{year}/"
+        pattern = f"{prefix}/{school_code}/{month}/{year}/"
         existing_usernames = CustomUser.objects.filter(username__startswith=pattern)
         max_regnum = 0
         for user in existing_usernames:
@@ -68,7 +84,15 @@ def generate_unique_username(role: str, registration_number: str = None, employe
                     max_regnum = regnum
             except (ValueError, IndexError):
                 continue
-        id_part = f"{max_regnum + 1:03d}"  # 3 digits for parents/admins
+        id_part = f"{max_regnum + 1:04d}"  # 4 digits for parents/admins (0001, 0002, etc.)
 
-    username = f"{prefix}/{school}/{month}/{year}/{id_part}"
+    username = f"{prefix}/{school_code}/{month}/{year}/{id_part}"
     return username
+
+
+def get_default_school_code():
+    """
+    Helper function to get school code for migrations.
+    This ensures migrations don't fail when SchoolSettings doesn't exist yet.
+    """
+    return "SCH"

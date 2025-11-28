@@ -17,6 +17,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env_file = BASE_DIR / ".env"
 if env_file.exists():
     load_dotenv(dotenv_path=env_file)
+    
+
+
 
 # ============================================
 # SECURITY SETTINGS
@@ -64,6 +67,38 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    
+    
+# ============================================
+# DATABASE CONFIGURATION (Local + Production)
+# ============================================
+
+LOCAL_DATABASE_URL = os.getenv("LOCAL_DATABASE_URL")
+PROD_DATABASE_URL = os.getenv("PROD_DATABASE_URL")
+
+# Choose correct DB based on environment
+if DEBUG:
+    DATABASE_URL = LOCAL_DATABASE_URL
+else:
+    DATABASE_URL = PROD_DATABASE_URL
+
+# Ensure a DB URL exists
+if not DATABASE_URL:
+    raise ValueError("❌ Missing LOCAL_DATABASE_URL or PROD_DATABASE_URL in .env")
+
+# Parse with dj_database_url
+DATABASES = {
+    "default": dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=60,
+        ssl_require=not DEBUG  # SSL for production only
+    )
+}
+
+# Production must force SSL
+if not DEBUG:
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+
 
 # ============================================
 # INSTALLED APPS
@@ -221,11 +256,15 @@ if DATABASE_URL:
     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
 else:
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'school_local',
+        'USER': 'postgres',
+        'PASSWORD': 'superuser',
+        'HOST': 'localhost',
+        'PORT': '5433',  # changed port
     }
+}
 
 
 # Cloudinary Configuration
