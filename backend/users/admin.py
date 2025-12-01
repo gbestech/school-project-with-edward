@@ -1,71 +1,84 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth.models import Group, Permission
-
-from .forms import CustomUserCreationForm, CustomUserChangeForm
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import CustomUser
-
-# Group is already registered by Django, so unregister it first
-admin.site.unregister(Group)
-
-# Permission is NOT registered by default, so just register it directly
-# No need to unregister Permission
-
-
-@admin.register(Group)
-class CustomGroupAdmin(admin.ModelAdmin):
-    list_display = ("name", "get_permissions_count", "get_users_count")
-    search_fields = ("name",)
-    filter_horizontal = ("permissions",)
-
-    def get_permissions_count(self, obj):
-        return obj.permissions.count()
-
-    get_permissions_count.short_description = "Permissions"
-
-    def get_users_count(self, obj):
-        return obj.user_set.count()
-
-    get_users_count.short_description = "Users"
-
-
-@admin.register(Permission)
-class CustomPermissionAdmin(admin.ModelAdmin):
-    list_display = ("name", "content_type", "codename")
-    list_filter = ("content_type",)
-    search_fields = ("name", "codename")
 
 
 @admin.register(CustomUser)
-class CustomUserAdmin(UserAdmin):
-    model = CustomUser
-    add_form = CustomUserCreationForm
-    form = CustomUserChangeForm
+class CustomUserAdmin(BaseUserAdmin):
+    list_display = [
+        "username",
+        "email",
+        "full_name",
+        "role",
+        "school_code",  # Show school code
+        "section",
+        "is_active",
+        "is_staff",
+    ]
 
-    list_display = ("email", "full_name", "role", "is_staff", "is_active")
-    list_filter = ("is_staff", "is_active", "role")
-    search_fields = ("email", "first_name", "middle_name", "last_name")
-    ordering = ("email",)
+    list_filter = [
+        "school",  # Filter by school
+        "role",
+        "section",
+        "is_active",
+        "is_staff",
+        "email_verified",
+    ]
+
+    search_fields = [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "school__school_name",
+        "school__school_code",
+    ]
 
     fieldsets = (
-        (None, {"fields": ("email", "password")}),
+        (None, {"fields": ("username", "password")}),
         (
-            "Personal info",
-            {"fields": ("first_name", "middle_name", "last_name", "role")},
+            "Personal Info",
+            {
+                "fields": (
+                    "first_name",
+                    "middle_name",
+                    "last_name",
+                    "email",
+                    "phone",
+                    "phone_number",
+                )
+            },
+        ),
+        (
+            "School & Role Information",
+            {
+                "fields": ("school", "role", "section", "reports_to"),
+                "description": "Multi-tenant: Users must be assigned to a school",
+            },
         ),
         (
             "Permissions",
             {
                 "fields": (
-                    "is_staff",
                     "is_active",
+                    "is_staff",
                     "is_superuser",
                     "groups",
                     "user_permissions",
                 )
             },
         ),
-        ("Important dates", {"fields": ("last_login",)}),
+        (
+            "Verification",
+            {
+                "fields": (
+                    "email_verified",
+                    "verification_code",
+                    "verification_code_expires",
+                )
+            },
+        ),
+        ("Important Dates", {"fields": ("last_login", "date_joined")}),
     )
 
     add_fieldsets = (
@@ -74,37 +87,41 @@ class CustomUserAdmin(UserAdmin):
             {
                 "classes": ("wide",),
                 "fields": (
+                    "username",
                     "email",
-                    "first_name",
-                    "middle_name",
-                    "last_name",
-                    "role",
                     "password1",
                     "password2",
-                    "is_staff",
+                    "first_name",
+                    "last_name",
+                    "school",  # Required for new users
+                    "role",
+                    "section",
                     "is_active",
+                    "is_staff",
                 ),
             },
         ),
     )
 
-    def full_name(self, obj):
-        return obj.full_name
+    readonly_fields = ["date_joined", "last_login"]
 
-    full_name.short_description = "Full Name"
+    def school_code(self, obj):
+        """Display school code in list"""
+        return obj.school.school_code if obj.school else "-"
 
-    def save_model(self, request, obj, form, change):
-        """Sync custom role field with Django Groups and auto-verify admin-created users"""
+    school_code.short_description = "School"
+    school_code.admin_order_field = "school__school_code"
 
-        # Auto-verify new users created by admins
-        if not change:  # This is a new user being created
-            obj.email_verified = True
-            obj.is_active = True
+    def get_queryset(self, request):
+        """Filter users by school for non-superusers"""
+        qs = super().get_queryset(request)
 
-        super().save_model(request, obj, form, change)
+        # True Django superusers see everything
+        if request.user.is_superuser:
+            return qs
 
-        if obj.role:
-            group, _ = Group.objects.get_or_create(name=obj.role)
+        # School admins only see their school's users
+        if hasattr(request.user, "school") and request.user.school:
+            return qs.filter(school=request.user.school)
 
-            # ❗ Ensure only one role per user — replace groups
-            obj.groups.set([group])
+        return qs.none()

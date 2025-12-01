@@ -14,6 +14,9 @@ importers:
       jspdf-autotable:
         specifier: ^5.0.2
         version: 5.0.2(jspdf@3.0.1)
+      pmpm:
+        specifier: ^0.0.0
+        version: 0.0.0
       recharts:
         specifier: ^3.1.0
         version: 3.1.0(react-dom@19.1.0(react@19.1.0))(react-is@19.1.0)(react@19.1.0)(redux@5.0.1)
@@ -489,6 +492,7 @@ packages:
   performance-now@2.1.0:
     resolution: {integrity: sha512-7EAHlyLHI56VEIdK57uwHdHKIaAGbnXPiw0yWbarQZOKaKpvUIgW0jWRVLiatnM+XXlSwsanIBH/hzGMJulMow==}
 
+<<<<<<< HEAD
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -499,6 +503,10 @@ packages:
   postcss@8.5.6:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
+=======
+  pmpm@0.0.0:
+    resolution: {integrity: sha512-8v0jmAeT/h6RC0OkD5reS9TMq5o8f5RPSXwThwRxAuckd/z6uoAoNT5h695ne4wbaM/zJIvEK3I/N8GcLwBZGg==}
+>>>>>>> e8fbd669e89accac6f2bf780bdff1beef01ccf2c
 
   raf@3.4.1:
     resolution: {integrity: sha512-Sq4CW4QhwOHE8ucn6J34MqtZCeWFP2aQSmrlroYgqAV1PjStIhJXxYuTgUIfkEk7zTLjmIjLmU5q+fbD1NnOJA==}
@@ -986,6 +994,7 @@ snapshots:
   performance-now@2.1.0:
     optional: true
 
+<<<<<<< HEAD
   picocolors@1.1.1: {}
 
   picomatch@4.0.3: {}
@@ -995,6 +1004,9 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
+=======
+  pmpm@0.0.0: {}
+>>>>>>> e8fbd669e89accac6f2bf780bdff1beef01ccf2c
 
   raf@3.4.1:
     dependencies:

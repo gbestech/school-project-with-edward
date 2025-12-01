@@ -17,8 +17,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env_file = BASE_DIR / ".env"
 if env_file.exists():
     load_dotenv(dotenv_path=env_file)
-    
-
 
 
 # ============================================
@@ -67,8 +65,8 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    
-    
+
+
 # ============================================
 # DATABASE CONFIGURATION (Local + Production)
 # ============================================
@@ -181,17 +179,18 @@ MIDDLEWARE = [
 # ============================================
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://localhost:5173"
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174",
 ).split(",")
 
 CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173"
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174",
 ).split(",")
 
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
-    "accept",
     "accept-encoding",
     "authorization",
     "content-type",
@@ -256,15 +255,27 @@ if DATABASE_URL:
     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
 else:
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'school_local',
-        'USER': 'postgres',
-        'PASSWORD': 'superuser',
-        'HOST': 'localhost',
-        'PORT': '5433',  # changed port
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB", "school_db"),
+            "USER": os.getenv("POSTGRES_USER", "postgres"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
+            "HOST": os.getenv(
+                "DB_HOST", "localhost"
+            ),  # Important: reads from environment
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+#     DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'school_local',
+#         'USER': 'postgres',
+#         'PASSWORD': 'superuser',
+#         'HOST': 'localhost',
+#         'PORT': '5433',  # changed port
+#     }
+# }
 
 
 # Cloudinary Configuration
@@ -343,8 +354,8 @@ AUTH_USER_MODEL = "users.CustomUser"
 # ============================================
 
 AUTHENTICATION_BACKENDS = [
-    "authentication.backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
+    "authentication.backends.EmailBackend",
 ]
 
 # ============================================

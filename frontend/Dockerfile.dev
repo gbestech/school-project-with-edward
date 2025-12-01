@@ -1,0 +1,21 @@
+# Development Dockerfile for React + PNPM
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install pnpm globally
+RUN npm install -g pnpm
+
+# Copy only package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies using pnpm
+RUN pnpm install
+
+# Copy the rest of the project
+COPY . .
+
+EXPOSE 5173
+
+# Start the Vite dev server
+CMD ["pnpm", "dev", "--host"]
