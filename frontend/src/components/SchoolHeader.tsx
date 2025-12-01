@@ -24,9 +24,9 @@ const SchoolHeader: React.FC = () => {
     <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          {settings.logo_url && (
+          {settings.logo && (
             <img 
-              src={getAbsoluteUrl(settings.logo_url)} 
+              src={getAbsoluteUrl(settings.logo)} 
               alt={`${settings.school_name} logo`}
               className="w-8 h-8 object-contain"
             />
@@ -35,22 +35,22 @@ const SchoolHeader: React.FC = () => {
             <h1 className="text-lg font-semibold text-gray-900">
               {settings.school_name}
             </h1>
-            {settings.school_motto && (
-              <p className="text-sm text-gray-600">{settings.school_motto}</p>
+            {settings.motto && (
+              <p className="text-sm text-gray-600">{settings.motto}</p>
             )}
           </div>
         </div>
         
         <div className="flex items-center space-x-4 text-sm text-gray-600">
           <div>
-            <span className="font-medium">Academic Year:</span> {settings.academic_year}
+            <span className="font-medium">Academic Year:</span> {settings.academicYear}
           </div>
           <div>
-            <span className="font-medium">Term:</span> {settings.current_term}
+            <span className="font-medium">Term:</span> {settings.currentTerm}
           </div>
-          {settings.school_phone && (
+          {settings.phone && (
             <div>
-              <span className="font-medium">Phone:</span> {settings.school_phone}
+              <span className="font-medium">Phone:</span> {settings.phone}
             </div>
           )}
         </div>
