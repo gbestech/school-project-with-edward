@@ -276,10 +276,10 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Database configuration
 if ENV == "prod":
-    # Production: Use Render's DATABASE_URL or fallback to PROD_DATABASE_URL
-    DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("PROD_DATABASE_URL")
+    # Production: Use PROD_DATABASE_URL for Neon
+    DATABASE_URL = os.getenv("PROD_DATABASE_URL")
     if not DATABASE_URL:
-        raise ValueError("⚠️ Missing DATABASE_URL for production environment")
+        raise ValueError("⚠️ Missing PROD_DATABASE_URL for production environment")
 
     DATABASES = {
         "default": dj_database_url.parse(
@@ -299,8 +299,7 @@ else:
         "default": dj_database_url.parse(
             LOCAL_DATABASE_URL, conn_max_age=60, ssl_require=False
         )
-    }
-#     DATABASES = {
+    }  #     DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
 #         'NAME': 'school_local',
