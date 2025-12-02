@@ -24,7 +24,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
+    environment:    
       DB_HOST: postgres
       DB_PORT: 5432
       POSTGRES_DB: school_db

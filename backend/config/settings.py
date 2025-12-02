@@ -242,29 +242,63 @@ WSGI_APPLICATION = "config.wsgi.application"
 # DATABASE
 # ============================================
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# DATABASE_URL = os.getenv("DATABASE_URL")
 
-if DATABASE_URL:
+# if DATABASE_URL:
+#     DATABASES = {
+#         "default": dj_database_url.parse(
+#             DATABASE_URL,
+#             conn_max_age=60,
+#             ssl_require=True,
+#         )
+#     }
+#     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+# else:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": "django.db.backends.postgresql",
+#             "NAME": os.getenv("POSTGRES_DB", "school_db"),
+#             "USER": os.getenv("POSTGRES_USER", "postgres"),
+#             "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
+#             "HOST": os.getenv(
+#                 "DB_HOST", "localhost"
+#             ),  # Important: reads from environment
+#             "PORT": os.getenv("DB_PORT", "5432"),
+#         }
+#     }
+
+import os
+import dj_database_url
+
+# Get environment - default to 'dev' if not set
+ENV = os.getenv("ENV", "dev")
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+# Database configuration
+if ENV == "prod":
+    # Production: Use Render's DATABASE_URL or fallback to PROD_DATABASE_URL
+    DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("PROD_DATABASE_URL")
+    if not DATABASE_URL:
+        raise ValueError("⚠️ Missing DATABASE_URL for production environment")
+
     DATABASES = {
         "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=60,
-            ssl_require=True,
+            DATABASE_URL, conn_max_age=600, conn_health_checks=True, ssl_require=True
         )
     }
+    # Ensure SSL is required for production
     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+
 else:
+    # Local Development: Use LOCAL_DATABASE_URL
+    LOCAL_DATABASE_URL = os.getenv("LOCAL_DATABASE_URL")
+    if not LOCAL_DATABASE_URL:
+        raise ValueError("⚠️ Missing LOCAL_DATABASE_URL for local development")
+
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "school_db"),
-            "USER": os.getenv("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
-            "HOST": os.getenv(
-                "DB_HOST", "localhost"
-            ),  # Important: reads from environment
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
+        "default": dj_database_url.parse(
+            LOCAL_DATABASE_URL, conn_max_age=60, ssl_require=False
+        )
     }
 #     DATABASES = {
 #     'default': {
