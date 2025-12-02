@@ -180,12 +180,12 @@ MIDDLEWARE = [
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://localhost:5174",
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.al-qolamulmuwaffaq.com,https://school-project-with-edward.vercel.app"
 ).split(",")
 
 CORS_ALLOWED_ORIGINS = os.getenv(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://localhost:5174",
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.al-qolamulmuwaffaq.com,https://school-project-with-edward.vercel.app",
 ).split(",")
 
 CORS_ALLOW_CREDENTIALS = True
