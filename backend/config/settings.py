@@ -51,7 +51,10 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ["true", "1", "yes"]
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # Allowed hosts
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1, school-project-with-edward.onrender.com",
+).split(",")
 
 # Production security settings
 if not DEBUG:
