@@ -103,7 +103,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
               )}
               <div>
                 <span className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
-                  {settings?.school_name || "AI HUSTLE DAILY"}
+                  {settings?.school_name || "School Name"}
                 </span>
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Dashboard</div>
               </div>
@@ -111,7 +111,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
             {/* Copyright */}
             <div className="text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                © {currentYear} {settings?.school_name || "AI Hustle Daily"}. All rights reserved.
+                © {currentYear} {settings?.school_name || "School Name"}. All rights reserved.
               </p>
               <div className="flex items-center justify-center space-x-1 mt-1">
                 <span className="text-xs text-slate-500 dark:text-slate-400">Made with</span>
@@ -166,7 +166,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
                 )}
                 <div>
                   <span className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
-                    {settings?.school_name || "AI HUSTLE DAILY"}
+                    {settings?.school_name || "School Name"}
                   </span>
                 </div>
               </div>
@@ -253,7 +253,7 @@ const Footer: React.FC<FooterProps> = ({ isDashboard = false }) => {
               </div>
               <div className="flex items-center space-x-4">
                 <div className="text-sm text-slate-500 dark:text-slate-400">
-                  © {currentYear} AI Hustle Daily. All rights reserved.
+                  © {currentYear} Nuventa Ltd. All rights reserved.
                 </div>
                 <div className="flex items-center space-x-1">
                   <span className="text-xs text-slate-500 dark:text-slate-400">Made with</span>
