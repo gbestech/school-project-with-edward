@@ -10,10 +10,12 @@ import Navbar from '@/components/home/Nav';
 import Footer from '@/components/home/Footer';
 
 
+
 // Lazy load all components with consistent import paths and error handling
 const Home = lazy(() => import('./../pages/Landing').catch(() => ({ default: () => <div>Error loading Home</div> })));
 const School_Activities = lazy(() => import('./../pages/School_Activities').catch(() => ({ default: () => <div>Error loading School Activities</div> })));
 const Login = lazy(() => import('./../pages/Login').catch(() => ({ default: () => <div>Error loading Login</div> })));
+const InitialSuperAdminRegister = lazy(() => import('./../pages/InitialSetup').catch(() => ({ default: () => <div>Error loading Login</div> })));
 const SignUp = lazy(() => import('./../pages/SignUp').catch(() => ({ default: () => <div>Error loading SignUp</div> })));
 const EmailVerification = lazy(() => import('./../pages/EmailVerification').catch(() => ({ default: () => <div>Error loading Email Verification</div> })));
 const About = lazy(() => import('./../pages/About').catch(() => ({ default: () => <div>Error loading About</div> })));
@@ -162,6 +164,12 @@ export const router = createBrowserRouter([
             path: 'signup',
             element: <SignUp />,
             errorElement: <RouteErrorElement />
+          },
+          {
+              path: "/setup",
+              element: <InitialSuperAdminRegister/>,
+              errorElement: <RouteErrorElement/>
+
           },
           {
             path: 'verify-email',

@@ -56,7 +56,7 @@ ALLOWED_HOSTS = os.getenv(
     "localhost,127.0.0.1,school-project-with-edward.onrender.com",
 ).split(",")
 
-# Production security settings
+# Production security settingsay
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # CRITICAL for Render
     SECURE_SSL_REDIRECT = True
@@ -434,7 +434,7 @@ SIMPLE_JWT = {
 REST_USE_JWT = True
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 ACCOUNT_LOGIN_METHOD = "username"
 ACCOUNT_SIGNUP_FIELDS = ["email*"]
@@ -509,8 +509,11 @@ REST_AUTH_SERIALIZERS = {
     "USER_DETAILS_SERIALIZER": "authentication.serializers.UserDetailsSerializer",
 }
 
+# REST_AUTH_REGISTER_SERIALIZERS = {
+#     "REGISTER_SERIALIZER": "dj_rest_auth.registration.serializers.RegisterSerializer",
+# }
 REST_AUTH_REGISTER_SERIALIZERS = {
-    "REGISTER_SERIALIZER": "dj_rest_auth.registration.serializers.RegisterSerializer",
+    "REGISTER_SERIALIZER": "authentication.serializers.CustomRegisterSerializer",
 }
 
 # ============================================

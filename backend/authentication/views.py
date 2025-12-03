@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views import View
 from django.utils.decorators import method_decorator
-
+import os
 from rest_framework import status, generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -215,6 +215,65 @@ class SimpleLoginView(APIView):
             )
         logger.error(f"Login serializer errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def create_first_superuser(request):
+    """
+    Create the first superuser - only works if no superusers exist
+    """
+    # Check if any superuser already exists
+    if User.objects.filter(is_superuser=True).exists():
+        return Response(
+            {"error": "Superuser already exists. Use normal registration."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Optional: Add a secret key for extra security
+    secret = request.data.get("setup_secret")
+    expected_secret = os.getenv("SETUP_SECRET", "allow-first-setup")
+
+    if secret != expected_secret:
+        return Response(
+            {"error": "Invalid setup secret"}, status=status.HTTP_403_FORBIDDEN
+        )
+
+    username = request.data.get("username")
+    email = request.data.get("email")
+    password = request.data.get("password")
+    first_name = request.data.get("first_name", "")
+    last_name = request.data.get("last_name", "")
+
+    if not all([username, email, password]):
+        return Response(
+            {"error": "Username, email, and password are required"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_superuser=True,
+            is_staff=True,
+            is_active=True,
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Superuser created successfully",
+                "user": {"username": user.username, "email": user.email, "id": user.id},
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
