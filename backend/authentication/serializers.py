@@ -36,6 +36,7 @@ class CustomRegisterSerializer(RegisterSerializer):
         data = super().get_cleaned_data()
         data["first_name"] = self.validated_data.get("first_name", "")
         data["last_name"] = self.validated_data.get("last_name", "")
+        data["email"] = self._validated_data.get("email", "")
         data["role"] = self.validated_data.get("role", "")
         return data
 
