@@ -11,6 +11,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
   const [formData, setFormData] = useState({
     school_name: '',
     site_name: '',
+    school_code: '',
     address: '',
     phone: '',
     email: '',
@@ -65,6 +66,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       setFormData({
         school_name: initialSettings.school_name || '',
         site_name: initialSettings.site_name || '',
+        school_code: initialSettings.school_code || '',
         address: initialSettings.address || '',
         phone: initialSettings.phone || '',
         email: initialSettings.email || '',

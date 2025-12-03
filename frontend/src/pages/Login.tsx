@@ -11,7 +11,7 @@ const Login = () => {
   const { t } = useTranslation()
 
   // Set document title
-  useDocumentTitle(t('login.title', 'Login - Gods Treasure Schools'))
+  useDocumentTitle(t('login.title', 'Login - AL-QOLAMULMUWAFFAQ'))
 
   const handleRoleSelection = (role: UserRole) => {
     switch (role) {

@@ -18,7 +18,7 @@ const StudentLoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useDocumentTitle(t('login.title', 'Student Login - Gods Treasure Schools'));
+  useDocumentTitle(t('login.title', 'Student Login - AL-QOLAMULMUWAFFAQ'));
 
   const handleLogin = async (credentials: LoginCredentials) => {
     try {
