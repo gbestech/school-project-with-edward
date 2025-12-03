@@ -53,7 +53,7 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 # Allowed hosts
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1, school-project-with-edward.onrender.com",
+    "localhost,127.0.0.1,school-project-with-edward.onrender.com",
 ).split(",")
 
 # Production security settings
