@@ -53,7 +53,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         if (urlOrFilename.startsWith('http')) return urlOrFilename;
         // If it's just a filename or relative path, construct full URL
         const cleanPath = urlOrFilename.startsWith('/') ? urlOrFilename : `/${urlOrFilename}`;
-        return `https://school-management-project-qpox.onrender.com${cleanPath}`;
+        return `https://school-project-with-edward.onrender.com${cleanPath}`;
       };
       
       const logoUrl = constructFullUrl(initialSettings.logo);
@@ -123,7 +123,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       const fullLogoUrl = result.logoUrl
         ? result.logoUrl.startsWith('http')
           ? result.logoUrl
-          : `https://school-management-project-qpox.onrender.com${result.logoUrl.startsWith('/') ? result.logoUrl : '/' + result.logoUrl}`
+          : `https://school-project-with-edward.onrender.com${result.logoUrl.startsWith('/') ? result.logoUrl : '/' + result.logoUrl}`
         : '';
       console.log('GeneralTab: Logo upload result:', result);
       console.log('GeneralTab: Full logo URL:', fullLogoUrl);
@@ -168,7 +168,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       const fullFaviconUrl = result.faviconUrl
         ? result.faviconUrl.startsWith('http')
           ? result.faviconUrl
-          : `https://school-management-project-qpox.onrender.com${result.faviconUrl.startsWith('/') ? result.faviconUrl : '/' + result.faviconUrl}`
+          : `https://school-project-with-edward.onrender.com${result.faviconUrl.startsWith('/') ? result.faviconUrl : '/' + result.faviconUrl}`
         : '';
       
       console.log('GeneralTab: Favicon upload result:', result);
