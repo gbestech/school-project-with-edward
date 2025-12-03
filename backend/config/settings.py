@@ -434,10 +434,10 @@ SIMPLE_JWT = {
 REST_USE_JWT = True
 
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
-ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 ACCOUNT_LOGIN_METHOD = "username"
-ACCOUNT_SIGNUP_FIELDS = ["username", "email"]
+ACCOUNT_SIGNUP_FIELDS = ["email"]
 ACCOUNT_LOGIN_METHODS = ["username"]
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
@@ -505,7 +505,7 @@ SOCIALACCOUNT_PROVIDERS = {
 # ============================================
 
 REST_AUTH_SERIALIZERS = {
-    "LOGIN_SERIALIZER": "authentication.serializers.CustomTokenObtainPairSerializer",
+    # "LOGIN_SERIALIZER": "authentication.serializers.CustomTokenObtainPairSerializer",
     "USER_DETAILS_SERIALIZER": "authentication.serializers.UserDetailsSerializer",
 }
 
