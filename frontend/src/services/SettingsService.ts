@@ -99,6 +99,7 @@ class SettingsService {
       // General settings
       if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
       if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
+      if (settings.school_code !== undefined) backendSettings.school_code = settings.school_code;
       if (settings.address !== undefined) backendSettings.school_address = settings.address;
       if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;
       if (settings.email !== undefined) backendSettings.school_email = settings.email;
