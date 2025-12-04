@@ -21,6 +21,7 @@ class SchoolSettingsSerializer(serializers.ModelSerializer):
             "id",
             "school_name",
             "site_name",
+            "school_code",
             "school_address",
             "school_phone",
             "school_email",

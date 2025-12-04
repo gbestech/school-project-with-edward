@@ -336,8 +336,8 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              school code
-            </label>
+  School Code <span className="text-red-500">*</span>
+</label>
             <input
               type="text"
               value={formData.school_code}
