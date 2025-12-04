@@ -335,17 +335,19 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-  School Code <span className="text-red-500">*</span>
-</label>
-            <input
-              type="text"
-              value={formData.school_code}
-              onChange={(e) => handleInputChange('school_code', e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-              placeholder="Enter site name"
-            />
-          </div>
+  <label className="block text-sm font-medium text-slate-700 mb-2">
+    School Code <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="text"
+    value={formData.school_code}
+    onChange={(e) => handleInputChange('school_code', e.target.value.toUpperCase())}
+    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+    placeholder="e.g., AQIS, SCH, HIS"
+    maxLength={10}
+  />
+  <p className="text-xs text-slate-500 mt-1">Short code for username generation (max 10 characters)</p>
+</div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-2">
