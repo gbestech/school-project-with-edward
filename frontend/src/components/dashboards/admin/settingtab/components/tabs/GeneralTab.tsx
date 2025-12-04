@@ -203,6 +203,11 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       setIsLoading(false);
       return;
     }
+    if (!formData.school_code?.trim()) {
+      setError('School code is required');
+      setIsLoading(false);
+      return;
+    }
 
     if (!formData.email?.trim()) {
       setError('Email is required');
@@ -325,6 +330,18 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               type="text"
               value={formData.site_name}
               onChange={(e) => handleInputChange('site_name', e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+              placeholder="Enter site name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              school code
+            </label>
+            <input
+              type="text"
+              value={formData.school_code}
+              onChange={(e) => handleInputChange('school_code', e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
               placeholder="Enter site name"
             />
