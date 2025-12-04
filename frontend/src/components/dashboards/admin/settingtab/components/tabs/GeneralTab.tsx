@@ -398,7 +398,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               value={formData.motto}
               onChange={(e) => handleInputChange('motto', e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-              placeholder="Excellence in Education"
+              placeholder="School motto"
             />
           </div>
         </div>

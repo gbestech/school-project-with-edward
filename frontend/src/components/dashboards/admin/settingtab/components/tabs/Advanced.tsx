@@ -1507,7 +1507,7 @@ interface CreateAnnouncementData {
 }
 
 // ==================== API SERVICE ====================
-const API_BASE_URL = 'https://school-management-project-qpox.onrender.com';
+const API_BASE_URL = 'https://school-project-with-edward.onrender.com/api';
 
 const getAuthToken = () => {
   // Check multiple possible token locations
