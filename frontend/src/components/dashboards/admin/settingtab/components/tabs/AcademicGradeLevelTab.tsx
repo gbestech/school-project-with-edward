@@ -62,8 +62,8 @@ const AcademicGradeLevelTab = () => {
     try {
       setLoading(true);
       const [gradeLevelsRes, sectionsRes] = await Promise.all([
-        api.get('/api/classroom/grades/'),
-        api.get('/api/classroom/sections/')
+        api.get('/api/classrooms/grades/'),
+        api.get('/api/classrooms/sections/')
       ]);
       
       setGradeLevels(Array.isArray(gradeLevelsRes) ? gradeLevelsRes : (gradeLevelsRes.results || []));
