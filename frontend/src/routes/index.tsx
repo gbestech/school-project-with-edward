@@ -222,7 +222,7 @@ export const router = createBrowserRouter([
             errorElement: <RouteErrorElement />
           },
           {
-            path:'super-admin',
+            path:'/super-admin/dashboard',
             element: <SuperAdminPage/>,
             errorElement: <RouteErrorElement/>
           },
