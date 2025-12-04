@@ -668,7 +668,7 @@ class ParentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             {
                 "id": parent.id,
                 "user_id": parent.user.id,
-                "full_name": parent.user.get_full_name(),
+                "full_name": parent.user.full_name,
                 "username": parent.user.username,
                 "email": parent.user.email,
                 "phone": parent.phone,
@@ -772,7 +772,7 @@ class ParentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             dashboard_data.append(
                 {
                     "student_id": student.id,
-                    "student": student.user.get_full_name(),
+                    "student": student.user.full_name,
                     "attendance_percentage": attendance_percentage,
                     "average_score": round(avg_score, 2),
                     "recent_attendance": attendance_list,
@@ -860,7 +860,7 @@ class ParentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 "status": "student added to parent",
                 "student": {
                     "id": student.id,
-                    "name": student.user.get_full_name(),
+                    "name": student.user.full_name,
                     "email": student.user.email,
                 },
                 "student_password": getattr(
@@ -935,7 +935,7 @@ class ParentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 "status": "existing student linked to parent",
                 "student": {
                     "id": student.id,
-                    "name": student.user.get_full_name(),
+                    "name": student.user.full_name,
                     "email": student.user.email,
                 },
             },
