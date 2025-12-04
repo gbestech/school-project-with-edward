@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit3, Trash2, Save, X, GraduationCap, Layers } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '@/services/api';
-import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
+// import ToggleSwitch from '@/components/dashboards/admin/settingtab/components/ToggleSwitch';
 
 interface GradeLevel {
   id: number;
@@ -62,8 +62,8 @@ const AcademicGradeLevelTab = () => {
     try {
       setLoading(true);
       const [gradeLevelsRes, sectionsRes] = await Promise.all([
-        api.get('/api/academics/grade-levels/'),
-        api.get('/api/academics/sections/')
+        api.get('/api/classroom/grades/'),
+        api.get('/api/classroom/sections/')
       ]);
       
       setGradeLevels(Array.isArray(gradeLevelsRes) ? gradeLevelsRes : (gradeLevelsRes.results || []));
