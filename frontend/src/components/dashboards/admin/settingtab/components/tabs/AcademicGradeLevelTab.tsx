@@ -85,10 +85,10 @@ const AcademicGradeLevelTab = () => {
 
     try {
       if (editingGradeLevel) {
-        await api.put(`/api/academics/grade-levels/${editingGradeLevel.id}/`, gradeLevelForm);
+        await api.put(`/api/classrooms/grade-levels/${editingGradeLevel.id}/`, gradeLevelForm);
         toast.success('Grade level updated successfully');
       } else {
-        await api.post('/api/academics/grade-levels/', gradeLevelForm);
+        await api.post('/api/classrooms/grade-levels/', gradeLevelForm);
         toast.success('Grade level created successfully');
       }
       
@@ -121,7 +121,7 @@ const AcademicGradeLevelTab = () => {
     }
 
     try {
-      await api.delete(`/api/academics/grade-levels/${id}/`);
+      await api.delete(`/api/classrooms/grade-levels/${id}/`);
       toast.success('Grade level deleted successfully');
       await loadData();
     } catch (error: any) {
@@ -154,10 +154,10 @@ const AcademicGradeLevelTab = () => {
 
     try {
       if (editingSection) {
-        await api.put(`/api/academics/sections/${editingSection.id}/`, sectionForm);
+        await api.put(`/api/classrooms/sections/${editingSection.id}/`, sectionForm);
         toast.success('Section updated successfully');
       } else {
-        await api.post('/api/academics/sections/', sectionForm);
+        await api.post('/api/classrooms/sections/', sectionForm);
         toast.success('Section created successfully');
       }
       
@@ -190,7 +190,7 @@ const AcademicGradeLevelTab = () => {
 
 
     try {
-      await api.delete(`/api/academics/sections/${id}/`);
+      await api.delete(`/api/classrooms/sections/${id}/`);
       toast.success('Section deleted successfully');
       await loadData();
     } catch (error: any) {
