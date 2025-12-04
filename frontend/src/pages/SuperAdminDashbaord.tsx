@@ -118,7 +118,7 @@ if (schoolResponse.ok) {
       description: "Access the complete administrative control panel",
       icon: Shield,
       color: "from-blue-500 to-blue-600",
-      link: "/admin",
+      link: "/admin/dashboard",
       features: ["User Management", "System Configuration", "Database Access"]
     },
     {
