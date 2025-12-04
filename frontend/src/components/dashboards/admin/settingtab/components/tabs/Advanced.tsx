@@ -1507,7 +1507,7 @@ interface CreateAnnouncementData {
 }
 
 // ==================== API SERVICE ====================
-const API_BASE_URL = 'https://school-project-with-edward.onrender.com/api';
+const API_BASE_URL = 'https://school-project-with-edward.onrender.com';
 
 const getAuthToken = () => {
   // Check multiple possible token locations
