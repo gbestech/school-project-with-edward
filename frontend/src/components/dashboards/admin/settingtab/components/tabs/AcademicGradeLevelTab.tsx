@@ -85,10 +85,10 @@ const AcademicGradeLevelTab = () => {
 
     try {
       if (editingGradeLevel) {
-        await api.put(`/api/classrooms/grade-levels/${editingGradeLevel.id}/`, gradeLevelForm);
+        await api.put(`/api/classrooms/grades/${editingGradeLevel.id}/`, gradeLevelForm);
         toast.success('Grade level updated successfully');
       } else {
-        await api.post('/api/classrooms/grade-levels/', gradeLevelForm);
+        await api.post('/api/classrooms/grades/', gradeLevelForm);
         toast.success('Grade level created successfully');
       }
       
@@ -121,7 +121,7 @@ const AcademicGradeLevelTab = () => {
     }
 
     try {
-      await api.delete(`/api/classrooms/grade-levels/${id}/`);
+      await api.delete(`/api/classrooms/grades/${id}/`);
       toast.success('Grade level deleted successfully');
       await loadData();
     } catch (error: any) {
