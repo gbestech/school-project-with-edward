@@ -68,7 +68,7 @@ const HowToApplyPage = lazy(() => import('./../pages/HowToApplyPage').catch(() =
 const ResultChecker = lazy(() => import('./../components/dashboards/admin/ResultChecker').catch(() => ({ default: () => <div>Error loading Result Checker</div> })));
 const StudentResultChecker = lazy(() => import('./../components/dashboards/admin/StudentResultChecker').catch(() => ({ default: () => <div>Error loading Student Result Checker</div> })));
 const StudentResultDetail = lazy(() => import('./../components/dashboards/admin/StudentResultDetail').catch(() => ({ default: () => <div>Error loading Student Result Detail</div> })));
-
+const SuperAdminPage = lazy(() => import('./../pages/SuperAdminDashbaord').catch(() => ({default: () => <div>Error loading Super Admin Page</div>})));
 
 const RouteErrorElement = () => {
   const error = (window as any).__routerError || 'Unknown error';
@@ -220,6 +220,11 @@ export const router = createBrowserRouter([
             path: 'how-to-apply',
             element: <HowToApplyPage />, 
             errorElement: <RouteErrorElement />
+          },
+          {
+            path:'super-admin',
+            element: <SuperAdminPage/>,
+            errorElement: <RouteErrorElement/>
           },
           // {
           //   path: 'teacher/bio/:teacherId',

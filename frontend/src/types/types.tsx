@@ -288,6 +288,7 @@ export interface SchoolSettings {
   // General settings
   site_name: string;
   school_name: string;
+  school_code: string;
   address: string;
   phone: string;
   email: string;
