@@ -237,39 +237,7 @@ const loadTeacherData = async () => {
     }
   };
 
-  // const handleDeleteExam = async (examId: number) => {
-  //   const examToDelete = exams.find(e => e.id === examId);
-  //   if (!examToDelete) {
-  //     return;
-  //   }
-    
-  //   if (!window.confirm(`Are you sure you want to delete "${examToDelete.title}"?`)) {
-  //     return;
-  //   }
-    
-  //   try {
-  //     setExams(prevExams => prevExams.filter(e => e.id !== examId));
-  //     await ExamService.deleteExam(examId);
-  //     toast.success('Exam deleted successfully!');
-  //     await loadTeacherData();
-  //   } catch (error) {
-  //     console.error('Error deleting exam:', error);
-      
-  //     const is404Error = error instanceof Error && (
-  //       error.message.includes('404') || 
-  //       error.message.includes('Not Found')
-  //     );
-      
-  //     if (is404Error) {
-  //       toast.success('Exam removed successfully!');
-  //       await loadTeacherData();
-  //     } else {
-  //       toast.error('Failed to delete exam. Please try again.');
-  //       await loadTeacherData();
-  //     }
-  //   }
-  // };
-// Replace the handleDeleteExam function in TeacherExams.tsx
+
 
 const handleDeleteExam = async (examId: number) => {
   const examToDelete = exams.find(e => e.id === examId);
