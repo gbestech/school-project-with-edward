@@ -257,13 +257,13 @@ export interface GradeCreateUpdate {
 //   academic_session: string;
 //   start_date: string;
 //   end_date: string;
-//   result_release_date: string;
+//   result_release_date: string; 
 //   is_published: boolean;
 //   is_active: boolean;
 // }
 
 export interface ExamSessionCreateUpdate {
-  academic_session: string | number;
+  academic_session_id: number;
   name: string;
   exam_type: string;
   term: string;
