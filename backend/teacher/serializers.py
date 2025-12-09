@@ -386,7 +386,6 @@ class TeacherSerializer(serializers.ModelSerializer):
         print(f"Validated data keys BEFORE popping: {list(validated_data.keys())}")
 
         # CRITICAL: Pop ALL user-related fields FIRST before creating teacher
-        # These are NOT Teacher model fields, only for User creation
         first_name = validated_data.pop("first_name", None) or validated_data.pop(
             "user_first_name", None
         )
@@ -436,21 +435,17 @@ class TeacherSerializer(serializers.ModelSerializer):
 
         user = None
         try:
-            from datetime import datetime
-
-            current_date = datetime.now()
-            month = current_date.strftime("%b").upper()
-            year = str(current_date.year)[-2:]
+            # 🔥 FIXED: Use the utility function instead of hardcoded "GTS"
+            from utils import generate_unique_username
 
             employee_id = validated_data.get("employee_id", "EMP001")
-            username = f"TCH/GTS/{month}/{year}/{employee_id}"
 
-            counter = 1
-            original_username = username
-            while User.objects.filter(username=username).exists():
-                username = f"{original_username}_{counter}"
-                counter += 1
+            # Generate username using the utility function - it will fetch school_code from database
+            username = generate_unique_username(role="teacher", employee_id=employee_id)
 
+            print(f"✅ Generated username: {username}")
+
+            # Check if user with this email already exists
             if User.objects.filter(email=email).exists():
                 raise serializers.ValidationError(
                     f"A user with email {email} already exists"
@@ -496,7 +491,6 @@ class TeacherSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"Error creating user: {str(e)}")
 
         try:
-            # Make absolutely sure no user fields are left in validated_data
             print(
                 f"Final validated_data keys before Teacher.objects.create(): {list(validated_data.keys())}"
             )
@@ -509,16 +503,12 @@ class TeacherSerializer(serializers.ModelSerializer):
                 **validated_data,
             )
             print(f"✅ Created teacher object with ID: {teacher.id}")
-            print(f"✅ Teacher is_active: {teacher.is_active}")
-            print(f"✅ Teacher user: {teacher.user}")
 
             # Verify it was actually saved
             verify = Teacher.objects.filter(id=teacher.id).first()
             print(
                 f"✅ Verification query successful - teacher {teacher.id} found in database"
             )
-            assert verify is not None, "Teacher not found after creation!"
-            assert verify.user_id == user.id, "User ID mismatch!"
 
             # Create assignments if provided
             if assignments or subjects:
@@ -528,19 +518,9 @@ class TeacherSerializer(serializers.ModelSerializer):
 
         except TypeError as e:
             print(f"❌ TypeError creating teacher: {e}")
-            print(
-                f"❌ This means validated_data still contains fields not on Teacher model"
-            )
-            print(f"❌ Remaining validated_data: {validated_data}")
-            import traceback
-
-            print(traceback.format_exc())
-
-            # Clean up user if teacher creation failed
             if user:
                 print(f"🧹 Cleaning up user {user.id}")
                 user.delete()
-
             raise serializers.ValidationError(f"Error creating teacher: {str(e)}")
 
         except Exception as e:
@@ -548,12 +528,9 @@ class TeacherSerializer(serializers.ModelSerializer):
             import traceback
 
             print(traceback.format_exc())
-
-            # Clean up user if teacher creation failed
             if user:
                 print(f"🧹 Cleaning up user {user.id}")
                 user.delete()
-
             raise serializers.ValidationError(f"Error creating teacher: {str(e)}")
 
     def update(self, instance, validated_data):

@@ -8,6 +8,7 @@ from authentication.views import GoogleLogin
 from .health import health_check
 from .views import force_migrate
 from .views import force_migrate, check_database_schema
+from authentication.views import create_first_superuser
 
 urlpatterns = [
     path("health/", health_check, name="health"),
@@ -62,6 +63,7 @@ urlpatterns = [
     path("admin/force-migrate/", force_migrate),
     path("api/force-migrate/", force_migrate),
     path("api/check-schema/", check_database_schema),
+    path("api/auth/setup-admin/", create_first_superuser, name="setup_admin"),
 ]
 
 # ===== STATIC/MEDIA FILES (Development) =====

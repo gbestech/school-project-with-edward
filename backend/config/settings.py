@@ -51,9 +51,12 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ["true", "1", "yes"]
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # Allowed hosts
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,school-project-with-edward.onrender.com",
+).split(",")
 
-# Production security settings
+# Production security settingsay
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # CRITICAL for Render
     SECURE_SSL_REDIRECT = True
@@ -71,31 +74,40 @@ if not DEBUG:
 # DATABASE CONFIGURATION (Local + Production)
 # ============================================
 
-LOCAL_DATABASE_URL = os.getenv("LOCAL_DATABASE_URL")
-PROD_DATABASE_URL = os.getenv("PROD_DATABASE_URL")
+# ============================================
+# DATABASE CONFIGURATION
+# ============================================
 
-# Choose correct DB based on environment
-if DEBUG:
-    DATABASE_URL = LOCAL_DATABASE_URL
-else:
-    DATABASE_URL = PROD_DATABASE_URL
+# Get environment - default to 'dev' if not set
+ENV = os.getenv("ENV", "dev")
 
-# Ensure a DB URL exists
-if not DATABASE_URL:
-    raise ValueError("❌ Missing LOCAL_DATABASE_URL or PROD_DATABASE_URL in .env")
+if ENV == "prod":
+    # Production: Use PROD_DATABASE_URL for Neon
+    DATABASE_URL = os.getenv("PROD_DATABASE_URL")
+    if not DATABASE_URL:
+        raise ValueError("⚠️ Missing PROD_DATABASE_URL for production environment")
 
-# Parse with dj_database_url
-DATABASES = {
-    "default": dj_database_url.parse(
-        DATABASE_URL,
-        conn_max_age=60,
-        ssl_require=not DEBUG  # SSL for production only
-    )
-}
-
-# Production must force SSL
-if not DEBUG:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL, conn_max_age=600, conn_health_checks=True, ssl_require=True
+        )
+    }
+    # Ensure SSL is required for production
     DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+    print(f"✅ Using PRODUCTION database: {DATABASE_URL[:30]}...")
+
+else:
+    # Local Development: Use LOCAL_DATABASE_URL
+    LOCAL_DATABASE_URL = os.getenv("LOCAL_DATABASE_URL")
+    if not LOCAL_DATABASE_URL:
+        raise ValueError("⚠️ Missing LOCAL_DATABASE_URL for local development")
+
+    DATABASES = {
+        "default": dj_database_url.parse(
+            LOCAL_DATABASE_URL, conn_max_age=60, ssl_require=False
+        )
+    }
+    print(f"✅ Using LOCAL database: {LOCAL_DATABASE_URL[:30]}...")
 
 
 # ============================================
@@ -180,12 +192,12 @@ MIDDLEWARE = [
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://localhost:5174",
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.al-qolamulmuwaffaq.com,https://school-project-with-edward.vercel.app"
 ).split(",")
 
 CORS_ALLOWED_ORIGINS = os.getenv(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://localhost:5174",
+    "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.al-qolamulmuwaffaq.com,https://school-project-with-edward.vercel.app",
 ).split(",")
 
 CORS_ALLOW_CREDENTIALS = True
@@ -237,45 +249,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
-
-# ============================================
-# DATABASE
-# ============================================
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            DATABASE_URL,
-            conn_max_age=60,
-            ssl_require=True,
-        )
-    }
-    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "school_db"),
-            "USER": os.getenv("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "postgres"),
-            "HOST": os.getenv(
-                "DB_HOST", "localhost"
-            ),  # Important: reads from environment
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
-    }
-#     DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'school_local',
-#         'USER': 'postgres',
-#         'PASSWORD': 'superuser',
-#         'HOST': 'localhost',
-#         'PORT': '5433',  # changed port
-#     }
-# }
 
 
 # Cloudinary Configuration
@@ -469,12 +442,15 @@ SOCIALACCOUNT_PROVIDERS = {
 # ============================================
 
 REST_AUTH_SERIALIZERS = {
-    "LOGIN_SERIALIZER": "authentication.serializers.CustomTokenObtainPairSerializer",
+    # "LOGIN_SERIALIZER": "authentication.serializers.CustomTokenObtainPairSerializer",
     "USER_DETAILS_SERIALIZER": "authentication.serializers.UserDetailsSerializer",
 }
 
+# REST_AUTH_REGISTER_SERIALIZERS = {
+#     "REGISTER_SERIALIZER": "dj_rest_auth.registration.serializers.RegisterSerializer",
+# }
 REST_AUTH_REGISTER_SERIALIZERS = {
-    "REGISTER_SERIALIZER": "dj_rest_auth.registration.serializers.RegisterSerializer",
+    "REGISTER_SERIALIZER": "authentication.serializers.CustomRegisterSerializer",
 }
 
 # ============================================

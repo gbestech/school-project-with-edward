@@ -78,6 +78,18 @@ type Assignment = {
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('access_token') || 
+                localStorage.getItem('authToken') || 
+                localStorage.getItem('token') ||
+                localStorage.getItem('jwt_token');
+  
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
 const createFallbackClassrooms = (level: string): Classroom[] => {
   const classroomMap: Record<string, string[]> = {
     nursery: ['Pre-Nursery A', 'Pre-Nursery B', 'Nursery 1 A', 'Nursery 1 B', 'Nursery 2 A', 'Nursery 2 B'],
@@ -156,51 +168,63 @@ const AddTeacherForm: React.FC = () => {
       const educationLevel = levelMap[formData.level];
       if (!educationLevel) return;
 
-      fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`)
-        .then(res => res.json())
-        .then(data => {
-          const subjects = Array.isArray(data) ? data : (data.results || []);
-          setSubjectOptions(subjects.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            code: s.code,
-            education_levels: s.education_levels
-          })));
-          
-          if (isPrimaryLevel) {
-            setFormData(prev => ({ ...prev, subjects: subjects.map((s: any) => String(s.id)) }));
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching subjects:', error);
-          setSubjectOptions([]);
-        });
-
-      fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`)
-        .then(res => res.json())
-        .then(data => {
-          const classrooms = Array.isArray(data) ? data : (data.results || []);
-          
-          if (classrooms && classrooms.length > 0) {
-            const mappedClassrooms = classrooms.map((c: any) => ({
-              id: c.id,
-              name: c.name || `${c.grade_level_name} ${c.section_name}`,
-              section: c.section,
-              section_name: c.section_name,
-              grade_level_name: c.grade_level_name,
-              education_level: c.education_level
-            }));
-            setClassroomOptions(mappedClassrooms);
-          } else {
-            const fallbackClassrooms = createFallbackClassrooms(formData.level);
-            setClassroomOptions(fallbackClassrooms);
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching classrooms:', error);
-          const fallbackClassrooms = createFallbackClassrooms(formData.level);
-          setClassroomOptions(fallbackClassrooms);
-        });
+      fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`, {
+  headers: getAuthHeaders()
+})
+  .then(res => {
+    if (!res.ok) throw new Error(`Failed to fetch subjects: ${res.status}`);
+    return res.json();
+  })
+  .then(data => {
+    const subjects = Array.isArray(data) ? data : (data.results || []);
+    setSubjectOptions(subjects.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      code: s.code,
+      education_levels: s.education_levels
+    })));
+    
+    if (isPrimaryLevel) {
+      setFormData(prev => ({ ...prev, subjects: subjects.map((s: any) => String(s.id)) }));
+    }
+  })
+  .catch(error => {
+    console.error('Error fetching subjects:', error);
+    toast.error(`Failed to load subjects: ${error.message}`);
+    setSubjectOptions([]);
+  });
+  
+      fetch(`${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`, {
+  headers: getAuthHeaders()
+})
+  .then(res => {
+    if (!res.ok) throw new Error(`Failed to fetch classrooms: ${res.status}`);
+    return res.json();
+  })
+  .then(data => {
+    const classrooms = Array.isArray(data) ? data : (data.results || []);
+    
+    if (classrooms && classrooms.length > 0) {
+      const mappedClassrooms = classrooms.map((c: any) => ({
+        id: c.id,
+        name: c.name || `${c.grade_level_name} ${c.section_name}`,
+        section: c.section,
+        section_name: c.section_name,
+        grade_level_name: c.grade_level_name,
+        education_level: c.education_level
+      }));
+      setClassroomOptions(mappedClassrooms);
+    } else {
+      const fallbackClassrooms = createFallbackClassrooms(formData.level);
+      setClassroomOptions(fallbackClassrooms);
+    }
+  })
+  .catch(error => {
+    console.error('Error fetching classrooms:', error);
+    toast.error(`Failed to load classrooms: ${error.message}`);
+    const fallbackClassrooms = createFallbackClassrooms(formData.level);
+    setClassroomOptions(fallbackClassrooms);
+  });
     } else {
       setSubjectOptions([]);
       setClassroomOptions([]);
@@ -229,31 +253,33 @@ const AddTeacherForm: React.FC = () => {
 
       const url = `${API_BASE_URL}/api/classrooms/grades/?education_level=${educationLevel}`;
 
-      fetch(url)
-        .then(res => {
-          if (!res.ok) throw new Error(`API returned ${res.status}`);
-          return res.json();
-        })
-        .then(data => {
-          let gradeLevels = Array.isArray(data) ? data : (data.results || data.data || []);
-          
-          if (gradeLevels && gradeLevels.length > 0) {
-            const mappedLevels = gradeLevels.map((gl: any) => ({
-              id: gl.id,
-              name: gl.name,
-              education_level: gl.education_level
-            }));
-            setGradeLevelOptions(mappedLevels);
-          } else {
-            setGradeLevelOptions([]);
-            toast.error('No grade levels found. Please create grade levels in the system first.');
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching grade levels:', error);
-          setGradeLevelOptions([]);
-          toast.error(`Failed to load grade levels: ${error.message}`);
-        });
+fetch(url, {
+  headers: getAuthHeaders()
+})
+  .then(res => {
+    if (!res.ok) throw new Error(`API returned ${res.status}`);
+    return res.json();
+  })
+  .then(data => {
+    let gradeLevels = Array.isArray(data) ? data : (data.results || data.data || []);
+    
+    if (gradeLevels && gradeLevels.length > 0) {
+      const mappedLevels = gradeLevels.map((gl: any) => ({
+        id: gl.id,
+        name: gl.name,
+        education_level: gl.education_level
+      }));
+      setGradeLevelOptions(mappedLevels);
+    } else {
+      setGradeLevelOptions([]);
+      toast.error('No grade levels found. Please create grade levels in the system first.');
+    }
+  })
+  .catch(error => {
+    console.error('Error fetching grade levels:', error);
+    setGradeLevelOptions([]);
+    toast.error(`Failed to load grade levels: ${error.message}`);
+  });
     } else {
       setGradeLevelOptions([]);
     }
@@ -353,54 +379,46 @@ const AddTeacherForm: React.FC = () => {
   };
 
   const loadSectionsForGradeLevel = (gradeLevelId: string | number | undefined, assignmentId?: string) => {
-    if (!gradeLevelId) {
-      if (assignmentId) {
-        setCurrentAssignments(prev =>
-          prev.map(assignment =>
-            assignment.id === assignmentId
-              ? { ...assignment, sectionOptions: [] }
-              : assignment
-          )
-        );
-      }
-      return;
+  if (!gradeLevelId) {
+    if (assignmentId) {
+      setCurrentAssignments(prev =>
+        prev.map(assignment =>
+          assignment.id === assignmentId
+            ? { ...assignment, sectionOptions: [] }
+            : assignment
+        )
+      );
     }
+    return;
+  }
 
-    fetch(`${API_BASE_URL}/api/classrooms/grades/${gradeLevelId}/sections/`)
-      .then(res => res.json())
-      .then(data => {
-        const sections = Array.isArray(data) ? data : (data.results || []);
+     fetch(`${API_BASE_URL}/api/classrooms/grades/${gradeLevelId}/sections/`, {
+    headers: getAuthHeaders()
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`Failed to fetch sections: ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      const sections = Array.isArray(data) ? data : (data.results || []);
 
-        if (sections && sections.length > 0) {
-          const mappedSections: Section[] = sections.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            grade_level_id: typeof s.grade_level === 'object' ? s.grade_level.id : s.grade_level
-          }));
+      if (sections && sections.length > 0) {
+        const mappedSections: Section[] = sections.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          grade_level_id: typeof s.grade_level === 'object' ? s.grade_level.id : s.grade_level
+        }));
 
-          if (assignmentId) {
-            setCurrentAssignments(prev =>
-              prev.map(assignment =>
-                assignment.id === assignmentId
-                  ? { ...assignment, sectionOptions: mappedSections }
-                  : assignment
-              )
-            );
-          }
-        } else {
-          if (assignmentId) {
-            setCurrentAssignments(prev =>
-              prev.map(assignment =>
-                assignment.id === assignmentId
-                  ? { ...assignment, sectionOptions: [] }
-                  : assignment
-              )
-            );
-          }
+        if (assignmentId) {
+          setCurrentAssignments(prev =>
+            prev.map(assignment =>
+              assignment.id === assignmentId
+                ? { ...assignment, sectionOptions: mappedSections }
+                : assignment
+            )
+          );
         }
-      })
-      .catch(error => {
-        console.error('Error fetching sections:', error);
+      } else {
         if (assignmentId) {
           setCurrentAssignments(prev =>
             prev.map(assignment =>
@@ -410,9 +428,23 @@ const AddTeacherForm: React.FC = () => {
             )
           );
         }
-      });
-  };
-
+        toast.warning('No sections found for this grade level.');
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching sections:', error);
+      toast.error(`Failed to load sections: ${error.message}`);
+      if (assignmentId) {
+        setCurrentAssignments(prev =>
+          prev.map(assignment =>
+            assignment.id === assignmentId
+              ? { ...assignment, sectionOptions: [] }
+              : assignment
+          )
+        );
+      }
+    });
+};
   const handleSave = async () => {
   if (!formData.firstName || !formData.lastName || !formData.email) {
     toast.error('Please fill in all required fields');

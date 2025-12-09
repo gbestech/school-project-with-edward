@@ -134,14 +134,14 @@ const Nav: React.FC = () => {
                 />
               ) : (
                 <img 
-                  src={`${import.meta.env.BASE_URL}images/godstreasurelogo.png`}
-                  alt='Gods Treasure Schools Logo'
+                  src={`${import.meta.env.BASE_URL}images/amis.jpg`}
+                  alt='AMIS Logo'
                   className="w-14 h-14 object-contain"
                 />
               )}
             </div>
             <span className="hidden md:block text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
-              {settings?.school_name || 'Gods Treasure Schools'}
+              {settings?.school_name || 'AL-QOLAMULMUWAFFAQ'}
             </span>
           </Link>
 

@@ -3,6 +3,7 @@ import api from './api';
 export interface SchoolSettings {
   site_name: string;
   school_name: string;
+  school_code: string;
   address: string;
   phone: string;
   email: string;
@@ -98,6 +99,7 @@ class SettingsService {
       // General settings
       if (settings.school_name !== undefined) backendSettings.school_name = settings.school_name;
       if (settings.site_name !== undefined) backendSettings.site_name = settings.site_name;
+      if (settings.school_code !== undefined) backendSettings.school_code = settings.school_code;
       if (settings.address !== undefined) backendSettings.school_address = settings.address;
       if (settings.phone !== undefined) backendSettings.school_phone = settings.phone;
       if (settings.email !== undefined) backendSettings.school_email = settings.email;
@@ -231,8 +233,9 @@ class SettingsService {
     const defaultSettings = this.getDefaultSettings();
     
     return {
-      site_name: response.site_name ?? response.school_name ?? 'Gods Treasure Schools',
-      school_name: response.school_name ?? 'Gods Treasure Schools',
+      site_name: response.site_name ?? response.school_name ?? 'School Site',
+      school_name: response.school_name ?? 'School Name',
+      school_code: response.school_code ?? '',
       address: response.school_address ?? '',
       phone: response.school_phone ?? '',
       email: response.school_email ?? '',
@@ -324,7 +327,7 @@ class SettingsService {
     if (csrfToken) headers['X-CSRFToken'] = csrfToken;
     
     const response = await fetch(
-      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-logo/",
+      "https://school-project-with-edward.onrender.com/api/school-settings/school-settings/upload-logo/",
       {
         method: 'POST',
         headers,
@@ -365,7 +368,7 @@ class SettingsService {
     if (csrfToken) headers['X-CSRFToken'] = csrfToken;
     
     const response = await fetch(
-      "https://school-management-project-qpox.onrender.com/api/school-settings/school-settings/upload-favicon/",
+      "https://school-project-with-edward.onrender.com/api/school-settings/school-settings/upload-favicon/",
       {
         method: 'POST',
         headers,
@@ -387,8 +390,9 @@ class SettingsService {
   
   private getDefaultSettings(): SchoolSettings {
     return {
-      site_name: 'Gods treasure schools',
-      school_name: 'Gods Treasure Schools',
+      site_name: 'School Site',
+      school_name: 'School Name',
+      school_code: '',
       address: '',
       phone: '',
       email: '',

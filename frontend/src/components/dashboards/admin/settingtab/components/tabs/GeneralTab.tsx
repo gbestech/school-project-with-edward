@@ -11,6 +11,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
   const [formData, setFormData] = useState({
     school_name: '',
     site_name: '',
+    school_code: '',
     address: '',
     phone: '',
     email: '',
@@ -53,7 +54,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
         if (urlOrFilename.startsWith('http')) return urlOrFilename;
         // If it's just a filename or relative path, construct full URL
         const cleanPath = urlOrFilename.startsWith('/') ? urlOrFilename : `/${urlOrFilename}`;
-        return `https://school-management-project-qpox.onrender.com${cleanPath}`;
+        return `https://school-project-with-edward.onrender.com${cleanPath}`;
       };
       
       const logoUrl = constructFullUrl(initialSettings.logo);
@@ -65,6 +66,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       setFormData({
         school_name: initialSettings.school_name || '',
         site_name: initialSettings.site_name || '',
+        school_code: initialSettings.school_code || '',
         address: initialSettings.address || '',
         phone: initialSettings.phone || '',
         email: initialSettings.email || '',
@@ -123,7 +125,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       const fullLogoUrl = result.logoUrl
         ? result.logoUrl.startsWith('http')
           ? result.logoUrl
-          : `https://school-management-project-qpox.onrender.com${result.logoUrl.startsWith('/') ? result.logoUrl : '/' + result.logoUrl}`
+          : `https://school-project-with-edward.onrender.com${result.logoUrl.startsWith('/') ? result.logoUrl : '/' + result.logoUrl}`
         : '';
       console.log('GeneralTab: Logo upload result:', result);
       console.log('GeneralTab: Full logo URL:', fullLogoUrl);
@@ -168,7 +170,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
       const fullFaviconUrl = result.faviconUrl
         ? result.faviconUrl.startsWith('http')
           ? result.faviconUrl
-          : `https://school-management-project-qpox.onrender.com${result.faviconUrl.startsWith('/') ? result.faviconUrl : '/' + result.faviconUrl}`
+          : `https://school-project-with-edward.onrender.com${result.faviconUrl.startsWith('/') ? result.faviconUrl : '/' + result.faviconUrl}`
         : '';
       
       console.log('GeneralTab: Favicon upload result:', result);
@@ -198,6 +200,11 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
     // Validate required fields
     if (!formData.school_name?.trim()) {
       setError('School name is required');
+      setIsLoading(false);
+      return;
+    }
+    if (!formData.school_code?.trim()) {
+      setError('School code is required');
       setIsLoading(false);
       return;
     }
@@ -327,6 +334,20 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               placeholder="Enter site name"
             />
           </div>
+          <div>
+  <label className="block text-sm font-medium text-slate-700 mb-2">
+    School Code <span className="text-red-500">*</span>
+  </label>
+  <input
+    type="text"
+    value={formData.school_code}
+    onChange={(e) => handleInputChange('school_code', e.target.value.toUpperCase())}
+    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+    placeholder="e.g., AQIS, SCH, HIS"
+    maxLength={10}
+  />
+  <p className="text-xs text-slate-500 mt-1">Short code for username generation (max 10 characters)</p>
+</div>
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -377,7 +398,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({ settings: initialSettings, onSe
               value={formData.motto}
               onChange={(e) => handleInputChange('motto', e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-              placeholder="Excellence in Education"
+              placeholder="School motto"
             />
           </div>
         </div>

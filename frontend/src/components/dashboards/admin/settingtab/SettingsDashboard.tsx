@@ -17,6 +17,7 @@ import CommunicationTab from '@/components/dashboards/admin/settingtab/component
 import RolesPermissionsTab from '@/components/dashboards/admin/settingtab/components/tabs/RolesPermissions';
 import ExamsResultTab from '@/components/dashboards/admin/settingtab/components/tabs/ExamsResultTab';
 import AcademicTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicTab';
+import AcademicGradeLevelTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicGradeLevelTab'
 import AcademicCalendarTab from '@/components/dashboards/admin/settingtab/components/tabs/AcademicCalendarTab';
 import FinanceTab from '@/components/dashboards/admin/settingtab/components/tabs/Finance';
 import SecurityTab from '@/components/dashboards/admin/settingtab/components/tabs/Security';
@@ -62,6 +63,7 @@ const SettingsDashboard = () => {
     { id: 'communication', label: 'Communication', icon: MessageSquare, component: CommunicationTab },
     { id: 'roles', label: 'Roles & Permissions', icon: Shield, component: RolesPermissionsTab },
     { id: 'academic', label: 'Academic', icon: GraduationCap, component: AcademicTab },
+    {id: 'gradelevel', label: 'GradeLevel', icon: GraduationCap, component: AcademicGradeLevelTab},
     { id: 'exams', label: 'Exams & Result', icon: FileText, component: ExamsResultTab },
     { id: 'calendar', label: 'Academic Calendar', icon: Calendar, component: AcademicCalendarTab },
     { id: 'finance', label: 'Finance', icon: CreditCard, component: FinanceTab },
