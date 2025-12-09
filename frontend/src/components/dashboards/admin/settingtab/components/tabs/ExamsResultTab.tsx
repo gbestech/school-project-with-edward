@@ -639,13 +639,27 @@ const handleDeleteGrade = async (id: string) => {
   };
 
   const validateTotalScore = () => {
-    const caTotal = calculateTotalCA();
-    const examScore = Number(scoringConfigForm.exam_max_score) || 0;
-    const expectedTotal = caTotal + examScore;
-    const actualTotal = Number(scoringConfigForm.total_max_score) || 0;
-    const isValid = expectedTotal === actualTotal;
-    return isValid;
-  };
+  // Calculate CA total based on education level
+  const caTotal = scoringConfigForm.education_level === 'SENIOR_SECONDARY' 
+    ? calculateTotalCA() 
+    : calculateTotalCAPrimaryJunior();
+  
+  const examScore = Number(scoringConfigForm.exam_max_score) || 0;
+  const expectedTotal = caTotal + examScore;
+  const actualTotal = Number(scoringConfigForm.total_max_score) || 0;
+  const isValid = expectedTotal === actualTotal;
+  
+  console.log('validateTotalScore:', {
+    education_level: scoringConfigForm.education_level,
+    caTotal,
+    examScore,
+    expectedTotal,
+    actualTotal,
+    isValid
+  });
+  
+  return isValid;
+};
 
   // Grading System handlers
   const handleDeleteGradingSystem = async (id: string) => {
