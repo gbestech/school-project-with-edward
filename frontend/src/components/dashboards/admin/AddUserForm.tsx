@@ -1182,7 +1182,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
     const fetchEducationLevels = async () => {
       setLoadingLevels(true);
       try {
-        const response = await api.get('/api/education-levels/');
+        // Grades endpoint is under /api/classrooms/
+        const response = await api.get('/api/classrooms/grades/');
         setEducationLevels(response || []);
       } catch (error) {
         console.error('Error fetching education levels:', error);
@@ -1206,7 +1207,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       
       setLoadingClasses(true);
       try {
-        const response = await api.get(`/api/classes/?education_level=${formData.education_level}`);
+        // Sections endpoint: /api/classrooms/grades/{grade_id}/sections/
+        const response = await api.get(`/api/classrooms/grades/${formData.education_level}/sections/`);
         setStudentClasses(response || []);
       } catch (error) {
         console.error('Error fetching student classes:', error);
@@ -1220,7 +1222,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
     fetchStudentClasses();
   }, [formData.education_level]);
 
-  // Fetch classrooms based on student class
+  // Fetch classrooms based on student class (section)
   useEffect(() => {
     const fetchClassrooms = async () => {
       if (!formData.student_class) {
@@ -1230,8 +1232,15 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       
       setLoadingClassrooms(true);
       try {
-        const response = await api.get(`/api/classrooms/?student_class=${formData.student_class}`);
-        setClassrooms(response || []);
+        // Classrooms endpoint: /api/classrooms/classrooms/ with filtering
+        // Or we can use the section's classrooms endpoint if section_id is available
+        const response = await api.get(`/api/classrooms/classrooms/`);
+        // Filter classrooms by section on the client side if needed
+        const filtered = response?.filter((classroom: any) => 
+          classroom.section === formData.student_class || 
+          classroom.section_id === formData.student_class
+        ) || response || [];
+        setClassrooms(filtered);
       } catch (error) {
         console.error('Error fetching classrooms:', error);
         toast.error('Failed to load classrooms');
@@ -1667,10 +1676,15 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                   setFormData(prev => ({ ...prev, student_class: '', classroom: '', stream: '' }));
                 }}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                disabled={loadingLevels}
               >
-                <option value="">Select Level</option>
+                <option value="">
+                  {loadingLevels ? 'Loading levels...' : 'Select Level'}
+                </option>
                 {educationLevels.map(level => (
-                  <option key={level.value} value={level.value}>{level.label}</option>
+                  <option key={level.id || level.value} value={level.value || level.level_name}>
+                    {level.label || level.display_name || level.level_name}
+                  </option>
                 ))}
               </select>
             </div>
