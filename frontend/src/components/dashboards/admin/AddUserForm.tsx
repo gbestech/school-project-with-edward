@@ -1172,6 +1172,9 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [loadingClassrooms, setLoadingClassrooms] = useState(false);
   
+  // Store the selected grade level ID for fetching sections
+  const [selectedGradeLevelId, setSelectedGradeLevelId] = useState<string>('');
+  
   // Date picker states
   const [dobDay, setDobDay] = useState('');
   const [dobMonth, setDobMonth] = useState('');
@@ -1201,7 +1204,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   // Fetch student classes based on education level
   useEffect(() => {
     const fetchStudentClasses = async () => {
-      if (!formData.education_level) {
+      if (!selectedGradeLevelId) {
         setStudentClasses([]);
         return;
       }
@@ -1209,7 +1212,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       setLoadingClasses(true);
       try {
         // Sections endpoint: /api/classrooms/grades/{grade_id}/sections/
-        const response = await api.get(`/api/classrooms/grades/${formData.education_level}/sections/`);
+        const response = await api.get(`/api/classrooms/grades/${selectedGradeLevelId}/sections/`);
+        console.log('Student Classes Response:', response);
         setStudentClasses(response || []);
       } catch (error) {
         console.error('Error fetching student classes:', error);
@@ -1221,7 +1225,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
     };
     
     fetchStudentClasses();
-  }, [formData.education_level]);
+  }, [selectedGradeLevelId]);
 
   // Fetch classrooms based on student class (section)
   useEffect(() => {
@@ -1693,8 +1697,21 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                 name="education_level"
                 value={formData.education_level}
                 onChange={(e) => {
-                  handleInputChange(e);
-                  setFormData(prev => ({ ...prev, student_class: '', classroom: '', stream: '' }));
+                  const selectedOption = educationLevels.find(level => 
+                    (level.education_level || level.name || level.value) === e.target.value
+                  );
+                  
+                  // Store the enum value (like "NURSERY") in formData
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    education_level: e.target.value,
+                    student_class: '', 
+                    classroom: '', 
+                    stream: '' 
+                  }));
+                  
+                  // Store the ID for fetching sections
+                  setSelectedGradeLevelId(selectedOption?.id || '');
                 }}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
                 disabled={loadingLevels}
@@ -1705,7 +1722,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                 {educationLevels.map(level => (
                   <option 
                     key={level.id || level.value || level.name} 
-                    value={level.id || level.value || level.name}
+                    value={level.education_level || level.name || level.value}
                     className="text-slate-900"
                   >
                     {level.name || level.label || level.display_name || level.level_name || level.education_level}
@@ -1724,8 +1741,13 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                 name="student_class"
                 value={formData.student_class}
                 onChange={(e) => {
-                  handleInputChange(e);
-                  setFormData(prev => ({ ...prev, classroom: '', stream: '' }));
+                  // Store the enum value (like "PRIMARY_1") not the ID
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    student_class: e.target.value,
+                    classroom: '', 
+                    stream: '' 
+                  }));
                 }}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
                 disabled={!formData.education_level || loadingClasses}
@@ -1736,7 +1758,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                 {studentClasses.map(cls => (
                   <option 
                     key={cls.id || cls.value} 
-                    value={cls.id || cls.value || cls.class_name}
+                    value={cls.class_level || cls.value || cls.name}
                     className="text-slate-900"
                   >
                     {cls.name || cls.label || cls.display_name || cls.class_name}
@@ -1826,7 +1848,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               />
             </div>
             {parentSearchLoading && (
-              <div className="mt-2 text-sm text-sm text-slate-600 flex items-center gap-2">
+              <div className="mt-2 text-sm text-slate-600 flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                 Searching...
               </div>
