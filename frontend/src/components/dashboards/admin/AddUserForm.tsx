@@ -1128,12 +1128,6 @@ type StudentFormData = {
 };
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const educationLevels = [
-  { value: 'NURSERY', label: 'Nursery' },
-  { value: 'PRIMARY', label: 'Primary' },
-  { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
-  { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
-];
 
 interface AddStudentFormProps {
   onStudentAdded?: () => void;
@@ -1170,9 +1164,11 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [streams, setStreams] = useState<any[]>([]);
   
-  // New state for dynamic classes and classrooms
+  // New state for dynamic education levels, classes and classrooms
+  const [educationLevels, setEducationLevels] = useState<any[]>([]);
   const [studentClasses, setStudentClasses] = useState<any[]>([]);
   const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [loadingLevels, setLoadingLevels] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [loadingClassrooms, setLoadingClassrooms] = useState(false);
   
@@ -1180,6 +1176,25 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [dobDay, setDobDay] = useState('');
   const [dobMonth, setDobMonth] = useState('');
   const [dobYear, setDobYear] = useState('');
+
+  // Fetch education levels/grade levels on component mount
+  useEffect(() => {
+    const fetchEducationLevels = async () => {
+      setLoadingLevels(true);
+      try {
+        const response = await api.get('/api/education-levels/');
+        setEducationLevels(response || []);
+      } catch (error) {
+        console.error('Error fetching education levels:', error);
+        toast.error('Failed to load education levels');
+        setEducationLevels([]);
+      } finally {
+        setLoadingLevels(false);
+      }
+    };
+    
+    fetchEducationLevels();
+  }, []);
 
   // Fetch student classes based on education level
   useEffect(() => {
