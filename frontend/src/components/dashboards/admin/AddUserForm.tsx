@@ -1233,15 +1233,35 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       
       setLoadingClassrooms(true);
       try {
-        // Classrooms endpoint: /api/classrooms/classrooms/ with filtering
-        // Or we can use the section's classrooms endpoint if section_id is available
-        const response = await api.get(`/api/classrooms/classrooms/`);
-        // Filter classrooms by section on the client side if needed
-        const filtered = response?.filter((classroom: any) => 
-          classroom.section === formData.student_class || 
-          classroom.section_id === formData.student_class
-        ) || response || [];
-        setClassrooms(filtered);
+        console.log('Fetching classrooms for section:', formData.student_class);
+        // Try multiple approaches to fetch classrooms
+        
+        // Approach 1: Try to get classrooms filtered by section
+        let response = await api.get(`/api/classrooms/classrooms/?section=${formData.student_class}`);
+        console.log('Classrooms response (with section filter):', response);
+        
+        // If no results, try fetching all classrooms and filter client-side
+        if (!response || (Array.isArray(response) && response.length === 0)) {
+          console.log('No classrooms found with filter, fetching all...');
+          response = await api.get(`/api/classrooms/classrooms/`);
+          console.log('All classrooms response:', response);
+          
+          // Filter by section on client side
+          const filtered = response?.filter((classroom: any) => {
+            const sectionMatch = 
+              classroom.section === formData.student_class || 
+              classroom.section_id === formData.student_class ||
+              classroom.section?.id === formData.student_class ||
+              String(classroom.section) === String(formData.student_class);
+            console.log('Checking classroom:', classroom, 'Section match:', sectionMatch);
+            return sectionMatch;
+          });
+          
+          setClassrooms(filtered || []);
+          console.log('Filtered classrooms:', filtered);
+        } else {
+          setClassrooms(response || []);
+        }
       } catch (error) {
         console.error('Error fetching classrooms:', error);
         toast.error('Failed to load classrooms');
@@ -1762,21 +1782,25 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               disabled={!formData.student_class || loadingClassrooms}
             >
               <option value="" className="text-slate-900">
-                {loadingClassrooms ? 'Loading classrooms...' : 'Select Classroom'}
+                {loadingClassrooms ? 'Loading classrooms...' : !formData.student_class ? 'Select a class first' : classrooms.length === 0 ? 'No classrooms available - Please create classrooms in admin' : 'Select Classroom'}
               </option>
               {classrooms.map(room => (
                 <option 
                   key={room.id || room.name} 
-                  value={room.name || room.classroom_name}
+                  value={room.name || room.classroom_name || room.id}
                   className="text-slate-900"
                 >
-                  {room.display_name || room.name || room.classroom_name}
+                  {room.display_name || room.name || room.classroom_name || `Classroom ${room.id}`}
                 </option>
               ))}
             </select>
-            {classrooms.length > 0 && (
-              <div className="mt-1 text-xs text-emerald-600">
-                {classrooms.length} classroom(s) available
+            {formData.student_class && !loadingClassrooms && (
+              <div className="mt-1 text-xs">
+                {classrooms.length > 0 ? (
+                  <span className="text-emerald-600">{classrooms.length} classroom(s) available</span>
+                ) : (
+                  <span className="text-amber-600">⚠️ No classrooms found. Please create classrooms for this section in the admin dashboard.</span>
+                )}
               </div>
             )}
           </div>
@@ -1802,7 +1826,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               />
             </div>
             {parentSearchLoading && (
-              <div className="mt-2 text-sm text-slate-600 flex items-center gap-2">
+              <div className="mt-2 text-sm text-sm text-slate-600 flex items-center gap-2">
                 <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
                 Searching...
               </div>
