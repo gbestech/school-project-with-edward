@@ -627,23 +627,31 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               <label className="block text-sm font-medium text-slate-700 mb-2">Education Level*</label>
               <select
                 name="education_level"
-                value={formData.education_level}
+                value={selectedGradeLevelId}
                 onChange={(e) => {
+                  const gradeId = e.target.value;
                   const selectedOption = educationLevels.find(level => 
-                    (level.education_level || level.name || level.value) === e.target.value
+                    String(level.id) === String(gradeId)
                   );
                   
-                  // Store the enum value (like "NURSERY") in formData
+                  console.log('Selected grade ID:', gradeId);
+                  console.log('Selected option:', selectedOption);
+                  
+                  // Store the ID for fetching sections
+                  setSelectedGradeLevelId(gradeId);
+                  
+                  // Store the enum value in formData
+                  const enumValue = selectedOption?.education_level || selectedOption?.name || selectedOption?.value || '';
                   setFormData(prev => ({ 
                     ...prev, 
-                    education_level: e.target.value,
+                    education_level: enumValue,
                     student_class: '', 
                     classroom: '', 
                     stream: '' 
                   }));
                   
-                  // Store the ID for fetching sections
-                  setSelectedGradeLevelId(selectedOption?.id || '');
+                  // Reset section selection
+                  setSelectedSectionId('');
                 }}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
                 disabled={loadingLevels}
@@ -653,8 +661,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                 </option>
                 {educationLevels.map(level => (
                   <option 
-                    key={level.id || level.value || level.name} 
-                    value={level.education_level || level.name || level.value}
+                    key={level.id} 
+                    value={level.id}
                     className="text-slate-900"
                   >
                     {level.name || level.label || level.display_name || level.level_name || level.education_level}
