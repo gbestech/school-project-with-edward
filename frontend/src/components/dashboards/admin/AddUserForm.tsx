@@ -152,13 +152,13 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       console.log('Selected student_class:', formData.student_class);
       console.log('Available studentClasses:', studentClasses);
       
-      // Find the section object that matches the selected class
+      // ✅ FIX: Match by ID (convert to number for safety)
       const selectedSection = studentClasses.find(
-        cls => (cls.class_level || cls.value || cls.name) === formData.student_class
+        cls => cls.id === parseInt(formData.student_class) || cls.id === formData.student_class
       );
       
       if (!selectedSection || !selectedSection.id) {
-        console.error('Could not find section ID for:', formData.student_class);
+        console.error('Could not find section with ID:', formData.student_class);
         toast.error('Please select a valid class');
         setClassrooms([]);
         setLoadingClassrooms(false);
@@ -168,7 +168,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       console.log('Found section:', selectedSection);
       console.log('Section ID:', selectedSection.id);
       
-      // The classroom model has a ForeignKey to Section, so we need to filter by section ID
+      // The classroom model has a ForeignKey to Section, so we filter by section ID
       const response = await api.get(`/api/classrooms/classrooms/?section=${selectedSection.id}`);
       
       console.log('Classrooms API response:', response);
@@ -180,14 +180,14 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       
       if (classroomList.length === 0) {
         toast.info(
-          `No classrooms found for ${selectedSection.name || formData.student_class}. Please create classrooms in the admin panel.`,
+          `No classrooms found for ${selectedSection.name}. Please create classrooms in the admin panel.`,
           {
             position: "top-right",
             autoClose: 5000
           }
         );
       } else {
-        console.log(`Found ${classroomList.length} classroom(s)`);
+        console.log(`Found ${classroomList.length} classroom(s) for ${selectedSection.name}`);
       }
       
     } catch (error: any) {
@@ -198,6 +198,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       const errorData = error.response?.data;
       if (errorData?.section) {
         toast.error(`Section error: ${errorData.section[0]}`);
+      } else if (errorData?.detail) {
+        toast.error(`Error: ${errorData.detail}`);
       } else {
         toast.error('Failed to load classrooms');
       }
@@ -209,7 +211,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   };
   
   fetchClassrooms();
-  }, [formData.student_class, studentClasses]);
+}, [formData.student_class, studentClasses]);
   
   const handleParentUsernameSearch = async () => {
     if (!parentUsernameSearch) return;
