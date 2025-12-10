@@ -1184,6 +1184,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       try {
         // Grades endpoint is under /api/classrooms/
         const response = await api.get('/api/classrooms/grades/');
+        console.log('Education Levels Response:', response); // Debug log
         setEducationLevels(response || []);
       } catch (error) {
         console.error('Error fetching education levels:', error);
@@ -1675,18 +1676,27 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                   handleInputChange(e);
                   setFormData(prev => ({ ...prev, student_class: '', classroom: '', stream: '' }));
                 }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
                 disabled={loadingLevels}
               >
-                <option value="">
+                <option value="" className="text-slate-900">
                   {loadingLevels ? 'Loading levels...' : 'Select Level'}
                 </option>
                 {educationLevels.map(level => (
-                  <option key={level.id || level.value} value={level.value || level.level_name}>
-                    {level.label || level.display_name || level.level_name}
+                  <option 
+                    key={level.id || level.value || level.name} 
+                    value={level.id || level.value || level.name}
+                    className="text-slate-900"
+                  >
+                    {level.name || level.label || level.display_name || level.level_name || level.education_level}
                   </option>
                 ))}
               </select>
+              {educationLevels.length > 0 && (
+                <div className="mt-1 text-xs text-emerald-600">
+                  {educationLevels.length} level(s) loaded
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Student Class*</label>
@@ -1697,18 +1707,27 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                   handleInputChange(e);
                   setFormData(prev => ({ ...prev, classroom: '', stream: '' }));
                 }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
                 disabled={!formData.education_level || loadingClasses}
               >
-                <option value="">
+                <option value="" className="text-slate-900">
                   {loadingClasses ? 'Loading classes...' : 'Select Class'}
                 </option>
                 {studentClasses.map(cls => (
-                  <option key={cls.id || cls.value} value={cls.value || cls.class_name}>
-                    {cls.label || cls.display_name || cls.class_name}
+                  <option 
+                    key={cls.id || cls.value} 
+                    value={cls.id || cls.value || cls.class_name}
+                    className="text-slate-900"
+                  >
+                    {cls.name || cls.label || cls.display_name || cls.class_name}
                   </option>
                 ))}
               </select>
+              {studentClasses.length > 0 && (
+                <div className="mt-1 text-xs text-emerald-600">
+                  {studentClasses.length} class(es) available
+                </div>
+              )}
             </div>
           </div>
 
@@ -1739,18 +1758,27 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               name="classroom"
               value={formData.classroom}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
               disabled={!formData.student_class || loadingClassrooms}
             >
-              <option value="">
+              <option value="" className="text-slate-900">
                 {loadingClassrooms ? 'Loading classrooms...' : 'Select Classroom'}
               </option>
               {classrooms.map(room => (
-                <option key={room.id || room.name} value={room.name || room.classroom_name}>
+                <option 
+                  key={room.id || room.name} 
+                  value={room.name || room.classroom_name}
+                  className="text-slate-900"
+                >
                   {room.display_name || room.name || room.classroom_name}
                 </option>
               ))}
             </select>
+            {classrooms.length > 0 && (
+              <div className="mt-1 text-xs text-emerald-600">
+                {classrooms.length} classroom(s) available
+              </div>
+            )}
           </div>
         </div>
 
