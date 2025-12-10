@@ -680,9 +680,39 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
     const section = studentClasses.find(cls => cls.id === parseInt(sectionId));
     
     if (section) {
-      // Get the grade level name and map it to enum
+      // Get the grade level name and try multiple mapping approaches
       const gradeLevelName = section.grade_level_name;
-      const enumValue = GRADE_LEVEL_TO_ENUM[gradeLevelName];
+      
+      // Try direct mapping first
+      let enumValue = GRADE_LEVEL_TO_ENUM[gradeLevelName];
+      
+      // If not found, try to normalize the string (remove extra spaces, standardize format)
+      if (!enumValue) {
+        const normalized = gradeLevelName.trim().replace(/\s+/g, ' ');
+        enumValue = GRADE_LEVEL_TO_ENUM[normalized];
+      }
+      
+      // If still not found, try to extract and reconstruct
+      if (!enumValue) {
+        // Try to match patterns like "Primary 2", "JSS 1", "SS 2"
+        const match = gradeLevelName.match(/(Pre-nursery|Nursery|Primary|Junior Secondary|JSS|Senior Secondary|SS)\s*(\d+)?/i);
+        if (match) {
+          const level = match[1].toLowerCase();
+          const num = match[2];
+          
+          if (level.includes('pre') && level.includes('nur')) {
+            enumValue = 'PRE_NURSERY';
+          } else if (level.includes('nur') && num) {
+            enumValue = `NURSERY_${num}`;
+          } else if (level.includes('primary') && num) {
+            enumValue = `PRIMARY_${num}`;
+          } else if ((level.includes('junior') || level === 'jss') && num) {
+            enumValue = `JSS_${num}`;
+          } else if ((level.includes('senior') || level === 'ss') && num) {
+            enumValue = `SS_${num}`;
+          }
+        }
+      }
       
       console.log('Selected section:', section);
       console.log('Grade level name:', gradeLevelName);
@@ -690,13 +720,13 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       
       if (!enumValue) {
         console.error('Could not map grade level to enum:', gradeLevelName);
-        toast.error(`Could not map grade level: ${gradeLevelName}`);
+        toast.error(`Could not map grade level: "${gradeLevelName}". Please contact support.`);
         return;
       }
       
       setFormData(prev => ({ 
         ...prev, 
-        student_class: enumValue,  // This is what the backend expects
+        student_class: enumValue,
         classroom: '', 
         stream: '' 
       }));
