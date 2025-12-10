@@ -556,6 +556,7 @@ import {
   AlertCircle, CheckCircle, Mail, Lock, Star,
   Target, Globe, Award
 } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import type { LoginCredentials, UserRole } from '@/types/types';
 

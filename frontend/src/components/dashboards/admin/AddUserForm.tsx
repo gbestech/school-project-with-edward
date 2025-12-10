@@ -7,6 +7,36 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
 import { triggerDashboardRefresh } from '@/hooks/useDashboardRefresh';
 
+
+const GRADE_LEVEL_TO_ENUM: Record<string, string> = {
+  'Pre-nursery': 'PRE_NURSERY',
+  'Nursery 1': 'NURSERY_1',
+  'Nursery 2': 'NURSERY_2',
+  'Primary 1': 'PRIMARY_1',
+  'Primary 2': 'PRIMARY_2',
+  'Primary 3': 'PRIMARY_3',
+  'Primary 4': 'PRIMARY_4',
+  'Primary 5': 'PRIMARY_5',
+  'Primary 6': 'PRIMARY_6',
+  'Junior Secondary 1': 'JSS_1',
+  'JSS1': 'JSS_1',
+  'JSS 1': 'JSS_1',
+  'Junior Secondary 2': 'JSS_2',
+  'JSS2': 'JSS_2',
+  'JSS 2': 'JSS_2',
+  'Junior Secondary 3': 'JSS_3',
+  'JSS3': 'JSS_3',
+  'JSS 3': 'JSS_3',
+  'Senior Secondary 1': 'SS_1',
+  'SS1': 'SS_1',
+  'SS 1': 'SS_1',
+  'Senior Secondary 2': 'SS_2',
+  'SS2': 'SS_2',
+  'SS 2': 'SS_2',
+  'Senior Secondary 3': 'SS_3',
+  'SS3': 'SS_3',
+  'SS 3': 'SS_3',
+};
 // --- Student Form Types ---
 type StudentFormData = {
   photo: string | null;
@@ -40,54 +70,6 @@ type StudentFormData = {
 };
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const educationLevels = [
-  { value: 'NURSERY', label: 'Nursery' },
-  { value: 'PRIMARY', label: 'Primary' },
-  { value: 'JUNIOR_SECONDARY', label: 'Junior Secondary' },
-  { value: 'SENIOR_SECONDARY', label: 'Senior Secondary' },
-];
-const studentClassesByLevel: Record<string, { value: string; label: string }[]> = {
-  NURSERY: [
-    { value: 'PRE_NURSERY', label: 'Pre-nursery' },
-    { value: 'NURSERY_1', label: 'Nursery 1' },
-    { value: 'NURSERY_2', label: 'Nursery 2' },
-  ],
-  PRIMARY: [
-    { value: 'PRIMARY_1', label: 'Primary 1' },
-    { value: 'PRIMARY_2', label: 'Primary 2' },
-    { value: 'PRIMARY_3', label: 'Primary 3' },
-    { value: 'PRIMARY_4', label: 'Primary 4' },
-    { value: 'PRIMARY_5', label: 'Primary 5' },
-    { value: 'PRIMARY_6', label: 'Primary 6' },
-  ],
-  JUNIOR_SECONDARY: [
-    { value: 'JSS_1', label: 'Junior Secondary 1 (JSS1)' },
-    { value: 'JSS_2', label: 'Junior Secondary 2 (JSS2)' },
-    { value: 'JSS_3', label: 'Junior Secondary 3 (JSS3)' },
-  ],
-  SENIOR_SECONDARY: [
-    { value: 'SS_1', label: 'Senior Secondary 1 (SS1)' },
-    { value: 'SS_2', label: 'Senior Secondary 2 (SS2)' },
-    { value: 'SS_3', label: 'Senior Secondary 3 (SS3)' },
-  ],
-};
-const classroomsByStudentClass: Record<string, string[]> = {
-  PRE_NURSERY: ['Pre-Nursery A', 'Pre-Nursery B'],
-  NURSERY_1: ['Nursery 1 A', 'Nursery 1 B'],
-  NURSERY_2: ['Nursery 2 A', 'Nursery 2 B'],
-  PRIMARY_1: ['Primary 1 A', 'Primary 1 B'],
-  PRIMARY_2: ['Primary 2 A', 'Primary 2 B'],
-  PRIMARY_3: ['Primary 3 A', 'Primary 3 B'],
-  PRIMARY_4: ['Primary 4 A', 'Primary 4 B'],
-  PRIMARY_5: ['Primary 5 A', 'Primary 5 B'],
-  PRIMARY_6: ['Primary 6 A', 'Primary 6 B'],
-  JSS_1: ['JSS1 A', 'JSS1 B'],
-  JSS_2: ['JSS2 A', 'JSS2 B'],
-  JSS_3: ['JSS3 A', 'JSS3 B'],
-  SS_1: ['SS1 A', 'SS1 B'],
-  SS_2: ['SS2 A', 'SS2 B'],
-  SS_3: ['SS3 A', 'SS3 B'],
-};
 
 interface AddStudentFormProps {
   onStudentAdded?: () => void;
@@ -124,11 +106,110 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [streams, setStreams] = useState<any[]>([]);
   
+  // New state for dynamic education levels, classes and classrooms
+  const [educationLevels, setEducationLevels] = useState<any[]>([]);
+  const [studentClasses, setStudentClasses] = useState<any[]>([]);
+  const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [loadingLevels, setLoadingLevels] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [loadingClassrooms, setLoadingClassrooms] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  // Store the selected grade level ID for fetching sections
+  const [selectedGradeLevelId, setSelectedGradeLevelId] = useState<string>('');
+  
   // Date picker states
   const [dobDay, setDobDay] = useState('');
   const [dobMonth, setDobMonth] = useState('');
   const [dobYear, setDobYear] = useState('');
 
+  // Fetch education levels/grade levels on component mount
+  useEffect(() => {
+    const fetchEducationLevels = async () => {
+      setLoadingLevels(true);
+      try {
+        // Grades endpoint is under /api/classrooms/
+        const response = await api.get('/api/classrooms/grades/');
+        console.log('Education Levels Response:', response); // Debug log
+        setEducationLevels(response || []);
+      } catch (error) {
+        console.error('Error fetching education levels:', error);
+        toast.error('Failed to load education levels');
+        setEducationLevels([]);
+      } finally {
+        setLoadingLevels(false);
+      }
+    };
+    
+    fetchEducationLevels();
+  }, []);
+
+  // Fetch student classes based on education level
+  useEffect(() => {
+    const fetchStudentClasses = async () => {
+      if (!selectedGradeLevelId) {
+        setStudentClasses([]);
+        return;
+      }
+      
+      setLoadingClasses(true);
+      try {
+        // Sections endpoint: /api/classrooms/grades/{grade_id}/sections/
+        const response = await api.get(`/api/classrooms/grades/${selectedGradeLevelId}/sections/`);
+        console.log('Student Classes Response:', response);
+        setStudentClasses(response || []);
+      } catch (error) {
+        console.error('Error fetching student classes:', error);
+        toast.error('Failed to load classes');
+        setStudentClasses([]);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+    
+    fetchStudentClasses();
+  }, [selectedGradeLevelId]);
+
+  // Fetch classrooms based on student class (section)
+  useEffect(() => {
+  const fetchClassrooms = async () => {
+    if (!selectedSectionId) {
+      setClassrooms([]);
+      return;
+    }
+    
+    setLoadingClassrooms(true);
+    try {
+      console.log('Fetching classrooms for section ID:', selectedSectionId);
+      
+      const response = await api.get(`/api/classrooms/classrooms/?section=${selectedSectionId}`);
+      
+      console.log('Classrooms API response:', response);
+      
+      const classroomList = Array.isArray(response) ? response : [];
+      setClassrooms(classroomList);
+      
+      if (classroomList.length === 0) {
+        const section = studentClasses.find(cls => cls.id === parseInt(selectedSectionId));
+        toast.info(
+          `No classrooms found for ${section?.name || 'this section'}. Please create classrooms in the admin panel.`,
+          {
+            position: "top-right",
+            autoClose: 5000
+          }
+        );
+      }
+      
+    } catch (error: any) {
+      console.error('Error fetching classrooms:', error);
+      toast.error('Failed to load classrooms');
+      setClassrooms([]);
+    } finally {
+      setLoadingClassrooms(false);
+    }
+  };
+  
+  fetchClassrooms();
+}, [selectedSectionId, studentClasses]);  
   const handleParentUsernameSearch = async () => {
     if (!parentUsernameSearch) return;
     try {
@@ -319,9 +400,6 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
       setLoading(false);
     }
   };
-
-  const filteredStudentClasses = formData.education_level ? studentClassesByLevel[formData.education_level] : [];
-  const filteredClassrooms = formData.student_class ? classroomsByStudentClass[formData.student_class] || [] : [];
 
   // Generate day, month, year options
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -551,34 +629,101 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
                 name="education_level"
                 value={formData.education_level}
                 onChange={(e) => {
-                  handleInputChange(e);
-                  setFormData(prev => ({ ...prev, student_class: '', classroom: '', stream: '' }));
+                  const selectedOption = educationLevels.find(level => 
+                    (level.education_level || level.name || level.value) === e.target.value
+                  );
+                  
+                  // Store the enum value (like "NURSERY") in formData
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    education_level: e.target.value,
+                    student_class: '', 
+                    classroom: '', 
+                    stream: '' 
+                  }));
+                  
+                  // Store the ID for fetching sections
+                  setSelectedGradeLevelId(selectedOption?.id || '');
                 }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+                disabled={loadingLevels}
               >
-                <option value="">Select Level</option>
+                <option value="" className="text-slate-900">
+                  {loadingLevels ? 'Loading levels...' : 'Select Level'}
+                </option>
                 {educationLevels.map(level => (
-                  <option key={level.value} value={level.value}>{level.label}</option>
+                  <option 
+                    key={level.id || level.value || level.name} 
+                    value={level.education_level || level.name || level.value}
+                    className="text-slate-900"
+                  >
+                    {level.name || level.label || level.display_name || level.level_name || level.education_level}
+                  </option>
                 ))}
               </select>
+              {educationLevels.length > 0 && (
+                <div className="mt-1 text-xs text-emerald-600">
+                  {educationLevels.length} level(s) loaded
+                </div>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Student Class*</label>
-              <select
-                name="student_class"
-                value={formData.student_class}
-                onChange={(e) => {
-                  handleInputChange(e);
-                  setFormData(prev => ({ ...prev, classroom: '', stream: '' }));
-                }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              >
-                <option value="">Select Class</option>
-                {filteredStudentClasses.map(cls => (
-                  <option key={cls.value} value={cls.value}>{cls.label}</option>
-                ))}
-              </select>
-            </div>
+  <label className="block text-sm font-medium text-slate-700 mb-2">Student Class*</label>
+  <select
+  name="student_class"
+  value={selectedSectionId}
+  onChange={(e) => {
+    const sectionId = e.target.value;
+    setSelectedSectionId(sectionId);
+    
+    // Find the selected section
+    const section = studentClasses.find(cls => cls.id === parseInt(sectionId));
+    
+    if (section) {
+      // Get the grade level name and map it to enum
+      const gradeLevelName = section.grade_level_name;
+      const enumValue = GRADE_LEVEL_TO_ENUM[gradeLevelName];
+      
+      console.log('Selected section:', section);
+      console.log('Grade level name:', gradeLevelName);
+      console.log('Mapped enum value:', enumValue);
+      
+      if (!enumValue) {
+        console.error('Could not map grade level to enum:', gradeLevelName);
+        toast.error(`Could not map grade level: ${gradeLevelName}`);
+        return;
+      }
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        student_class: enumValue,  // This is what the backend expects
+        classroom: '', 
+        stream: '' 
+      }));
+    }
+  }}
+  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+  disabled={!formData.education_level || loadingClasses}
+>
+  <option value="" className="text-slate-900">
+    {loadingClasses ? 'Loading classes...' : 'Select Class'}
+  </option>
+  {studentClasses.map(cls => (
+    <option 
+      key={cls.id} 
+      value={cls.id}
+      className="text-slate-900"
+    >
+      {cls.name || cls.display_name} ({cls.grade_level_name})
+    </option>
+  ))}
+</select>
+  {studentClasses.length > 0 && (
+    <div className="mt-1 text-xs text-emerald-600">
+      {studentClasses.length} class(es) available
+    </div>
+  )}
+</div>
           </div>
 
           {formData.education_level === 'SENIOR_SECONDARY' && (
@@ -608,14 +753,31 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
               name="classroom"
               value={formData.classroom}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              disabled={!formData.student_class}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+              disabled={!formData.student_class || loadingClassrooms}
             >
-              <option value="">Select Classroom</option>
-              {filteredClassrooms.map(room => (
-                <option key={room} value={room}>{room}</option>
+              <option value="" className="text-slate-900">
+                {loadingClassrooms ? 'Loading classrooms...' : !formData.student_class ? 'Select a class first' : classrooms.length === 0 ? 'No classrooms available - Please create classrooms in admin' : 'Select Classroom'}
+              </option>
+              {classrooms.map(room => (
+                <option 
+                  key={room.id || room.name} 
+                  value={room.name || room.classroom_name || room.id}
+                  className="text-slate-900"
+                >
+                  {room.display_name || room.name || room.classroom_name || `Classroom ${room.id}`}
+                </option>
               ))}
             </select>
+            {formData.student_class && !loadingClassrooms && (
+              <div className="mt-1 text-xs">
+                {classrooms.length > 0 ? (
+                  <span className="text-emerald-600">{classrooms.length} classroom(s) available</span>
+                ) : (
+                  <span className="text-amber-600">⚠️ No classrooms found. Please create classrooms for this section in the admin dashboard.</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
