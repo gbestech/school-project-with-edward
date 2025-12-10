@@ -7,6 +7,36 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
 import { triggerDashboardRefresh } from '@/hooks/useDashboardRefresh';
 
+
+const GRADE_LEVEL_TO_ENUM: Record<string, string> = {
+  'Pre-nursery': 'PRE_NURSERY',
+  'Nursery 1': 'NURSERY_1',
+  'Nursery 2': 'NURSERY_2',
+  'Primary 1': 'PRIMARY_1',
+  'Primary 2': 'PRIMARY_2',
+  'Primary 3': 'PRIMARY_3',
+  'Primary 4': 'PRIMARY_4',
+  'Primary 5': 'PRIMARY_5',
+  'Primary 6': 'PRIMARY_6',
+  'Junior Secondary 1': 'JSS_1',
+  'JSS1': 'JSS_1',
+  'JSS 1': 'JSS_1',
+  'Junior Secondary 2': 'JSS_2',
+  'JSS2': 'JSS_2',
+  'JSS 2': 'JSS_2',
+  'Junior Secondary 3': 'JSS_3',
+  'JSS3': 'JSS_3',
+  'JSS 3': 'JSS_3',
+  'Senior Secondary 1': 'SS_1',
+  'SS1': 'SS_1',
+  'SS 1': 'SS_1',
+  'Senior Secondary 2': 'SS_2',
+  'SS2': 'SS_2',
+  'SS 2': 'SS_2',
+  'Senior Secondary 3': 'SS_3',
+  'SS3': 'SS_3',
+  'SS 3': 'SS_3',
+};
 // --- Student Form Types ---
 type StudentFormData = {
   photo: string | null;
@@ -83,7 +113,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [loadingLevels, setLoadingLevels] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [loadingClassrooms, setLoadingClassrooms] = useState(false);
-  
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
   // Store the selected grade level ID for fetching sections
   const [selectedGradeLevelId, setSelectedGradeLevelId] = useState<string>('');
   
@@ -142,68 +172,36 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   // Fetch classrooms based on student class (section)
   useEffect(() => {
   const fetchClassrooms = async () => {
-    if (!formData.student_class) {
+    if (!selectedSectionId) {
       setClassrooms([]);
       return;
     }
     
     setLoadingClassrooms(true);
     try {
-      console.log('Selected student_class:', formData.student_class);
-      console.log('Available studentClasses:', studentClasses);
+      console.log('Fetching classrooms for section ID:', selectedSectionId);
       
-      // ✅ FIX: Match by ID (convert to number for safety)
-      const selectedSection = studentClasses.find(
-        cls => cls.id === parseInt(formData.student_class) || cls.id === formData.student_class
-      );
-      
-      if (!selectedSection || !selectedSection.id) {
-        console.error('Could not find section with ID:', formData.student_class);
-        toast.error('Please select a valid class');
-        setClassrooms([]);
-        setLoadingClassrooms(false);
-        return;
-      }
-      
-      console.log('Found section:', selectedSection);
-      console.log('Section ID:', selectedSection.id);
-      
-      // The classroom model has a ForeignKey to Section, so we filter by section ID
-      const response = await api.get(`/api/classrooms/classrooms/?section=${selectedSection.id}`);
+      const response = await api.get(`/api/classrooms/classrooms/?section=${selectedSectionId}`);
       
       console.log('Classrooms API response:', response);
       
-      // Ensure response is an array
       const classroomList = Array.isArray(response) ? response : [];
-      
       setClassrooms(classroomList);
       
       if (classroomList.length === 0) {
+        const section = studentClasses.find(cls => cls.id === parseInt(selectedSectionId));
         toast.info(
-          `No classrooms found for ${selectedSection.name}. Please create classrooms in the admin panel.`,
+          `No classrooms found for ${section?.name || 'this section'}. Please create classrooms in the admin panel.`,
           {
             position: "top-right",
             autoClose: 5000
           }
         );
-      } else {
-        console.log(`Found ${classroomList.length} classroom(s) for ${selectedSection.name}`);
       }
       
     } catch (error: any) {
       console.error('Error fetching classrooms:', error);
-      console.error('Error response:', error.response?.data);
-      
-      // Parse the error message
-      const errorData = error.response?.data;
-      if (errorData?.section) {
-        toast.error(`Section error: ${errorData.section[0]}`);
-      } else if (errorData?.detail) {
-        toast.error(`Error: ${errorData.detail}`);
-      } else {
-        toast.error('Failed to load classrooms');
-      }
-      
+      toast.error('Failed to load classrooms');
       setClassrooms([]);
     } finally {
       setLoadingClassrooms(false);
@@ -211,8 +209,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   };
   
   fetchClassrooms();
-}, [formData.student_class, studentClasses]);
-  
+}, [selectedSectionId, studentClasses]);  
   const handleParentUsernameSearch = async () => {
     if (!parentUsernameSearch) return;
     try {
@@ -673,33 +670,54 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
             <div>
   <label className="block text-sm font-medium text-slate-700 mb-2">Student Class*</label>
   <select
-    name="student_class"
-    value={formData.student_class}
-    onChange={(e) => {
-      // IMPORTANT: Store the section ID (not the class_level name)
+  name="student_class"
+  value={selectedSectionId}
+  onChange={(e) => {
+    const sectionId = e.target.value;
+    setSelectedSectionId(sectionId);
+    
+    // Find the selected section
+    const section = studentClasses.find(cls => cls.id === parseInt(sectionId));
+    
+    if (section) {
+      // Get the grade level name and map it to enum
+      const gradeLevelName = section.grade_level_name;
+      const enumValue = GRADE_LEVEL_TO_ENUM[gradeLevelName];
+      
+      console.log('Selected section:', section);
+      console.log('Grade level name:', gradeLevelName);
+      console.log('Mapped enum value:', enumValue);
+      
+      if (!enumValue) {
+        console.error('Could not map grade level to enum:', gradeLevelName);
+        toast.error(`Could not map grade level: ${gradeLevelName}`);
+        return;
+      }
+      
       setFormData(prev => ({ 
         ...prev, 
-        student_class: e.target.value,  // This is now the section ID
+        student_class: enumValue,  // This is what the backend expects
         classroom: '', 
         stream: '' 
       }));
-    }}
-    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
-    disabled={!formData.education_level || loadingClasses}
-  >
-    <option value="" className="text-slate-900">
-      {loadingClasses ? 'Loading classes...' : 'Select Class'}
+    }
+  }}
+  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-slate-900"
+  disabled={!formData.education_level || loadingClasses}
+>
+  <option value="" className="text-slate-900">
+    {loadingClasses ? 'Loading classes...' : 'Select Class'}
+  </option>
+  {studentClasses.map(cls => (
+    <option 
+      key={cls.id} 
+      value={cls.id}
+      className="text-slate-900"
+    >
+      {cls.name || cls.display_name} ({cls.grade_level_name})
     </option>
-    {studentClasses.map(cls => (
-      <option 
-        key={cls.id} 
-        value={cls.id}  /* ← KEY CHANGE: Use section ID as value */
-        className="text-slate-900"
-      >
-        {cls.name || cls.display_name}  {/* Display the section name */}
-      </option>
-    ))}
-  </select>
+  ))}
+</select>
   {studentClasses.length > 0 && (
     <div className="mt-1 text-xs text-emerald-600">
       {studentClasses.length} class(es) available
