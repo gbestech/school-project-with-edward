@@ -11,8 +11,8 @@ interface EditTeacherFormProps {
 }
 
 const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCancel, themeClasses, isDark }) => {
-  console.log('🔍 EditTeacherForm received teacher:', teacher);
-  console.log('🔍 Teacher JSON:', JSON.stringify(teacher, null, 2));
+  
+ 
   
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api';
 
