@@ -130,6 +130,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         };
         
         if (token) {
+          // Try both formats - some APIs use 'Token', others use 'Bearer'
           headers['Authorization'] = `Token ${token}`;
           console.log('🔑 Authorization header set');
         } else {
@@ -139,26 +140,17 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         // Fetch subjects
         try {
           console.log('🔍 Fetching subjects...');
-          console.log('🔍 Subject URL:', `${API_BASE_URL}/subjects/?education_level=${educationLevel}`);
-          
-          const subjectResponse = await fetch(`${API_BASE_URL}/subjects/?education_level=${educationLevel}`, {
+          const subjectResponse = await fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`, {
             headers
           });
           
-          console.log('🔍 Subject response status:', subjectResponse.status);
-          
           if (!subjectResponse.ok) {
-            const errorText = await subjectResponse.text();
-            console.error('❌ Subject fetch error response:', errorText);
             throw new Error(`Subject fetch failed: ${subjectResponse.status}`);
           }
           
           const subjectData = await subjectResponse.json();
-          console.log('🔍 Raw subject data:', subjectData);
-          
           const subjects = Array.isArray(subjectData) ? subjectData : (subjectData.results || []);
           console.log('✅ Loaded subjects:', subjects);
-          
           setSubjectOptions(subjects.map((s: any) => ({
             id: s.id,
             name: s.name
@@ -168,99 +160,24 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           setSubjectOptions([]);
         }
 
-        // Fetch classrooms - try multiple strategies
+        // Fetch classrooms
         try {
           console.log('🔍 Fetching classrooms...');
-          console.log('🔍 Education level for classrooms:', educationLevel);
-          
-          // Strategy 1: Try with education_level parameter
-          let classroomResponse = await fetch(
-            `${API_BASE_URL}/classrooms/?education_level=${educationLevel}`,
+          const classroomResponse = await fetch(
+            `${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
             { headers }
           );
           
-          console.log('🔍 Classroom response status (Strategy 1 - education_level):', classroomResponse.status);
-          
-          // Strategy 2: If first fails, try with section__grade_level__education_level
           if (!classroomResponse.ok) {
-            console.log('🔄 Strategy 1 failed, trying Strategy 2...');
-            classroomResponse = await fetch(
-              `${API_BASE_URL}/classrooms/?section__grade_level__education_level=${educationLevel}`,
-              { headers }
-            );
-            console.log('🔍 Classroom response status (Strategy 2 - nested param):', classroomResponse.status);
+            throw new Error(`Classroom fetch failed: ${classroomResponse.status}`);
           }
           
-          // Strategy 3: If both fail, fetch all and filter client-side
-          if (!classroomResponse.ok) {
-            const errorText = await classroomResponse.text();
-            console.error('❌ Classroom fetch error response:', errorText);
-            
-            console.log('🔄 Both strategies failed, trying Strategy 3 (fetch all + filter)...');
-            const allClassroomsResponse = await fetch(`${API_BASE_URL}/classrooms/`, { headers });
-            console.log('🔍 All classrooms response status:', allClassroomsResponse.status);
-            
-            if (allClassroomsResponse.ok) {
-              const allClassroomsData = await allClassroomsResponse.json();
-              console.log('📦 All classrooms raw data:', allClassroomsData);
-              console.log('📦 Data type:', typeof allClassroomsData);
-              console.log('📦 Is array?', Array.isArray(allClassroomsData));
-              
-              const allClassrooms = Array.isArray(allClassroomsData) ? allClassroomsData : (allClassroomsData.results || []);
-              console.log('📦 Total classrooms fetched:', allClassrooms.length);
-              
-              // Log first classroom structure to understand the data
-              if (allClassrooms.length > 0) {
-                console.log('📦 Sample classroom structure:', allClassrooms[0]);
-              }
-              
-              // Filter by education level - try multiple property paths
-              const filtered = allClassrooms.filter((c: any) => {
-                const matches = 
-                  c.education_level === educationLevel || 
-                  c.section?.grade_level?.education_level === educationLevel ||
-                  c.grade_level?.education_level === educationLevel;
-                
-                if (matches) {
-                  console.log(`✓ Classroom matched:`, c.name, c.id);
-                }
-                return matches;
-              });
-              
-              console.log('✅ Filtered classrooms count:', filtered.length);
-              console.log('✅ Filtered classrooms:', filtered);
-              
-              setClassroomOptions(filtered.map((c: any) => ({
-                id: c.id,
-                name: c.name || `${c.grade_level_name || c.section?.grade_level?.name || ''} ${c.section_name || c.section?.name || ''}`
-              })));
-              
-              setDataLoaded(true);
-              setLoading(false);
-              return;
-            }
-            
-            throw new Error(`All classroom fetch strategies failed`);
-          }
-          
-          // If we got here, one of the first two strategies worked
           const classroomData = await classroomResponse.json();
-          console.log('🔍 Raw classroom data:', classroomData);
-          console.log('🔍 Classroom data type:', typeof classroomData);
-          console.log('🔍 Is array?', Array.isArray(classroomData));
-          console.log('🔍 Has results?', classroomData?.results);
-          
           const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
-          console.log('✅ Loaded classrooms count:', classrooms.length);
           console.log('✅ Loaded classrooms:', classrooms);
-          
-          if (classrooms.length === 0) {
-            console.warn('⚠️ No classrooms found for education level:', educationLevel);
-          }
-          
           setClassroomOptions(classrooms.map((c: any) => ({
             id: c.id,
-            name: c.name || `${c.grade_level_name || ''} ${c.section_name || ''}`
+            name: c.name || `${c.grade_level_name} ${c.section_name}`
           })));
         } catch (error) {
           console.error('❌ Error fetching classrooms:', error);
@@ -293,16 +210,18 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     }
   }, [teacher, dataLoaded, subjectOptions.length]);
 
-  // Load teacher's classroom assignments
+  // Load teacher's classroom assignments - BUILD classroom options from the assignments themselves!
   useEffect(() => {
     if (!teacher) return;
     
     console.log('🏫 Loading classroom assignments. Teacher data:', teacher);
     console.log('🏫 Teacher classroom_assignments:', teacher.classroom_assignments);
     
+    // Extract unique classrooms from the teacher's assignments to populate the dropdown
     if (teacher.classroom_assignments && Array.isArray(teacher.classroom_assignments) && 
         teacher.classroom_assignments.length > 0) {
       
+      // Build classroom options from the assignments
       const uniqueClassrooms = new Map();
       teacher.classroom_assignments.forEach((assignment: any) => {
         if (assignment.classroom_id && !uniqueClassrooms.has(assignment.classroom_id)) {
@@ -316,6 +235,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
       const classroomsFromAssignments = Array.from(uniqueClassrooms.values());
       console.log('✅ Built classroom options from assignments:', classroomsFromAssignments);
       
+      // Add these to existing classroom options (merge without duplicates)
       setClassroomOptions(prev => {
         const merged = [...prev];
         classroomsFromAssignments.forEach(newClassroom => {
@@ -326,6 +246,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         return merged;
       });
       
+      // Now process the assignments
       const assignments = teacher.classroom_assignments.map((assignment: any, index: number) => {
         console.log(`📝 Processing assignment ${index}:`, assignment);
         
@@ -355,6 +276,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     
     console.log(`📝 Input changed: ${name} = ${newValue}`);
     
+    // Reset subjects and assignments if level changes
     if (name === 'level') {
       setSelectedSubjects([]);
       setCurrentAssignments([]);
@@ -470,6 +392,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     onSave(updateData);
   };
 
+  // Null check
   if (!teacher) {
     return (
       <div className="text-center p-4">
