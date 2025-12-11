@@ -302,14 +302,9 @@ useEffect(() => {
           
           // Try different possible endpoints
           const possibleEndpoints = [
-            `/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
-            `/api/classrooms/?section__grade_level__education_level=${educationLevel}`,
-            `/api/classroom/?section__grade_level__education_level=${educationLevel}`,
-            `/api/classes/?section__grade_level__education_level=${educationLevel}`,
-            `/api/classrooms/?education_level=${educationLevel}`,
-            `/api/classroom/?education_level=${educationLevel}`,
-          ];
-          
+  `/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
+];
+
           let classroomData = null;
           let successUrl = '';
           
