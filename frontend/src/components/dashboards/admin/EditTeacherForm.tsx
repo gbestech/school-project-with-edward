@@ -138,13 +138,19 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         }
 
         // Fetch subjects
+        
         try {
           console.log('🔍 Fetching subjects...');
-          const subjectResponse = await fetch(`${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`, {
-            headers
-          });
+          const subjectUrl = `${API_BASE_URL}/subjects/?education_level=${educationLevel}`;
+          console.log('📍 Subject URL:', subjectUrl);
+          
+          const subjectResponse = await fetch(subjectUrl, { headers });
+          
+          console.log('📊 Subject response status:', subjectResponse.status);
           
           if (!subjectResponse.ok) {
+            const errorText = await subjectResponse.text();
+            console.error('❌ Subject fetch error response:', errorText);
             throw new Error(`Subject fetch failed: ${subjectResponse.status}`);
           }
           
@@ -160,21 +166,54 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           setSubjectOptions([]);
         }
 
-        // Fetch classrooms
+        // Fetch classrooms - try multiple possible endpoints
         try {
           console.log('🔍 Fetching classrooms...');
-          const classroomResponse = await fetch(
-            `${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
-            { headers }
-          );
           
-          if (!classroomResponse.ok) {
-            throw new Error(`Classroom fetch failed: ${classroomResponse.status}`);
+          // Try different possible endpoints
+          const possibleEndpoints = [
+            `/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
+            `/classrooms/?section__grade_level__education_level=${educationLevel}`,
+            `/classroom/?section__grade_level__education_level=${educationLevel}`,
+            `/classes/?section__grade_level__education_level=${educationLevel}`,
+            `/classrooms/?education_level=${educationLevel}`,
+            `/classroom/?education_level=${educationLevel}`,
+          ];
+          
+          let classroomData = null;
+          let successUrl = '';
+          
+          for (const endpoint of possibleEndpoints) {
+            const classroomUrl = `${API_BASE_URL}${endpoint}`;
+            console.log('🔍 Trying classroom URL:', classroomUrl);
+            
+            try {
+              const classroomResponse = await fetch(classroomUrl, { headers });
+              console.log(`📊 Response status for ${endpoint}:`, classroomResponse.status);
+              
+              if (classroomResponse.ok) {
+                classroomData = await classroomResponse.json();
+                successUrl = classroomUrl;
+                console.log('✅ SUCCESS! Found working endpoint:', endpoint);
+                console.log('📦 Raw classroom data:', classroomData);
+                break;
+              }
+            } catch (err) {
+              console.log(`❌ Failed endpoint ${endpoint}:`, err);
+              continue;
+            }
           }
           
-          const classroomData = await classroomResponse.json();
+          if (!classroomData) {
+            console.error('❌ All classroom endpoints failed');
+            setClassroomOptions([]);
+            return;
+          }
+          
           const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
           console.log('✅ Loaded classrooms:', classrooms);
+          console.log('✅ Use this URL in your code:', successUrl);
+          
           setClassroomOptions(classrooms.map((c: any) => ({
             id: c.id,
             name: c.name || `${c.grade_level_name} ${c.section_name}`
