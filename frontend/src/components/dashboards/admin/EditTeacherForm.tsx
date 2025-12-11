@@ -141,7 +141,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         
         try {
           console.log('🔍 Fetching subjects...');
-          const subjectUrl = `${API_BASE_URL}/subjects/?education_level=${educationLevel}`;
+          const subjectUrl = `${API_BASE_URL}/api/subjects/?education_level=${educationLevel}`;
           console.log('📍 Subject URL:', subjectUrl);
           
           const subjectResponse = await fetch(subjectUrl, { headers });
@@ -172,12 +172,12 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           
           // Try different possible endpoints
           const possibleEndpoints = [
-            `/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
-            `/classrooms/?section__grade_level__education_level=${educationLevel}`,
-            `/classroom/?section__grade_level__education_level=${educationLevel}`,
-            `/classes/?section__grade_level__education_level=${educationLevel}`,
-            `/classrooms/?education_level=${educationLevel}`,
-            `/classroom/?education_level=${educationLevel}`,
+            `/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
+            `/api/classrooms/?section__grade_level__education_level=${educationLevel}`,
+            `/api/classroom/?section__grade_level__education_level=${educationLevel}`,
+            `/api/classes/?section__grade_level__education_level=${educationLevel}`,
+            `/api/classrooms/?education_level=${educationLevel}`,
+            `/api/classroom/?education_level=${educationLevel}`,
           ];
           
           let classroomData = null;
