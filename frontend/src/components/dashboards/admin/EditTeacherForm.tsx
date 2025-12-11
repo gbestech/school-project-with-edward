@@ -14,7 +14,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
   console.log('🔍 EditTeacherForm received teacher:', teacher);
   console.log('🔍 Teacher JSON:', JSON.stringify(teacher, null, 2));
   
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api';
 
   // Helper function to get initial form data
   const getInitialFormData = () => {
