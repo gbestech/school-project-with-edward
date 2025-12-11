@@ -161,30 +161,20 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         }
 
         // Fetch classrooms
-        // Fetch classrooms
         try {
           console.log('🔍 Fetching classrooms...');
-          console.log('🔍 URL:', `${API_BASE_URL}/classrooms/?section__grade_level__education_level=${educationLevel}`);
-          
           const classroomResponse = await fetch(
-            `${API_BASE_URL}/classrooms/?section__grade_level__education_level=${educationLevel}`,
+            `${API_BASE_URL}/api/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`,
             { headers }
           );
           
-          console.log('🔍 Classroom response status:', classroomResponse.status);
-          
           if (!classroomResponse.ok) {
-            const errorText = await classroomResponse.text();
-            console.error('❌ Classroom fetch error response:', errorText);
             throw new Error(`Classroom fetch failed: ${classroomResponse.status}`);
           }
           
           const classroomData = await classroomResponse.json();
-          console.log('🔍 Raw classroom data:', classroomData);
-          
           const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
           console.log('✅ Loaded classrooms:', classrooms);
-          
           setClassroomOptions(classrooms.map((c: any) => ({
             id: c.id,
             name: c.name || `${c.grade_level_name} ${c.section_name}`
@@ -193,7 +183,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
           console.error('❌ Error fetching classrooms:', error);
           setClassroomOptions([]);
         }
-
+        
         setDataLoaded(true);
       } finally {
         setLoading(false);
