@@ -70,12 +70,142 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
 
   // Update form data when teacher prop changes
   useEffect(() => {
-    console.log('📝 Teacher prop changed, updating form data');
-    const newFormData = getInitialFormData();
-    setFormData(newFormData);
-    setPhotoPreview(teacher?.photo || null);
-    setDataLoaded(false); // Reset data loaded flag
-  }, [teacher]);
+  const loadSubjects = async () => {
+    console.log('🔄 Loading subjects for level:', formData.level);
+    
+    if (formData.staff_type !== 'teaching' || !formData.level) {
+      console.log('⚠️ Not teaching staff or no level');
+      setSubjectOptions([]);
+      setDataLoaded(true);
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const levelMap: Record<string, string> = {
+        nursery: 'NURSERY',
+        primary: 'PRIMARY',
+        junior_secondary: 'JUNIOR_SECONDARY',
+        senior_secondary: 'SENIOR_SECONDARY',
+        secondary: 'SECONDARY'
+      };
+
+      const educationLevel = levelMap[formData.level];
+      
+      if (!educationLevel) {
+        setLoading(false);
+        setDataLoaded(true);
+        return;
+      }
+
+      const token = localStorage.getItem('token') || 
+                   localStorage.getItem('authToken') || 
+                   localStorage.getItem('access_token') ||
+                   sessionStorage.getItem('token');
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Token ${token}`;
+      }
+
+      // Fetch ONLY subjects - NO classroom API call
+      try {
+        console.log('🔍 Fetching subjects...');
+        const subjectUrl = `${API_BASE_URL}/subjects/?education_level=${educationLevel}`;
+        
+        const subjectResponse = await fetch(subjectUrl, { headers });
+        
+        if (!subjectResponse.ok) {
+          throw new Error(`Subject fetch failed: ${subjectResponse.status}`);
+        }
+        
+        const subjectData = await subjectResponse.json();
+        const subjects = Array.isArray(subjectData) ? subjectData : (subjectData.results || []);
+        console.log('✅ Loaded subjects:', subjects);
+        setSubjectOptions(subjects.map((s: any) => ({
+          id: s.id,
+          name: s.name
+        })));
+      } catch (error) {
+        console.error('❌ Error fetching subjects:', error);
+        setSubjectOptions([]);
+      }
+      
+      setDataLoaded(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadSubjects();
+}, [formData.staff_type, formData.level, API_BASE_URL]);
+
+// Load teacher's assigned subjects
+useEffect(() => {
+  if (!teacher || !dataLoaded || subjectOptions.length === 0) return;
+  
+  console.log('📋 Loading assigned subjects:', teacher.assigned_subjects);
+  
+  if (teacher.assigned_subjects && Array.isArray(teacher.assigned_subjects) && 
+      teacher.assigned_subjects.length > 0) {
+    const subjectIds = teacher.assigned_subjects.map((s: any) => String(s.id));
+    console.log('✅ Setting selected subjects:', subjectIds);
+    setSelectedSubjects(subjectIds);
+  } else {
+    setSelectedSubjects([]);
+  }
+}, [teacher, dataLoaded, subjectOptions.length]);
+
+// Load classrooms from teacher.classroom_assignments (NOT from API!)
+useEffect(() => {
+  if (!teacher) {
+    console.log('⚠️ No teacher data');
+    return;
+  }
+  
+  console.log('🏫 Loading classroom assignments from teacher data');
+  console.log('🏫 Teacher.classroom_assignments:', teacher.classroom_assignments);
+  
+  // Build classroom options from the teacher's existing assignments
+  if (teacher.classroom_assignments && Array.isArray(teacher.classroom_assignments) && 
+      teacher.classroom_assignments.length > 0) {
+    
+    // Extract unique classrooms
+    const uniqueClassrooms = new Map();
+    teacher.classroom_assignments.forEach((assignment: any) => {
+      if (assignment.classroom_id && !uniqueClassrooms.has(assignment.classroom_id)) {
+        uniqueClassrooms.set(assignment.classroom_id, {
+          id: assignment.classroom_id,
+          name: assignment.classroom_name || `${assignment.grade_level_name} ${assignment.section_name}`
+        });
+      }
+    });
+    
+    const classroomsFromAssignments = Array.from(uniqueClassrooms.values());
+    console.log('✅ Built classroom options from assignments:', classroomsFromAssignments);
+    setClassroomOptions(classroomsFromAssignments);
+    
+    // Process the assignments
+    const assignments = teacher.classroom_assignments.map((assignment: any, index: number) => ({
+      id: `existing-${assignment.id || index}`,
+      classroom_id: assignment.classroom_id || '',
+      subject_id: assignment.subject_id || '',
+      is_primary_teacher: assignment.is_primary_teacher || false,
+      periods_per_week: assignment.periods_per_week || 1,
+    }));
+    
+    console.log('✅ Setting current assignments:', assignments);
+    setCurrentAssignments(assignments);
+  } else {
+    console.log('⚠️ No classroom assignments found for this teacher');
+    setClassroomOptions([]);
+    setCurrentAssignments([]);
+  }
+}, [teacher]);
 
   const getInitials = (firstName: string, lastName: string) => {
     const first = firstName?.charAt(0) || '';
