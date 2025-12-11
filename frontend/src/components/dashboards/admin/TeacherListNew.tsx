@@ -27,7 +27,7 @@ import EditTeacherForm from './EditTeacherForm';
 
 
 
-//  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api';
+//  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api';
 const TeacherList = () => {
   const { settings } = useSettings();
   const { theme } = useGlobalTheme();
@@ -284,7 +284,7 @@ const TeacherList = () => {
       // Check if it's a full URL or just a path
       const imageUrl = teacher.photo.startsWith('http') 
         ? teacher.photo 
-        : `${import.meta.env.VITE_API_URL || 'https://school-management-project-qpox.onrender.com/api'}${teacher.photo}`;
+        : `${import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api'}${teacher.photo}`;
       
       console.log(`🖼️ Final image URL for ${teacher.first_name} ${teacher.last_name}:`, imageUrl);
       

@@ -92,10 +92,10 @@ const getAuthHeaders = () => {
 
 const createFallbackClassrooms = (level: string): Classroom[] => {
   const classroomMap: Record<string, string[]> = {
-    nursery: ['Pre-Nursery A', 'Pre-Nursery B', 'Nursery 1 A', 'Nursery 1 B', 'Nursery 2 A', 'Nursery 2 B'],
-    primary: ['Primary 1 A', 'Primary 1 B', 'Primary 2 A', 'Primary 2 B', 'Primary 3 A', 'Primary 3 B'],
-    junior_secondary: ['JSS 1 A', 'JSS 1 B', 'JSS 2 A', 'JSS 2 B', 'JSS 3 A', 'JSS 3 B'],
-    senior_secondary: ['SS 1 A', 'SS 1 B', 'SS 2 A', 'SS 2 B', 'SS 3 A', 'SS 3 B']
+    nursery: ['Pre-Nursery Gold', 'Pre-Nursery Silver', 'Nursery 1 Gold', 'Nursery 1 Silver', 'Nursery 2 Gold', 'Nursery 2 Silver'],
+    primary: ['Primary 1 Gold', 'Primary 1 Silver', 'Primary 2 Gold', 'Primary 2 Silver', 'Primary 3 Gold', 'Primary 3 Silver'],
+    junior_secondary: ['JSS 1 Gold', 'JSS 1 Silver', 'JSS 2 Gold', 'JSS 2 Silver', 'JSS 3 Gold', 'JSS 3 Silver'],
+    senior_secondary: ['SS 1 Gold', 'SS 1 Silver', 'SS 2 Gold', 'SS 2 Silver', 'SS 3 Gold', 'SS 3 Silver']
   };
 
   const classrooms = classroomMap[level] || [];
