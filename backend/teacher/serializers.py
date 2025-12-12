@@ -314,17 +314,26 @@ class TeacherSerializer(serializers.ModelSerializer):
         """Returns the classroom assignments for this teacher in the format expected by the frontend."""
         from classroom.models import ClassroomTeacherAssignment
 
-        # Fix: Use correct field names - academic_session not academic_year
-        assignments = ClassroomTeacherAssignment.objects.filter(
-            teacher=obj, is_active=True
-        ).select_related(
-            "classroom",
-            "classroom__section",
-            "classroom__section__grade_level",
-            "classroom__academic_session",  # Changed from academic_year
-            "classroom__term",
-            "subject",
-        )
+        # The queryset is already prefetched in the ViewSet if optimization is applied
+        # Check if we have prefetched data, otherwise fetch with select_related
+        if (
+            hasattr(obj, "_prefetched_objects_cache")
+            and "classroom_assignments" in obj._prefetched_objects_cache
+        ):
+            # Use prefetched data
+            assignments = obj.classroom_assignments.all()
+        else:
+            # Fallback: fetch with select_related (for cases without prefetch)
+            assignments = ClassroomTeacherAssignment.objects.filter(
+                teacher=obj, is_active=True
+            ).select_related(
+                "classroom",
+                "classroom__section",
+                "classroom__section__grade_level",
+                "classroom__academic_session",
+                "classroom__term",
+                "subject",
+            )
 
         classroom_assignments = []
         for assignment in assignments:
@@ -332,7 +341,11 @@ class TeacherSerializer(serializers.ModelSerializer):
             section = classroom.section
             grade_level = section.grade_level
 
-            student_count = classroom.current_enrollment
+            # Use annotated student_count if available (from prefetch), otherwise use property
+            if hasattr(classroom, "student_count"):
+                student_count = classroom.student_count
+            else:
+                student_count = classroom.current_enrollment
 
             assignment_data = {
                 "id": assignment.id,

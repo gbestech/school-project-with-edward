@@ -74,7 +74,7 @@ const studentClassesByLevel: Record<string, { value: string; label: string }[]> 
 };
 
 const classroomsByStudentClass: Record<string, string[]> = {
-  PRE_NURSERY: ['Pre-Nursery Gold', 'Pre-Nursery Silver'],
+  PRE_NURSERY: ['Pre-Nursery 2A', 'Pre-Nursery 2B', 'Pre-Nursery 1'],
   NURSERY_1: ['Nursery 1 Gold', 'Nursery 1 Silver'],
   NURSERY_2: ['Nursery 2 Gold', 'Nursery 2 Silver'],
   PRIMARY_1: ['Primary 1 Gold', 'Primary 1 Silver'],

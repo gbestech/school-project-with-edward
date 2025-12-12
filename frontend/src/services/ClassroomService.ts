@@ -77,6 +77,8 @@ export interface Classroom {
   current_enrollment: number;
   available_spots: number;
   enrollment_percentage: number;
+  stream?: string;
+  stream_name?: string;
   is_full: boolean;
   is_active: boolean;
   created_at: string;
