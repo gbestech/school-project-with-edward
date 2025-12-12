@@ -190,19 +190,36 @@ MIDDLEWARE = [
 # CORS SETTINGS (CRITICAL FIX)
 # ============================================
 
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.al-qolamulmuwaffaq.com,https://school-project-with-edward.vercel.app"
-).split(",")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174,"
+        "https://www.al-qolamulmuwaffaq.com,"
+        "https://al-qolamulmuwaffaq.com,"
+        "https://school-project-with-edward.vercel.app",
+    ).split(",")
+    if origin.strip()
+]
 
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "CORS_ALLOWED_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://localhost:5174,https://www.al-qolamulmuwaffaq.com,https://school-project-with-edward.vercel.app",
-).split(",")
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://localhost:5173,http://localhost:5174,"
+        "https://www.al-qolamulmuwaffaq.com,"
+        "https://al-qolamulmuwaffaq.com,"
+        "https://school-project-with-edward.vercel.app",
+    ).split(",")
+    if origin.strip()
+]
+
+print("✅ CORS Allowed Origins:", CORS_ALLOWED_ORIGINS)
 
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
+    "accept",
     "accept-encoding",
     "authorization",
     "content-type",
