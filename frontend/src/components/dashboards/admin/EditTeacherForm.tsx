@@ -69,9 +69,6 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // Update form data when teacher prop changes
-// Replace the useEffect that loads subjects and classrooms (around line 48-90)
-// with this corrected version:
-
 useEffect(() => {
   const loadSubjectsAndClassrooms = async () => {
     console.log('🔄 Loading subjects and classrooms for level:', formData.level);
@@ -103,31 +100,19 @@ useEffect(() => {
         return;
       }
 
-      const token = localStorage.getItem('token') || 
-                   localStorage.getItem('authToken') || 
-                   localStorage.getItem('access_token') ||
-                   sessionStorage.getItem('token');
+      // Import api service at the top of your file if not already imported
+      // import api from '@/services/api';
       
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Token ${token}`;
-      }
+      // Dynamically import api service
+      const { default: api } = await import('@/services/api');
 
-      // Fetch subjects
+      // Fetch subjects using api service (handles auth automatically)
       try {
         console.log('🔍 Fetching subjects...');
-        const subjectUrl = `${API_BASE_URL}/subjects/?education_level=${educationLevel}`;
+        const subjectData = await api.get('/api/subjects/', {
+          params: { education_level: educationLevel }
+        });
         
-        const subjectResponse = await fetch(subjectUrl, { headers });
-        
-        if (!subjectResponse.ok) {
-          throw new Error(`Subject fetch failed: ${subjectResponse.status}`);
-        }
-        
-        const subjectData = await subjectResponse.json();
         const subjects = Array.isArray(subjectData) ? subjectData : (subjectData.results || []);
         console.log('✅ Loaded subjects:', subjects);
         setSubjectOptions(subjects.map((s: any) => ({
@@ -139,24 +124,14 @@ useEffect(() => {
         setSubjectOptions([]);
       }
 
-      // Fetch classrooms - try the correct endpoint
+      // Fetch classrooms using api service (handles auth automatically)
       try {
         console.log('🔍 Fetching classrooms...');
         
-        // The correct endpoint based on your API structure
-        const classroomUrl = `${API_BASE_URL}/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`;
-        console.log('🔍 Trying classroom URL:', classroomUrl);
+        const classroomData = await api.get('/api/classrooms/classrooms/', {
+          params: { section__grade_level__education_level: educationLevel }
+        });
         
-        const classroomResponse = await fetch(classroomUrl, { headers });
-        console.log(`📊 Response status:`, classroomResponse.status);
-        
-        if (!classroomResponse.ok) {
-          const errorText = await classroomResponse.text();
-          console.error('❌ Classroom fetch error:', errorText);
-          throw new Error(`Classroom fetch failed: ${classroomResponse.status}`);
-        }
-        
-        const classroomData = await classroomResponse.json();
         console.log('📦 Raw classroom data:', classroomData);
         
         const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
