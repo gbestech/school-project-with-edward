@@ -176,10 +176,11 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
             # Annotate classrooms with student counts to avoid N+1 queries
             # Note: The relationship is 'studentenrollment' not 'enrollments'
+
             classrooms_with_counts = Classroom.objects.annotate(
                 student_count=Count(
                     "studentenrollment",
-                    filter=Q(studentenrollment__status="active"),
+                    filter=Q(studentenrollment__is_active=True),
                     distinct=True,
                 )
             ).select_related(
