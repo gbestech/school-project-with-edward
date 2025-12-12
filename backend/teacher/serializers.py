@@ -314,14 +314,13 @@ class TeacherSerializer(serializers.ModelSerializer):
         """Returns the classroom assignments for this teacher in the format expected by the frontend."""
         from classroom.models import ClassroomTeacherAssignment
 
-        # The queryset is already prefetched in the ViewSet if optimization is applied
-        # Check if we have prefetched data, otherwise fetch with select_related
+        # ✅ Check for 'classroom_assignments' in prefetch cache
         if (
             hasattr(obj, "_prefetched_objects_cache")
-            and "classroomteacherassignment_set" in obj._prefetched_objects_cache
+            and "classroom_assignments" in obj._prefetched_objects_cache
         ):
             # Use prefetched data
-            assignments = obj.classroomteacherassignment_set.all()
+            assignments = obj.classroom_assignments.all()
         else:
             # Fallback: fetch with select_related (for cases without prefetch)
             assignments = ClassroomTeacherAssignment.objects.filter(

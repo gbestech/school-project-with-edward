@@ -186,9 +186,10 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             )
 
             # ✅ FIXED: Use the correct reverse relationship name
+            # ✅ Now use 'classroom_assignments' (the related_name we just added)
             queryset = queryset.prefetch_related(
                 Prefetch(
-                    "classroomteacherassignment_set",  # ✅ Correct relationship name
+                    "classroom_assignments",  # ✅ This will now work!
                     queryset=ClassroomTeacherAssignment.objects.filter(is_active=True)
                     .select_related("subject")
                     .prefetch_related(

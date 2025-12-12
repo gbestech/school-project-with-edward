@@ -170,21 +170,13 @@ class Classroom(models.Model):
 
 class ClassroomTeacherAssignment(models.Model):
     """Teacher assignment to classroom for specific subjects"""
-    classroom = models.ForeignKey(
-        Classroom,
-        on_delete=models.CASCADE,
-        related_name="teacher_assignments",  # Optional: for classroom.teacher_assignments
-    )
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
     teacher = models.ForeignKey(
         "teacher.Teacher",
         on_delete=models.CASCADE,
-        related_name="classroom_assignments",  # ✅ Add this to use teacher.classroom_assignments
+        related_name="classroom_assignments",  # ✅ ADD THIS LINE
     )
-    subject = models.ForeignKey(
-        "subject.Subject",
-        on_delete=models.CASCADE,
-        related_name="classroom_assignments",  # Optional
-    )
+    subject = models.ForeignKey("subject.Subject", on_delete=models.CASCADE)
 
     # Enhanced assignment details
     is_primary_teacher = models.BooleanField(
