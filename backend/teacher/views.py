@@ -169,8 +169,6 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             f"[TeacherViewSet] After mixin filtering: {queryset.count()} teachers"
         )
 
-        # 🔥 OPTIMIZATION: Prefetch classroom assignments with student counts
-        # This prevents N+1 queries when serializing classroom data
         if self.action == "list" or self.action == "retrieve":
             from classroom.models import Classroom, ClassroomTeacherAssignment
 
