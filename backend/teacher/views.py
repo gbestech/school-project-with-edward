@@ -175,8 +175,6 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             from classroom.models import Classroom, ClassroomTeacherAssignment
 
             # Annotate classrooms with student counts to avoid N+1 queries
-            # Note: The relationship is 'studentenrollment' not 'enrollments'
-
             classrooms_with_counts = Classroom.objects.annotate(
                 student_count=Count(
                     "studentenrollment",
@@ -187,10 +185,10 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                 "section", "section__grade_level", "academic_session", "term", "stream"
             )
 
-            # Prefetch classroom assignments with all related data
+            # ✅ FIXED: Use the correct reverse relationship name
             queryset = queryset.prefetch_related(
                 Prefetch(
-                    "classroom_assignments",
+                    "classroomteacherassignment_set",  # ✅ Correct relationship name
                     queryset=ClassroomTeacherAssignment.objects.filter(is_active=True)
                     .select_related("subject")
                     .prefetch_related(

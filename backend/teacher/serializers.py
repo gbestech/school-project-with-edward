@@ -318,10 +318,10 @@ class TeacherSerializer(serializers.ModelSerializer):
         # Check if we have prefetched data, otherwise fetch with select_related
         if (
             hasattr(obj, "_prefetched_objects_cache")
-            and "classroom_assignments" in obj._prefetched_objects_cache
+            and "classroomteacherassignment_set" in obj._prefetched_objects_cache
         ):
             # Use prefetched data
-            assignments = obj.classroom_assignments.all()
+            assignments = obj.classroomteacherassignment_set.all()
         else:
             # Fallback: fetch with select_related (for cases without prefetch)
             assignments = ClassroomTeacherAssignment.objects.filter(
