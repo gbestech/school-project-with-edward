@@ -182,14 +182,13 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                     distinct=True,
                 )
             ).select_related(
-                "section", "section__grade_level", "academic_session", "term", "stream"
+                "section", "section__grade_level", "academic_session", "term"
             )
 
-            # ✅ FIXED: Use the correct reverse relationship name
-            # ✅ Now use 'classroom_assignments' (the related_name we just added)
+            # Prefetch classroom assignments with all related data
             queryset = queryset.prefetch_related(
                 Prefetch(
-                    "classroom_assignments",  # ✅ This will now work!
+                    "classroom_assignments",
                     queryset=ClassroomTeacherAssignment.objects.filter(is_active=True)
                     .select_related("subject")
                     .prefetch_related(
@@ -197,6 +196,7 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
                     ),
                 )
             )
+
             logger.info("[TeacherViewSet] Applied classroom prefetch optimization")
 
         # 🟦 Special case: Teachers can only see their own profile
