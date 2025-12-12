@@ -155,9 +155,31 @@ class Classroom(models.Model):
 
     @property
     def current_enrollment(self):
-        return self.studentenrollment_set.filter(
-            is_active=True, student__is_active=True
-        ).count()
+        """
+        Get current enrollment count.
+        Uses annotated count if available (from queryset optimization),
+        otherwise uses prefetched data, falls back to query.
+        """
+        # First priority: Use annotated count from queryset
+        if hasattr(self, "enrollment_count"):
+            return self.enrollment_count
+
+        # Second priority: Use prefetched active enrollments
+        if hasattr(self, "active_enrollments"):
+            return len(self.active_enrollments)
+
+        # Fallback: Query database (slowest option)
+        from django.utils import timezone
+        from django.db.models import Q
+
+        today = timezone.now().date()
+        return (
+            self.studentenrollment_set.filter(
+                is_active=True, enrollment_date__lte=today
+            )
+            .filter(Q(withdrawal_date__isnull=True) | Q(withdrawal_date__gte=today))
+            .count()
+        )
 
     @property
     def is_full(self):
@@ -165,6 +187,9 @@ class Classroom(models.Model):
 
     @property
     def available_spots(self):
+        """Calculate available spots"""
+        if not self.max_capacity:
+            return 0
         return max(0, self.max_capacity - self.current_enrollment)
 
 

@@ -643,6 +643,45 @@ class ClassroomDetailSerializer(ClassroomSerializer):
         source="schedules", many=True, read_only=True
     )
     current_enrollment = serializers.SerializerMethodField()
+    available_spots = serializers.SerializerMethodField()
+
+    def get_current_enrollment(self, obj):
+        """Use annotated or prefetched data"""
+        if hasattr(obj, "enrollment_count"):
+            return obj.enrollment_count
+        if hasattr(obj, "active_enrollments"):
+            return len(obj.active_enrollments)
+        return obj.current_enrollment
+
+    def get_available_spots(self, obj):
+        """Calculate using prefetched data"""
+        if not obj.max_capacity:
+            return 0
+        current = self.get_current_enrollment(obj)
+        return max(0, obj.max_capacity - current)
+
+    def get_teacher_assignments(self, obj):
+        """Use prefetched teacher assignments - NO DATABASE QUERIES!"""
+        # Use prefetched data if available
+        if hasattr(obj, "active_teacher_assignments"):
+            assignments = obj.active_teacher_assignments
+        else:
+            # Fallback - will make a query but at least it's optimized
+            from django.utils import timezone
+            from django.db.models import Q
+
+            today = timezone.now().date()
+            assignments = (
+                obj.classroomteacherassignment_set.filter(
+                    is_active=True, start_date__lte=today
+                )
+                .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
+                .select_related("teacher__user", "subject")
+            )
+
+        return ClassroomTeacherAssignmentSerializer(
+            assignments, many=True, context=self.context
+        ).data
 
     class Meta(ClassroomSerializer.Meta):
         fields = ClassroomSerializer.Meta.fields + [
@@ -652,18 +691,6 @@ class ClassroomDetailSerializer(ClassroomSerializer):
             "class_schedules",
             "current_enrollment",
         ]
-
-    def get_current_enrollment(self, obj):
-        """Calculate current enrollment from StudentEnrollment"""
-        return obj.studentenrollment_set.filter(
-            is_active=True, student__is_active=True
-        ).count()
-
-    def get_teacher_assignments(self, obj):
-        """Get only active teacher assignments"""
-        active_assignments = obj.classroomteacherassignment_set.filter(is_active=True)
-        return ClassroomTeacherAssignmentSerializer(active_assignments, many=True).data
-
 
 # Simplified serializers for dropdowns/lists
 class GradeLevelSimpleSerializer(serializers.ModelSerializer):
