@@ -69,13 +69,17 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
   const [dataLoaded, setDataLoaded] = useState(false);
 
   // Update form data when teacher prop changes
-  useEffect(() => {
-  const loadSubjects = async () => {
-    console.log('🔄 Loading subjects for level:', formData.level);
+// Replace the useEffect that loads subjects and classrooms (around line 48-90)
+// with this corrected version:
+
+useEffect(() => {
+  const loadSubjectsAndClassrooms = async () => {
+    console.log('🔄 Loading subjects and classrooms for level:', formData.level);
     
     if (formData.staff_type !== 'teaching' || !formData.level) {
       console.log('⚠️ Not teaching staff or no level');
       setSubjectOptions([]);
+      setClassroomOptions([]);
       setDataLoaded(true);
       return;
     }
@@ -112,7 +116,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         headers['Authorization'] = `Token ${token}`;
       }
 
-      // Fetch ONLY subjects - NO classroom API call
+      // Fetch subjects
       try {
         console.log('🔍 Fetching subjects...');
         const subjectUrl = `${API_BASE_URL}/subjects/?education_level=${educationLevel}`;
@@ -134,6 +138,47 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
         console.error('❌ Error fetching subjects:', error);
         setSubjectOptions([]);
       }
+
+      // Fetch classrooms - try the correct endpoint
+      try {
+        console.log('🔍 Fetching classrooms...');
+        
+        // The correct endpoint based on your API structure
+        const classroomUrl = `${API_BASE_URL}/classrooms/classrooms/?section__grade_level__education_level=${educationLevel}`;
+        console.log('🔍 Trying classroom URL:', classroomUrl);
+        
+        const classroomResponse = await fetch(classroomUrl, { headers });
+        console.log(`📊 Response status:`, classroomResponse.status);
+        
+        if (!classroomResponse.ok) {
+          const errorText = await classroomResponse.text();
+          console.error('❌ Classroom fetch error:', errorText);
+          throw new Error(`Classroom fetch failed: ${classroomResponse.status}`);
+        }
+        
+        const classroomData = await classroomResponse.json();
+        console.log('📦 Raw classroom data:', classroomData);
+        
+        const classrooms = Array.isArray(classroomData) ? classroomData : (classroomData.results || []);
+        console.log('✅ Loaded classrooms:', classrooms);
+        
+        // Merge with existing classroom options from teacher's assignments
+        setClassroomOptions(prev => {
+          const merged = [...prev];
+          classrooms.forEach((c: any) => {
+            if (!merged.find(existing => existing.id === c.id)) {
+              merged.push({
+                id: c.id,
+                name: c.name || `${c.grade_level_name || ''} ${c.section_name || ''}`
+              });
+            }
+          });
+          return merged;
+        });
+      } catch (error) {
+        console.error('❌ Error fetching classrooms:', error);
+        // Don't clear existing classrooms from teacher's assignments
+      }
       
       setDataLoaded(true);
     } finally {
@@ -141,7 +186,7 @@ const EditTeacherForm: React.FC<EditTeacherFormProps> = ({ teacher, onSave, onCa
     }
   };
 
-  loadSubjects();
+  loadSubjectsAndClassrooms();
 }, [formData.staff_type, formData.level, API_BASE_URL]);
 
 // Load teacher's assigned subjects
