@@ -1,9 +1,9 @@
+from django.db.models import Prefetch, Count, Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.db.models import Prefetch, Count, Q
 from .models import Teacher, AssignmentRequest, TeacherSchedule
 from .serializers import (
     TeacherSerializer,
@@ -172,15 +172,15 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         # 🔥 OPTIMIZATION: Prefetch classroom assignments with student counts
         # This prevents N+1 queries when serializing classroom data
         if self.action == "list" or self.action == "retrieve":
-            from classroom.models import (
-                Classroom,
-                ClassroomTeacherAssignment,
-            )
+            from classroom.models import Classroom, ClassroomTeacherAssignment
 
             # Annotate classrooms with student counts to avoid N+1 queries
+            # Note: The relationship is 'studentenrollment' not 'enrollments'
             classrooms_with_counts = Classroom.objects.annotate(
                 student_count=Count(
-                    "enrollments", filter=Q(enrollments__status="active"), distinct=True
+                    "studentenrollment",
+                    filter=Q(studentenrollment__status="active"),
+                    distinct=True,
                 )
             ).select_related(
                 "section", "section__grade_level", "academic_session", "term", "stream"
@@ -231,6 +231,126 @@ class TeacherViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
         logger.info(f"[TeacherViewSet] Final queryset count: {queryset.count()}")
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Override create to include generated credentials in response"""
+        logger.info(f"[TeacherViewSet] Create called by user: {request.user.username}")
+
+        # Validate required fields
+        required_fields = [
+            "user_email",
+            "user_first_name",
+            "user_last_name",
+            "employee_id",
+        ]
+        missing_fields = [
+            field for field in required_fields if not request.data.get(field)
+        ]
+
+        if missing_fields:
+            return Response(
+                {
+                    "error": "Missing required fields",
+                    "missing_fields": missing_fields,
+                    "message": f"Please provide: {', '.join(missing_fields)}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # For section admins, validate they can create teachers in requested section
+        user = request.user
+        role = self.get_user_role()  # From mixin
+
+        if role in [
+            "nursery_admin",
+            "primary_admin",
+            "junior_secondary_admin",
+            "senior_secondary_admin",
+            "secondary_admin",
+        ]:
+
+            teacher_education_level = request.data.get("education_level")
+            allowed_levels = self.get_user_education_level_access()  # From mixin
+
+            if (
+                teacher_education_level
+                and teacher_education_level not in allowed_levels
+            ):
+                return Response(
+                    {
+                        "error": f"You can only create teachers for: {', '.join(allowed_levels)}",
+                        "your_access": allowed_levels,
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        serializer = self.get_serializer(data=request.data)
+
+        if not serializer.is_valid():
+            logger.error(f"[TeacherViewSet] Validation errors: {serializer.errors}")
+            return Response(
+                {"error": "Validation failed", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            teacher = serializer.save()
+            logger.info(f"[TeacherViewSet] Teacher created successfully: {teacher.id}")
+
+            response_data = {
+                "id": teacher.id,
+                "employee_id": teacher.employee_id,
+                "staff_type": teacher.staff_type,
+                "level": teacher.level,
+                "phone_number": teacher.phone_number,
+                "address": teacher.address,
+                "date_of_birth": (
+                    teacher.date_of_birth.isoformat() if teacher.date_of_birth else None
+                ),
+                "hire_date": (
+                    teacher.hire_date.isoformat() if teacher.hire_date else None
+                ),
+                "qualification": teacher.qualification,
+                "specialization": teacher.specialization,
+                "photo": teacher.photo,
+                "is_active": teacher.is_active,
+                "created_at": teacher.created_at.isoformat(),
+                "updated_at": teacher.updated_at.isoformat(),
+                "full_name": f"{teacher.user.first_name} {teacher.user.last_name}",
+                "email_readonly": teacher.user.email,
+                "username": teacher.user.username,
+                "user": {
+                    "id": teacher.user.id,
+                    "first_name": teacher.user.first_name,
+                    "last_name": teacher.user.last_name,
+                    "email": teacher.user.email,
+                    "username": teacher.user.username,
+                    "date_joined": (
+                        teacher.user.date_joined.isoformat()
+                        if teacher.user.date_joined
+                        else None
+                    ),
+                    "is_active": teacher.user.is_active,
+                },
+            }
+
+            # Include generated credentials if available
+            if hasattr(serializer, "context") and "user_password" in serializer.context:
+                response_data["user_password"] = serializer.context["user_password"]
+                response_data["user_username"] = serializer.context.get(
+                    "user_username", ""
+                )
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(
+                f"[TeacherViewSet] Error creating teacher: {str(e)}", exc_info=True
+            )
+            return Response(
+                {"error": "Failed to create teacher", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class AssignmentRequestViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
