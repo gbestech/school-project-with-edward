@@ -1490,15 +1490,14 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         today = timezone.now().date()
 
         # CRITICAL: Prefetch active teacher assignments
+
         active_assignments_prefetch = Prefetch(
             "classroomteacherassignment_set",
             queryset=ClassroomTeacherAssignment.objects.filter(
-                is_active=True, start_date__lte=today
-            )
-            .filter(Q(end_date__isnull=True) | Q(end_date__gte=today))
-            .select_related(
-                "teacher__user",  # Prefetch teacher and user data
-                "subject",  # Prefetch subject data
+                is_active=True, assigned_date__lte=today  # ✅ Correct field
+            ).select_related(
+                "teacher__user",
+                "subject",
             ),
             to_attr="active_teacher_assignments",
         )
