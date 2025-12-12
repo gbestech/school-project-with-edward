@@ -575,7 +575,10 @@ class ClassroomSerializer(serializers.ModelSerializer):
     subjects = SubjectSerializer(many=True, read_only=True)
 
     # Enrollment statistics
-    current_enrollment = serializers.SerializerMethodField()
+    # current_enrollment = serializers.SerializerMethodField()
+    current_enrollment = serializers.IntegerField(
+        source="current_enrollment_count", read_only=True
+    )
     available_spots = serializers.SerializerMethodField()
     enrollment_percentage = serializers.SerializerMethodField()
     is_full = serializers.SerializerMethodField()

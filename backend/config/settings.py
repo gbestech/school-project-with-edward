@@ -18,6 +18,36 @@ env_file = BASE_DIR / ".env"
 if env_file.exists():
     load_dotenv(dotenv_path=env_file)
 
+ENV = os.getenv("ENV", "dev")
+
+if ENV == "prod":
+    # Production: Use PROD_DATABASE_URL for Neon
+    DATABASE_URL = os.getenv("PROD_DATABASE_URL")
+    if not DATABASE_URL:
+        raise ValueError("⚠️ Missing PROD_DATABASE_URL for production environment")
+
+    DATABASES = {
+        "default": dj_database_url.parse(
+            DATABASE_URL, conn_max_age=600, conn_health_checks=True, ssl_require=True
+        )
+    }
+    # Ensure SSL is required for production
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+    print(f"✅ Using PRODUCTION database: {DATABASE_URL[:30]}...")
+
+else:
+    # Local Development: Use LOCAL_DATABASE_URL
+    LOCAL_DATABASE_URL = os.getenv("LOCAL_DATABASE_URL")
+    if not LOCAL_DATABASE_URL:
+        raise ValueError("⚠️ Missing LOCAL_DATABASE_URL for local development")
+
+    DATABASES = {
+        "default": dj_database_url.parse(
+            LOCAL_DATABASE_URL, conn_max_age=60, ssl_require=False
+        )
+    }
+    print(f"✅ Using LOCAL database: {LOCAL_DATABASE_URL[:30]}...")
+
 
 # ============================================
 # SECURITY SETTINGS
