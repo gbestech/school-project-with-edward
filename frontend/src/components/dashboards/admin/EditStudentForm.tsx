@@ -74,21 +74,21 @@ const studentClassesByLevel: Record<string, { value: string; label: string }[]> 
 };
 
 const classroomsByStudentClass: Record<string, string[]> = {
-  PRE_NURSERY: ['Pre-Nursery A', 'Pre-Nursery B'],
-  NURSERY_1: ['Nursery 1 A', 'Nursery 1 B'],
-  NURSERY_2: ['Nursery 2 A', 'Nursery 2 B'],
-  PRIMARY_1: ['Primary 1 A', 'Primary 1 B'],
-  PRIMARY_2: ['Primary 2 A', 'Primary 2 B'],
-  PRIMARY_3: ['Primary 3 A', 'Primary 3 B'],
-  PRIMARY_4: ['Primary 4 A', 'Primary 4 B'],
-  PRIMARY_5: ['Primary 5 A', 'Primary 5 B'],
-  PRIMARY_6: ['Primary 6 A', 'Primary 6 B'],
-  JSS_1: ['JSS1 A', 'JSS1 B'],
-  JSS_2: ['JSS2 A', 'JSS2 B'],
-  JSS_3: ['JSS3 A', 'JSS3 B'],
-  SS_1: ['SS1 A', 'SS1 B'],
-  SS_2: ['SS2 A', 'SS2 B'],
-  SS_3: ['SS3 A', 'SS3 B'],
+  PRE_NURSERY: ['Pre-Nursery Gold', 'Pre-Nursery Silver'],
+  NURSERY_1: ['Nursery 1 Gold', 'Nursery 1 Silver'],
+  NURSERY_2: ['Nursery 2 Gold', 'Nursery 2 Silver'],
+  PRIMARY_1: ['Primary 1 Gold', 'Primary 1 Silver'],
+  PRIMARY_2: ['Primary 2 Gold', 'Primary 2 Silver'],
+  PRIMARY_3: ['Primary 3 Gold', 'Primary 3 Silver'],
+  PRIMARY_4: ['Primary 4 Gold', 'Primary 4 Silver'],
+  PRIMARY_5: ['Primary 5 Gold', 'Primary 5 Silver'],
+  PRIMARY_6: ['Primary 6 Gold', 'Primary 6 Silver'],
+  JSS_1: ['JSS1 Gold', 'JSS1 Silver'],
+  JSS_2: ['JSS2 Gold', 'JSS2 Silver'],
+  JSS_3: ['JSS3 Gold', 'JSS3 Silver'],
+  SS_1: ['SS1 Gold', 'SS1 Silver'],
+  SS_2: ['SS2 Gold', 'SS2 Silver'],
+  SS_3: ['SS3 Gold', 'SS3 Silver'],
 };
 
 interface EditStudentFormProps {
