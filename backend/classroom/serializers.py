@@ -663,9 +663,11 @@ class ClassroomDetailSerializer(ClassroomSerializer):
         ).count()
 
     def get_teacher_assignments(self, obj):
-        """Get only active teacher assignments"""
-        active_assignments = obj.classroomteacherassignment_set.filter(is_active=True)
-        return ClassroomTeacherAssignmentSerializer(active_assignments, many=True).data
+        """Return prefetched active teacher assignments"""
+        assignments = getattr(obj, "active_assignments", [])
+        return ClassroomTeacherAssignmentSerializer(
+            assignments, many=True
+        ).data  # this is okay now because related objects are preloaded
 
 
 # Simplified serializers for dropdowns/lists

@@ -10,6 +10,7 @@ from django.views.decorators.cache import cache_page
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.conf import settings
+from django.db.models import Prefetch
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 import logging
@@ -214,7 +215,17 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
             "academic_session",
             "term",
             "class_teacher__user",
-        ).prefetch_related("students", "schedules")
+        ).prefetch_related(
+            "students",
+            "schedules",
+            Prefetch(
+                "classroomteacherassignment_set",
+                queryset=ClassroomTeacherAssignment.objects.filter(
+                    is_active=True
+                ).select_related("teacher__user", "subject"),
+                to_attr="active_assignments",  # store prefetched data here
+            ),
+        )
 
         logger.info(
             f"[ClassroomViewSet] Queryset count after filtering: {queryset.count()}"
@@ -263,11 +274,8 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def teachers(self, request, pk=None):
-        """Get teachers for a specific classroom"""
         classroom = self.get_object()
-        assignments = classroom.classroomteacherassignment_set.filter(
-            is_active=True
-        ).select_related("teacher__user", "subject")
+        assignments = getattr(classroom, "active_assignments", [])
         serializer = ClassroomTeacherAssignmentSerializer(assignments, many=True)
         return Response(serializer.data)
 
