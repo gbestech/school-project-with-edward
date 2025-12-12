@@ -1458,9 +1458,6 @@ class StreamViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-from django.db.models import Count, Q, Prefetch
-from django.utils import timezone
-
 class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     """
     ViewSet for Classroom model with automatic section filtering.
@@ -1481,67 +1478,18 @@ class ClassroomViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        FIXED: Optimized queryset with proper prefetching to prevent N+1 queries
+        FIXED: Single get_queryset() that properly uses the mixin
         """
         # Let AutoSectionFilterMixin handle section filtering
         queryset = super().get_queryset()
 
-        # Get current date for active assignments/enrollments
-        today = timezone.now().date()
-
-        # CRITICAL: Prefetch active teacher assignments
-
-        active_assignments_prefetch = Prefetch(
-            "classroomteacherassignment_set",
-            queryset=ClassroomTeacherAssignment.objects.filter(
-                is_active=True, assigned_date__lte=today  # ✅ Correct field
-            ).select_related(
-                "teacher__user",
-                "subject",
-            ),
-            to_attr="active_teacher_assignments",
-        )
-
-        # CRITICAL: Prefetch active enrollments for counting
-        active_enrollments_prefetch = Prefetch(
-            "studentenrollment_set",
-            queryset=StudentEnrollment.objects.filter(
-                is_active=True, enrollment_date__lte=today
-            )
-            .filter(Q(withdrawal_date__isnull=True) | Q(withdrawal_date__gte=today))
-            .select_related("student__user"),
-            to_attr="active_enrollments",
-        )
-
-        # Add all optimizations
-        queryset = (
-            queryset.select_related(
-                "section__grade_level",
-                "academic_session",
-                "term",
-                "class_teacher__user",
-            )
-            .prefetch_related(
-                "students",
-                "schedules",
-                active_assignments_prefetch,  # ← CRITICAL FIX
-                active_enrollments_prefetch,  # ← CRITICAL FIX
-            )
-            .annotate(
-                # Pre-calculate enrollment count to avoid per-object database hits
-                enrollment_count=Count(
-                    "studentenrollment",
-                    filter=Q(
-                        studentenrollment__is_active=True,
-                        studentenrollment__enrollment_date__lte=today,
-                    )
-                    & (
-                        Q(studentenrollment__withdrawal_date__isnull=True)
-                        | Q(studentenrollment__withdrawal_date__gte=today)
-                    ),
-                )
-            )
-        )
+        # Add related data prefetching
+        queryset = queryset.select_related(
+            "section__grade_level",
+            "academic_session",
+            "term",
+            "class_teacher__user",
+        ).prefetch_related("students", "schedules")
 
         logger.info(
             f"[ClassroomViewSet] Queryset count after filtering: {queryset.count()}"
