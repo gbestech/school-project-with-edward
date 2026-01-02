@@ -179,7 +179,7 @@ if (schoolResponse.ok) {
 
   const getSchoolName = () => {
     if (loading) return "Loading...";
-    return schoolSettings?.school_name || "Al-Qolam Ulmuwaffaq School";
+    return schoolSettings?.school_name || "Al-Qolam Ulmuwaffaq Schools";
   };
 
   const getSchoolCode = () => {
