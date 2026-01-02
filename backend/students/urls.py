@@ -115,6 +115,7 @@
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views
 from .views import StudentViewSet, student_schedule_view
 
 # Create router and register viewsets
@@ -131,6 +132,37 @@ urlpatterns = [
         "students/my-schedule/",
         StudentViewSet.as_view({"get": "my_schedule"}),
         name="student-my-schedule",
+    ),
+    # Token-related endpoints (admin and student)
+    path(
+        "admin/generate-result-tokens/",
+        views.generate_result_tokens,
+        name="generate-result-tokens",
+    ),
+    path(
+        "admin/get-all-result-tokens/",
+        views.get_all_result_tokens,
+        name="get-all-result-tokens",
+    ),
+    path(
+        "admin/delete-expired-tokens/",
+        views.delete_expired_tokens,
+        name="delete-expired-tokens",
+    ),
+    path(
+        "admin/delete-all-tokens-for-term/",
+        views.delete_all_tokens_for_term,
+        name="delete-all-tokens-for-term",
+    ),
+    path(
+        "result-token/",
+        views.get_student_result_token,
+        name="get_result_token",
+    ),
+    path(
+        "verify-result-token/",
+        views.verify_result_token,
+        name="verify_result_token",
     ),
     path(
         "students/my-weekly-schedule/",

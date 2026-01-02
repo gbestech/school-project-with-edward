@@ -1,4 +1,8 @@
 from django.db import models
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
+import secrets
 from users.models import CustomUser
 
 GENDER_CHOICES = (
@@ -152,6 +156,11 @@ class Student(models.Model):
         ordering = ["education_level", "student_class", "user__first_name"]
         verbose_name = "Student"
         verbose_name_plural = "Students"
+        indexes = [
+            models.Index(fields=["education_level", "student_class"]),
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["classroom"]),
+        ]
 
     def __str__(self):
         user = self.user
@@ -161,8 +170,10 @@ class Student(models.Model):
     @property
     def full_name(self):
         """Returns the full name of the student."""
-        return self.user.full_name
-
+        try:
+            return self.user.full_name if self.user else "Unknown Student"
+        except CustomUser.DoesNotExist:
+            return "Unknown Student"
     @property
     def short_name(self):
         """Returns the short name of the student (First Last only)."""
@@ -239,3 +250,102 @@ class Student(models.Model):
             ]:
                 self.education_level = "SENIOR_SECONDARY"
         super().save(*args, **kwargs)
+
+User = get_user_model()
+
+
+class ResultCheckToken(models.Model):
+    """Token for result portal access - one per student per term"""
+
+    student = models.ForeignKey(  # Changed from OneToOneField to ForeignKey
+        User, on_delete=models.CASCADE, related_name="result_tokens"
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    school_term = models.ForeignKey("academics.Term", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("student", "school_term")
+        indexes = [
+            models.Index(fields=["token"]),
+            models.Index(fields=["expires_at"]),
+            models.Index(fields=["is_used"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            # Generate human-readable token
+            self.token = self.generate_readable_token()
+        if not self.expires_at and self.school_term:
+            # Token expires at end of school term
+            from datetime import datetime, time
+
+            self.expires_at = timezone.make_aware(
+                datetime.combine(self.school_term.end_date, time.max)
+            )
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_readable_token():
+        """
+        Generate human-readable token in format: ABC-123-XYZ-456
+        Total: 12 characters (easy to type, very secure)
+        Example: A7B-2C9-X3Y-5Z1
+        """
+        chars = string.ascii_uppercase + string.digits
+        parts = []
+        for _ in range(4):  # 4 groups
+            part = "".join(secrets.choice(chars) for _ in range(3))  # 3 chars each
+            parts.append(part)
+
+        token = "-".join(parts)
+
+        # Ensure uniqueness
+        max_attempts = 10
+        for _ in range(max_attempts):
+            if not ResultCheckToken.objects.filter(token=token).exists():
+                return token
+            # Generate new token if collision
+            parts = []
+            for _ in range(4):
+                part = "".join(secrets.choice(chars) for _ in range(3))
+                parts.append(part)
+            token = "-".join(parts)
+
+        # Fallback to UUID if still collision (extremely rare)
+        import uuid
+
+        return str(uuid.uuid4())[:15].upper().replace("-", "")
+
+    def is_valid(self):
+        """Check if token is still valid"""
+        return not self.is_used and timezone.now() <= self.expires_at
+
+    def mark_as_used(self):
+        """Mark token as used (optional - for tracking)"""
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.save()
+
+    def time_until_expiry(self):
+        """Get human-readable time until expiry"""
+        if not self.is_valid():
+            return "Expired"
+
+        delta = self.expires_at - timezone.now()
+        days = delta.days
+
+        if days > 30:
+            months = days // 30
+            return f"{months} month{'s' if months != 1 else ''}"
+        elif days > 0:
+            return f"{days} day{'s' if days != 1 else ''}"
+        else:
+            hours = delta.seconds // 3600
+            return f"{hours} hour{'s' if hours != 1 else ''}"
+
+    def __str__(self):
+        return f"Result Token - {self.student.username} - {self.school_term}"

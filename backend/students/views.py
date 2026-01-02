@@ -2,7 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from django.contrib.auth import get_user_model
 from schoolSettings.permissions import (
     HasStudentsPermission,
     HasStudentsPermissionOrReadOnly,
@@ -16,7 +17,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 import csv
 from datetime import date, timedelta, datetime, time
 from django.utils import timezone
-from .models import Student
+from .models import Student, ResultCheckToken
 from .serializers import (
     StudentScheduleSerializer,
     StudentWeeklyScheduleSerializer,
@@ -24,12 +25,433 @@ from .serializers import (
     StudentDetailSerializer,
     StudentListSerializer,
     StudentCreateSerializer,
+    ResultTokenSerializer,
 )
 from attendance.models import Attendance
 from result.models import StudentResult
 from schoolSettings.models import SchoolAnnouncement
 from events.models import Event
-from academics.models import AcademicCalendar
+from academics.models import AcademicCalendar, Term
+import string
+import random
+
+
+from .serializers import ResultTokenSerializer
+import logging
+
+logger = logging.getLogger(__name__)
+
+User = get_user_model()
+
+
+def generate_human_readable_token():
+    """
+    Generate a human-readable token in format: A7B-2C9-X3Y-5Z1
+    Each segment is 3 characters (uppercase letters and digits)
+    """
+    characters = string.ascii_uppercase + string.digits
+    segments = [
+        "".join(random.choices(characters, k=3)),
+        "".join(random.choices(characters, k=3)),
+        "".join(random.choices(characters, k=3)),
+        "".join(random.choices(characters, k=3)),
+    ]
+    return "-".join(segments)
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def generate_result_tokens(request):
+    """
+    Admin endpoint to generate result tokens for all active students of a school term.
+
+    Request body:
+    {
+        "school_term_id": 1,
+        "days_until_expiry": 30  // Optional, defaults to term end date
+    }
+    """
+    school_term_id = request.data.get("school_term_id")
+    days_until_expiry = request.data.get("days_until_expiry")
+
+    if not school_term_id:
+        return Response(
+            {"error": "school_term_id is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        school_term = Term.objects.get(id=school_term_id)
+    except Term.DoesNotExist:
+        return Response(
+            {"error": f"School term with id {school_term_id} not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    students = User.objects.filter(role="student", is_active=True)
+    created_count = 0
+    updated_count = 0
+    errors = []
+
+    # Calculate expiration
+    if days_until_expiry:
+        expiration_datetime = timezone.now() + timedelta(days=int(days_until_expiry))
+    else:
+        expiration_datetime = timezone.make_aware(
+            datetime.combine(school_term.end_date, time.max)
+        )
+
+    for student in students:
+        try:
+            # Generate a unique token for each student
+            token_string = generate_human_readable_token()
+
+            # Ensure token is unique (retry if collision occurs)
+            max_retries = 10
+            retries = 0
+            while (
+                ResultCheckToken.objects.filter(token=token_string).exists()
+                and retries < max_retries
+            ):
+                token_string = generate_human_readable_token()
+                retries += 1
+
+            if retries >= max_retries:
+                raise Exception("Failed to generate unique token after 10 attempts")
+
+            # Create or update the token
+            token_obj, created = ResultCheckToken.objects.update_or_create(
+                student=student,
+                school_term=school_term,
+                defaults={
+                    "token": token_string,  # THIS WAS MISSING!
+                    "expires_at": expiration_datetime,
+                    "is_used": False,
+                    "used_at": None,
+                },
+            )
+
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        except Exception as e:
+            errors.append(
+                {
+                    "student_id": student.id,
+                    "username": student.username,
+                    "error": str(e),
+                }
+            )
+
+    delta = expiration_datetime - timezone.now()
+    days_calculated = delta.days
+
+    response_data = {
+        "success": True,
+        "message": "Result tokens generated successfully",
+        "school_term": school_term.name,
+        "academic_session": str(school_term.academic_session),
+        "tokens_created": created_count,
+        "tokens_updated": updated_count,
+        "total_students": created_count + updated_count,
+        "expires_at": expiration_datetime.isoformat(),
+        "days_until_expiry": days_calculated,
+        "expiry_date": expiration_datetime.strftime("%B %d, %Y"),
+    }
+
+    if errors:
+        response_data["errors"] = errors
+        response_data["error_count"] = len(errors)
+
+    return Response(response_data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_student_result_token(request):
+    """
+    Student endpoint to retrieve their result token for the current/active school term.
+    """
+    student = request.user
+    current_term = Term.objects.filter(is_current=True).first()
+
+    if not current_term:
+        return Response(
+            {
+                "error": "No active school term",
+                "has_token": False,
+                "message": "Results are not available at this time",
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        token_obj = ResultCheckToken.objects.get(
+            student=student, school_term=current_term
+        )
+    except ResultCheckToken.DoesNotExist:
+        return Response(
+            {
+                "error": "No result token available for this term",
+                "has_token": False,
+                "current_term": current_term.name,
+                "message": "Your results are not yet available. Please check back later.",
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not token_obj.is_valid():
+        return Response(
+            {
+                "error": "Token has expired",
+                "has_token": False,
+                "expired_at": token_obj.expires_at.isoformat(),
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    serializer = ResultTokenSerializer(token_obj)
+    return Response(
+        {"has_token": True, "token_data": serializer.data},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_result_token(request):
+    """
+    Verify result token and return complete student information.
+    """
+    token_string = request.data.get("token")
+
+    if not token_string:
+        return Response(
+            {"error": "Token is required", "is_valid": False},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        token_obj = ResultCheckToken.objects.select_related(
+            "student", "school_term"
+        ).get(token=token_string, student=request.user)
+    except ResultCheckToken.DoesNotExist:
+        return Response(
+            {"error": "Invalid token", "is_valid": False},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if not token_obj.is_valid():
+        return Response(
+            {
+                "error": "Token has expired or already used",
+                "is_valid": False,
+                "expires_at": token_obj.expires_at.isoformat(),
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    student = None
+    try:
+        student = Student.objects.select_related("user").get(user=token_obj.student)
+    except Student.DoesNotExist:
+        pass
+
+    student_name = None
+    if student and hasattr(student, "full_name") and student.full_name:
+        student_name = student.full_name
+    else:
+        name_parts = []
+        if token_obj.student.first_name:
+            name_parts.append(token_obj.student.first_name)
+        if token_obj.student.last_name:
+            name_parts.append(token_obj.student.last_name)
+        student_name = (
+            " ".join(name_parts) if name_parts else token_obj.student.username
+        )
+
+    education_level = student.education_level if student else ""
+    current_class = None
+    if student and hasattr(student, "classroom"):
+        current_class = student.classroom
+
+    return Response(
+        {
+            "is_valid": True,
+            "message": "Token verified successfully",
+            "school_term": token_obj.school_term.name,
+            "expires_at": token_obj.expires_at.isoformat(),
+            "student_id": token_obj.student.id,
+            "student_name": student_name,
+            "education_level": education_level,
+            "current_class": current_class,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def get_all_result_tokens(request):
+    """
+    Admin endpoint to retrieve all result tokens for a specific school term.
+    """
+    school_term_id = request.query_params.get("school_term_id")
+
+    if not school_term_id:
+        return Response(
+            {"error": "school_term_id is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        school_term = Term.objects.get(id=school_term_id)
+    except Term.DoesNotExist:
+        return Response(
+            {"error": f"School term with id {school_term_id} not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    tokens = (
+        ResultCheckToken.objects.filter(school_term=school_term)
+        .select_related("student")
+        .order_by("student__username")
+    )
+
+    token_data = []
+    for token in tokens:
+        name_parts = []
+        if token.student.first_name:
+            name_parts.append(token.student.first_name)
+        if token.student.middle_name:
+            name_parts.append(token.student.middle_name)
+        if token.student.last_name:
+            name_parts.append(token.student.last_name)
+
+        student_name = " ".join(name_parts) if name_parts else token.student.username
+
+        student_class = ""
+        if hasattr(token.student, "student_profile") and token.student.student_profile:
+            student_class = getattr(
+                token.student.student_profile, "classroom", ""
+            ) or getattr(token.student.student_profile, "student_class", "")
+        elif hasattr(token.student, "classroom"):
+            student_class = token.student.classroom or ""
+        elif hasattr(token.student, "student_class"):
+            student_class = token.student.student_class or ""
+
+        # Check if valid
+        is_valid = not token.is_used and token.expires_at > timezone.now()
+
+        # Get status
+        if token.is_used:
+            status_text = "Used"
+        elif token.expires_at <= timezone.now():
+            status_text = "Expired"
+        else:
+            status_text = "Active"
+
+        token_data.append(
+            {
+                "id": token.id,
+                "student_name": student_name,
+                "username": token.student.username,
+                "student_class": student_class,
+                "token": token.token,
+                "expires_at": token.expires_at.isoformat(),
+                "is_valid": is_valid,
+                "status": status_text,
+            }
+        )
+
+    # Calculate statistics
+    total = len(token_data)
+    active = sum(1 for t in token_data if t["status"] == "Active")
+    expired = sum(1 for t in token_data if t["status"] == "Expired")
+    used = sum(1 for t in token_data if t["status"] == "Used")
+
+    return Response(
+        {
+            "tokens": token_data,
+            "total": total,
+            "statistics": {
+                "total": total,
+                "active": active,
+                "expired": expired,
+                "used": used,
+            },
+            "school_term": school_term.name,
+            "academic_session": str(school_term.academic_session),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_expired_tokens(request):
+    """
+    Admin endpoint to delete expired result tokens.
+    """
+    expired_tokens = ResultCheckToken.objects.filter(expires_at__lt=timezone.now())
+    count = expired_tokens.count()
+
+    # Get breakdown by term before deleting
+    from django.db.models import Count
+
+    breakdown = list(
+        expired_tokens.values("school_term__name").annotate(count=Count("id"))
+    )
+
+    expired_tokens.delete()
+
+    return Response(
+        {
+            "success": True,
+            "message": f"Successfully deleted {count} expired tokens",
+            "deleted_count": count,
+            "breakdown": breakdown,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminUser])
+def delete_all_tokens_for_term(request):
+    """
+    Admin endpoint to delete ALL tokens for a specific term.
+
+    Request body: { "school_term_id": 1 }
+    """
+    school_term_id = request.data.get("school_term_id")
+
+    if not school_term_id:
+        return Response(
+            {"error": "school_term_id is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        school_term = Term.objects.get(id=school_term_id)
+    except Term.DoesNotExist:
+        return Response(
+            {"error": f"School term with id {school_term_id} not found"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    tokens = ResultCheckToken.objects.filter(school_term=school_term)
+    count = tokens.count()
+    tokens.delete()
+
+    return Response(
+        {
+            "success": True,
+            "message": f"Successfully deleted all {count} tokens for {school_term.name}",
+            "deleted_count": count,
+            "school_term": school_term.name,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 def get_student_schedule_entries(student):
@@ -328,7 +750,13 @@ class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
         filters.SearchFilter,
         filters.OrderingFilter,
     ]
-    filterset_fields = ["education_level", "student_class", "gender", "is_active"]
+    filterset_fields = [
+        "user",
+        "education_level",
+        "student_class",
+        "gender",
+        "is_active",
+    ]
     search_fields = [
         "user__first_name",
         "user__last_name",
@@ -340,14 +768,31 @@ class StudentViewSet(AutoSectionFilterMixin, viewsets.ModelViewSet):
     ordering_fields = ["user__first_name", "admission_date", "date_of_birth"]
     ordering = ["education_level", "student_class", "user__first_name"]
 
+    # def get_queryset(self):
+    #     """Optimize queryset with select_related for better performance."""
+    #     queryset = Student.objects.select_related("user").prefetch_related("parents")
+
+    #     # Apply section-based filtering for authenticated users
+    #     if self.request.user.is_authenticated:
+    #         queryset = self.filter_students_by_section_access(queryset)
+
+    #     return queryset
     def get_queryset(self):
         """Optimize queryset with select_related for better performance."""
         queryset = Student.objects.select_related("user").prefetch_related("parents")
-        
+
         # Apply section-based filtering for authenticated users
         if self.request.user.is_authenticated:
-            queryset = self.filter_students_by_section_access(queryset)
-        
+            # Check if user is querying by user parameter (student viewing their own record)
+            user_filter = self.request.query_params.get("user", None)
+
+            if user_filter and str(self.request.user.id) == str(user_filter):
+                # Student viewing their own record - skip section filtering
+                queryset = queryset.filter(user_id=user_filter)
+            else:
+                # Apply section-based filtering for staff/teachers
+                queryset = self.filter_students_by_section_access(queryset)
+
         return queryset
 
     def get_serializer_class(self):

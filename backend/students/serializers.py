@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student
+from .models import Student, ResultCheckToken
 from users.models import CustomUser
 from parent.models import ParentProfile
 from django.contrib.auth.models import BaseUserManager, User
@@ -1035,3 +1035,121 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+
+class ResultTokenSerializer(serializers.ModelSerializer):
+    """Enhanced serializer with more token information"""
+
+    is_valid = serializers.SerializerMethodField()
+    student_name = serializers.SerializerMethodField()
+    student_username = serializers.CharField(source="student.username", read_only=True)
+    term_name = serializers.CharField(source="school_term.name", read_only=True)
+    academic_session = serializers.CharField(
+        source="school_term.academic_session", read_only=True
+    )
+    time_until_expiry = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResultCheckToken
+        fields = [
+            "id",
+            "token",
+            "student_name",
+            "student_username",
+            "school_term",
+            "term_name",
+            "academic_session",
+            "created_at",
+            "expires_at",
+            "is_valid",
+            "is_used",
+            "used_at",
+            "time_until_expiry",
+            "status",
+        ]
+        read_only_fields = ["token", "created_at", "is_used", "used_at"]
+
+    def get_is_valid(self, obj):
+        """Check if token is still valid"""
+        return obj.is_valid()
+
+    def get_student_name(self, obj):
+        """Get formatted student name"""
+        user = obj.student
+        if hasattr(user, "full_name"):
+            return user.full_name
+        parts = []
+        if user.first_name:
+            parts.append(user.first_name)
+        if user.last_name:
+            parts.append(user.last_name)
+        return " ".join(parts) if parts else user.username
+
+    def get_time_until_expiry(self, obj):
+        """Get human-readable time until expiry"""
+        return obj.time_until_expiry()
+
+    def get_status(self, obj):
+        """Get token status"""
+        if obj.is_used:
+            return "Used"
+        elif not obj.is_valid():
+            return "Expired"
+        else:
+            return "Active"
+
+
+class ResultTokenListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for list views"""
+
+    student_name = serializers.SerializerMethodField()
+    student_class = serializers.SerializerMethodField()
+    term_name = serializers.CharField(source="school_term.name", read_only=True)
+    is_valid = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResultCheckToken
+        fields = [
+            "id",
+            "token",
+            "student_name",
+            "student_class",
+            "term_name",
+            "expires_at",
+            "is_valid",
+            "status",
+        ]
+
+    def get_student_name(self, obj):
+        user = obj.student
+        if hasattr(user, "full_name"):
+            return user.full_name
+        parts = []
+        if user.first_name:
+            parts.append(user.first_name)
+        if user.last_name:
+            parts.append(user.last_name)
+        return " ".join(parts) if parts else user.username
+
+    def get_student_class(self, obj):
+        """Get student's class/classroom"""
+        try:
+            from students.models import Student
+
+            student = Student.objects.get(user=obj.student)
+            return student.classroom or student.get_student_class_display()
+        except:
+            return "N/A"
+
+    def get_is_valid(self, obj):
+        return obj.is_valid()
+
+    def get_status(self, obj):
+        if obj.is_used:
+            return "Used"
+        elif not obj.is_valid():
+            return "Expired"
+        else:
+            return "Active"
