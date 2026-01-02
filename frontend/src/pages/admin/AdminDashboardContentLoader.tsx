@@ -61,11 +61,7 @@ const AdminDashboardContentLoader = () => {
       .then(([parentsRes, studentsRes, teachersRes, attendanceRes, classroomsRes, statsRes]) => {
         console.log('📊 AdminDashboardContentLoader: Raw API responses:');
         console.log('Parents response:', parentsRes);
-        console.log('Students response:', studentsRes);
-        console.log('Teachers response:', teachersRes);
-        console.log('Attendance response:', attendanceRes);
-        console.log('Classrooms response:', classroomsRes);
-        console.log('Stats response:', statsRes);
+       
         
         // Process and set data
         const processedParents = parentsRes.results || parentsRes || [];
@@ -77,11 +73,7 @@ const AdminDashboardContentLoader = () => {
         
         console.log('🔧 AdminDashboardContentLoader: Processed data:');
         console.log('Processed Parents:', processedParents);
-        console.log('Processed Students:', processedStudents);
-        console.log('Processed Teachers:', processedTeachers);
-        console.log('Processed Attendance:', processedAttendance);
-        console.log('Processed Classrooms:', processedClassrooms);
-        console.log('Processed Stats:', processedStats);
+    
         
         setParents(processedParents);
         setStudents(processedStudents);
@@ -90,7 +82,7 @@ const AdminDashboardContentLoader = () => {
         setClassrooms(processedClassrooms);
         setDashboardStats(processedStats);
         
-        console.log('✅ AdminDashboardContentLoader: Data set to state successfully');
+        console.log('goodAdminDashboardContentLoader: Data set to state successfully');
       })
       .catch((error) => {
         console.error('❌ AdminDashboardContentLoader: Error fetching data:', error);

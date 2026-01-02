@@ -68,7 +68,7 @@ const StudentResultChecker = lazy(() => import('./../components/dashboards/admin
 const StudentResultDetail = lazy(() => import('./../components/dashboards/admin/StudentResultDetail').catch(() => ({ default: () => <div>Error loading Student Result Detail</div> })));
 const AdminTokenGenerator = lazy(() => import('./../pages/admin/TokenGenerator').catch(() => ({ default: () => <div>Error loading Admin Token Generator</div> })));
 const AdminRemarksAndSignatureManager = lazy(() => import('./../pages/admin/AdminRemarksAndSignatureManager').catch(() => ({ default: () => <div>Error loading Admin Token Remarks and Signature page</div> })));
-
+const SuperAdminPage = lazy(() => import('./../pages/SuperAdminDashbaord').catch(() => ({default: () => <div>Error loading Super Admin Page</div>})));
 const RouteErrorElement = () => {
   const error = (window as any).__routerError || 'Unknown error';
   
@@ -213,6 +213,11 @@ export const router = createBrowserRouter([
             path: 'how-to-apply',
             element: <HowToApplyPage />, 
             errorElement: <RouteErrorElement />
+          },
+          {
+            path:'/super-admin/dashboard',
+            element: <SuperAdminPage/>,
+            errorElement: <RouteErrorElement/>
           },
           {
             path: '*',
