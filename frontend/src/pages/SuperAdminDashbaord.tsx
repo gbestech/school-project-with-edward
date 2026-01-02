@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, Settings, Database, BarChart3, FileText, Bell, ArrowRight, CheckCircle, Activity, Server, Lock, School, Calendar, BookOpen } from 'lucide-react';
 import { SchoolSettings } from '@/types/types';
+import  SettingsService  from '@/services/SettingsService';
 
 
 interface DashboardStats {
@@ -50,7 +51,7 @@ const [error, setError] = useState<string | null>(null);
     
 
       // Fetch school settings
-      const schoolResponse = await fetch(`${API_BASE_URL}/api/school-settings/`, { headers });
+      const schoolResponse = await fetch(`${API_BASE_URL}/api/api/school-settings/school-settings`, { headers });
 
 if (schoolResponse.ok) {
   const schoolData: SchoolSettings | SchoolSettings[] = await schoolResponse.json();
