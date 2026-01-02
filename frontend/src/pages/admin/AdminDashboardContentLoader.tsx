@@ -52,10 +52,10 @@ const AdminDashboardContentLoader = () => {
     
     Promise.all([
       api.get('/api/parents/'),
-      api.get('/api/students/students/'), // Fixed: use correct students endpoint
-      api.get('/api/teachers/teachers/'), // Fixed: use correct teachers endpoint
+      api.get('/api/students/students/'), 
+      api.get('/api/teachers/teachers/'), 
       api.get('/api/attendance/'),
-      api.get('/api/classrooms/classrooms/'), // Fixed: use correct classrooms endpoint
+      api.get('/api/classrooms/classrooms/'), 
       api.get('/api/dashboard/stats/'),
     ])
       .then(([parentsRes, studentsRes, teachersRes, attendanceRes, classroomsRes, statsRes]) => {
