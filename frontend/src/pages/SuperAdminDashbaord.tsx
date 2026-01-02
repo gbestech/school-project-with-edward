@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Users, Settings, Database, BarChart3, FileText, Bell, ArrowRight, CheckCircle, Activity, Server, Lock, School, Calendar, BookOpen } from 'lucide-react';
 import { SchoolSettings } from '@/types/types';
-import  SettingsService  from '@/services/SettingsService';
-
+import SettingsService from '@/services/SettingsService';
 
 interface DashboardStats {
   totalUsers: number;
@@ -11,106 +10,83 @@ interface DashboardStats {
   activeSessions: number;
   systemUptime: string;
 }
-const SuperAdminDashboard = () => {
-    const [schoolSettings, setSchoolSettings] = useState<SchoolSettings | null>(null);
-    const [activeCard, setActiveCard] = useState<number | null>(null); 
-  const [mounted, setMounted] = useState(false);
-  const [loading, setLoading] = useState<boolean>(false);
-const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<DashboardStats>({
-  totalUsers: 0,
-  totalTeachers: 0,
-  totalStudents: 0,
-  activeSessions: 0,
-  systemUptime: '99.9%'
-});
-  
 
+const SuperAdminDashboard = () => {
+  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings | null>(null);
+  const [activeCard, setActiveCard] = useState<number | null>(null); 
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    totalTeachers: 0,
+    totalStudents: 0,
+    activeSessions: 0,
+    systemUptime: '99.9%'
+  });
+  
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-  
-  useEffect(() =>{
+  useEffect(() => {
     const fetchDashboardData = async () => {
-    try {
-        setMounted(true)
-      setLoading(true);
-      setError(null);
-      
-      // Get auth token
-      const token = localStorage.getItem('access_token') || 
-                    localStorage.getItem('authToken') || 
-                    localStorage.getItem('token');
-
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      };
-      
- 
-  
-    
-
-      // Fetch school settings
-      const schoolResponse = await fetch(`${API_BASE_URL}/api/api/school-settings/school-settings`, { headers });
-
-if (schoolResponse.ok) {
-  const schoolData: SchoolSettings | SchoolSettings[] = await schoolResponse.json();
-  const settings = Array.isArray(schoolData) ? schoolData[0] : schoolData;
-  setSchoolSettings(settings);
-}
-
-
-      // Fetch user statistics
       try {
-        const usersResponse = await fetch(`${API_BASE_URL}/api/users/users/`, { headers });
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          const users = Array.isArray(usersData) ? usersData : (usersData.results || []);
+        setMounted(true);
+        setLoading(true);
+        setError(null);
+        
+        // 🔥 USE SETTINGS SERVICE - Much cleaner!
+        const settings = await SettingsService.getSettings();
+        setSchoolSettings(settings);
+        
+        // Get auth token for other API calls
+        const token = localStorage.getItem('access_token') || 
+                      localStorage.getItem('authToken') || 
+                      localStorage.getItem('token');
+
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        };
+
+        // Fetch statistics in parallel for better performance
+        const [usersData, teachersData, studentsData] = await Promise.allSettled([
+          fetch(`${API_BASE_URL}/api/users/users/`, { headers }).then(r => r.ok ? r.json() : null),
+          fetch(`${API_BASE_URL}/api/teachers/teachers/`, { headers }).then(r => r.ok ? r.json() : null),
+          fetch(`${API_BASE_URL}/api/students/students/`, { headers }).then(r => r.ok ? r.json() : null),
+        ]);
+
+        // Process results
+        if (usersData.status === 'fulfilled' && usersData.value) {
+          const users = Array.isArray(usersData.value) ? usersData.value : (usersData.value.results || []);
           setStats(prev => ({ ...prev, totalUsers: users.length }));
         }
-      } catch (err) {
-        console.log('Users endpoint not accessible');
-      }
 
-      // Fetch teacher statistics
-      try {
-        const teachersResponse = await fetch(`${API_BASE_URL}/api/teachers/teachers/`, { headers });
-        if (teachersResponse.ok) {
-          const teachersData = await teachersResponse.json();
-          const teachers = Array.isArray(teachersData) ? teachersData : (teachersData.results || []);
+        if (teachersData.status === 'fulfilled' && teachersData.value) {
+          const teachers = Array.isArray(teachersData.value) ? teachersData.value : (teachersData.value.results || []);
           setStats(prev => ({ ...prev, totalTeachers: teachers.length }));
         }
-      } catch (err) {
-        console.log('Teachers endpoint not accessible');
-      }
 
-      // Fetch student statistics
-      try {
-        const studentsResponse = await fetch(`${API_BASE_URL}/api/students/students/`, { headers });
-        if (studentsResponse.ok) {
-          const studentsData = await studentsResponse.json();
-          const students = Array.isArray(studentsData) ? studentsData : (studentsData.results || []);
+        if (studentsData.status === 'fulfilled' && studentsData.value) {
+          const students = Array.isArray(studentsData.value) ? studentsData.value : (studentsData.value.results || []);
           setStats(prev => ({ ...prev, totalStudents: students.length }));
         }
+
+        // Calculate active sessions
+        setStats(prev => ({
+          ...prev,
+          activeSessions: Math.floor((prev.totalUsers + prev.totalTeachers) * 0.15)
+        }));
+
       } catch (err) {
-        console.log('Students endpoint not accessible');
+        console.error('Error fetching dashboard data:', err);
+        setError('Unable to load some dashboard data');
+      } finally {
+        setLoading(false);
       }
-
-      // Calculate active sessions (users + teachers online)
-      setStats(prev => ({
-        ...prev,
-        activeSessions: Math.floor((prev.totalUsers + prev.totalTeachers) * 0.15) // Estimate 15% active
-      }));
-
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Unable to load some dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchDashboardData();
-},[]);
+    };
+    
+    fetchDashboardData();
+  }, [API_BASE_URL]);
 
   const adminCards = [
     {
@@ -130,7 +106,7 @@ if (schoolResponse.ok) {
       color: "from-purple-500 to-purple-600",
       link: "/admin/analytics",
       features: ["Performance Metrics", "User Statistics", "System Health"]
-,  },
+    },
     {
       id: 3,
       title: "System Settings",
@@ -178,32 +154,13 @@ if (schoolResponse.ok) {
     }
   ];
 
-  const getSchoolName = () => {
-    if (loading) return "Loading...";
-    return schoolSettings?.school_name || "Al-Qolam Ulmuwaffaq Schools";
-  };
-
-  const getSchoolCode = () => {
-    if (loading) return "...";
-    return schoolSettings?.school_code || "SCH";
-  };
-
-  const getSchoolMotto = () => {
-    if (loading) return "";
-    return schoolSettings?.motto || "Excellence in Education";
-  };
-
- const getAcademicSession = () => {
-  if (loading) return "...";
-
-  if (schoolSettings?.academicYearStart && schoolSettings?.academicYearEnd) {
-    return `${schoolSettings.academicYearStart}/${schoolSettings.academicYearEnd}`;
-  }
-
-  return "2025/2026";
-};
-
-
+  // 🔥 SIMPLIFIED: Direct access to school settings
+  const schoolName = schoolSettings?.school_name || "Al-Qolam Ulmuwaffaq Schools";
+  const schoolCode = schoolSettings?.school_code || "SCH";
+  const schoolMotto = schoolSettings?.motto || "Excellence in Education";
+ const academicYear = schoolSettings?.academicYearStart && schoolSettings?.academicYearEnd 
+  ? `${schoolSettings.academicYearStart}/${schoolSettings.academicYearEnd}` 
+  : "2025/2027";
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -238,7 +195,7 @@ if (schoolResponse.ok) {
       <div className="relative z-10 container mx-auto px-6 py-12">
         {/* Header Section */}
         <div className={`text-center mb-16 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10'}`}>
-          {/* School Logo/Icon */}
+          {/* School Logo */}
           {schoolSettings?.logo ? (
             <div className="inline-flex items-center justify-center w-24 h-24 mb-6 rounded-full overflow-hidden shadow-2xl border-4 border-white/30 animate-pulse">
               <img src={schoolSettings.logo} alt="School Logo" className="w-full h-full object-cover" />
@@ -254,23 +211,27 @@ if (schoolResponse.ok) {
           </h1>
           
           <p className="text-2xl text-blue-200 mb-2 font-light">
-            {getSchoolName()}
+            {loading ? "Loading..." : schoolName}
           </p>
           
           <div className="flex items-center justify-center gap-6 text-blue-300 text-sm mb-4">
             <div className="flex items-center gap-2">
               <span className="font-semibold">School Code:</span>
-              <span className="px-3 py-1 bg-white/10 rounded-full font-mono">{getSchoolCode()}</span>
+              <span className="px-3 py-1 bg-white/10 rounded-full font-mono">
+                {loading ? "..." : schoolCode}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               <span className="font-semibold">Session:</span>
-              <span>{getAcademicSession()}</span>
+              <span>{loading ? "..." : academicYear}</span>
             </div>
           </div>
 
           {schoolSettings?.motto && (
-            <p className="text-lg text-blue-300 italic mb-4">"{getSchoolMotto()}"</p>
+            <p className="text-lg text-blue-300 italic mb-4">
+              "{loading ? "" : schoolMotto}"
+            </p>
           )}
           
           <div className="flex items-center justify-center gap-2 text-emerald-400">
@@ -300,7 +261,7 @@ if (schoolResponse.ok) {
         </div>
 
         {/* School Info Card */}
-        {schoolSettings && (
+        {schoolSettings && !loading && (
           <div className={`mb-12 transition-all duration-1000 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -339,10 +300,8 @@ if (schoolResponse.ok) {
                 onMouseLeave={() => setActiveCard(null)}
               >
                 <div className={`relative bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-white/40 transition-all duration-500 hover:shadow-2xl hover:scale-105 group cursor-pointer ${activeCard === card.id ? 'ring-4 ring-white/30' : ''}`}>
-                  {/* Gradient Overlay */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${card.color} opacity-0 group-hover:opacity-10 rounded-3xl transition-opacity duration-500`}></div>
                   
-                  {/* Content */}
                   <div className="relative">
                     <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${card.color} rounded-2xl mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                       <Icon className="w-8 h-8 text-white" />
@@ -356,7 +315,6 @@ if (schoolResponse.ok) {
                       {card.description}
                     </p>
                     
-                    {/* Features List */}
                     <div className="space-y-2 mb-6">
                       {card.features.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-sm text-blue-100">
@@ -366,7 +324,6 @@ if (schoolResponse.ok) {
                       ))}
                     </div>
                     
-                    {/* Action Button */}
                     <a
                       href={card.link}
                       className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${card.color} text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 group-hover:gap-4`}
@@ -425,7 +382,7 @@ if (schoolResponse.ok) {
         {/* Footer */}
         <div className={`text-center mt-12 transition-all duration-1000 delay-900 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
           <p className="text-blue-300 text-sm">
-            © 2024 {schoolSettings?.school_name || "Al-Qolam Ulmuwaffaq School"} Management System • Super Admin Dashboard v2.0
+            © 2024 {schoolName} Management System • Super Admin Dashboard v2.0
           </p>
           {schoolSettings?.site_name && (
             <p className="text-blue-400 text-xs mt-2">
