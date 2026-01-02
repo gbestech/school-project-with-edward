@@ -257,13 +257,13 @@ export interface GradeCreateUpdate {
 //   academic_session: string;
 //   start_date: string;
 //   end_date: string;
-//   result_release_date: string; 
+//   result_release_date: string;
 //   is_published: boolean;
 //   is_active: boolean;
 // }
 
 export interface ExamSessionCreateUpdate {
-  academic_session_id: number;
+  academic_session: string | number;
   name: string;
   exam_type: string;
   term: string;
@@ -690,6 +690,7 @@ class ResultSettingsService {
       throw error;
     }
   }
+  
 
   // Enhanced Result Sheet Generation
   async generateEnhancedResultSheet(
@@ -749,6 +750,16 @@ class ResultSettingsService {
       throw error;
     }
   }
+
+async getNurseryTermReports(filters?: ResultFilters): Promise<any[]> {
+  try {
+    const response = await api.get('/api/results/nursery/term-reports/', filters);
+    return this.handleApiResponse<any>(response);
+  } catch (error) {
+    console.error('Error fetching nursery term reports:', error);
+    throw error;
+  }
+}
 
   async createNurseryResult(data: Partial<NurseryResult>): Promise<NurseryResult> {
     try {
@@ -810,6 +821,16 @@ class ResultSettingsService {
     }
   }
 
+async getPrimaryTermReports(filters?: ResultFilters): Promise<any[]> {
+  try {
+    const response = await api.get('/api/results/primary/term-reports/', filters);
+    return this.handleApiResponse<any>(response);
+  } catch (error) {
+    console.error('Error fetching primary term reports:', error);
+    throw error;
+  }
+}
+
   async createPrimaryResult(data: Partial<PrimaryResult>): Promise<PrimaryResult> {
     try {
       const response = await api.post('/api/results/primary/results/', data);
@@ -869,6 +890,16 @@ class ResultSettingsService {
       throw error;
     }
   }
+
+  async getJuniorSecondaryTermReports(filters?: ResultFilters): Promise<any[]> {
+  try {
+    const response = await api.get('/api/results/junior-secondary/term-reports/', filters);
+    return this.handleApiResponse<any>(response);
+  } catch (error) {
+    console.error('Error fetching junior secondary term reports:', error);
+    throw error;
+  }
+}
 
   async createJuniorSecondaryResult(data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> {
     try {
@@ -1212,6 +1243,213 @@ class ResultSettingsService {
     }
   }
 
+  // ===== CORRECTED PDF REPORT GENERATION METHODS =====
+
+/**
+ * Download term report as PDF
+ * @param reportId - The term report ID
+ * @param educationLevel - SENIOR_SECONDARY | JUNIOR_SECONDARY | PRIMARY | NURSERY
+ */
+async downloadTermReportPDF(reportId: string, educationLevel: string): Promise<Blob> {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api';
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    
+    if (!token) {
+      throw new Error('Authentication token not found. Please login again.');
+    }
+    
+    const params = new URLSearchParams({
+      report_id: reportId,
+      education_level: educationLevel.toUpperCase()
+    });
+    
+    // Ensure proper URL construction - API_BASE_URL already includes /api
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    const url = `${baseUrl}/results/report-generation/download-term-report/?${params}`;
+    
+    console.log('📄 Downloading term report PDF from:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to download PDF: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        } else {
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+        }
+      } catch (e) {
+        // Use default error message
+      }
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    console.log('goodPDF downloaded successfully, size:', blob.size, 'bytes');
+    return blob;
+  } catch (error) {
+    console.error('❌ Error downloading term report PDF:', error);
+    throw error;
+  }
+}
+
+/**
+ * Download session report as PDF (Senior Secondary only)
+ * @param reportId - The session report ID
+ */
+async downloadSessionReportPDF(reportId: string): Promise<Blob> {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api';
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    
+    if (!token) {
+      throw new Error('Authentication token not found. Please login again.');
+    }
+    
+    const params = new URLSearchParams({
+      report_id: reportId
+    });
+    
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    const url = `${baseUrl}/results/report-generation/download-session-report/?${params}`;
+    
+    console.log('📄 Downloading session report PDF from:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to download PDF: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        } else {
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+        }
+      } catch (e) {
+        // Use default error message
+      }
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    console.log('goodPDF downloaded successfully, size:', blob.size, 'bytes');
+    return blob;
+  } catch (error) {
+    console.error('❌ Error downloading session report PDF:', error);
+    throw error;
+  }
+}
+
+/**
+ * Bulk download multiple term reports as ZIP
+ * @param reportIds - Array of term report IDs
+ * @param educationLevel - Education level for all reports
+ */
+async bulkDownloadTermReports(reportIds: string[], educationLevel: string): Promise<Blob> {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://school-project-with-edward.onrender.com/api';
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    
+    if (!token) {
+      throw new Error('Authentication token not found. Please login again.');
+    }
+    
+    if (!reportIds || reportIds.length === 0) {
+      throw new Error('No report IDs provided for bulk download.');
+    }
+    
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    const url = `${baseUrl}/results/report-generation/bulk-download/`;
+    
+    console.log('📦 Bulk downloading reports from:', url);
+    console.log('📦 Report IDs:', reportIds);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        report_ids: reportIds,
+        education_level: educationLevel.toUpperCase()
+      })
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to download ZIP: ${response.status} ${response.statusText}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.error || errorMessage;
+        } else {
+          const errorText = await response.text();
+          errorMessage = errorText || errorMessage;
+        }
+      } catch (e) {
+        // Use default error message
+      }
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    console.log('goodZIP downloaded successfully, size:', blob.size, 'bytes');
+    return blob;
+  } catch (error) {
+    console.error('❌ Error bulk downloading reports:', error);
+    throw error;
+  }
+}
+
+/**
+ * Helper function to trigger browser download of a blob
+ * @param blob - The file blob
+ * @param filename - Desired filename
+ */
+triggerBlobDownload(blob: Blob, filename: string): void {
+  try {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('goodDownload triggered for:', filename);
+  } catch (error) {
+    console.error('❌ Error triggering download:', error);
+    throw error;
+  }
+}
   async publishResult(
     educationLevel: 'nursery' | 'primary' | 'junior-secondary' | 'senior-secondary' | 'student',
     resultId: string
@@ -1396,5 +1634,8 @@ class ResultSettingsService {
     this.cache.clear();
   }
 }
+
+
+
 
 export default new ResultSettingsService();

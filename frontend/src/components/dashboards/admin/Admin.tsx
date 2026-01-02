@@ -385,7 +385,7 @@
 //               {!isSidebarCollapsed && (
 //                 <div className="ml-3 transition-all duration-300 overflow-hidden opacity-100 w-auto">
 //                   <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-//                     {settings?.school_name || "God's Treasure Schools"}
+//                     {settings?.school_name || "School Name"}
 //                   </h1>
 //                   <p className="text-xs text-slate-500 dark:text-slate-400">Admin Portal</p>
 //                 </div>
@@ -959,7 +959,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {!isSidebarCollapsed && (
                 <div className="ml-3 transition-all duration-300 overflow-hidden opacity-100 w-auto">
                   <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {settings?.school_name || "God's Treasure Schools"}
+                    {settings?.school_name || "School Name"}
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{getAdminRoleDisplay()}</p>
                 </div>

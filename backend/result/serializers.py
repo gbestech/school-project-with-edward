@@ -96,7 +96,6 @@ class GradeCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Grade
         fields = [
-            "grading_system",
             "grade",
             "min_score",
             "max_score",
@@ -104,6 +103,11 @@ class GradeCreateUpdateSerializer(serializers.ModelSerializer):
             "description",
             "is_passing",
         ]
+        extra_kwargs = {
+            "grade_point": {"required": False, "allow_null": True},
+            "description": {"required": False, "allow_blank": True},
+            "is_passing": {"required": False},
+        }
 
     def validate(self, data):
         if data.get("min_score", 0) >= data.get("max_score", 0):
@@ -343,19 +347,14 @@ class ExamSessionSerializer(serializers.ModelSerializer):
     )
     term_display = serializers.CharField(source="get_term_display", read_only=True)
     academic_session = AcademicSessionMinimalSerializer(read_only=True)
-    academic_session_id = serializers.PrimaryKeyRelatedField(
-        queryset=AcademicSession.objects.all(),
-        source='academic_session',
-        write_only=True
-    )
-    academic_session_name = serializers.CharField(
-        source="academic_session.name", read_only=True
-    )
+    academic_session_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ExamSession
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def get_academic_session_name(self, obj):
+        return obj.academic_session.name if obj.academic_session else None
 
 
 class ExamSessionCreateUpdateSerializer(serializers.ModelSerializer):
@@ -531,14 +530,30 @@ class SeniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class SeniorSecondaryTermReportSerializer(serializers.ModelSerializer):
+    can_edit_teacher_remark = serializers.SerializerMethodField()
+    can_edit_head_teacher_remark = serializers.SerializerMethodField()
+    first_signatory_role = serializers.SerializerMethodField()
+
     student = StudentMinimalSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     stream_name = serializers.CharField(
         source="stream.name", read_only=True, allow_null=True
     )
     status_display = serializers.CharField(source="get_status_display", read_only=True)
-    subject_results = SeniorSecondaryResultSerializer(many=True, read_only=True)
 
+    # CHANGE: Use SerializerMethodField to manually fetch results
+    subject_results = serializers.SerializerMethodField()
+
+    position_formatted = serializers.CharField(read_only=True)
+
+    class_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    class_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    head_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    head_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
     class Meta:
         model = SeniorSecondaryTermReport
         fields = "__all__"
@@ -551,7 +566,58 @@ class SeniorSecondaryTermReportSerializer(serializers.ModelSerializer):
             "total_students",
             "created_at",
             "updated_at",
+            "class_teacher_signature",  # ✅ Add here too
+            "class_teacher_signed_at",
+            "head_teacher_signature",
+            "head_teacher_signed_at",
         ]
+
+    # ADD THIS METHOD:
+    def get_subject_results(self, obj):
+        """
+        Fetch all subject results for this student and exam session.
+        This works even without a direct foreign key relationship.
+        """
+        from result.models import SeniorSecondaryResult
+
+        # Query by student and exam_session (matches what's in the term report)
+        results = (
+            SeniorSecondaryResult.objects.filter(
+                student=obj.student, exam_session=obj.exam_session
+            )
+            .select_related("subject", "grading_system", "stream")
+            .order_by("subject__name")
+        )
+
+        # Serialize the results
+        return SeniorSecondaryResultSerializer(results, many=True).data
+
+    def get_first_signatory_role(self, obj):
+        return obj.first_signatory_role()
+
+    def get_can_edit_teacher_remark(self, obj):
+        return obj.can_edit_teacher_remark(self.context["request"].user)
+
+    def get_can_edit_head_teacher_remark(self, obj):
+        return obj.can_edit_head_teacher_remark(self.context["request"].user)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        instance = self.instance
+
+        if "class_teacher_remark" in attrs:
+            if not instance.can_edit_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        if "head_teacher_remark" in attrs:
+            if not instance.can_edit_head_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        return attrs
 
 
 class SeniorSecondarySessionResultSerializer(serializers.ModelSerializer):
@@ -596,6 +662,9 @@ class SeniorSecondarySessionResultSerializer(serializers.ModelSerializer):
 
 
 class SeniorSecondarySessionReportSerializer(serializers.ModelSerializer):
+    can_edit_teacher_remark = serializers.SerializerMethodField()
+    can_edit_head_teacher_remark = serializers.SerializerMethodField()
+    first_signatory_role = serializers.SerializerMethodField()
     student = StudentMinimalSerializer(read_only=True)
     academic_session = AcademicSessionMinimalSerializer(read_only=True)
     stream_name = serializers.CharField(
@@ -623,6 +692,33 @@ class SeniorSecondarySessionReportSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def get_first_signatory_role(self, obj):
+        return obj.first_signatory_role()
+
+    def get_can_edit_teacher_remark(self, obj):
+        return obj.can_edit_teacher_remark(self.context["request"].user)
+
+    def get_can_edit_head_teacher_remark(self, obj):
+        return obj.can_edit_head_teacher_remark(self.context["request"].user)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        instance = self.instance
+
+        if "class_teacher_remark" in attrs:
+            if not instance.can_edit_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        if "head_teacher_remark" in attrs:
+            if not instance.can_edit_head_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        return attrs
+
 
 # ===== JUNIOR SECONDARY SERIALIZERS =====
 
@@ -637,6 +733,7 @@ class JuniorSecondaryResultSerializer(serializers.ModelSerializer):
     entered_by_name = serializers.CharField(
         source="entered_by.get_full_name", read_only=True, allow_null=True
     )
+    position_formatted = serializers.CharField(read_only=True)
 
     exam_marks = serializers.DecimalField(
         source="exam_score", read_only=True, max_digits=5, decimal_places=2
@@ -727,10 +824,22 @@ class JuniorSecondaryResultCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class JuniorSecondaryTermReportSerializer(serializers.ModelSerializer):
+    can_edit_teacher_remark = serializers.SerializerMethodField()
+    can_edit_head_teacher_remark = serializers.SerializerMethodField()
+    first_signatory_role = serializers.SerializerMethodField()
     student = StudentMinimalSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     subject_results = JuniorSecondaryResultSerializer(many=True, read_only=True)
+
+    class_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    class_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    head_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    head_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
 
     class Meta:
         model = JuniorSecondaryTermReport
@@ -744,7 +853,38 @@ class JuniorSecondaryTermReportSerializer(serializers.ModelSerializer):
             "total_students",
             "created_at",
             "updated_at",
+            "class_teacher_signature",  # ✅ Add here too
+            "class_teacher_signed_at",
+            "head_teacher_signature",
+            "head_teacher_signed_at",
         ]
+
+    def get_first_signatory_role(self, obj):
+        return obj.first_signatory_role()
+
+    def get_can_edit_teacher_remark(self, obj):
+        return obj.can_edit_teacher_remark(self.context["request"].user)
+
+    def get_can_edit_head_teacher_remark(self, obj):
+        return obj.can_edit_head_teacher_remark(self.context["request"].user)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        instance = self.instance
+
+        if "class_teacher_remark" in attrs:
+            if not instance.can_edit_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        if "head_teacher_remark" in attrs:
+            if not instance.can_edit_head_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        return attrs
 
 
 # ===== PRIMARY SERIALIZERS =====
@@ -760,6 +900,7 @@ class PrimaryResultSerializer(serializers.ModelSerializer):
     entered_by_name = serializers.CharField(
         source="entered_by.get_full_name", read_only=True, allow_null=True
     )
+    position_formatted = serializers.CharField(read_only=True)
 
     exam_marks = serializers.DecimalField(
         source="exam_score", read_only=True, max_digits=5, decimal_places=2
@@ -798,6 +939,7 @@ class PrimaryResultSerializer(serializers.ModelSerializer):
 
 
 class PrimaryResultCreateUpdateSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = PrimaryResult
         fields = [
@@ -850,10 +992,22 @@ class PrimaryResultCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class PrimaryTermReportSerializer(serializers.ModelSerializer):
+    can_edit_teacher_remark = serializers.SerializerMethodField()
+    can_edit_head_teacher_remark = serializers.SerializerMethodField()
+    first_signatory_role = serializers.SerializerMethodField()
     student = StudentMinimalSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     subject_results = PrimaryResultSerializer(many=True, read_only=True)
+
+    class_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    class_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    head_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    head_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
 
     class Meta:
         model = PrimaryTermReport
@@ -867,7 +1021,38 @@ class PrimaryTermReportSerializer(serializers.ModelSerializer):
             "total_students",
             "created_at",
             "updated_at",
+            "class_teacher_signature",  # ✅ Add here too
+            "class_teacher_signed_at",
+            "head_teacher_signature",
+            "head_teacher_signed_at",
         ]
+
+    def get_first_signatory_role(self, obj):
+        return obj.first_signatory_role()
+
+    def get_can_edit_teacher_remark(self, obj):
+        return obj.can_edit_teacher_remark(self.context["request"].user)
+
+    def get_can_edit_head_teacher_remark(self, obj):
+        return obj.can_edit_head_teacher_remark(self.context["request"].user)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        instance = self.instance
+
+        if "class_teacher_remark" in attrs:
+            if not instance.can_edit_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        if "head_teacher_remark" in attrs:
+            if not instance.can_edit_head_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        return attrs
 
 
 # ===== NURSERY SERIALIZERS =====
@@ -883,6 +1068,8 @@ class NurseryResultSerializer(serializers.ModelSerializer):
     entered_by_name = serializers.CharField(
         source="entered_by.get_full_name", read_only=True, allow_null=True
     )
+    position = serializers.IntegerField(source="subject_position", read_only=True)
+    position_formatted = serializers.CharField(read_only=True)
 
     physical_development = serializers.SerializerMethodField()
     health = serializers.SerializerMethodField()
@@ -896,15 +1083,6 @@ class NurseryResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = NurseryResult
         fields = "__all__"
-        read_only_fields = [
-            "id",
-            "percentage",
-            "grade",
-            "grade_point",
-            "is_passed",
-            "created_at",
-            "updated_at",
-        ]
 
     def get_physical_development(self, obj):
         return obj.term_report.physical_development if obj.term_report else None
@@ -967,6 +1145,9 @@ class NurseryResultCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class NurseryTermReportSerializer(serializers.ModelSerializer):
+    can_edit_teacher_remark = serializers.SerializerMethodField()
+    can_edit_head_teacher_remark = serializers.SerializerMethodField()
+    first_signatory_role = serializers.SerializerMethodField()
     student = StudentMinimalSerializer(read_only=True)
     exam_session = ExamSessionSerializer(read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
@@ -983,6 +1164,15 @@ class NurseryTermReportSerializer(serializers.ModelSerializer):
         source="get_general_conduct_display", read_only=True
     )
 
+    class_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    class_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+    head_teacher_signature = serializers.URLField(
+        read_only=True, allow_null=True, allow_blank=True
+    )
+    head_teacher_signed_at = serializers.DateTimeField(read_only=True, allow_null=True)
+
     class Meta:
         model = NurseryTermReport
         fields = "__all__"
@@ -996,7 +1186,38 @@ class NurseryTermReportSerializer(serializers.ModelSerializer):
             "total_students_in_class",
             "created_at",
             "updated_at",
+            "class_teacher_signature",  # ✅ Add here too
+            "class_teacher_signed_at",
+            "head_teacher_signature",
+            "head_teacher_signed_at",
         ]
+
+    def get_first_signatory_role(self, obj):
+        return obj.first_signatory_role()
+
+    def get_can_edit_teacher_remark(self, obj):
+        return obj.can_edit_teacher_remark(self.context["request"].user)
+
+    def get_can_edit_head_teacher_remark(self, obj):
+        return obj.can_edit_head_teacher_remark(self.context["request"].user)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        instance = self.instance
+
+        if "class_teacher_remark" in attrs:
+            if not instance.can_edit_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        if "head_teacher_remark" in attrs:
+            if not instance.can_edit_head_teacher_remark(user):
+                raise serializers.ValidationError(
+                    "You are not allowed to edit this remark."
+                )
+
+        return attrs
 
 
 class NurseryTermReportCreateUpdateSerializer(serializers.ModelSerializer):
@@ -1806,6 +2027,12 @@ class StudentTermResultDetailSerializer(serializers.ModelSerializer):
         model = StudentTermResult
         fields = "__all__"
 
+    @staticmethod
+    def setup_eager_loading(queryset):
+        return queryset.select_related("student", "academic_session").prefetch_related(
+            "comments", "comments__commented_by"
+        )
+
     def get_subject_results(self, obj):
         """Get all results for this student in this term across education levels"""
         education_level = getattr(obj.student, "education_level", None)
@@ -1894,3 +2121,76 @@ class StudentTermResultDetailSerializer(serializers.ModelSerializer):
                 exam_session__academic_session=obj.academic_session,
             ).select_related("subject", "grading_system", "exam_session")
             return StudentResultSerializer(results, many=True).data
+
+# Add these to your serializers.py
+
+
+class TeacherRemarkUpdateSerializer(serializers.Serializer):
+    """For updating teacher remarks on term reports"""
+
+    class_teacher_remark = serializers.CharField(
+        max_length=500,
+        required=True,
+        help_text="Class teacher's remark (50-500 characters)",
+    )
+
+    def validate_class_teacher_remark(self, value):
+        if len(value.strip()) < 50:
+            raise serializers.ValidationError(
+                "Remark must be at least 50 characters long"
+            )
+        return value.strip()
+
+
+class HeadTeacherRemarkUpdateSerializer(serializers.Serializer):
+    """For updating head teacher remarks on term reports"""
+
+    head_teacher_remark = serializers.CharField(
+        max_length=500,
+        required=True,
+        help_text="Head teacher's remark (50-500 characters)",
+    )
+
+    def validate_head_teacher_remark(self, value):
+        if len(value.strip()) < 50:
+            raise serializers.ValidationError(
+                "Remark must be at least 50 characters long"
+            )
+        return value.strip()
+
+
+class SignatureUploadSerializer(serializers.Serializer):
+    """For uploading signatures to Cloudinary"""
+
+    signature_image = serializers.ImageField(
+        required=True, help_text="Signature image (PNG, JPG, max 2MB)"
+    )
+
+    def validate_signature_image(self, value):
+        # Validate file size (max 2MB)
+        if value.size > 2 * 1024 * 1024:
+            raise serializers.ValidationError("Signature image must be less than 2MB")
+
+        # Validate file type
+        allowed_types = ["image/png", "image/jpeg", "image/jpg"]
+        if value.content_type not in allowed_types:
+            raise serializers.ValidationError("Only PNG and JPEG images are allowed")
+
+        return value
+
+
+class ProfessionalAssignmentStudentSerializer(serializers.Serializer):
+    """Student info for Professional Assignment tab"""
+
+    id = serializers.UUIDField()
+    full_name = serializers.CharField()
+    admission_number = serializers.CharField()
+    student_class = serializers.CharField()
+    education_level = serializers.CharField()
+    average_score = serializers.DecimalField(
+        max_digits=5, decimal_places=2, allow_null=True
+    )
+    term_report_id = serializers.UUIDField(allow_null=True)
+    has_remark = serializers.BooleanField()
+    remark_status = serializers.CharField()  # 'completed', 'pending', 'draft'
+    last_remark = serializers.CharField(allow_blank=True)

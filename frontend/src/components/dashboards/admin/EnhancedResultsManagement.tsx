@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Eye, Edit, Trash2, CheckCircle, XCircle, 
- FileText, Filter, Search,
-  User, Award, AlertCircle, Plus
+  FileText, Filter, Search,
+  User, Award, AlertCircle, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ResultService from '@/services/ResultService';
@@ -10,6 +10,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { AcademicSession } from '@/types/types';
 import EditSubjectResultForm from './EditSubjectResultForm';
 import AddResultForm from './AddResultForm';
+import { PDFDownloadButton, BulkPDFDownload } from './PDFDownloadComponents';
 
 // Enhanced interfaces for result management
 interface StudentResult {
@@ -38,7 +39,6 @@ interface StudentResult {
   subject_results: SubjectResult[];
   created_at: string;
   updated_at: string;
-  // Tracking fields
   entered_by?: {
     id: string;
     full_name: string;
@@ -53,7 +53,7 @@ interface StudentResult {
   };
   approved_date?: string;
   published_date?: string;
-  subject_name?: string; // For individual subject results
+  subject_name?: string;
   education_level?: string;
 }
 
@@ -72,6 +72,15 @@ interface SubjectResult {
   grade_point: number;
   is_passed: boolean;
   status: string;
+  continuous_assessment_score?: number;
+  take_home_test_score?: number;
+  practical_score?: number;
+  project_score?: number;
+  appearance_score?: number;
+  note_copying_score?: number;
+  first_test_score?: number;
+  second_test_score?: number;
+  third_test_score?: number;
 }
 
 interface StatusAction {
@@ -86,13 +95,11 @@ interface StatusAction {
 const EnhancedResultsManagement: React.FC = () => {
   const { settings } = useSettings();
   
-  // State management
   const [studentResults, setStudentResults] = useState<StudentResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'term-reports' | 'subject-results'>('subject-results');
   
-  // UI State
   const [selectedResults, setSelectedResults] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null);
@@ -105,15 +112,17 @@ const EnhancedResultsManagement: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   
-  // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [educationLevelFilter, setEducationLevelFilter] = useState<string>('all');
   const [classFilter, setClassFilter] = useState<string>('all');
   const [termFilter, setTermFilter] = useState<string>('all');
   const [sessionFilter, setSessionFilter] = useState<string>('all');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  // Status actions configuration
   const statusActions: StatusAction[] = [
     {
       id: 'APPROVED',
@@ -138,78 +147,124 @@ const EnhancedResultsManagement: React.FC = () => {
   }, [viewMode]);
 
   const loadResults = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  try {
+    setLoading(true);
+    setError(null);
+    
+    let data: any[] = [];
+    
+    if (viewMode === 'term-reports') {
+      console.log('🔄 Loading ALL TERM REPORTS (with pagination)...');
       
-      let data;
-      if (viewMode === 'term-reports') {
-        // Load consolidated term reports
-        data = await ResultService.getTermResults();
-      } else {
-        // Load individual subject results
-        const [nursery, primary, junior, senior] = await Promise.all([
-          ResultService.getNurseryResults(),
-          ResultService.getPrimaryResults(),
-          ResultService.getJuniorSecondaryResults(),
-          ResultService.getSeniorSecondaryResults()
-        ]);
-        
-        // Transform to common format
-        data = [
-          ...nursery.map(r => transformSubjectResult(r, 'NURSERY')),
-          ...primary.map(r => transformSubjectResult(r, 'PRIMARY')),
-          ...junior.map(r => transformSubjectResult(r, 'JUNIOR_SECONDARY')),
-          ...senior.map(r => transformSubjectResult(r, 'SENIOR_SECONDARY'))
-        ];
-      }
-
+      // ✅ This will now fetch ALL pages automatically
+      const allResults = await ResultService.getTermResults();
       
-      if (data.length > 0) {
-        console.log('📊 First result (full):', data[0]);
+      console.log(`📊 [Term Reports] Loaded ${allResults.length} total results`);
+      
+      // CALCULATE MISSING FIELDS FROM SUBJECT RESULTS
+      data = allResults.map((report: any) => {
+        const subjectResults = report.subject_results || [];
         
-        // Check all statuses
-        const statuses = data.map((r: any) => r.status);
-        const uniqueStatuses = Array.from(new Set(statuses));
-        console.log('📊 Unique statuses in data:', uniqueStatuses);
-        console.log('📊 Status counts:', {
-          DRAFT: statuses.filter(s => s === 'DRAFT').length,
-          APPROVED: statuses.filter(s => s === 'APPROVED').length,
-          PUBLISHED: statuses.filter(s => s === 'PUBLISHED').length,
-          other: statuses.filter(s => !['DRAFT', 'APPROVED', 'PUBLISHED'].includes(s)).length
+        // Calculate totals from subject results
+        let totalScore = 0;
+        let totalGradePoints = 0;
+        let passedCount = 0;
+        
+        subjectResults.forEach((subject: any) => {
+          totalScore += subject.total_score || 0;
+          totalGradePoints += subject.grade_point || 0;
+          if (subject.is_passed) passedCount++;
         });
         
+        // Average score is the average of all subject scores (already percentages)
+        const averageScore = subjectResults.length > 0 
+          ? (totalScore / subjectResults.length) 
+          : 0;
+        
+        const gpa = subjectResults.length > 0 
+          ? (totalGradePoints / subjectResults.length) 
+          : 0;
+        
+        // Calculate overall grade from average
+        let overallGrade = 'F';
+        if (averageScore >= 70) overallGrade = 'A';
+        else if (averageScore >= 60) overallGrade = 'B';
+        else if (averageScore >= 50) overallGrade = 'C';
+        else if (averageScore >= 45) overallGrade = 'D';
+        else if (averageScore >= 39) overallGrade = 'E';
+        
+        console.log(`📊 Calculated for ${report.student?.full_name}:`, {
+          totalScore,
+          averageScore,
+          gpa,
+          overallGrade,
+          subjectsCount: subjectResults.length
+        });
+        
+        // Return report with calculated values
+        return {
+          ...report,
+          total_score: totalScore,
+          average_score: averageScore,
+          gpa: parseFloat(gpa.toFixed(2)),
+          overall_grade: overallGrade,
+          total_subjects: subjectResults.length,
+          subjects_passed: passedCount,
+          subjects_failed: subjectResults.length - passedCount,
+          class_position: report.class_position || null,
+          total_students: report.total_students || 0
+        };
+      });
+      
+      if (data && data.length > 0) {
+        const seniorResult = data.find((r: any) => r.student?.education_level === 'SENIOR_SECONDARY');
+        if (seniorResult) {
+          console.log('🎓 [Senior Secondary Term Report] Sample:', {
+            student: seniorResult.student?.full_name,
+            total_score: seniorResult.total_score,
+            average_score: seniorResult.average_score,
+            gpa: seniorResult.gpa,
+            class_position: seniorResult.class_position,
+            total_students: seniorResult.total_students,
+          });
+        }
       }
       
- 
+    } else {
+      console.log('🔄 Loading ALL SUBJECT RESULTS (with pagination)...');
       
-      setStudentResults(data || []);
-    } catch (err) {
-      console.error('Error loading results:', err);
-      setError('Failed to load results. Please try again.');
-    } finally {
-      setLoading(false);
+      // ✅ These will now fetch ALL pages automatically
+      const [nursery, primary, junior, senior] = await Promise.all([
+        ResultService.getNurseryResults(),
+        ResultService.getPrimaryResults(),
+        ResultService.getJuniorSecondaryResults(),
+        ResultService.getSeniorSecondaryResults()
+      ]);
+      
+      console.log(`📊 Subject Results Loaded: Nursery=${nursery.length}, Primary=${primary.length}, Junior=${junior.length}, Senior=${senior.length}`);
+      
+      data = [
+        ...nursery.map(r => transformSubjectResult(r, 'NURSERY')),
+        ...primary.map(r => transformSubjectResult(r, 'PRIMARY')),
+        ...junior.map(r => transformSubjectResult(r, 'JUNIOR_SECONDARY')),
+        ...senior.map(r => transformSubjectResult(r, 'SENIOR_SECONDARY'))
+      ];
     }
-  };
-
-   
-  const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
-
-
-    if (educationLevel === 'NURSERY') {
-    console.log('🔍 [EnhancedResultsManagement] Transforming nursery result:', result);
-    console.log('🔍 [EnhancedResultsManagement] Nursery physical fields from API:', {
-      physical_development: result.physical_development,
-      health: result.health,
-      cleanliness: result.cleanliness,
-      general_conduct: result.general_conduct,
-      height_beginning: result.height_beginning,
-      height_end: result.height_end,
-      weight_beginning: result.weight_beginning,
-      weight_end: result.weight_end
-    });
+    
+    console.log(`✅ TOTAL LOADED: ${data?.length || 0} results in ${viewMode} mode`);
+    setStudentResults(data || []);
+    
+  } catch (err) {
+    console.error('❌ Error loading results:', err);
+    setError('Failed to load results. Please try again.');
+  } finally {
+    setLoading(false);
   }
-    // Extract session info properly
+};
+
+  const transformSubjectResult = (result: any, educationLevel: string): StudentResult => {
+    console.log(`🔄 [transformSubjectResult] Transforming ${educationLevel}:`, result.student?.full_name);
+    
     const sessionName = result.exam_session?.academic_session_name || 
                        result.exam_session?.academic_session?.name || 
                        result.exam_session?.academic_session?.academic_session_name || 
@@ -219,11 +274,58 @@ const EnhancedResultsManagement: React.FC = () => {
       ? result.exam_session.academic_session 
       : { name: sessionName };
     
-    // Handle nursery-specific fields
-    const isNursery = educationLevel === 'NURSERY';
-    const examScore = result.exam_score || result.mark_obtained || 0;
-    const totalScore = result.total_score || examScore || 0;
-    const caTotal = isNursery ? 0 : (result.ca_total || result.total_ca_score || 0);
+    let examScore = 0;
+    let totalScore = 0;
+    let caTotal = 0;
+    let percentage = 0;
+    
+    if (educationLevel === 'NURSERY') {
+      examScore = result.exam_score || result.mark_obtained || 0;
+      totalScore = result.total_score || examScore || 0;
+      caTotal = 0;
+      percentage = result.percentage || result.total_percentage || totalScore;
+    } else if (educationLevel === 'SENIOR_SECONDARY') {
+      const firstTest = result.first_test_score || 0;
+      const secondTest = result.second_test_score || 0;
+      const thirdTest = result.third_test_score || 0;
+      examScore = result.exam_score || 0;
+      
+      caTotal = firstTest + secondTest + thirdTest;
+      totalScore = result.total_score || (caTotal + examScore);
+      percentage = result.percentage || totalScore;
+      
+      console.log(`📊 [SS Calc] ${result.subject?.name}:`, {
+        tests: [firstTest, secondTest, thirdTest],
+        exam: examScore,
+        ca: caTotal,
+        total: totalScore
+      });
+    } else {
+      examScore = result.exam_score || result.mark_obtained || 0;
+      caTotal = result.ca_total || result.total_ca_score || 0;
+      totalScore = result.total_score || (caTotal + examScore);
+      percentage = result.percentage || result.total_percentage || totalScore;
+    }
+    
+    const subjectResult: any = {
+      id: result.id,
+      subject: result.subject,
+      total_ca_score: caTotal,
+      ca_total: caTotal,
+      exam_score: examScore,
+      total_score: totalScore,
+      percentage: percentage,
+      grade: result.grade || 'N/A',
+      grade_point: result.grade_point || 0,
+      is_passed: result.is_passed,
+      status: result.status
+    };
+    
+    if (educationLevel === 'SENIOR_SECONDARY') {
+      subjectResult.first_test_score = result.first_test_score || 0;
+      subjectResult.second_test_score = result.second_test_score || 0;
+      subjectResult.third_test_score = result.third_test_score || 0;
+    }
     
     return {
       id: result.id,
@@ -234,25 +336,13 @@ const EnhancedResultsManagement: React.FC = () => {
       subjects_passed: result.is_passed ? 1 : 0,
       subjects_failed: result.is_passed ? 0 : 1,
       total_score: totalScore,
-      average_score: result.percentage || result.total_percentage || totalScore,
+      average_score: percentage,
       gpa: result.grade_point || 0,
       class_position: result.position || null,
       total_students: 0,
       status: result.status,
       remarks: result.class_teacher_remark || result.teacher_remark || result.academic_comment || '',
-      subject_results: [{
-        id: result.id,
-        subject: result.subject,
-        total_ca_score: caTotal,
-        ca_total: caTotal,
-        exam_score: examScore,
-        total_score: totalScore,
-        percentage: result.percentage || result.total_percentage || totalScore,
-        grade: result.grade || 'N/A',
-        grade_point: result.grade_point || 0,
-        is_passed: result.is_passed,
-        status: result.status
-      }],
+      subject_results: [subjectResult],
       created_at: result.created_at,
       updated_at: result.updated_at,
       education_level: educationLevel,
@@ -261,7 +351,6 @@ const EnhancedResultsManagement: React.FC = () => {
     } as any;
   };
 
-  // Filter and search logic
   const filteredResults = useMemo(() => {
     return studentResults.filter(result => {
       const matchesSearch = searchTerm === '' || 
@@ -277,7 +366,6 @@ const EnhancedResultsManagement: React.FC = () => {
       const matchesSession = sessionFilter === 'all' || 
         result.academic_session?.name === sessionFilter;
       
-      // Tab filtering
       const matchesTab = activeTab === 'ALL' || result.term === activeTab;
       
       return matchesSearch && matchesStatus && matchesEducationLevel && 
@@ -285,7 +373,6 @@ const EnhancedResultsManagement: React.FC = () => {
     });
   }, [studentResults, searchTerm, statusFilter, educationLevelFilter, classFilter, termFilter, sessionFilter, activeTab]);
 
-  // Get unique filter options
   const uniqueEducationLevels = useMemo(() => 
     Array.from(new Set(studentResults.map(r => r.student?.education_level).filter(Boolean))), 
     [studentResults]);
@@ -302,16 +389,63 @@ const EnhancedResultsManagement: React.FC = () => {
     Array.from(new Set(studentResults.map(r => r.academic_session?.name).filter(Boolean))), 
     [studentResults]);
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedResults = filteredResults.slice(startIndex, endIndex);
   
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, educationLevelFilter, classFilter, termFilter, sessionFilter, activeTab, itemsPerPage]);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
   const updateResultStatus = async (resultId: string, newStatus: string, educationLevel: string) => {
     try {
       setActionLoading(resultId);
       
       let response;
       
-      // Check if we're in subject results or term reports view
       if (viewMode === 'subject-results') {
-        // For individual subject results, use the subject result endpoints
         switch (newStatus) {
           case 'APPROVED':
             response = await ResultService.approveSubjectResult(resultId, educationLevel);
@@ -325,7 +459,6 @@ const EnhancedResultsManagement: React.FC = () => {
         
         toast.success(`Subject result ${newStatus.toLowerCase()} successfully`);
       } else {
-        // For term reports, use the term report endpoints
         switch (newStatus) {
           case 'APPROVED':
             response = await ResultService.approveResult(resultId, educationLevel);
@@ -340,7 +473,6 @@ const EnhancedResultsManagement: React.FC = () => {
         toast.success(`Term report ${newStatus.toLowerCase()} successfully`);
       }
       
-      // Update the result in state
       setStudentResults(prev => prev.map(result => 
         result.id === resultId 
           ? { ...result, status: newStatus as any, ...response }
@@ -381,25 +513,70 @@ const EnhancedResultsManagement: React.FC = () => {
     }
   };
 
-  const deleteResult = async (result: StudentResult) => {
-    try {
-      setActionLoading('delete');
-      const educationLevel = (result as any).education_level || result.student?.education_level;
-      await ResultService.deleteTermResult(result.id, educationLevel);
+  // const deleteResult = async (result: StudentResult) => {
+  //   try {
+  //     setActionLoading('delete');
+  //     const educationLevel = (result as any).education_level || result.student?.education_level;
+  //     await ResultService.deleteTermResult(result.id, educationLevel);
       
-      setStudentResults(prev => prev.filter(r => r.id !== result.id));
-      setShowDeleteModal(false);
-      setResultToDelete(null);
-      toast.success('Result deleted successfully');
-    } catch (error) {
-      console.error('Error deleting result:', error);
-      toast.error('Failed to delete result');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  //     setStudentResults(prev => prev.filter(r => r.id !== result.id));
+  //     setShowDeleteModal(false);
+  //     setResultToDelete(null);
+  //     toast.success('Result deleted successfully');
+  //   } catch (error) {
+  //     console.error('Error deleting result:', error);
+  //     toast.error('Failed to delete result');
+  //   } finally {
+  //     setActionLoading(null);
+  //   }
+  // };
 
-  // Utility functions
+  const deleteResult = async (result: StudentResult) => {
+  try {
+    setActionLoading('delete');
+    const educationLevel = (result as any).education_level || result.student?.education_level;
+    
+    if (!educationLevel) {
+      toast.error('Cannot determine education level for this result');
+      return;
+    }
+    
+    console.log('🗑️ Deleting result:', {
+      id: result.id,
+      education_level: educationLevel,
+      view_mode: viewMode,
+      status: result.status
+    });
+    
+    // Determine if this is a term report or subject result
+    if (viewMode === 'term-reports') {
+      await ResultService.deleteTermResult(result.id, educationLevel);
+      toast.success('Term report deleted successfully');
+    } else {
+      await ResultService.deleteStudentResult(result.id, educationLevel);
+      toast.success('Subject result deleted successfully');
+    }
+    
+    // Remove from UI
+    setStudentResults(prev => prev.filter(r => r.id !== result.id));
+    setShowDeleteModal(false);
+    setResultToDelete(null);
+    
+  } catch (error: any) {
+    console.error('Error deleting result:', error);
+    
+    // Show detailed error message from backend
+    const errorMessage = error.response?.data?.error || 
+                         error.response?.data?.detail || 
+                         error.message || 
+                         'Failed to delete result';
+    
+    toast.error(errorMessage);
+  } finally {
+    setActionLoading(null);
+  }
+};
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       DRAFT: { color: 'bg-gray-100 text-gray-800', icon: <Edit className="w-3 h-3" /> },
@@ -484,6 +661,30 @@ const EnhancedResultsManagement: React.FC = () => {
   };
 
   const handleRowClick = (result: StudentResult) => {
+    console.log('🎯 ============ ROW CLICK DEBUG ============');
+    console.log('🎯 View Mode:', viewMode);
+    console.log('🎯 Student:', result.student?.full_name);
+    console.log('🎯 Education Level:', result.student?.education_level);
+    console.log('🎯 Performance Stats:', {
+      total_score: result.total_score,
+      average_score: result.average_score,
+      gpa: result.gpa,
+      class_position: result.class_position,
+      total_students: result.total_students
+    });
+    console.log('🎯 Subject Results Count:', result.subject_results?.length);
+    if (result.subject_results?.[0]) {
+      console.log('🎯 First Subject:', {
+        name: result.subject_results[0].subject?.name,
+        first_test: result.subject_results[0].first_test_score,
+        second_test: result.subject_results[0].second_test_score,
+        third_test: result.subject_results[0].third_test_score,
+        exam: result.subject_results[0].exam_score,
+        total: result.subject_results[0].total_score
+      });
+    }
+    console.log('🎯 ========================================');
+    
     setSelectedStudent(result);
     setShowDetailModal(true);
   };
@@ -497,10 +698,10 @@ const EnhancedResultsManagement: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedResults.length === filteredResults.length) {
+    if (selectedResults.length === paginatedResults.length && paginatedResults.length > 0) {
       setSelectedResults([]);
     } else {
-      setSelectedResults(filteredResults.map(r => r.id));
+      setSelectedResults(paginatedResults.map(r => r.id));
     }
   };
 
@@ -548,30 +749,23 @@ const EnhancedResultsManagement: React.FC = () => {
             </div>
             
             <div className="flex gap-3 flex-wrap items-center">
-              {/* View Mode Toggle - Made more prominent */}
               <div className="flex bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-1.5 shadow-md">
                 <button
-                  onClick={() => {
-                    console.log('Switching to subject-results view');
-                    setViewMode('subject-results');
-                  }}
+                  onClick={() => setViewMode('subject-results')}
                   className={`px-6 py-2.5 rounded-md text-sm font-bold transition-all duration-200 ${
                     viewMode === 'subject-results'
                       ? 'bg-blue-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-102'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   📝 Subject Results
                 </button>
                 <button
-                  onClick={() => {
-                    console.log('Switching to term-reports view');
-                    setViewMode('term-reports');
-                  }}
+                  onClick={() => setViewMode('term-reports')}
                   className={`px-6 py-2.5 rounded-md text-sm font-bold transition-all duration-200 ${
                     viewMode === 'term-reports'
                       ? 'bg-purple-600 text-white shadow-lg scale-105'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 hover:scale-102'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   📊 Term Reports
@@ -607,6 +801,10 @@ const EnhancedResultsManagement: React.FC = () => {
                       {action.label}
                     </button>
                   ))}
+                  <BulkPDFDownload
+                    selectedResults={filteredResults.filter(r => selectedResults.includes(r.id))}
+                    className="ml-2"
+                  />
                 </div>
               )}
             </div>
@@ -839,7 +1037,7 @@ const EnhancedResultsManagement: React.FC = () => {
                   <th className="px-6 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedResults.length === filteredResults.length && filteredResults.length > 0}
+                      checked={selectedResults.length === paginatedResults.length && paginatedResults.length > 0}
                       onChange={handleSelectAll}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
@@ -876,7 +1074,7 @@ const EnhancedResultsManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredResults.length === 0 ? (
+                {paginatedResults.length === 0 ? (
                   <tr>
                     <td colSpan={viewMode === 'subject-results' ? 10 : 9} className="px-6 py-12 text-center text-gray-500">
                       <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -887,7 +1085,7 @@ const EnhancedResultsManagement: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredResults.map((result) => (
+                  paginatedResults.map((result) => (
                     <tr key={result.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <input
@@ -985,7 +1183,19 @@ const EnhancedResultsManagement: React.FC = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          
+                          <PDFDownloadButton
+                              reportId={result.id}
+                              educationLevel={
+                              (result as any).education_level || 
+                              result.student?.education_level || 
+                              'PRIMARY'
+                              }
+                              studentName={result.student?.full_name || 'Student'}
+                              term={result.term}
+                              session={result.academic_session?.name || 'Session'}
+                              variant="icon"
+                              size="md"
+                            />
                           <button
                             onClick={() => {
                               setEditingResult(result);
@@ -1027,135 +1237,329 @@ const EnhancedResultsManagement: React.FC = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {filteredResults.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Items per page selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">Show</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-700">
+                    per page
+                  </span>
+                </div>
+
+                {/* Pagination info */}
+                <div className="text-sm text-gray-700 font-medium">
+                  Showing <span className="text-blue-600">{startIndex + 1}</span> to{' '}
+                  <span className="text-blue-600">{Math.min(endIndex, filteredResults.length)}</span> of{' '}
+                  <span className="text-blue-600">{filteredResults.length}</span> results
+                </div>
+
+                {/* Page navigation */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    {/* First page button */}
+                    <button
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                      className="p-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                      title="First page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+
+                    {/* Previous page button */}
+                    <button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                      title="Previous page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    {/* Page numbers */}
+                    <div className="hidden sm:flex items-center gap-1">
+                      {getPageNumbers().map((page, index) => (
+                        page === '...' ? (
+                          <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page as number)}
+                            className={`min-w-[2.5rem] px-3 py-2 border rounded-lg text-sm font-medium transition-all shadow-sm ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      ))}
+                    </div>
+
+                    {/* Mobile: Current page indicator */}
+                    <div className="sm:hidden px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700">
+                      Page {currentPage} of {totalPages}
+                    </div>
+
+                    {/* Next page button */}
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                      title="Next page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
+                    {/* Last page button */}
+                    <button
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-white shadow-sm"
+                      title="Last page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Detail Modal */}
         {showDetailModal && selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      Result Details - {selectedStudent.student?.full_name}
-                    </h3>
-                    <div className="mt-1 flex items-center space-x-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTermColor(selectedStudent.term)}`}>
-                        {formatTermDisplay(selectedStudent.term)}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {selectedStudent.academic_session?.name}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        setShowDetailModal(false);
-                        setEditingResult(selectedStudent);
-                        setShowEditModal(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-                      title="Edit Result"
-                    >
-                      <Edit className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDetailModal(false);
-                        setSelectedStudent(null);
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <XCircle className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-3">Student Information</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">Name:</span> {selectedStudent.student?.full_name}</p>
-                      <p><span className="font-medium">Class:</span> {selectedStudent.student?.student_class}</p>
-                      <p><span className="font-medium">Term:</span> 
-                        <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTermColor(selectedStudent.term)}`}>
-                          {formatTermDisplay(selectedStudent.term)}
-                        </span>
-                      </p>
-                      <p><span className="font-medium">Session:</span> {selectedStudent.academic_session?.name}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-3">Performance Summary</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">Average Score:</span> {formatScore(selectedStudent.average_score)}</p>
-                      <p><span className="font-medium">Overall Grade:</span> <span className={getGradeColor(getOverallGrade(selectedStudent))}>{getOverallGrade(selectedStudent)}</span></p>
-                      <p><span className="font-medium">Position:</span> {selectedStudent.class_position ? `${selectedStudent.class_position}/${selectedStudent.total_students}` : 'N/A'}</p>
-                      <p><span className="font-medium">Status:</span> {getStatusBadge(selectedStudent.status)}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-medium text-gray-900">Subject Results</h4>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTermColor(selectedStudent.term)}`}>
-                      {formatTermDisplay(selectedStudent.term)} Results
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border border-gray-200 rounded-lg">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Subject</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">CA</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Exam</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Total</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Grade</th>
-                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {selectedStudent.subject_results?.map((subject, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                              {subject.subject?.name}
-                            </td>
-                            <td className="px-4 py-2 text-center text-sm text-gray-900">
-                              {subject.ca_total ?? subject.total_ca_score ?? 'N/A'}
-                            </td>
-                            <td className="px-4 py-2 text-center text-sm text-gray-900">
-                              {subject.exam_score ?? 'N/A'}
-                            </td>
-                            <td className="px-4 py-2 text-center text-sm font-medium text-gray-900">
-                              {subject.total_score ?? 'N/A'}
-                            </td>
-                            <td className="px-4 py-2 text-center text-sm">
-                              <span className={getGradeColor(subject.grade)}>
-                                {subject.grade}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2 text-center text-sm">
-                              {subject.is_passed ? (
-                                <span className="text-green-600">Pass</span>
-                              ) : (
-                                <span className="text-red-600">Fail</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">
+              Result Details - {selectedStudent.student?.full_name}
+            </h3>
+            <div className="mt-1 flex items-center space-x-2">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTermColor(selectedStudent.term)}`}>
+                {formatTermDisplay(selectedStudent.term)}
+              </span>
+              <span className="text-sm text-gray-500">
+                {selectedStudent.academic_session?.name}
+              </span>
             </div>
           </div>
-        )}
+          <div className="flex items-center space-x-2">
+            <PDFDownloadButton
+              reportId={selectedStudent.id}
+              educationLevel={
+                (selectedStudent as any).education_level || 
+                selectedStudent.student?.education_level || 
+                'PRIMARY'
+              }
+              studentName={selectedStudent.student?.full_name || 'Student'}
+              term={selectedStudent.term}
+              session={selectedStudent.academic_session?.name || 'Session'}
+              variant="button"
+              size="sm"
+            />
+            <button
+              onClick={() => {
+                setShowDetailModal(false);
+                setEditingResult(selectedStudent);
+                setShowEditModal(true);
+              }}
+              className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+              title="Edit Result"
+            >
+              <Edit className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setShowDetailModal(false);
+                setSelectedStudent(null);
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <XCircle className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-6">
+        <div className="grid grid-cols-2 gap-6 mb-6">
+          <div>
+            <h4 className="text-lg font-medium text-gray-900 mb-3">Student Information</h4>
+            <div className="space-y-2 text-sm">
+              <p><span className="font-medium">Name:</span> {selectedStudent.student?.full_name}</p>
+              <p><span className="font-medium">Class:</span> {selectedStudent.student?.student_class}</p>
+              <p><span className="font-medium">Term:</span> 
+                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTermColor(selectedStudent.term)}`}>
+                  {formatTermDisplay(selectedStudent.term)}
+                </span>
+              </p>
+              <p><span className="font-medium">Session:</span> {selectedStudent.academic_session?.name}</p>
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="text-lg font-medium text-gray-900 mb-3">Performance Summary</h4>
+            <div className="space-y-2 text-sm">
+              <p><span className="font-medium">Average Score:</span> {formatScore(selectedStudent.average_score)}</p>
+              <p><span className="font-medium">Overall Grade:</span> <span className={getGradeColor(getOverallGrade(selectedStudent))}>{getOverallGrade(selectedStudent)}</span></p>
+              <p><span className="font-medium">Position:</span> {selectedStudent.class_position ? `${selectedStudent.class_position}/${selectedStudent.total_students}` : 'N/A'}</p>
+              <p><span className="font-medium">Status:</span> {getStatusBadge(selectedStudent.status)}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-lg font-medium text-gray-900">Subject Results</h4>
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTermColor(selectedStudent.term)}`}>
+              {formatTermDisplay(selectedStudent.term)} Results
+            </span>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full border border-gray-200 rounded-lg">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Subject</th>
+                  
+                  {/* Show headers based on education level */}
+                  {(() => {
+                    const eduLevel = (selectedStudent as any).education_level || selectedStudent.student?.education_level;
+                    
+                    if (eduLevel === 'NURSERY') {
+                      return (
+                        <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Score</th>
+                      );
+                    } else if (eduLevel === 'PRIMARY' || eduLevel === 'JUNIOR_SECONDARY') {
+                      return (
+                        <>
+                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">CA</th>
+                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Exam</th>
+                        </>
+                      );
+                    } else if (eduLevel === 'SENIOR_SECONDARY') {
+                      return (
+                        <>
+                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700 bg-blue-100">1st Test</th>
+                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700 bg-blue-100">2nd Test</th>
+                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700 bg-blue-100">3rd Test</th>
+                          <th className="px-4 py-2 text-center text-sm font-medium text-gray-700 bg-green-100">Exam</th>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Total</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Grade</th>
+                  <th className="px-4 py-2 text-center text-sm font-medium text-gray-700">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {selectedStudent.subject_results?.length > 0 ? (
+                  selectedStudent.subject_results.map((subject, index) => {
+                    const eduLevel = (selectedStudent as any).education_level || selectedStudent.student?.education_level;
+                    
+                    return (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                          {subject.subject?.name || 'N/A'}
+                          <div className="text-xs text-gray-500">{subject.subject?.code || ''}</div>
+                        </td>
+                        
+                        {/* Show data based on education level */}
+                        {(() => {
+                          if (eduLevel === 'NURSERY') {
+                            return (
+                              <td className="px-4 py-2 text-center text-sm text-gray-900">
+                                {subject.exam_score ?? 'N/A'}
+                              </td>
+                            );
+                          } else if (eduLevel === 'PRIMARY' || eduLevel === 'JUNIOR_SECONDARY') {
+                            return (
+                              <>
+                                <td className="px-4 py-2 text-center text-sm text-gray-900">
+                                  {subject.ca_total ?? subject.total_ca_score ?? 'N/A'}
+                                </td>
+                                <td className="px-4 py-2 text-center text-sm text-gray-900">
+                                  {subject.exam_score ?? 'N/A'}
+                                </td>
+                              </>
+                            );
+                          } else if (eduLevel === 'SENIOR_SECONDARY') {
+                            return (
+                              <>
+                                <td className="px-4 py-2 text-center text-sm font-bold text-blue-900 bg-blue-50">
+                                  {subject.first_test_score ?? 0}
+                                </td>
+                                <td className="px-4 py-2 text-center text-sm font-bold text-blue-900 bg-blue-50">
+                                  {subject.second_test_score ?? 0}
+                                </td>
+                                <td className="px-4 py-2 text-center text-sm font-bold text-blue-900 bg-blue-50">
+                                  {subject.third_test_score ?? 0}
+                                </td>
+                                <td className="px-4 py-2 text-center text-sm font-bold text-green-900 bg-green-50">
+                                  {subject.exam_score ?? 0}
+                                </td>
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
+                        
+                        <td className="px-4 py-2 text-center text-sm font-medium text-gray-900">
+                          {subject.total_score ?? 'N/A'}
+                        </td>
+                        <td className="px-4 py-2 text-center text-sm">
+                          <span className={getGradeColor(subject.grade)}>
+                            {subject.grade || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-center text-sm">
+                          {subject.is_passed ? (
+                            <span className="text-green-600 font-medium">Pass</span>
+                          ) : (
+                            <span className="text-red-600 font-medium">Fail</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                      No subject results available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
         {/* Edit Modal */}
         {showEditModal && editingResult && (

@@ -1,7 +1,8 @@
 # results/models.py
 import logging
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
+from django.core.cache import cache
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from subject.models import Subject
@@ -9,9 +10,11 @@ from academics.models import AcademicSession
 from django.utils import timezone
 from decimal import Decimal
 import uuid
+from datetime import timedelta
 
 from students.models import Student, CLASS_CHOICES, EDUCATION_LEVEL_CHOICES
 from classroom.models import Stream
+
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -488,37 +491,217 @@ class StudentResult(models.Model):
 
     def calculate_scores(self):
         """Calculate total score and percentage"""
-        self.total_score = self.ca_score + self.exam_score
+        ca = Decimal(self.ca_score or 0)
+        exam = Decimal(self.exam_score or 0)
+        self.total_score = ca + exam
 
-        # Calculate percentage based on grading system max score
-        if self.grading_system.max_score > 0:
-            self.percentage = (self.total_score / self.grading_system.max_score) * 100
-        else:
-            self.percentage = 0
+        # Safely get max_score from grading system
+        max_score = Decimal(getattr(self.grading_system, "max_score", 0) or 0)
+
+        # Calculate percentage if max_score > 0
+        self.percentage = (
+            (self.total_score / max_score * 100) if max_score > 0 else Decimal(0)
+        )
 
     def determine_grade(self):
         """Determine grade based on total score and grading system"""
-        grades = self.grading_system.grades.filter(
-            min_score__lte=self.total_score, max_score__gte=self.total_score
-        ).first()
 
-        if grades:
-            self.grade = grades.grade
-            self.grade_point = grades.grade_point
-            self.is_passed = grades.is_passing
-        else:
-            # Default to fail if no grade found
-            self.grade = "F"
-            self.grade_point = 0.0
-            self.is_passed = False
+        gs = self.grading_system
+        pct = float(self.percentage or 0)
+
+        if gs.grading_type == "PASS_FAIL":
+
+            try:
+                pass_mark = float(gs.pass_mark or 0)
+            except Exception:
+                pass_mark = 0.0
+            self.is_passed = pct >= pass_mark
+            self.grade = "PASS" if self.is_passed else "FAIL"
+            self.grade_point = None
+            return
+
+        grade_obj = (
+            gs.grades.filter(min_score__lte=pct, max_score__gte=pct)
+            .order_by("-min_score")
+            .first()
+        )
+        if grade_obj:
+            self.grade = grade_obj.grade
+            # if grade_point is present, use it; else None
+            self.grade_point = grade_obj.grade_point
+            self.is_passed = bool(grade_obj.is_passing)
+            return
+
+        # Fallback: direct score matching
+
+        if gs.grading_type == "POINTS":
+            # attempt to find an approximate grade by scaling total_score
+            try:
+                max_gp = gs.grades.aggregate(Max("grade_point"))["grade_point__max"]
+                max_gp = float(max_gp) if max_gp is not None else None
+            except Exception:
+                max_gp = None
+
+            if max_gp and float(gs.max_score or 0) > 0:
+                point_score = (float(self.total_score) / float(gs.max_score)) * max_gp
+                # find the grade with nearest grade_point where grade_point <= point_score (descending)
+                fallback_grade = (
+                    gs.grades.filter(grade_point__lte=point_score)
+                    .order_by("-grade_point")
+                    .first()
+                )
+                if fallback_grade:
+                    self.grade = fallback_grade.grade
+                    self.grade_point = fallback_grade.grade_point
+                    self.is_passed = bool(fallback_grade.is_passing)
+                    return
+        self.grade = "F"
+        self.grade_point = Decimal(0) if self.grade_point is None else self.grade_point
+        self.is_passed = False
+
+
+# ===================================
+# BASE TERM REPORT
+# ====================================
+
+
+class BaseTermReport(models.Model):
+    """
+    Abstract base for all term report models.
+    Contains ONLY workflow + permission logic.
+    """
+
+    def first_signatory_role(self):
+        student = getattr(self, "student", None)
+        if not student:
+            return None
+
+        if student.education_level in ["NURSERY", "PRIMARY"]:
+            return "CLASS_TEACHER"
+
+        return "SUBJECT_TEACHER"
+
+    def can_edit_teacher_remark(self, user):
+        import logging
+        from teacher.models import Teacher
+        from classroom.models import StudentEnrollment, ClassroomTeacherAssignment
+
+        logger = logging.getLogger(__name__)
+
+        # Check user role
+        if not hasattr(user, "role"):
+            logger.error(f"❌ User {user.username} has no 'role' attribute")
+            return False
+
+        if user.role != "TEACHER":
+            logger.info(f"❌ User {user.username} is not a teacher (role: {user.role})")
+            return False
+
+        try:
+            teacher = Teacher.objects.get(user=user)
+            student = self.student
+
+            # Get the student's classroom
+            student_enrollment = (
+                StudentEnrollment.objects.filter(student=student, is_active=True)
+                .select_related("classroom")
+                .first()
+            )
+
+            if not student_enrollment:
+                logger.warning(
+                    f"⚠️ No active enrollment found for student {student.full_name}"
+                )
+                return False
+
+            student_classroom = student_enrollment.classroom
+
+            # Determine the role based on education level
+            role = self.first_signatory_role()
+
+            logger.info(f"🔍 Checking permission for {teacher.user.get_full_name()}")
+            logger.info(f"📚 Education level: {student.education_level}")
+            logger.info(f"👤 Required role: {role}")
+            logger.info(f"🏫 Student classroom: {student_classroom.name}")
+
+            # For NURSERY and PRIMARY: Must be the class teacher
+            if role == "CLASS_TEACHER":
+                is_class_teacher = student_classroom.class_teacher == teacher
+                logger.info(f"✓ Is class teacher? {is_class_teacher}")
+                return is_class_teacher
+
+            # For JUNIOR_SECONDARY and SENIOR_SECONDARY: Must teach ANY subject to this class
+            if role == "SUBJECT_TEACHER":
+                # Check if teacher teaches ANY subject to this classroom
+                teaches_this_classroom = ClassroomTeacherAssignment.objects.filter(
+                    teacher=teacher, classroom=student_classroom
+                ).exists()
+
+                logger.info(f"✓ Teaches this classroom? {teaches_this_classroom}")
+
+                if teaches_this_classroom:
+                    # Get the subjects this teacher teaches in this classroom
+                    assignments = ClassroomTeacherAssignment.objects.filter(
+                        teacher=teacher, classroom=student_classroom
+                    ).select_related("subject")
+
+                    subjects = [a.subject.name for a in assignments]
+                    logger.info(f"✓ Teaches subjects: {', '.join(subjects)}")
+
+                return teaches_this_classroom
+
+            return False
+
+        except Teacher.DoesNotExist:
+            logger.error(f"❌ Teacher object not found for user {user.username}")
+            return False
+        except Exception as e:
+            logger.error(
+                f"❌ Error checking teacher remark permission: {e}", exc_info=True
+            )
+            import traceback
+
+            logger.error(traceback.format_exc())
+            return False
+
+    def can_edit_head_teacher_remark(self, user):
+        return hasattr(user, "role") and user.role in [
+            "HEAD_TEACHER",
+            "PROPRIETRESS",
+            "PRINCIPAL",
+            "admin",
+            "superadmin",
+        ]
+
+    def submit_by_teacher(self):
+        if self.status == "DRAFT":
+            self.status = "SUBMITTED"
+            self.save(update_fields=["status"])
+
+    def approve_by_proprietress(self, user):
+        if self.status == "SUBMITTED":
+            self.status = "APPROVED"
+
+            # these fields already exist on concrete models
+            self.published_by = user
+            self.published_date = timezone.now()
+
+            self.save()
+
+    def publish(self):
+        if self.status == "APPROVED":
+            self.status = "PUBLISHED"
+            self.is_published = True
+            self.save(update_fields=["status", "is_published"])
+
+    class Meta:
+        abstract = True
 
 
 # ============================================
 # SENIOR SECONDARY MODELS
 # ============================================
-
-
-class SeniorSecondaryTermReport(models.Model):
+class SeniorSecondaryTermReport(BaseTermReport, models.Model):
     """Consolidated senior secondary term report"""
 
     RESULT_STATUS = [
@@ -588,6 +771,20 @@ class SeniorSecondaryTermReport(models.Model):
         blank=True,
         related_name="published_senior_secondary_term_reports",
     )
+
+    class_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Class Teacher Signature URL"
+    )
+    class_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Class Teacher Signature Date"
+    )
+
+    head_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Head Teacher Signature URL"
+    )
+    head_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Head Teacher Signature Date"
+    )
     published_date = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -607,39 +804,52 @@ class SeniorSecondaryTermReport(models.Model):
         return f"{self.student.full_name} - {self.exam_session.name} Senior Secondary Term Report"
 
     def calculate_metrics(self):
-        """Calculate consolidated metrics from individual subject results"""
-        from django.db.models import Sum, Count, Avg
-
-        subject_results = SeniorSecondaryResult.objects.filter(
-            student=self.student,
-            exam_session=self.exam_session,
-            status__in=["APPROVED", "PUBLISHED"],
+        """
+        goodIMPROVED: Efficient metric calculation with single query
+        """
+        subject_results = self.subject_results.filter(
+            status__in=["APPROVED", "PUBLISHED"]
+        ).aggregate(
+            total=models.Sum("total_score"),
+            count=models.Count("id"),
+            avg_pct=models.Avg("percentage"),
         )
 
-        if subject_results.exists():
-            totals = subject_results.aggregate(
-                total_score_sum=Sum("total_score"),
-                subject_count=Count("id"),
-                avg_percentage=Avg("percentage"),
+        if subject_results["count"]:
+            self.total_score = subject_results["total"] or 0
+            self.average_score = subject_results["avg_pct"] or 0
+            self.overall_grade = self._get_grade_for_percentage(self.average_score)
+
+        self.save(update_fields=["total_score", "average_score", "overall_grade"])
+
+    @classmethod
+    def bulk_recalculate_positions(cls, exam_session, student_class, education_level):
+        """
+        goodNEW: Bulk position recalculation
+        """
+        with transaction.atomic():
+            reports = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-average_score")
             )
 
-            self.total_score = totals["total_score_sum"] or 0
-            self.average_score = totals["avg_percentage"] or 0
+            total_students = reports.count()
+            updates = []
 
-            if hasattr(subject_results.first(), "grading_system"):
-                grading_system = subject_results.first().grading_system
-                grade_obj = grading_system.grades.filter(
-                    min_score__lte=self.average_score, max_score__gte=self.average_score
-                ).first()
+            for position, report in enumerate(reports, start=1):
+                report.class_position = position
+                report.total_students = total_students
+                updates.append(report)
 
-                if grade_obj:
-                    self.overall_grade = grade_obj.grade
-                else:
-                    self.overall_grade = self._get_default_grade(self.average_score)
-            else:
-                self.overall_grade = self._get_default_grade(self.average_score)
-
-        self.save()
+            cls.objects.bulk_update(
+                updates, ["class_position", "total_students"], batch_size=50
+            )
 
     def _get_default_grade(self, percentage):
         """Fallback grading system"""
@@ -697,6 +907,28 @@ class SeniorSecondaryTermReport(models.Model):
             self.status = "SUBMITTED"
 
         self.save()
+
+    def _get_grade_for_percentage(self, percentage):
+        """
+        goodNEW: Get grade for a given percentage
+        Uses grading system if available, otherwise fallback to default
+        """
+        try:
+            # Try to get grading system from first subject result
+            first_result = self.subject_results.first()
+            if first_result and hasattr(first_result, "grading_system"):
+                grading_system = first_result.grading_system
+                grade_obj = grading_system.grades.filter(
+                    min_score__lte=percentage, max_score__gte=percentage
+                ).first()
+
+                if grade_obj:
+                    return grade_obj.grade
+        except Exception as e:
+            logger.error(f"Error getting grade from grading system: {e}")
+
+        # Fallback to default grading
+        return self._get_default_grade(percentage)
 
 
 class SeniorSecondaryResult(models.Model):
@@ -787,25 +1019,27 @@ class SeniorSecondaryResult(models.Model):
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
+        db_index=True,
     )
 
+    # Grade information
     grade = models.CharField(max_length=5, blank=True)
     grade_point = models.DecimalField(
         max_digits=3, decimal_places=2, null=True, blank=True
     )
-    is_passed = models.BooleanField(default=False)
+    is_passed = models.BooleanField(default=False, db_index=True)
 
     class_average = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Class Average"
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0
     )
     highest_in_class = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Highest Score in Class"
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0
     )
     lowest_in_class = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Lowest Score in Class"
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0
     )
     subject_position = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Position in Subject"
+        null=True, blank=True, db_index=True, verbose_name="Position in Subject"
     )
 
     teacher_remark = models.TextField(blank=True, verbose_name="Teacher's Remark")
@@ -856,6 +1090,8 @@ class SeniorSecondaryResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    _skip_signals = False
+
     class Meta:
         db_table = "results_senior_secondary_result"
         unique_together = ["student", "subject", "exam_session"]
@@ -865,17 +1101,35 @@ class SeniorSecondaryResult(models.Model):
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
             models.Index(fields=["term_report"]),
+            models.Index(fields=["exam_session", "subject", "status", "-total_score"]),
+            models.Index(fields=["student", "status", "-percentage"]),
+            models.Index(fields=["grade"]),  # goodADD THIS
+            models.Index(fields=["is_passed"]),  # goodADD THIS
+            models.Index(fields=["subject_position"]),  # goodADD THI
         ]
 
     def __str__(self):
         return f"{self.student.full_name} - {self.subject.name} ({self.total_score})"
 
     def save(self, *args, **kwargs):
+        """
+        goodIMPROVED: Use skip_recalculation flag to prevent recursive saves
+        """
+        skip_recalculation = kwargs.pop("skip_recalculation", False)
+
+        # Always calculate scores before saving
         self.calculate_scores()
-        self.calculate_class_statistics()
         self.determine_grade()
+
+        # Only calculate class statistics if not skipping
+        if not skip_recalculation:
+            self.calculate_class_statistics()
+
         super().save(*args, **kwargs)
-        self.update_term_report()
+
+        # Update term report ONLY if not skipping and status is appropriate
+        if not skip_recalculation and self.status in ["APPROVED", "PUBLISHED"]:
+            self.update_term_report()
 
     def calculate_scores(self):
         """Calculate total CA score, total score, and percentage"""
@@ -911,93 +1165,146 @@ class SeniorSecondaryResult(models.Model):
             self.is_passed = False
 
     def calculate_class_statistics(self):
-        """Calculate class statistics for this subject"""
-        from django.db.models import Avg, Max, Min
+        """
+        goodIMPROVED: Calculate ONLY this student's position without recalculating others
+        Cache class statistics to avoid repeated queries
+        """
+        cache_key = f"class_stats_{self.subject.id}_{self.exam_session.id}_{self.student.student_class}"
+        cached_stats = cache.get(cache_key)
 
-        class_results = self.__class__.objects.filter(
+        if cached_stats:
+            self.class_average = cached_stats["avg"]
+            self.highest_in_class = cached_stats["highest"]
+            self.lowest_in_class = cached_stats["lowest"]
+        else:
+            # Calculate and cache statistics
+            stats = self.__class__.objects.filter(
+                subject=self.subject,
+                exam_session=self.exam_session,
+                student__student_class=self.student.student_class,
+                status__in=["APPROVED", "PUBLISHED"],
+            ).aggregate(
+                avg=Avg("total_score"),
+                highest=Max("total_score"),
+                lowest=Min("total_score"),
+            )
+
+            self.class_average = stats["avg"] or 0
+            self.highest_in_class = stats["highest"] or 0
+            self.lowest_in_class = stats["lowest"] or 0
+
+            # Cache for 5 minutes
+            cache.set(cache_key, stats, 300)
+
+        # Calculate position
+        self._calculate_position()
+
+    def _calculate_position(self):
+        """Calculate subject position efficiently"""
+        higher_count = self.__class__.objects.filter(
             subject=self.subject,
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             status__in=["APPROVED", "PUBLISHED"],
-        ).exclude(id=self.id)
+            total_score__gt=self.total_score,
+        ).count()
 
-        if class_results.exists():
-            score_field = (
-                "total_percentage"
-                if hasattr(self, "total_percentage")
-                else "total_score"
-            )
-
-            self.class_average = (
-                class_results.aggregate(avg=Avg(score_field))["avg"] or 0
-            )
-            self.highest_in_class = (
-                class_results.aggregate(max=Max(score_field))["max"] or 0
-            )
-            self.lowest_in_class = (
-                class_results.aggregate(min=Min(score_field))["min"] or 0
-            )
-
-            all_scores = list(class_results.values_list(score_field, flat=True)) + [
-                getattr(self, score_field)
-            ]
-            all_scores.sort(reverse=True)
-            self.subject_position = all_scores.index(getattr(self, score_field)) + 1
+        self.subject_position = higher_count + 1
 
     def update_term_report(self):
-        """Update or create the consolidated term report"""
-        # Always update term report, even for DRAFT status
-        # Get or create the term report
-        term_report, created = SeniorSecondaryTermReport.objects.get_or_create(
-            student=self.student,
-            exam_session=self.exam_session,
-            defaults={"status": "DRAFT"},
-        )
-
-        # Link this result to the term report (avoid recursive calls)
-        if not self.term_report:
-            self.__class__.objects.filter(id=self.id).update(term_report=term_report.id)
-
-        # Recalculate term report metrics
-        term_report.calculate_metrics()
-        term_report.calculate_class_position()
-
-        # Auto-update term report status based on individual results
-        term_report.sync_status_with_subjects()
-
-    @property
-    def test1_score(self):
-        return self.first_test_score
-
-    @property
-    def test2_score(self):
-        return self.second_test_score
-
-    @property
-    def test3_score(self):
-        return self.third_test_score
-
-    @property
-    def total_obtainable(self):
-        return 100
-
-    @property
-    def position(self):
-        if self.subject_position:
-            suffix = (
-                "st"
-                if self.subject_position == 1
-                else (
-                    "nd"
-                    if self.subject_position == 2
-                    else "rd" if self.subject_position == 3 else "th"
-                )
+        """
+        goodIMPROVED: Update term report without triggering cascade saves
+        """
+        with transaction.atomic():
+            (
+                term_report,
+                created,
+            ) = SeniorSecondaryTermReport.objects.select_for_update().get_or_create(
+                student=self.student,
+                exam_session=self.exam_session,
+                defaults={"status": "DRAFT"},
             )
-            return f"{self.subject_position}{suffix}"
-        return ""
+
+            # Link this result to the term report using update (no save signal)
+            if not self.term_report:
+                self.__class__.objects.filter(id=self.id).update(
+                    term_report=term_report
+                )
+                self.term_report = term_report
+
+            # Recalculate term report metrics
+            term_report.calculate_metrics()
+            term_report.sync_status_with_subjects()
+
+    @classmethod
+    def bulk_recalculate_class(
+        cls, exam_session, subject, student_class, education_level
+    ):
+        """
+        goodNEW: Efficient bulk recalculation method
+        Use this for batch operations instead of individual saves
+        """
+        with transaction.atomic():
+            # Get all results
+            results = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    subject=subject,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-total_score")
+            )
+
+            if not results.exists():
+                return
+
+            # Calculate class statistics once
+            stats = results.aggregate(
+                avg=Avg("total_score"),
+                highest=Max("total_score"),
+                lowest=Min("total_score"),
+            )
+
+            # Update all results in bulk
+            updates = []
+            for position, result in enumerate(results, start=1):
+                result.subject_position = position
+                result.class_average = stats["avg"] or 0
+                result.highest_in_class = stats["highest"] or 0
+                result.lowest_in_class = stats["lowest"] or 0
+                updates.append(result)
+
+            # Bulk update without triggering signals
+            cls.objects.bulk_update(
+                updates,
+                [
+                    "subject_position",
+                    "class_average",
+                    "highest_in_class",
+                    "lowest_in_class",
+                ],
+                batch_size=50,
+            )
+
+            # Clear cache
+            cache_key = f"class_stats_{subject.id}_{exam_session.id}_{student_class}"
+            cache.delete(cache_key)
+
+    @property
+    def position_formatted(self):
+        """Format position with ordinal suffix"""
+        if not self.subject_position:
+            return ""
+
+        suffix_map = {1: "st", 2: "nd", 3: "rd"}
+        suffix = suffix_map.get(self.subject_position, "th")
+        return f"{self.subject_position}{suffix}"
 
 
-class SeniorSecondarySessionReport(models.Model):
+class SeniorSecondarySessionReport(BaseTermReport, models.Model):
     """Consolidated senior secondary session report with TAA"""
 
     RESULT_STATUS = [
@@ -1063,6 +1370,19 @@ class SeniorSecondarySessionReport(models.Model):
     teacher_remark = models.TextField(blank=True, verbose_name="Form Master's Remark")
     head_teacher_remark = models.TextField(
         blank=True, verbose_name="Principal's Remark"
+    )
+    class_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Class Teacher Signature URL"
+    )
+    class_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Class Teacher Signature Date"
+    )
+
+    head_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Head Teacher Signature URL"
+    )
+    head_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Head Teacher Signature Date"
     )
 
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
@@ -1396,7 +1716,7 @@ class SeniorSecondarySessionResult(models.Model):
 # ============================================
 
 
-class JuniorSecondaryTermReport(models.Model):
+class JuniorSecondaryTermReport(BaseTermReport, models.Model):
     """Consolidated junior secondary term report"""
 
     RESULT_STATUS = [
@@ -1460,6 +1780,19 @@ class JuniorSecondaryTermReport(models.Model):
         related_name="published_junior_secondary_reports",
     )
     published_date = models.DateTimeField(null=True, blank=True)
+    class_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Class Teacher Signature URL"
+    )
+    class_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Class Teacher Signature Date"
+    )
+
+    head_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Head Teacher Signature URL"
+    )
+    head_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Head Teacher Signature Date"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1569,6 +1902,35 @@ class JuniorSecondaryTermReport(models.Model):
 
         self.save()
 
+    @classmethod
+    def bulk_recalculate_positions(cls, exam_session, student_class, education_level):
+        """Bulk position recalculation"""
+        from django.db import transaction
+
+        with transaction.atomic():
+            reports = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-average_score")
+            )
+
+            total_students = reports.count()
+            updates = []
+
+            for position, report in enumerate(reports, start=1):
+                report.class_position = position
+                report.total_students = total_students
+                updates.append(report)
+
+            cls.objects.bulk_update(
+                updates, ["class_position", "total_students"], batch_size=50
+            )
+
 
 class JuniorSecondaryResult(models.Model):
     """Junior Secondary specific result model with detailed CA breakdown"""
@@ -1602,7 +1964,7 @@ class JuniorSecondaryResult(models.Model):
         blank=True,
         help_text="Link to consolidated term report",
     )
-
+    # CA Components
     continuous_assessment_score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -1681,25 +2043,26 @@ class JuniorSecondaryResult(models.Model):
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Total (%)",
+        db_index=True,
     )
-
-    grade = models.CharField(max_length=5, blank=True)
+    # Grade information
+    grade = models.CharField(max_length=5, blank=True, db_index=True)  # goodADD INDEX
     grade_point = models.DecimalField(
         max_digits=3, decimal_places=2, null=True, blank=True
     )
-    is_passed = models.BooleanField(default=False)
+    is_passed = models.BooleanField(default=False, db_index=True)  # goodADD INDEX
 
     class_average = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Class Average"
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0
     )
     highest_in_class = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Highest Score in Class"
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0
     )
     lowest_in_class = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Lowest Score in Class"
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0
     )
     subject_position = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Subject Position"
+        null=True, blank=True, verbose_name="Subject Position", db_index=True
     )
 
     previous_term_score = models.DecimalField(
@@ -1757,6 +2120,8 @@ class JuniorSecondaryResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    _skip_signals = False
+
     class Meta:
         db_table = "results_junior_secondary_result"
         unique_together = ["student", "subject", "exam_session"]
@@ -1766,17 +2131,35 @@ class JuniorSecondaryResult(models.Model):
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
             models.Index(fields=["term_report"]),
+            models.Index(
+                fields=["exam_session", "subject", "status", "-total_percentage"]
+            ),
+            models.Index(fields=["student", "status", "-total_percentage"]),
+            models.Index(fields=["grade"]),  # goodADD THIS
+            models.Index(fields=["is_passed"]),  # goodADD THIS
+            models.Index(fields=["subject_position"]),  # goodADD THIS
         ]
 
     def __str__(self):
         return f"{self.student.full_name} - {self.subject.name} ({self.total_score})"
 
     def save(self, *args, **kwargs):
+        """goodIMPROVED: Use skip_recalculation flag"""
+        skip_recalculation = kwargs.pop("skip_recalculation", False)
+
+        # Always calculate scores
         self.calculate_scores()
-        self.calculate_class_statistics()
         self.determine_grade()
+
+        # Only calculate class statistics if not skipping
+        if not skip_recalculation:
+            self.calculate_class_statistics()
+
         super().save(*args, **kwargs)
-        self.update_term_report()
+
+        # Update term report ONLY if not skipping and status is appropriate
+        if not skip_recalculation and self.status in ["APPROVED", "PUBLISHED"]:
+            self.update_term_report()
 
     def calculate_scores(self):
         """Calculate CA total, total score, and percentages"""
@@ -1788,7 +2171,6 @@ class JuniorSecondaryResult(models.Model):
             + self.appearance_score
             + self.note_copying_score
         )
-
         self.total_score = self.ca_total + self.exam_score
 
         self.ca_percentage = (self.ca_total / 35) * 100 if self.ca_total > 0 else 0
@@ -1815,64 +2197,124 @@ class JuniorSecondaryResult(models.Model):
                 self.grade = "N/A"
                 self.grade_point = None
                 self.is_passed = False
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error determining grade: {e}")
             self.grade = "N/A"
             self.grade_point = None
             self.is_passed = False
 
     def calculate_class_statistics(self):
-        """Calculate class statistics for this subject"""
-        from django.db.models import Avg, Max, Min
+        """goodIMPROVED: Cached class statistics"""
+        cache_key = f"class_stats_junior_{self.subject.id}_{self.exam_session.id}_{self.student.student_class}"
+        cached_stats = cache.get(cache_key)
 
-        class_results = self.__class__.objects.filter(
+        if cached_stats:
+            self.class_average = cached_stats["avg"]
+            self.highest_in_class = cached_stats["highest"]
+            self.lowest_in_class = cached_stats["lowest"]
+        else:
+            stats = self.__class__.objects.filter(
+                subject=self.subject,
+                exam_session=self.exam_session,
+                student__student_class=self.student.student_class,
+                status__in=["APPROVED", "PUBLISHED"],
+            ).aggregate(
+                avg=Avg("total_percentage"),
+                highest=Max("total_percentage"),
+                lowest=Min("total_percentage"),
+            )
+
+            self.class_average = stats["avg"] or 0
+            self.highest_in_class = stats["highest"] or 0
+            self.lowest_in_class = stats["lowest"] or 0
+
+            cache.set(cache_key, stats, 300)  # Cache 5 minutes
+
+        self._calculate_position()
+
+    def _calculate_position(self):
+        """Calculate subject position efficiently"""
+        higher_count = self.__class__.objects.filter(
             subject=self.subject,
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             status__in=["APPROVED", "PUBLISHED"],
-        ).exclude(id=self.id)
+            total_percentage__gt=self.total_percentage,
+        ).count()
 
-        if class_results.exists():
-            score_field = (
-                "total_percentage"
-                if hasattr(self, "total_percentage")
-                else "total_score"
-            )
-
-            self.class_average = (
-                class_results.aggregate(avg=Avg(score_field))["avg"] or 0
-            )
-            self.highest_in_class = (
-                class_results.aggregate(max=Max(score_field))["max"] or 0
-            )
-            self.lowest_in_class = (
-                class_results.aggregate(min=Min(score_field))["min"] or 0
-            )
-
-            all_scores = list(class_results.values_list(score_field, flat=True)) + [
-                getattr(self, score_field)
-            ]
-            all_scores.sort(reverse=True)
-            self.subject_position = all_scores.index(getattr(self, score_field)) + 1
+        self.subject_position = higher_count + 1
 
     def update_term_report(self):
-        """Update or create the consolidated term report"""
-        # Get or create the term report
-        term_report, created = JuniorSecondaryTermReport.objects.get_or_create(
-            student=self.student,
-            exam_session=self.exam_session,
-            defaults={"status": "DRAFT"},
-        )
+        """goodIMPROVED: Update term report without cascade"""
+        with transaction.atomic():
+            (
+                term_report,
+                created,
+            ) = JuniorSecondaryTermReport.objects.select_for_update().get_or_create(
+                student=self.student,
+                exam_session=self.exam_session,
+                defaults={"status": "DRAFT"},
+            )
 
-        # Link this result to the term report (avoid recursive calls)
-        if not self.term_report:
-            self.__class__.objects.filter(id=self.id).update(term_report=term_report.id)
+            if not self.term_report:
+                self.__class__.objects.filter(id=self.id).update(
+                    term_report=term_report
+                )
+                self.term_report = term_report
 
-        # Recalculate term report metrics
-        term_report.calculate_metrics()
-        term_report.calculate_class_position()
+            term_report.calculate_metrics()
+            term_report.sync_status_with_subjects()
 
-        # Auto-update term report status based on individual results
-        term_report.sync_status_with_subjects()
+    @classmethod
+    def bulk_recalculate_class(
+        cls, exam_session, subject, student_class, education_level
+    ):
+        """goodNEW: Efficient bulk recalculation"""
+        with transaction.atomic():
+            results = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    subject=subject,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-total_percentage")
+            )
+
+            if not results.exists():
+                return
+
+            stats = results.aggregate(
+                avg=Avg("total_percentage"),
+                highest=Max("total_percentage"),
+                lowest=Min("total_percentage"),
+            )
+
+            updates = []
+            for position, result in enumerate(results, start=1):
+                result.subject_position = position
+                result.class_average = stats["avg"] or 0
+                result.highest_in_class = stats["highest"] or 0
+                result.lowest_in_class = stats["lowest"] or 0
+                updates.append(result)
+
+            cls.objects.bulk_update(
+                updates,
+                [
+                    "subject_position",
+                    "class_average",
+                    "highest_in_class",
+                    "lowest_in_class",
+                ],
+                batch_size=50,
+            )
+
+            cache_key = (
+                f"class_stats_junior_{subject.id}_{exam_session.id}_{student_class}"
+            )
+            cache.delete(cache_key)
 
     @property
     def exam_marks(self):
@@ -1887,19 +2329,13 @@ class JuniorSecondaryResult(models.Model):
         return 100
 
     @property
-    def position(self):
-        if self.subject_position:
-            suffix = (
-                "st"
-                if self.subject_position == 1
-                else (
-                    "nd"
-                    if self.subject_position == 2
-                    else "rd" if self.subject_position == 3 else "th"
-                )
-            )
-            return f"{self.subject_position}{suffix}"
-        return ""
+    def position_formatted(self):
+        """Format position with ordinal suffix"""
+        if not self.subject_position:
+            return ""
+        suffix_map = {1: "st", 2: "nd", 3: "rd"}
+        suffix = suffix_map.get(self.subject_position, "th")
+        return f"{self.subject_position}{suffix}"
 
 
 # ============================================
@@ -1907,7 +2343,7 @@ class JuniorSecondaryResult(models.Model):
 # ============================================
 
 
-class PrimaryTermReport(models.Model):
+class PrimaryTermReport(BaseTermReport, models.Model):
     """Consolidated primary term report"""
 
     RESULT_STATUS = [
@@ -1956,6 +2392,19 @@ class PrimaryTermReport(models.Model):
 
     class_teacher_remark = models.TextField(blank=True)
     head_teacher_remark = models.TextField(blank=True)
+    class_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Class Teacher Signature URL"
+    )
+    class_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Class Teacher Signature Date"
+    )
+
+    head_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Head Teacher Signature URL"
+    )
+    head_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Head Teacher Signature Date"
+    )
 
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
     is_published = models.BooleanField(default=False)
@@ -2077,6 +2526,33 @@ class PrimaryTermReport(models.Model):
 
         self.save()
 
+    @classmethod
+    def bulk_recalculate_positions(cls, exam_session, student_class, education_level):
+        """goodNEW: Bulk position recalculation"""
+        with transaction.atomic():
+            reports = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-average_score")
+            )
+
+            total_students = reports.count()
+            updates = []
+
+            for position, report in enumerate(reports, start=1):
+                report.class_position = position
+                report.total_students = total_students
+                updates.append(report)
+
+            cls.objects.bulk_update(
+                updates, ["class_position", "total_students"], batch_size=50
+            )
+
 
 class PrimaryResult(models.Model):
     """Primary School specific result model with detailed CA breakdown"""
@@ -2189,25 +2665,28 @@ class PrimaryResult(models.Model):
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name="Total (%)",
+        db_index=True,
     )
 
-    grade = models.CharField(max_length=5, blank=True)
+    grade = models.CharField(max_length=5, blank=True, db_index=True)  # goodADD INDEX
     grade_point = models.DecimalField(
         max_digits=3, decimal_places=2, null=True, blank=True
     )
-    is_passed = models.BooleanField(default=False)
+    is_passed = models.BooleanField(default=False, db_index=True)  # goodADD INDEX
 
+    # Class statistics
     class_average = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Class Average"
+        max_digits=5, decimal_places=2, default=0, null=True, blank=True
     )
     highest_in_class = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Highest Score in Class"
+        max_digits=5, decimal_places=2, default=0, null=True, blank=True
     )
     lowest_in_class = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0, verbose_name="Lowest Score in Class"
+        max_digits=5, decimal_places=2, default=0, null=True, blank=True
     )
+
     subject_position = models.PositiveIntegerField(
-        null=True, blank=True, verbose_name="Subject Position"
+        null=True, blank=True, verbose_name="Subject Position", db_index=True
     )
 
     previous_term_score = models.DecimalField(
@@ -2265,6 +2744,8 @@ class PrimaryResult(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    _skip_signals = False
+
     class Meta:
         db_table = "results_primary_result"
         unique_together = ["student", "subject", "exam_session"]
@@ -2274,17 +2755,32 @@ class PrimaryResult(models.Model):
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
             models.Index(fields=["term_report"]),
+            models.Index(
+                fields=["exam_session", "subject", "status", "-total_percentage"]
+            ),
+            models.Index(fields=["student", "status", "-total_percentage"]),
+            models.Index(fields=["grade"]),  # goodADD THIS
+            models.Index(fields=["is_passed"]),  # goodADD THIS
+            models.Index(fields=["subject_position"]),
         ]
 
     def __str__(self):
         return f"{self.student.full_name} - {self.subject.name} ({self.total_score})"
 
     def save(self, *args, **kwargs):
+        """goodIMPROVED: Same pattern as Junior"""
+        skip_recalculation = kwargs.pop("skip_recalculation", False)
+
         self.calculate_scores()
-        self.calculate_class_statistics()
         self.determine_grade()
+
+        if not skip_recalculation:
+            self.calculate_class_statistics()
+
         super().save(*args, **kwargs)
-        self.update_term_report()
+
+        if not skip_recalculation and self.status in ["APPROVED", "PUBLISHED"]:
+            self.update_term_report()
 
     def calculate_scores(self):
         """Calculate CA total, total score, and percentages"""
@@ -2292,11 +2788,10 @@ class PrimaryResult(models.Model):
             self.continuous_assessment_score
             + self.take_home_test_score
             + self.practical_score
-            + self.appearance_score
             + self.project_score
+            + self.appearance_score
             + self.note_copying_score
         )
-
         self.total_score = self.ca_total + self.exam_score
 
         self.ca_percentage = (self.ca_total / 35) * 100 if self.ca_total > 0 else 0
@@ -2323,59 +2818,119 @@ class PrimaryResult(models.Model):
                 self.grade = "N/A"
                 self.grade_point = None
                 self.is_passed = False
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error determining grade: {e}")
             self.grade = "N/A"
             self.grade_point = None
             self.is_passed = False
 
     def calculate_class_statistics(self):
-        """Calculate class statistics for this subject"""
-        from django.db.models import Avg, Max, Min
+        cache_key = f"class_stats_primary_{self.subject.id}_{self.exam_session.id}_{self.student.student_class}"
+        cached_stats = cache.get(cache_key)
 
-        class_results = self.__class__.objects.filter(
+        if cached_stats:
+            self.class_average = cached_stats["avg"]
+            self.highest_in_class = cached_stats["highest"]
+            self.lowest_in_class = cached_stats["lowest"]
+        else:
+            stats = self.__class__.objects.filter(
+                subject=self.subject,
+                exam_session=self.exam_session,
+                student__student_class=self.student.student_class,
+                status__in=["APPROVED", "PUBLISHED"],
+            ).aggregate(
+                avg=Avg("total_percentage"),
+                highest=Max("total_percentage"),
+                lowest=Min("total_percentage"),
+            )
+
+            self.class_average = stats["avg"] or 0
+            self.highest_in_class = stats["highest"] or 0
+            self.lowest_in_class = stats["lowest"] or 0
+
+            cache.set(cache_key, stats, 300)
+
+        self._calculate_position()
+
+    def _calculate_position(self):
+        higher_count = self.__class__.objects.filter(
             subject=self.subject,
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             status__in=["APPROVED", "PUBLISHED"],
-        ).exclude(id=self.id)
-
-        if class_results.exists():
-            score_field = (
-                "total_percentage"
-                if hasattr(self, "total_percentage")
-                else "total_score"
-            )
-
-            self.class_average = (
-                class_results.aggregate(avg=Avg(score_field))["avg"] or 0
-            )
-            self.highest_in_class = (
-                class_results.aggregate(max=Max(score_field))["max"] or 0
-            )
-            self.lowest_in_class = (
-                class_results.aggregate(min=Min(score_field))["min"] or 0
-            )
-
-            all_scores = list(class_results.values_list(score_field, flat=True)) + [
-                getattr(self, score_field)
-            ]
-            all_scores.sort(reverse=True)
-            self.subject_position = all_scores.index(getattr(self, score_field)) + 1
+            total_percentage__gt=self.total_percentage,
+        ).count()
+        self.subject_position = higher_count + 1
 
     def update_term_report(self):
-        """Update or create the consolidated term report"""
-        term_report, created = PrimaryTermReport.objects.get_or_create(
-            student=self.student,
-            exam_session=self.exam_session,
-            defaults={"status": "DRAFT"},
-        )
+        with transaction.atomic():
+            (
+                term_report,
+                created,
+            ) = PrimaryTermReport.objects.select_for_update().get_or_create(
+                student=self.student,
+                exam_session=self.exam_session,
+                defaults={"status": "DRAFT"},
+            )
 
-        if not self.term_report:
-            self.__class__.objects.filter(id=self.id).update(term_report=term_report.id)
+            if not self.term_report:
+                self.__class__.objects.filter(id=self.id).update(
+                    term_report=term_report
+                )
+                self.term_report = term_report
 
-        term_report.calculate_metrics()
-        term_report.calculate_class_position()
-        term_report.sync_status_with_subjects()
+            term_report.calculate_metrics()
+            term_report.sync_status_with_subjects()
+
+    @classmethod
+    def bulk_recalculate_class(
+        cls, exam_session, subject, student_class, education_level
+    ):
+        with transaction.atomic():
+            results = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    subject=subject,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-total_percentage")
+            )
+
+            if not results.exists():
+                return
+
+            stats = results.aggregate(
+                avg=Avg("total_percentage"),
+                highest=Max("total_percentage"),
+                lowest=Min("total_percentage"),
+            )
+
+            updates = []
+            for position, result in enumerate(results, start=1):
+                result.subject_position = position
+                result.class_average = stats["avg"] or 0
+                result.highest_in_class = stats["highest"] or 0
+                result.lowest_in_class = stats["lowest"] or 0
+                updates.append(result)
+
+            cls.objects.bulk_update(
+                updates,
+                [
+                    "subject_position",
+                    "class_average",
+                    "highest_in_class",
+                    "lowest_in_class",
+                ],
+                batch_size=50,
+            )
+
+            cache_key = (
+                f"class_stats_primary_{subject.id}_{exam_session.id}_{student_class}"
+            )
+            cache.delete(cache_key)
 
     @property
     def exam_marks(self):
@@ -2390,19 +2945,13 @@ class PrimaryResult(models.Model):
         return 100
 
     @property
-    def position(self):
-        if self.subject_position:
-            suffix = (
-                "st"
-                if self.subject_position == 1
-                else (
-                    "nd"
-                    if self.subject_position == 2
-                    else "rd" if self.subject_position == 3 else "th"
-                )
-            )
-            return f"{self.subject_position}{suffix}"
-        return ""
+    def position_formatted(self):
+        """Format position with ordinal suffix"""
+        if not self.subject_position:
+            return ""
+        suffix_map = {1: "st", 2: "nd", 3: "rd"}
+        suffix = suffix_map.get(self.subject_position, "th")
+        return f"{self.subject_position}{suffix}"
 
 
 # ============================================
@@ -2410,7 +2959,7 @@ class PrimaryResult(models.Model):
 # ============================================
 
 
-class NurseryTermReport(models.Model):
+class NurseryTermReport(BaseTermReport, models.Model):
     """Consolidated nursery term report"""
 
     RESULT_STATUS = [
@@ -2526,6 +3075,20 @@ class NurseryTermReport(models.Model):
     class_teacher_remark = models.TextField(blank=True)
     head_teacher_remark = models.TextField(blank=True)
 
+    class_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Class Teacher Signature URL"
+    )
+    class_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Class Teacher Signature Date"
+    )
+
+    head_teacher_signature = models.URLField(
+        blank=True, null=True, verbose_name="Head Teacher Signature URL"
+    )
+    head_teacher_signed_at = models.DateTimeField(
+        blank=True, null=True, verbose_name="Head Teacher Signature Date"
+    )
+
     status = models.CharField(max_length=20, choices=RESULT_STATUS, default="DRAFT")
     is_published = models.BooleanField(default=False)
 
@@ -2541,18 +3104,107 @@ class NurseryTermReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    _skip_signals = False
+
     class Meta:
         db_table = "results_nursery_term_report"
-        unique_together = ["student", "exam_session"]
+        unique_together = ["student", "exam_session"]  # goodRemoved 'subject'
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["student", "exam_session"]),
             models.Index(fields=["status"]),
-            models.Index(fields=["is_published"]),
+            models.Index(fields=["exam_session", "status"]),
+            models.Index(fields=["student", "status"]),
+            models.Index(fields=["-overall_percentage"]),
         ]
 
     def __str__(self):
         return f"{self.student.full_name} - {self.exam_session.name} Report"
+
+    def save(self, *args, **kwargs):
+        """Save and calculate metrics"""
+        skip_recalculation = kwargs.pop("skip_recalculation", False)
+
+        if not skip_recalculation:
+            self.calculate_metrics()
+            self.calculate_class_position()
+
+        super().save(*args, **kwargs)
+
+    def calculate_next_term_begins(self):
+        """Calculate next term begin date from academic calendar"""
+        try:
+            from academics.models import Term  # Adjust import path
+
+            current_exam_session = self.exam_session
+            if not current_exam_session:
+                return None
+
+            # Get current term from exam session
+            current_term = (
+                current_exam_session.term_object
+            )  # or however you access the term
+
+            if not current_term:
+                return None
+
+            # Get academic session
+            academic_session = current_term.academic_session
+
+            # Get all terms in the same session, ordered
+            terms = Term.objects.filter(academic_session=academic_session).order_by(
+                "start_date"
+            )
+
+            # Find next term
+            term_list = list(terms)
+            try:
+                current_index = term_list.index(current_term)
+                if current_index < len(term_list) - 1:
+                    # There's a next term in same session
+                    next_term = term_list[current_index + 1]
+                    return next_term.start_date
+                else:
+                    # This is the last term, get first term of next session
+                    next_session = AcademicSession.objects.filter(
+                        start_year=academic_session.end_year
+                    ).first()
+
+                    if next_session:
+                        first_term = (
+                            Term.objects.filter(academic_session=next_session)
+                            .order_by("start_date")
+                            .first()
+                        )
+
+                        if first_term:
+                            return first_term.start_date
+            except ValueError:
+                pass
+
+            # Fallback: Add reasonable days to current term end
+            if current_term.end_date:
+                return current_term.end_date + timedelta(days=14)  # 2 weeks vacation
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error calculating next term begins: {e}")
+            return None
+
+    def save(self, *args, **kwargs):
+        """Save and calculate metrics"""
+        skip_recalculation = kwargs.pop("skip_recalculation", False)
+
+        if not skip_recalculation:
+            self.calculate_metrics()
+            self.calculate_class_position()
+
+            # ADD THIS: Auto-calculate next term begins if not set
+            if not self.next_term_begins:
+                self.next_term_begins = self.calculate_next_term_begins()
+
+        super().save(*args, **kwargs)
 
     def calculate_metrics(self):
         """Calculate consolidated metrics from individual subject results"""
@@ -2582,36 +3234,60 @@ class NurseryTermReport(models.Model):
             else:
                 self.overall_percentage = 0
 
-        self.save()
+    # In models.py - NurseryTermReport
 
     def calculate_class_position(self):
         """Calculate class position among peers"""
+        # Get all reports for same class and exam session
         same_class_reports = NurseryTermReport.objects.filter(
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
             student__education_level=self.student.education_level,
-            status__in=["APPROVED", "PUBLISHED"],
+            status__in=["APPROVED", "PUBLISHED"],  # Only count published results
         ).exclude(id=self.id)
 
         if same_class_reports.exists():
+            # Count students with higher percentage
             higher_performers = same_class_reports.filter(
                 overall_percentage__gt=self.overall_percentage
             ).count()
 
-            self.class_position = higher_performers + 1
-            self.total_students_in_class = same_class_reports.count() + 1
+            # Count students with same percentage but created earlier (tie-breaker)
+            same_performers_earlier = same_class_reports.filter(
+                overall_percentage=self.overall_percentage,
+                created_at__lt=self.created_at,
+            ).count()
+
+            self.class_position = higher_performers + same_performers_earlier + 1
+            self.total_students_in_class = (
+                same_class_reports.count() + 1
+            )  # +1 for current student
+
+            print(
+                f"✅ Position calculated: {self.class_position}/{self.total_students_in_class}"
+            )
         else:
+            # This is the only student
             self.class_position = 1
             self.total_students_in_class = 1
+            print(f"⚠️ Only student in class")
 
-        self.save()
+    # IMPORTANT: Make sure this is called when subject results are saved
+    def update_from_subject_results(self):
+        """Called when subject results change"""
+        self.calculate_metrics()
+        self.calculate_class_position()
+        self.save(skip_recalculation=True)
 
     def sync_status_with_subjects(self):
         """Sync term report status with individual subject results"""
         if self.status in ["APPROVED", "PUBLISHED"]:
             return
 
-        subject_results = self.subject_results.all()
+        subject_results = NurseryResult.objects.filter(
+            student=self.student,
+            exam_session=self.exam_session,
+        )
 
         if not subject_results.exists():
             self.status = "DRAFT"
@@ -2626,6 +3302,33 @@ class NurseryTermReport(models.Model):
             self.status = "SUBMITTED"
 
         self.save()
+
+    @classmethod
+    def bulk_recalculate_positions(cls, exam_session, student_class, education_level):
+        """Bulk position recalculation for entire class"""
+        with transaction.atomic():
+            reports = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-overall_percentage")
+            )
+
+            total_students = reports.count()
+            updates = []
+
+            for position, report in enumerate(reports, start=1):
+                report.class_position = position
+                report.total_students_in_class = total_students
+                updates.append(report)
+
+            cls.objects.bulk_update(
+                updates, ["class_position", "total_students_in_class"], batch_size=50
+            )
 
 
 class NurseryResult(models.Model):
@@ -2739,17 +3442,46 @@ class NurseryResult(models.Model):
             models.Index(fields=["subject", "exam_session"]),
             models.Index(fields=["status"]),
             models.Index(fields=["term_report"]),
+            models.Index(fields=["grade"]),
+            models.Index(fields=["is_passed"]),
+            models.Index(fields=["subject_position"]),
         ]
 
     def __str__(self):
         return f"{self.student.full_name} - {self.subject.name} ({self.mark_obtained})"
 
+    @property
+    def total_score(self):
+        """
+        Alias for percentage to maintain consistency with other result types.
+        For Nursery, we use percentage as the total_score for term reports.
+        """
+        return self.percentage
+
     def save(self, *args, **kwargs):
         self.calculate_percentage()
-        self.calculate_class_statistics()
         self.determine_grade()
+        self.calculate_subject_position()
         super().save(*args, **kwargs)
         self.update_term_report()
+
+    def update_term_report(self):
+        """Update or create the consolidated term report"""
+        term_report, created = NurseryTermReport.objects.get_or_create(
+            student=self.student,
+            exam_session=self.exam_session,
+            defaults={"status": "DRAFT"},
+        )
+
+        if not self.term_report:
+            self.__class__.objects.filter(id=self.id).update(term_report=term_report.id)
+
+        # CRITICAL: Always recalculate when subject results change
+        term_report.calculate_metrics()
+        term_report.calculate_class_position()
+        term_report.save(
+            skip_recalculation=True
+        )  # Skip recalc in save since we just did it
 
     def calculate_percentage(self):
         """Calculate percentage based on marks obtained and max marks"""
@@ -2778,33 +3510,47 @@ class NurseryResult(models.Model):
             self.grade_point = None
             self.is_passed = False
 
-    def calculate_class_statistics(self):
-        """Calculate class statistics for this subject"""
-        from django.db.models import Avg, Max, Min
-
+    def calculate_subject_position(self):
+        """Calculate position in this subject among approved/published results"""
+        # Get all results for this subject and exam session in the same class
+        # ✅ Only compare against APPROVED and PUBLISHED results
         class_results = self.__class__.objects.filter(
             subject=self.subject,
             exam_session=self.exam_session,
             student__student_class=self.student.student_class,
-            status__in=["APPROVED", "PUBLISHED"],
+            status__in=["APPROVED", "PUBLISHED"],  # ✅ Removed DRAFT
         ).exclude(id=self.id)
 
         if class_results.exists():
-            self.class_average = (
-                class_results.aggregate(avg=Avg("percentage"))["avg"] or 0
-            )
-            self.highest_in_class = (
-                class_results.aggregate(max=Max("percentage"))["max"] or 0
-            )
-            self.lowest_in_class = (
-                class_results.aggregate(min=Min("percentage"))["min"] or 0
-            )
+            # Count how many students scored higher
+            higher_scorers = class_results.filter(
+                percentage__gt=self.percentage
+            ).count()
 
-            all_percentages = list(
-                class_results.values_list("percentage", flat=True)
-            ) + [self.percentage]
-            all_percentages.sort(reverse=True)
-            self.subject_position = all_percentages.index(self.percentage) + 1
+            # Count students with same percentage but created earlier (tie-breaker)
+            same_score_earlier = class_results.filter(
+                percentage=self.percentage, created_at__lt=self.created_at
+            ).count()
+
+            self.subject_position = higher_scorers + same_score_earlier + 1
+
+            print(
+                f"✅ Subject position calculated: {self.subject_position} for {self.subject.name}"
+            )
+        else:
+            # This is the only student with approved/published result
+            self.subject_position = 1
+            print(f"✅ Only student in subject: position 1")
+
+            if class_results.exists():
+                # Get all percentages including current one
+                all_percentages = list(
+                    class_results.values_list("percentage", flat=True)
+                ) + [self.percentage]
+                all_percentages.sort(reverse=True)
+                self.subject_position = all_percentages.index(self.percentage) + 1
+            else:
+                self.subject_position = 1
 
     def update_term_report(self):
         """Update or create the consolidated term report"""
@@ -2820,6 +3566,52 @@ class NurseryResult(models.Model):
         term_report.calculate_metrics()
         term_report.calculate_class_position()
         term_report.sync_status_with_subjects()
+
+    @property
+    def position_formatted(self):
+        """Format position with ordinal suffix"""
+        if not self.subject_position:
+            return ""
+        suffix_map = {1: "st", 2: "nd", 3: "rd"}
+        suffix = suffix_map.get(self.subject_position, "th")
+        return f"{self.subject_position}{suffix}"
+
+    @classmethod
+    def bulk_recalculate_class(
+        cls, exam_session, subject, student_class, education_level
+    ):
+        """goodNEW: Efficient bulk recalculation for Nursery"""
+        with transaction.atomic():
+            results = (
+                cls.objects.filter(
+                    exam_session=exam_session,
+                    subject=subject,
+                    student__student_class=student_class,
+                    student__education_level=education_level,
+                    status__in=["APPROVED", "PUBLISHED"],
+                )
+                .select_for_update()
+                .order_by("-percentage")
+            )
+
+            if not results.exists():
+                return
+
+            # Calculate statistics
+            stats = results.aggregate(
+                avg=Avg("percentage"),
+                highest=Max("percentage"),
+                lowest=Min("percentage"),
+            )
+
+            # Update positions
+            updates = []
+            for position, result in enumerate(results, start=1):
+                result.subject_position = position
+                # Note: Nursery doesn't have class_average fields in individual results
+                updates.append(result)
+
+            cls.objects.bulk_update(updates, ["subject_position"], batch_size=50)
 
 
 # ============================================
@@ -3204,70 +3996,63 @@ def recalculate_class_positions(
 
 # SENIOR SECONDARY SIGNALS
 @receiver(post_save, sender=SeniorSecondaryResult)
-def recalculate_senior_secondary_on_save(sender, instance, created, **kwargs):
-    """Recalculate ALL students when one result is saved/updated"""
-    if instance.status in ["APPROVED", "PUBLISHED"]:
-        # Recalculate subject statistics for ALL students in this subject/class
-        recalculate_subject_statistics(
-            SeniorSecondaryResult,
+def handle_senior_result_save(sender, instance, created, **kwargs):
+    """
+    goodIMPROVED: Only trigger recalculation when necessary
+    Prevent recursive signal loops
+    """
+    # Skip if this is a bulk update or signal is disabled
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    # Only recalculate for APPROVED/PUBLISHED results
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    # Schedule bulk recalculation (run async if using Celery)
+    # For now, run synchronously but efficiently
+    try:
+        SeniorSecondaryResult.bulk_recalculate_class(
+            instance.exam_session,
             instance.subject,
-            instance.exam_session,
             instance.student.student_class,
             instance.student.education_level,
         )
 
-        # Update or create term report
-        term_report, _ = SeniorSecondaryTermReport.objects.get_or_create(
-            student=instance.student,
-            exam_session=instance.exam_session,
-            defaults={"status": "DRAFT"},
-        )
-
-        # Link result to report
-        if not instance.term_report:
-            SeniorSecondaryResult.objects.filter(id=instance.id).update(
-                term_report=term_report
-            )
-
-        # Recalculate term report
-        term_report.calculate_metrics()
-
-        # Recalculate class positions for ALL students
-        recalculate_class_positions(
-            SeniorSecondaryTermReport,
+        # Update term report positions
+        SeniorSecondaryTermReport.bulk_recalculate_positions(
             instance.exam_session,
             instance.student.student_class,
             instance.student.education_level,
         )
-
-        # Sync status
-        term_report.sync_status_with_subjects()
+    except Exception as e:
+        logger.error(f"Error in bulk recalculation: {e}")
 
 
 @receiver(post_delete, sender=SeniorSecondaryResult)
-def recalculate_senior_secondary_on_delete(sender, instance, **kwargs):
-    """Recalculate ALL students when a result is deleted"""
-    # Recalculate for remaining students
-    recalculate_subject_statistics(
-        SeniorSecondaryResult,
-        instance.subject,
-        instance.exam_session,
-        instance.student.student_class,
-        instance.student.education_level,
-    )
-
-    # Update term report if it exists
+def handle_senior_result_delete(sender, instance, **kwargs):
+    """
+    goodIMPROVED: Efficient deletion handling
+    """
     try:
+        # Recalculate remaining students
+        SeniorSecondaryResult.bulk_recalculate_class(
+            instance.exam_session,
+            instance.subject,
+            instance.student.student_class,
+            instance.student.education_level,
+        )
+
+        # Update term report if it exists
         if instance.term_report:
             instance.term_report.calculate_metrics()
-            recalculate_class_positions(
-                SeniorSecondaryTermReport,
+            SeniorSecondaryTermReport.bulk_recalculate_positions(
                 instance.exam_session,
                 instance.student.student_class,
                 instance.student.education_level,
             )
-    except SeniorSecondaryTermReport.DoesNotExist:
-        pass
+    except Exception as e:
+        logger.error(f"Error handling result deletion: {e}")
 
 
 @receiver(post_save, sender=SeniorSecondarySessionResult)
@@ -3338,194 +4123,412 @@ def recalculate_senior_session_on_save(sender, instance, created, **kwargs):
 
 # JUNIOR SECONDARY SIGNALS
 @receiver(post_save, sender=JuniorSecondaryResult)
-def recalculate_junior_secondary_on_save(sender, instance, created, **kwargs):
-    """Recalculate ALL students when one result is saved/updated"""
-    if instance.status in ["APPROVED", "PUBLISHED"]:
-        recalculate_subject_statistics(
-            JuniorSecondaryResult,
+def handle_junior_result_save(sender, instance, created, **kwargs):
+    """goodIMPROVED: Efficient signal handling"""
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    try:
+        JuniorSecondaryResult.bulk_recalculate_class(
+            instance.exam_session,
             instance.subject,
-            instance.exam_session,
             instance.student.student_class,
             instance.student.education_level,
         )
 
-        term_report, _ = JuniorSecondaryTermReport.objects.get_or_create(
-            student=instance.student,
-            exam_session=instance.exam_session,
-            defaults={"status": "DRAFT"},
-        )
-
-        if not instance.term_report:
-            JuniorSecondaryResult.objects.filter(id=instance.id).update(
-                term_report=term_report
-            )
-
-        term_report.calculate_metrics()
-
-        recalculate_class_positions(
-            JuniorSecondaryTermReport,
+        JuniorSecondaryTermReport.bulk_recalculate_positions(
             instance.exam_session,
             instance.student.student_class,
             instance.student.education_level,
         )
-
-        term_report.sync_status_with_subjects()
+    except Exception as e:
+        logger.error(f"Error in Junior bulk recalculation: {e}")
 
 
 @receiver(post_delete, sender=JuniorSecondaryResult)
-def recalculate_junior_secondary_on_delete(sender, instance, **kwargs):
-    """Recalculate ALL students when a result is deleted"""
-    recalculate_subject_statistics(
-        JuniorSecondaryResult,
-        instance.subject,
-        instance.exam_session,
-        instance.student.student_class,
-        instance.student.education_level,
-    )
-
+def handle_junior_result_delete(sender, instance, **kwargs):
+    """goodIMPROVED: Efficient deletion handling"""
     try:
+        JuniorSecondaryResult.bulk_recalculate_class(
+            instance.exam_session,
+            instance.subject,
+            instance.student.student_class,
+            instance.student.education_level,
+        )
+
         if instance.term_report:
             instance.term_report.calculate_metrics()
-            recalculate_class_positions(
-                JuniorSecondaryTermReport,
+            JuniorSecondaryTermReport.bulk_recalculate_positions(
                 instance.exam_session,
                 instance.student.student_class,
                 instance.student.education_level,
             )
-    except JuniorSecondaryTermReport.DoesNotExist:
-        pass
+    except Exception as e:
+        logger.error(f"Error handling Junior result deletion: {e}")
 
 
 # PRIMARY SIGNALS
 @receiver(post_save, sender=PrimaryResult)
-def recalculate_primary_on_save(sender, instance, created, **kwargs):
-    """Recalculate ALL students when one result is saved/updated"""
-    if instance.status in ["APPROVED", "PUBLISHED"]:
-        recalculate_subject_statistics(
-            PrimaryResult,
+def handle_primary_result_save(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    try:
+        PrimaryResult.bulk_recalculate_class(
+            instance.exam_session,
             instance.subject,
-            instance.exam_session,
             instance.student.student_class,
             instance.student.education_level,
         )
 
-        term_report, _ = PrimaryTermReport.objects.get_or_create(
-            student=instance.student,
-            exam_session=instance.exam_session,
-            defaults={"status": "DRAFT"},
-        )
-
-        if not instance.term_report:
-            PrimaryResult.objects.filter(id=instance.id).update(term_report=term_report)
-
-        term_report.calculate_metrics()
-
-        recalculate_class_positions(
-            PrimaryTermReport,
+        PrimaryTermReport.bulk_recalculate_positions(
             instance.exam_session,
             instance.student.student_class,
             instance.student.education_level,
         )
-
-        term_report.sync_status_with_subjects()
+    except Exception as e:
+        logger.error(f"Error in Primary bulk recalculation: {e}")
 
 
 @receiver(post_delete, sender=PrimaryResult)
-def recalculate_primary_on_delete(sender, instance, **kwargs):
-    """Recalculate ALL students when a result is deleted"""
-    recalculate_subject_statistics(
-        PrimaryResult,
-        instance.subject,
-        instance.exam_session,
-        instance.student.student_class,
-        instance.student.education_level,
-    )
-
+def handle_primary_result_delete(sender, instance, **kwargs):
     try:
+        PrimaryResult.bulk_recalculate_class(
+            instance.exam_session,
+            instance.subject,
+            instance.student.student_class,
+            instance.student.education_level,
+        )
+
         if instance.term_report:
             instance.term_report.calculate_metrics()
-            recalculate_class_positions(
-                PrimaryTermReport,
+            PrimaryTermReport.bulk_recalculate_positions(
                 instance.exam_session,
                 instance.student.student_class,
                 instance.student.education_level,
             )
-    except PrimaryTermReport.DoesNotExist:
-        pass
+    except Exception as e:
+        logger.error(f"Error handling Primary result deletion: {e}")
 
 
 # NURSERY SIGNALS
 @receiver(post_save, sender=NurseryResult)
-def recalculate_nursery_on_save(sender, instance, created, **kwargs):
-    """Recalculate ALL students when one result is saved/updated"""
-    if instance.status in ["APPROVED", "PUBLISHED"]:
-        # For nursery, recalculate positions
-        all_results = NurseryResult.objects.filter(
-            subject=instance.subject,
-            exam_session=instance.exam_session,
-            student__student_class=instance.student.student_class,
-            student__education_level=instance.student.education_level,
-            status__in=["APPROVED", "PUBLISHED"],
-        ).order_by("-mark_obtained")
+def handle_nursery_result_save(sender, instance, created, **kwargs):
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
 
-        if all_results.exists():
-            all_scores = list(all_results.values_list("mark_obtained", flat=True))
-            all_scores.sort(reverse=True)
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
 
-            for result in all_results:
-                position = all_scores.index(result.mark_obtained) + 1
-                NurseryResult.objects.filter(id=result.id).update(
-                    subject_position=position
-                )
-
-        term_report, _ = NurseryTermReport.objects.get_or_create(
-            student=instance.student,
-            exam_session=instance.exam_session,
-            defaults={"status": "DRAFT"},
-        )
-
-        if not instance.term_report:
-            NurseryResult.objects.filter(id=instance.id).update(term_report=term_report)
-
-        term_report.calculate_metrics()
-
-        recalculate_class_positions(
-            NurseryTermReport,
+    try:
+        NurseryResult.bulk_recalculate_class(
             instance.exam_session,
+            instance.subject,
             instance.student.student_class,
             instance.student.education_level,
         )
 
-        term_report.sync_status_with_subjects()
+        NurseryTermReport.bulk_recalculate_positions(
+            instance.exam_session,
+            instance.student.student_class,
+            instance.student.education_level,
+        )
+    except Exception as e:
+        logger.error(f"Error in Nursery bulk recalculation: {e}")
 
 
 @receiver(post_delete, sender=NurseryResult)
-def recalculate_nursery_on_delete(sender, instance, **kwargs):
-    """Recalculate ALL students when a result is deleted"""
-    all_results = NurseryResult.objects.filter(
-        subject=instance.subject,
-        exam_session=instance.exam_session,
-        student__student_class=instance.student.student_class,
-        student__education_level=instance.student.education_level,
-        status__in=["APPROVED", "PUBLISHED"],
-    ).order_by("-mark_obtained")
-
-    if all_results.exists():
-        all_scores = list(all_results.values_list("mark_obtained", flat=True))
-        all_scores.sort(reverse=True)
-
-        for result in all_results:
-            position = all_scores.index(result.mark_obtained) + 1
-            NurseryResult.objects.filter(id=result.id).update(subject_position=position)
-
+def handle_nursery_result_delete(sender, instance, **kwargs):
     try:
+        NurseryResult.bulk_recalculate_class(
+            instance.exam_session,
+            instance.subject,
+            instance.student.student_class,
+            instance.student.education_level,
+        )
+
         if instance.term_report:
             instance.term_report.calculate_metrics()
-            recalculate_class_positions(
-                NurseryTermReport,
+            NurseryTermReport.bulk_recalculate_positions(
                 instance.exam_session,
                 instance.student.student_class,
                 instance.student.education_level,
             )
-    except NurseryTermReport.DoesNotExist:
-        pass
+    except Exception as e:
+        logger.error(f"Error handling Nursery result deletion: {e}")
+
+
+@receiver(post_save, sender=SeniorSecondaryResult)
+def auto_generate_senior_term_report(sender, instance, created, **kwargs):
+    """
+    goodAUTO-GENERATE term report when a subject result is saved
+    This ensures the report exists BEFORE the frontend tries to download it
+    """
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    # Only generate for APPROVED/PUBLISHED results
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    try:
+        with transaction.atomic():
+            # Get next term begins date
+            from academics.models import Term, AcademicSession
+
+            next_term_begins = None
+            if hasattr(instance.exam_session, "academic_session"):
+                current_term = instance.exam_session.term
+                current_session = instance.exam_session.academic_session
+
+                term_order = ["FIRST", "SECOND", "THIRD"]
+                if current_term in term_order:
+                    current_index = term_order.index(current_term)
+
+                    # Try to get next term in same session
+                    if current_index < len(term_order) - 1:
+                        next_term_name = term_order[current_index + 1]
+                        next_term = Term.objects.filter(
+                            academic_session=current_session,
+                            name=next_term_name,
+                            is_active=True,
+                        ).first()
+
+                        if next_term:
+                            next_term_begins = next_term.next_term_begins
+
+            # Auto-create term report if it doesn't exist
+            (
+                term_report,
+                report_created,
+            ) = SeniorSecondaryTermReport.objects.select_for_update().get_or_create(
+                student=instance.student,
+                exam_session=instance.exam_session,
+                defaults={
+                    "status": "DRAFT",
+                    "stream": instance.stream,
+                    "next_term_begins": next_term_begins,
+                },
+            )
+
+            # Link this result to the term report
+            if not instance.term_report:
+                SeniorSecondaryResult.objects.filter(id=instance.id).update(
+                    term_report=term_report
+                )
+                instance.term_report = term_report
+
+            # Recalculate metrics
+            term_report.calculate_metrics()
+            term_report.calculate_class_position()
+
+            if report_created:
+                logger.info(
+                    f"goodAuto-generated term report {term_report.id} for {instance.student.full_name}"
+                )
+            else:
+                logger.info(
+                    f"goodUpdated existing term report {term_report.id} for {instance.student.full_name}"
+                )
+
+    except Exception as e:
+        logger.error(f"❌ Error auto-generating term report: {e}", exc_info=True)
+
+
+@receiver(post_save, sender=JuniorSecondaryResult)
+def auto_generate_junior_term_report(sender, instance, created, **kwargs):
+    """Auto-generate Junior Secondary term report"""
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    try:
+        with transaction.atomic():
+            from academics.models import Term
+
+            next_term_begins = None
+            if hasattr(instance.exam_session, "academic_session"):
+                current_term = instance.exam_session.term
+                current_session = instance.exam_session.academic_session
+
+                term_order = ["FIRST", "SECOND", "THIRD"]
+                if current_term in term_order:
+                    current_index = term_order.index(current_term)
+
+                    if current_index < len(term_order) - 1:
+                        next_term_name = term_order[current_index + 1]
+                        next_term = Term.objects.filter(
+                            academic_session=current_session,
+                            name=next_term_name,
+                            is_active=True,
+                        ).first()
+
+                        if next_term:
+                            next_term_begins = next_term.next_term_begins
+
+            (
+                term_report,
+                report_created,
+            ) = JuniorSecondaryTermReport.objects.select_for_update().get_or_create(
+                student=instance.student,
+                exam_session=instance.exam_session,
+                defaults={
+                    "status": "DRAFT",
+                    "next_term_begins": next_term_begins,
+                },
+            )
+
+            if not instance.term_report:
+                JuniorSecondaryResult.objects.filter(id=instance.id).update(
+                    term_report=term_report
+                )
+                instance.term_report = term_report
+
+            term_report.calculate_metrics()
+            term_report.calculate_class_position()
+
+            if report_created:
+                logger.info(
+                    f"goodAuto-generated junior term report for {instance.student.full_name}"
+                )
+
+    except Exception as e:
+        logger.error(f"❌ Error auto-generating junior term report: {e}", exc_info=True)
+
+
+@receiver(post_save, sender=PrimaryResult)
+def auto_generate_primary_term_report(sender, instance, created, **kwargs):
+    """Auto-generate Primary term report"""
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    try:
+        with transaction.atomic():
+            from academics.models import Term
+
+            next_term_begins = None
+            if hasattr(instance.exam_session, "academic_session"):
+                current_term = instance.exam_session.term
+                current_session = instance.exam_session.academic_session
+
+                term_order = ["FIRST", "SECOND", "THIRD"]
+                if current_term in term_order:
+                    current_index = term_order.index(current_term)
+
+                    if current_index < len(term_order) - 1:
+                        next_term_name = term_order[current_index + 1]
+                        next_term = Term.objects.filter(
+                            academic_session=current_session,
+                            name=next_term_name,
+                            is_active=True,
+                        ).first()
+
+                        if next_term:
+                            next_term_begins = next_term.next_term_begins
+
+            (
+                term_report,
+                report_created,
+            ) = PrimaryTermReport.objects.select_for_update().get_or_create(
+                student=instance.student,
+                exam_session=instance.exam_session,
+                defaults={
+                    "status": "DRAFT",
+                    "next_term_begins": next_term_begins,
+                },
+            )
+
+            if not instance.term_report:
+                PrimaryResult.objects.filter(id=instance.id).update(
+                    term_report=term_report
+                )
+                instance.term_report = term_report
+
+            term_report.calculate_metrics()
+            term_report.calculate_class_position()
+
+            if report_created:
+                logger.info(
+                    f"goodAuto-generated primary term report for {instance.student.full_name}"
+                )
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error auto-generating primary term report: {e}", exc_info=True
+        )
+
+
+@receiver(post_save, sender=NurseryResult)
+def auto_generate_nursery_term_report(sender, instance, created, **kwargs):
+    """Auto-generate Nursery term report"""
+    if kwargs.get("raw", False) or getattr(instance, "_skip_signals", False):
+        return
+
+    if instance.status not in ["APPROVED", "PUBLISHED"]:
+        return
+
+    try:
+        with transaction.atomic():
+            from academics.models import Term
+
+            next_term_begins = None
+            if hasattr(instance.exam_session, "academic_session"):
+                current_term = instance.exam_session.term
+                current_session = instance.exam_session.academic_session
+
+                term_order = ["FIRST", "SECOND", "THIRD"]
+                if current_term in term_order:
+                    current_index = term_order.index(current_term)
+
+                    if current_index < len(term_order) - 1:
+                        next_term_name = term_order[current_index + 1]
+                        next_term = Term.objects.filter(
+                            academic_session=current_session,
+                            name=next_term_name,
+                            is_active=True,
+                        ).first()
+
+                        if next_term:
+                            next_term_begins = next_term.next_term_begins
+
+            (
+                term_report,
+                report_created,
+            ) = NurseryTermReport.objects.select_for_update().get_or_create(
+                student=instance.student,
+                exam_session=instance.exam_session,
+                defaults={
+                    "status": "DRAFT",
+                    "next_term_begins": next_term_begins,
+                },
+            )
+
+            if not instance.term_report:
+                NurseryResult.objects.filter(id=instance.id).update(
+                    term_report=term_report
+                )
+                instance.term_report = term_report
+
+            term_report.calculate_metrics()
+            term_report.calculate_class_position()
+
+            if report_created:
+                logger.info(
+                    f"goodAuto-generated nursery term report for {instance.student.full_name}"
+                )
+
+    except Exception as e:
+        logger.error(
+            f"❌ Error auto-generating nursery term report: {e}", exc_info=True
+        )

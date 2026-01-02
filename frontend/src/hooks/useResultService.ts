@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useSettings } from './useSettings';
 import ResultSettingsService from '@/services/ResultSettingsService';
+
 import type { 
   GradingSystem, 
   GradeRange, 
@@ -73,6 +74,8 @@ export const useResultService = () => {
     // Exam Sessions - Updated with proper filters
     getExamSessions: (filters?: ExamSessionFilters): Promise<ExamSession[]> => 
       ResultSettingsService.getExamSessions(filters),
+
+
     getExamSession: (id: string): Promise<ExamSession> => ResultSettingsService.getExamSession(id),
     createExamSession: (data: ExamSessionCreateUpdate): Promise<ExamSession> => 
       ResultSettingsService.createExamSession(data),
@@ -152,6 +155,10 @@ export const useResultService = () => {
     // Nursery
     getNurseryResults: (filters?: ResultFilters): Promise<NurseryResult[]> => 
       ResultSettingsService.getNurseryResults(filters),
+
+    getNurseryTermReports: (filters?: ResultFilters): Promise<any[]> => 
+      ResultSettingsService.getNurseryTermReports(filters),
+
     createNurseryResult: (data: Partial<NurseryResult>): Promise<NurseryResult> => 
       ResultSettingsService.createNurseryResult(data),
     updateNurseryResult: (id: string, data: Partial<NurseryResult>): Promise<NurseryResult> => 
@@ -165,6 +172,10 @@ export const useResultService = () => {
     // Primary
     getPrimaryResults: (filters?: ResultFilters): Promise<PrimaryResult[]> => 
       ResultSettingsService.getPrimaryResults(filters),
+
+    getPrimaryTermReports: (filters?: ResultFilters): Promise<any[]> => 
+      ResultSettingsService.getPrimaryTermReports(filters),
+
     createPrimaryResult: (data: Partial<PrimaryResult>): Promise<PrimaryResult> => 
       ResultSettingsService.createPrimaryResult(data),
     updatePrimaryResult: (id: string, data: Partial<PrimaryResult>): Promise<PrimaryResult> => 
@@ -178,6 +189,10 @@ export const useResultService = () => {
     // Junior Secondary
     getJuniorSecondaryResults: (filters?: ResultFilters): Promise<JuniorSecondaryResult[]> => 
       ResultSettingsService.getJuniorSecondaryResults(filters),
+
+    getJuniorSecondaryTermReports: (filters?: ResultFilters): Promise<any[]> => 
+      ResultSettingsService.getJuniorSecondaryTermReports(filters),
+
     createJuniorSecondaryResult: (data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> => 
       ResultSettingsService.createJuniorSecondaryResult(data),
     updateJuniorSecondaryResult: (id: string, data: Partial<JuniorSecondaryResult>): Promise<JuniorSecondaryResult> => 
@@ -192,8 +207,10 @@ export const useResultService = () => {
     // Senior Secondary
     getSeniorSecondaryTermlyResults: (filters?: ResultFilters): Promise<SeniorSecondaryResult[]> => 
       ResultSettingsService.getSeniorSecondaryTermlyResults(filters),
+
     getSeniorSecondaryTermReports: (filters?: ResultFilters): Promise<any[]> => 
       ResultSettingsService.getSeniorSecondaryTermReports(filters),
+    
     createSeniorSecondaryResult: (data: Partial<SeniorSecondaryResult>): Promise<SeniorSecondaryResult> => 
       ResultSettingsService.createSeniorSecondaryResult(data),
     updateSeniorSecondaryResult: (id: string, data: Partial<SeniorSecondaryResult>): Promise<SeniorSecondaryResult> => 

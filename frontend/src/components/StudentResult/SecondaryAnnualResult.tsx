@@ -20,7 +20,7 @@ const SecondaryAnnualResult: React.FC<SecondaryAnnualResultProps> = ({
         {/* Watermark - School Name */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="transform -rotate-45 text-[120px] font-bold text-gray-100 opacity-20 whitespace-nowrap">
-            GOD'S TREASURE SCHOOLS
+            School Name
           </div>
         </div>
 
@@ -50,7 +50,7 @@ const SecondaryAnnualResult: React.FC<SecondaryAnnualResultProps> = ({
             
             {/* School Name and Address */}
             <div className="text-center flex-1 px-4">
-              <h1 className="text-[#000080] text-5xl font-bold mb-3">GOD'S TREASURE SCHOOLS</h1>
+              <h1 className="text-[#000080] text-5xl font-bold mb-3">School Name</h1>
               <p className="text-[#87CEEB] text-xl mb-1">No 54 Dagbana Road, Opp. St. Kevin's</p>
               <p className="text-[#87CEEB] text-xl">Catholic Church, Phase III Jikwoyi, Abuja</p>
             </div>

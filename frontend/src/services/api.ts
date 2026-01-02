@@ -1,10 +1,33 @@
-const API_BASE_URL =
+
+
+export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-  'https://school-project-with-edward.onrender.com/api';
+   'https://school-project-with-edward.onrender.com/api'
+ 
 
 console.log('🔧 API_BASE_URL:', API_BASE_URL);
 console.log('🔧 VITE_API_URL env var:', import.meta.env.VITE_API_URL);
 
+
+// Debug wrapper for GET requests
+const debugGet = async (endpoint: string, params?: any) => {
+  console.log('🔍 [API DEBUG] GET Request:', {
+    endpoint,
+    params,
+    queryString: new URLSearchParams(params).toString()
+  });
+  
+  const response = await api.get(endpoint, { params });
+  
+  console.log('📥 [API DEBUG] GET Response:', {
+    endpoint,
+    status: response.status,
+    dataLength: Array.isArray(response) ? response.length : 'N/A',
+    firstItem: Array.isArray(response) && response.length > 0 ? response[0] : null
+  });
+  
+  return response;
+};
 const getAuthHeaders = () => {
   const token = localStorage.getItem('authToken');
   const sessionToken = sessionStorage.getItem('authToken');
@@ -12,12 +35,22 @@ const getAuthHeaders = () => {
     'Content-Type': 'application/json',
   };
   
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-    console.log('🔑 Token found in localStorage and included in request');
-  } else if (sessionToken) {
-    headers['Authorization'] = `Bearer ${sessionToken}`;
-    console.log('🔑 Token found in sessionStorage and included in request');
+  const activeToken = token || sessionToken;
+
+
+// };
+if (activeToken) {
+    // JWT tokens are longer and have 2 dots (3 parts: header.payload.signature)
+    // DRF tokens are 40 characters hex string
+    const isJWT = activeToken.split('.').length === 3;
+    
+    if (isJWT) {
+      headers['Authorization'] = `Bearer ${activeToken}`;
+      console.log('🔑 JWT token included in request');
+    } else {
+      headers['Authorization'] = `Token ${activeToken}`;
+      console.log('🔑 DRF Token included in request');
+    }
   } else {
     console.warn('⚠️ No auth token found in localStorage or sessionStorage');
   }
@@ -115,7 +148,7 @@ const api = {
       }
       
       const data = await response.json();
-      console.log(`✅ GET request successful for ${endpoint}:`, data);
+      console.log(`goodGET request successful for ${endpoint}:`, data);
       return data;
     } catch (error) {
       console.error(`💥 Exception in GET request to ${endpoint}:`, error);
@@ -139,7 +172,7 @@ const api = {
         await handleResponseError(response, endpoint, 'POST');
       }
       
-      console.log(`✅ POST request successful: ${response.status}`);
+      console.log(`goodPOST request successful: ${response.status}`);
       return response.json();
     } catch (error) {
       console.error(`💥 Exception in POST request to ${endpoint}:`, error);
@@ -163,7 +196,7 @@ const api = {
         await handleResponseError(response, endpoint, 'PUT');
       }
       
-      console.log(`✅ PUT request successful: ${response.status}`);
+      console.log(`goodPUT request successful: ${response.status}`);
       return response.json();
     } catch (error) {
       console.error(`💥 Exception in PUT request to ${endpoint}:`, error);
@@ -187,7 +220,7 @@ const api = {
         await handleResponseError(response, endpoint, 'PATCH');
       }
       
-      console.log(`✅ PATCH request successful: ${response.status}`);
+      console.log(`goodPATCH request successful: ${response.status}`);
       return response.json();
     } catch (error) {
       console.error(`💥 Exception in PATCH request to ${endpoint}:`, error);
@@ -210,7 +243,7 @@ const api = {
         await handleResponseError(response, endpoint, 'DELETE');
       }
       
-      console.log(`✅ DELETE request successful: ${response.status}`);
+      console.log(`goodDELETE request successful: ${response.status}`);
       if (response.status === 204) {
         return null;
       }
@@ -264,5 +297,8 @@ const api = {
   }
 };
 
+
+
 export default api;
 export { api };
+

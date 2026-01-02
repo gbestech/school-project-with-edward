@@ -1,10 +1,55 @@
 from django.contrib import admin
-from .models import SeniorSecondaryResult
+from .models import (
+    SeniorSecondaryResult,
+    JuniorSecondaryResult,
+    PrimaryResult,
+    NurseryResult,
+    SeniorSecondaryTermReport,
+    JuniorSecondaryTermReport,
+    PrimaryTermReport,
+    NurseryTermReport,
+)
 from classroom.models import Section
+from .models import GradingSystem, Grade, ExamSession
 
 
-@admin.register(SeniorSecondaryResult)
-class SeniorSecondaryResultAdmin(admin.ModelAdmin):
+class GradeInline(admin.TabularInline):
+    model = Grade
+    extra = 1
+
+
+@admin.register(GradingSystem)
+class GradingSystemAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "grading_type",
+        "min_score",
+        "max_score",
+        "pass_mark",
+        "is_active",
+    ]
+    list_filter = ["grading_type", "is_active"]
+    search_fields = ["name", "description"]
+    inlines = [GradeInline]
+    ordering = ["name"]
+
+
+@admin.register(ExamSession)
+class ExamSessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "term", "academic_session")  # customize fields
+    search_fields = ("name", "term", "academic_session")
+
+
+@admin.register(Grade)
+class GradeAdmin(admin.ModelAdmin):
+    list_display = ["grade", "min_score", "max_score", "grading_system", "is_passing"]
+    list_filter = ["grading_system", "is_passing"]
+    search_fields = ["grade", "description"]
+    ordering = ["grading_system", "-min_score"]
+
+
+# Base Result Admin Class (to avoid code duplication)
+class BaseResultAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "student",
@@ -97,3 +142,96 @@ class SeniorSecondaryResultAdmin(admin.ModelAdmin):
         else:  # Editing existing result
             obj.last_edited_by = request.user
         super().save_model(request, obj, form, change)
+
+
+# Register all Result models
+@admin.register(SeniorSecondaryResult)
+class SeniorSecondaryResultAdmin(BaseResultAdmin):
+    pass
+
+
+@admin.register(JuniorSecondaryResult)
+class JuniorSecondaryResultAdmin(BaseResultAdmin):
+    pass
+
+
+@admin.register(PrimaryResult)
+class PrimaryResultAdmin(BaseResultAdmin):
+    pass
+
+
+@admin.register(NurseryResult)
+class NurseryResultAdmin(BaseResultAdmin):
+    # Override list_display to remove total_score if it doesn't exist
+    list_display = [
+        "id",
+        "student",
+        "subject",
+        "exam_session",
+        "grade",
+        "status",
+        "created_at",
+    ]
+
+
+# Base Term Report Admin Class - FIXED with correct field names
+class BaseTermReportAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "student",
+        "exam_session",  # Changed from 'term' and 'academic_session'
+        "status",
+        "created_at",
+    ]
+    list_filter = [
+        "exam_session",
+        "status",
+    ]  # Changed from 'term' and 'academic_session'
+    search_fields = [
+        "student__user__username",
+        "student__user__first_name",
+        "student__user__last_name",
+        "student__admission_number",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+
+    def get_queryset(self, request):
+        """Filter term reports based on user role"""
+        qs = super().get_queryset(request)
+        user = request.user
+
+        # Superadmin sees everything
+        if user.role == "superadmin" or user.is_superuser:
+            return qs
+
+        # Principal sees all reports
+        if user.role == "principal":
+            return qs
+
+        # Students see only their own reports
+        if user.role == "student":
+            return qs.filter(student__user=user)
+
+        # Default: no access
+        return qs.none()
+
+
+# Register all Term Report models
+@admin.register(SeniorSecondaryTermReport)
+class SeniorSecondaryTermReportAdmin(BaseTermReportAdmin):
+    pass
+
+
+@admin.register(JuniorSecondaryTermReport)
+class JuniorSecondaryTermReportAdmin(BaseTermReportAdmin):
+    pass
+
+
+@admin.register(PrimaryTermReport)
+class PrimaryTermReportAdmin(BaseTermReportAdmin):
+    pass
+
+
+@admin.register(NurseryTermReport)
+class NurseryTermReportAdmin(BaseTermReportAdmin):
+    pass

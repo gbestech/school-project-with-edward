@@ -78,10 +78,53 @@
         </tbody>
     </table>
 
-    <div class="remarks">
-        <div><strong>Class Teacher's Remark:</strong> {{ class_teacher_remark }}</div>
-        <div><strong>Head Teacher's Remark:</strong> {{ head_teacher_remark }}</div>
+    <div class="remarks-section">
+   <div class="remark-row">
+        <div class="remark-column">
+            <h4>Class Teacher's Remark:</h4>
+            <p>{{ remarks.class_teacher }}</p>
+            
+            <!-- ✅ ADD SIGNATURE DISPLAY -->
+            {% if signatures.class_teacher.url %}
+            <div class="signature-container">
+                <img src="{{ signatures.class_teacher.url }}" 
+                     alt="Class Teacher Signature" 
+                     class="signature-image" />
+                {% if signatures.class_teacher.signed_at %}
+                <p class="signature-date">Signed: {{ signatures.class_teacher.signed_at }}</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="signature-placeholder">
+                <p>_____________________</p>
+                <p class="signature-label">Class Teacher's Signature</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="remark-column">
+            <h4>Head Teacher's Remark:</h4>
+            <p>{{ remarks.head_teacher }}</p>
+            
+            <!-- ✅ ADD SIGNATURE DISPLAY -->
+            {% if signatures.head_teacher.url %}
+            <div class="signature-container">
+                <img src="{{ signatures.head_teacher.url }}" 
+                     alt="Head Teacher Signature" 
+                     class="signature-image" />
+                {% if signatures.head_teacher.signed_at %}
+                <p class="signature-date">Signed: {{ signatures.head_teacher.signed_at }}</p>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="signature-placeholder">
+                <p>_____________________</p>
+                <p class="signature-label">Head Teacher's Signature</p>
+            </div>
+            {% endif %}
+        </div>
     </div>
+</div>
 </div>
 </body>
 </html>

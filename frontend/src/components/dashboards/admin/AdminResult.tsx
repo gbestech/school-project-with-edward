@@ -81,7 +81,7 @@ interface SchoolData {
 
 // Dynamic school data from settings
 const getSchoolData = (settings: any) => ({
-  name: settings?.school_name || "GOD'S TREASURE SCHOOLS",
+  name: settings?.school_name || "School Name",
   address: settings?.school_address || "No 54 Dagbana Road, Opp. St. Kevin's Catholic Church, Phase III Jikwoyi, Abuja",
   logo: getAbsoluteUrl(settings?.logo_url) || "🏫",
   nextTermBegins: settings?.current_term || ""

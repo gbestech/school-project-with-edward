@@ -2,62 +2,545 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>{{ student.name }} - Term Report</title>
+<title>{{ student.name }} - Junior Secondary Term Report</title>
+
 <style>
-body { font-family: Arial, sans-serif; color: #333; background-color:#f9f9f9; margin:0; padding:0; }
-.container { max-width: 800px; margin:20px auto; background-color:#fff; padding:20px; box-shadow:0 0 10px rgba(0,0,0,0.1);}
-.header, .student-info, .summary, .remarks { text-align:center; margin-bottom:20px; }
-.school-logo { width:70px; height:70px; object-fit:contain; border-radius:50%; }
-h1,h2,h3 { margin:5px 0; }
-table { width:100%; border-collapse:collapse; font-size:0.9rem; }
-th, td { border:1px solid #333; padding:5px; text-align:center; }
-th { background-color:#f0f0f0; }
-.pass { background-color:#d4edda; color:#155724; font-weight:bold; }
-.fail { background-color:#f8d7da; color:#721c24; font-weight:bold; }
+@page {
+    size: A4;
+    margin: 15mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 9pt;
+    color: #1f2937;
+    background: #ffffff;
+    line-height: 1.4;
+}
+
+.container {
+    position: relative;
+}
+
+/* ================= WATERMARK ================= */
+.watermark {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.04;
+    z-index: 0;
+}
+
+.watermark-logo {
+    width: 300px;
+    height: 300px;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+}
+
+.watermark-text {
+    position: absolute;
+    bottom: 20%;
+    font-size: 40pt;
+    font-weight: 800;
+    color: #1e40af;
+    letter-spacing: 2px;
+}
+
+/* ================= CONTENT ================= */
+.content {
+    position: relative;
+    z-index: 1;
+}
+
+/* ================= HEADER ================= */
+.header {
+    border-bottom: 3px solid #1e40af;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+}
+
+.header-top {
+    display: grid;
+    grid-template-columns: 80px auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.school-logo {
+    width: 70px;
+    height: 70px;
+    object-fit: contain;
+}
+
+.logo-placeholder {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: #e5edff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #1e40af;
+}
+
+.header-text {
+    text-align: center;
+}
+
+.header-text h1 {
+    font-size: 18pt;
+    font-weight: 800;
+    color: #1e3a8a;
+    margin: 0;
+}
+
+.header-text p {
+    font-size: 8pt;
+    margin: 1px 0;
+}
+
+.motto {
+    font-style: italic;
+    color: #2563eb;
+}
+
+.report-type {
+    text-align: center;
+    font-size: 13pt;
+    font-weight: 700;
+    margin-top: 6px;
+    color: #1e40af;
+}
+
+.session-info {
+    text-align: center;
+    font-size: 9pt;
+    background: #1e40af;
+    color: #ffffff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    width: fit-content;
+    margin: 6px auto 0;
+}
+
+/* ================= STUDENT INFO ================= */
+.student-info {
+    margin: 10px 0;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px;
+    background: #f9fafb;
+}
+
+.info-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.info-item {
+    font-size: 8.5pt;
+}
+
+.info-label {
+    font-weight: 700;
+    color: #1e3a8a;
+}
+
+.info-value {
+    margin-left: 4px;
+}
+
+/* ================= SECTION TITLE ================= */
+.section-title {
+    margin: 12px 0 6px;
+    font-weight: 800;
+    font-size: 10pt;
+    color: #1e40af;
+    border-bottom: 1px solid #1e40af;
+    padding-bottom: 2px;
+}
+
+/* ================= TABLE ================= */
+.table-wrapper {
+    margin-bottom: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 7.8pt;
+}
+
+th, td {
+    border: 1px solid #6b7280;
+    padding: 4px 3px;
+    text-align: center;
+}
+
+thead th {
+    background: #e5edff;
+    font-weight: 800;
+}
+
+td.subject-name,
+th:first-child {
+    text-align: left;
+    padding-left: 6px;
+    font-weight: 600;
+}
+
+.bold {
+    font-weight: 800;
+    color: #1e40af;
+}
+
+tbody tr:nth-child(even) {
+    background: #f3f4f6;
+}
+
+/* ================= SUMMARY ================= */
+.summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.summary-box {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px;
+    background: #f9fafb;
+}
+
+.summary-box h3 {
+    margin: 0 0 6px;
+    font-size: 9.5pt;
+    color: #1e40af;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 8.5pt;
+    margin-bottom: 3px;
+}
+
+.summary-item .label {
+    font-weight: 600;
+}
+
+.grade-legend.compact {
+    margin-top: 6px;
+    font-size: 6.8pt;
+    color: #1f2937;
+}
+
+.grade-legend.compact .legend-title {
+    font-weight: 700;
+    margin-right: 6px;
+    color: #1e40af;
+}
+
+.grade-legend.compact .legend-table {
+    display: inline-table;
+    border-collapse: collapse;
+}
+
+.grade-legend.compact td {
+    border: 0.6px solid #6b7280;
+    padding: 2px 4px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* ================= COMPACT REMARKS ================= */
+.remarks-section {
+    margin-top: 12px;
+    page-break-inside: avoid;
+}
+
+.remarks-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.remark-block {
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 6px;
+}
+
+.remark-label {
+    font-size: 8pt;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 3px;
+}
+
+.remark-text {
+    font-size: 9pt;
+    line-height: 1.4;
+    color: #374151;
+    margin: 0 0 4px 0;
+    min-height: 32px;
+}
+
+/* Compact Signature */
+.signature-line {
+    margin-top: 6px;
+}
+
+.signature-image {
+    max-width: 220px;
+    max-height: 80px;
+    height: auto;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.signature-placeholder {
+    display: inline-block;
+    border-bottom: 1px solid #6b7280;
+    min-width: 150px;
+    height: 1px;
+    margin-bottom: 3px;
+}
+
+.signature-info {
+    font-size: 6.5pt;
+    color: #6b7280;
+    display: block;
+}
+
+.signature-date {
+    font-style: italic;
+    display: block;
+}
+
+/* ================= FOOTER ================= */
+.footer {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 7.5pt;
+    color: #374151;
+}
+
+/* ================= PRINT ================= */
+@media print {
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .signature-image {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
 </style>
 </head>
+
 <body>
 <div class="container">
-    <div class="header">
-        {% if school.logo %}<img src="{{ school.logo }}" class="school-logo">{% endif %}
-        <h1>{{ school.name|upper }}</h1>
-        <p>{{ school.address }} | {{ school.phone }} | {{ school.email }}</p>
-        <h2>JUNIOR SECONDARY TERM REPORT</h2>
-        <p>{{ term.name }} Term, {{ academic_session.name }} Session</p>
+
+<!-- Watermark -->
+<div class="watermark">
+    <div class="watermark-logo" {% if school.logo %}style="background-image:url('{{ school.logo }}')" {% endif %}></div>
+    <div class="watermark-text">{{ school.name }}</div>
+</div>
+
+<div class="content">
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-top">
+        {% if school.logo %}
+            <img src="{{ school.logo }}" class="school-logo">
+        {% else %}
+            <div class="logo-placeholder">LOGO</div>
+        {% endif %}
+        <div class="header-text">
+            <h1>{{ school.name|upper }}</h1>
+            <p>{{ school.address }}</p>
+            <p>{{ school.phone }} | {{ school.email }}</p>
+            {% if school.motto %}
+            <p class="motto">{{ school.motto }}</p>
+            {% endif %}
+        </div>
     </div>
-    <div class="student-info">
-        <h3>{{ student.name|upper }} ({{ student.admission_number }})</h3>
-        <p>Class: {{ student.class }} | Age: {{ student.age }} | No in Class: {{ total_students }}</p>
+    <div class="report-type">Junior Secondary Termly Report</div>
+    <div class="session-info">{{ term.name }} Term, {{ term.session }} Academic Session</div>
+</div>
+
+<!-- STUDENT INFO -->
+<div class="student-info">
+    <div class="info-group">
+        <div class="info-item"><span class="info-label">NAME:</span> {{ student.name|upper }}</div>
+        <div class="info-item"><span class="info-label">NO. IN CLASS:</span> {{ summary.total_students }}</div>
+        
     </div>
-    <div class="summary">
-        <p>Average: {{ average_score }} | Grade: {{ overall_grade }}</p>
-        <p class="{{ "pass" if is_passed else "fail" }}">Result: {{ "PASS" if is_passed else "FAIL" }}</p>
-        <p>Position: {{ class_position }} of {{ total_students }}</p>
     </div>
+    <div class="info-group">
+        <div class="info-item"><span class="info-label">ADMISSION NO.:</span> {{ student.admission_number }}</div>
+        <div class="info-item"><span class="info-label">CLASS:</span> {{ student.class }}</div>
+        <div class="info-item"><span class="info-label">SESSION:</span> {{ term.session }}</div>
+        <div class="info-item"><span class="info-label">POSITION:</span> {{ summary.position }}</div>
+        <div class="info-item"><span class="info-label">AGE:</span> {{ student.age }}</div>
+    </div>
+</div>
+
+<!-- ACADEMIC TABLE -->
+<div class="section-title">Academic Performance</div>
+<div class="table-wrapper">
     <table>
         <thead>
             <tr>
-                <th>Subject</th><th>Test 1</th><th>Test 2</th><th>Exam</th><th>Total</th><th>Grade</th><th>Remark</th>
+                <th rowspan="2" style="width: 140px;">SUBJECT</th>
+                <th colspan="6">CONTINUOUS ASSESSMENT (40 MARKS)</th>
+                <th rowspan="2">CA TOTAL</th>
+                <th rowspan="2">EXAM (60)</th>
+                <th rowspan="2">TOTAL (100)</th>
+                <th rowspan="2">POSITION</th>
+                <th rowspan="2">GRADE</th>
+                <th rowspan="2">REMARK</th>
+            </tr>
+            <tr>
+                <th>CA (15)</th>
+                <th>TEST (5)</th>
+                <th>PROJECT (5)</th>
+                <th>APP. (5)</th>
+                <th>PRAC. (5)</th>
+                <th>NOTE (5)</th>
             </tr>
         </thead>
         <tbody>
-        {% for subject in subjects %}
-        <tr>
-            <td>{{ subject.subject.name }}</td>
-            <td>{{ subject.test1_score }}</td>
-            <td>{{ subject.test2_score }}</td>
-            <td>{{ subject.exam_score }}</td>
-            <td>{{ subject.total_score }}</td>
-            <td>{{ subject.grade }}</td>
-            <td>{{ subject.teacher_remark }}</td>
-        </tr>
-        {% endfor %}
+            {% for subject in subjects %}
+            <tr>
+                <td class="subject-name">{{ subject.name }}</td>
+                <td>{{ subject.ca|floatformat:0 }}</td>
+                <td>{{ subject.take_home|floatformat:0 }}</td>
+                <td>{{ subject.project|floatformat:0 }}</td>
+                <td>{{ subject.appearance|floatformat:0 }}</td>
+                <td>{{ subject.practical|floatformat:0 }}</td>
+                <td>{{ subject.note_copying|floatformat:0 }}</td>
+                <td class="bold">{{ subject.ca_total|floatformat:0 }}</td>
+                <td>{{ subject.exam|floatformat:0 }}</td>
+                <td class="bold">{{ subject.total|floatformat:0 }}</td>
+                <td>{{ subject.position }}</td>
+                <td class="bold">{{ subject.grade }}</td>
+                <td>{{ subject.remark }}</td>
+            </tr>
+            {% endfor %}
         </tbody>
     </table>
-    <div class="remarks">
-        <div><strong>Class Teacher:</strong> {{ class_teacher_remark }}</div>
-        <div><strong>Head Teacher:</strong> {{ head_teacher_remark }}</div>
+</div>
+
+<!-- Summary and Attendance -->
+<div class="summary-grid">
+    <div class="summary-box">
+        <h3>Performance Summary</h3>
+        <div class="summary-item">
+            <span class="label">Total Subjects:</span>
+            <span class="value">{{ summary.total_subjects }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Total Score:</span>
+            <span class="value">{{ summary.total_score|floatformat:0 }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Average Score:</span>
+            <span class="value">{{ summary.average|floatformat:1 }}%</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Overall Grade:</span>
+            <span class="value">{{ summary.grade }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Class Position:</span>
+            <span class="value">{{ summary.position }} of {{ summary.total_students }}</span>
+        </div>
     </div>
+
+    <div class="summary-box">
+        <h3>Attendance</h3>
+        <div class="summary-item">
+            <span class="label">Times School Opened:</span>
+            <span class="value">{{ attendance.times_opened }}</span>
+        </div>
+        <div class="summary-item">
+            <span class="label">Times Present:</span>
+            <span class="value">{{ attendance.times_present }}</span>
+        </div>
+        {% if attendance.times_opened > 0 %}
+        <div class="summary-item">
+            <span class="label">Attendance Rate:</span>
+            <span class="value">{{ attendance.times_present|add:"0"|floatformat:0 }}%</span>
+        </div>
+        {% endif %}
+        <div class="summary-item mt-20">
+            <span class="label">Next Term Begins:</span>
+            <span class="value">{{ next_term_begins }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Compact Remarks Section -->
+<div class="remarks-section">
+    <div class="remarks-grid">
+        <!-- Class Teacher -->
+        <div class="remark-block">
+            <div class="remark-label">Class Teacher's Remark:</div>
+            <p class="remark-text">{{ remarks.class_teacher }}</p>
+            <div class="signature-line">
+                {% if signatures.class_teacher.url %}
+                    <img src="{{ signatures.class_teacher.url }}" alt="Signature" class="signature-image" />
+                    {% if signatures.class_teacher.signed_at %}
+                    <span class="signature-date signature-info">{{ signatures.class_teacher.signed_at }}</span>
+                    {% endif %}
+                {% else %}
+                    <span class="signature-placeholder"></span>
+                    <span class="signature-info">Signature & Date</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Head Teacher -->
+        <div class="remark-block">
+            <div class="remark-label">Head Teacher's Remark:</div>
+            <p class="remark-text">{{ remarks.head_teacher }}</p>
+            <div class="signature-line">
+                {% if signatures.head_teacher.url %}
+                    <img src="{{ signatures.head_teacher.url }}" alt="Signature" class="signature-image" />
+                    {% if signatures.head_teacher.signed_at %}
+                    <span class="signature-date signature-info">{{ signatures.head_teacher.signed_at }}</span>
+                    {% endif %}
+                {% else %}
+                    <span class="signature-placeholder"></span>
+                    <span class="signature-info">Signature & Date</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    Generated on {{ generated_date }} | This is an official academic document
+</div>
+
+</div>
 </div>
 </body>
 </html>

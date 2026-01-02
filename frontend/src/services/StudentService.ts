@@ -281,7 +281,7 @@ export class StudentService {
       console.log(`🔄 Toggling student status: ${studentId}`);
       
       const response = await api.post(`/api/students/students/${studentId}/toggle_status/`, {});
-      console.log('✅ Student status toggle response:', response);
+      console.log('goodStudent status toggle response:', response);
       
       return response;
     } catch (error) {
@@ -296,7 +296,7 @@ export class StudentService {
       console.log(`🔄 Activating student: ${studentId}`);
       
       const response = await api.post(`/api/students/students/${studentId}/activate/`, {});
-      console.log('✅ Student activation response:', response);
+      console.log('goodStudent activation response:', response);
       
       return response;
     } catch (error) {
@@ -311,7 +311,7 @@ export class StudentService {
       console.log(`🔄 Deactivating student: ${studentId}`);
       
       const response = await api.post(`/api/students/students/${studentId}/deactivate/`, {});
-      console.log('✅ Student deactivation response:', response);
+      console.log('goodStudent deactivation response:', response);
       
       return response;
     } catch (error) {
@@ -396,7 +396,7 @@ export class StudentService {
       console.log('🔄 Fetching student schedule from:', endpoint);
       
       const response = await api.get(endpoint, filters);
-      console.log('✅ Student schedule response:', response);
+      console.log('goodStudent schedule response:', response);
       
       if (!response) {
         throw new Error('No schedule data received from server');
@@ -439,7 +439,7 @@ export class StudentService {
       console.log('🔄 Fetching weekly schedule from:', endpoint, params);
       
       const response = await api.get(endpoint, params);
-      console.log('✅ Weekly schedule response:', response);
+      console.log('goodWeekly schedule response:', response);
       
       return response;
     } catch (error) {
@@ -474,7 +474,7 @@ export class StudentService {
       console.log('🔄 Fetching today\'s schedule from:', endpoint);
       
       const response = await api.get(endpoint);
-      console.log('✅ Today\'s schedule response:', response);
+      console.log('goodToday\'s schedule response:', response);
       
       return response;
     } catch (error) {
@@ -504,7 +504,7 @@ export class StudentService {
       console.log('🔄 Fetching current period from:', endpoint);
       
       const response = await api.get(endpoint);
-      console.log('✅ Current period response:', response);
+      console.log('goodCurrent period response:', response);
       
       return response;
     } catch (error) {

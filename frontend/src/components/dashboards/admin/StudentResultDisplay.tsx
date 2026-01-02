@@ -355,7 +355,7 @@ const StudentResultDisplay: React.FC<StudentResultDisplayProps> = ({ student, se
     if (enhancedResult?.school_info?.school_name) {
       return enhancedResult.school_info.school_name;
     }
-    return "GOD'S TREASURE SCHOOLS";
+    return "School Name";
   };
 
   // Transform data to match the expected interfaces for each component

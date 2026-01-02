@@ -10,12 +10,10 @@ import Navbar from '@/components/home/Nav';
 import Footer from '@/components/home/Footer';
 
 
-
 // Lazy load all components with consistent import paths and error handling
 const Home = lazy(() => import('./../pages/Landing').catch(() => ({ default: () => <div>Error loading Home</div> })));
 const School_Activities = lazy(() => import('./../pages/School_Activities').catch(() => ({ default: () => <div>Error loading School Activities</div> })));
 const Login = lazy(() => import('./../pages/Login').catch(() => ({ default: () => <div>Error loading Login</div> })));
-const InitialSuperAdminRegister = lazy(() => import('./../pages/InitialSetup').catch(() => ({ default: () => <div>Error loading Login</div> })));
 const SignUp = lazy(() => import('./../pages/SignUp').catch(() => ({ default: () => <div>Error loading SignUp</div> })));
 const EmailVerification = lazy(() => import('./../pages/EmailVerification').catch(() => ({ default: () => <div>Error loading Email Verification</div> })));
 const About = lazy(() => import('./../pages/About').catch(() => ({ default: () => <div>Error loading About</div> })));
@@ -68,7 +66,8 @@ const HowToApplyPage = lazy(() => import('./../pages/HowToApplyPage').catch(() =
 const ResultChecker = lazy(() => import('./../components/dashboards/admin/ResultChecker').catch(() => ({ default: () => <div>Error loading Result Checker</div> })));
 const StudentResultChecker = lazy(() => import('./../components/dashboards/admin/StudentResultChecker').catch(() => ({ default: () => <div>Error loading Student Result Checker</div> })));
 const StudentResultDetail = lazy(() => import('./../components/dashboards/admin/StudentResultDetail').catch(() => ({ default: () => <div>Error loading Student Result Detail</div> })));
-const SuperAdminPage = lazy(() => import('./../pages/SuperAdminDashbaord').catch(() => ({default: () => <div>Error loading Super Admin Page</div>})));
+const AdminTokenGenerator = lazy(() => import('./../pages/admin/TokenGenerator').catch(() => ({ default: () => <div>Error loading Admin Token Generator</div> })));
+const AdminRemarksAndSignatureManager = lazy(() => import('./../pages/admin/AdminRemarksAndSignatureManager').catch(() => ({ default: () => <div>Error loading Admin Token Remarks and Signature page</div> })));
 
 const RouteErrorElement = () => {
   const error = (window as any).__routerError || 'Unknown error';
@@ -166,12 +165,6 @@ export const router = createBrowserRouter([
             errorElement: <RouteErrorElement />
           },
           {
-              path: "/setup",
-              element: <InitialSuperAdminRegister/>,
-              errorElement: <RouteErrorElement/>
-
-          },
-          {
             path: 'verify-email',
             element: <EmailVerification />,
             errorElement: <RouteErrorElement />
@@ -221,16 +214,6 @@ export const router = createBrowserRouter([
             element: <HowToApplyPage />, 
             errorElement: <RouteErrorElement />
           },
-          {
-            path:'/super-admin/dashboard',
-            element: <SuperAdminPage/>,
-            errorElement: <RouteErrorElement/>
-          },
-          // {
-          //   path: 'teacher/bio/:teacherId',
-          //   element: <PublicTeacherBio />, 
-          //   errorElement: <RouteErrorElement />
-          // },
           {
             path: '*',
             element: <NotFound />,
@@ -372,6 +355,16 @@ export const router = createBrowserRouter([
             path: 'dashboard',
             element: <AdminDashboardContentLoader />,
             errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'token-generator',
+            element: <AdminTokenGenerator />,
+            errorElement: <RouteErrorElement />
+          },
+          {
+            path: 'admin-remarks',
+            element: <AdminRemarksAndSignatureManager/>,
+            errorElement: <RouteErrorElement/>
           },
           {
             path: 'students',

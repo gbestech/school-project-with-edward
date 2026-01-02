@@ -1,8 +1,8 @@
 import api from './api';
 
 // Base interfaces matching Django models
-
 export type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+
 import {
   AcademicSession,  
   ExamSessionInfo, 
@@ -12,8 +12,18 @@ import {
   SeniorSecondaryResultData,
   SeniorSecondarySessionResultData,
   StandardResult,
+  SeniorSecondaryStandardResult, 
   StudentTermResult,
-} from '../types/types'
+  TeacherAssignment,
+  // SeniorSecondarySessionStandardResultBreakdown
+} from '../types/types';
+
+interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
 
 export interface ResultComment {
   id: string;
@@ -53,6 +63,15 @@ export interface FilterParams {
   search?: string;
   education_level?: string;
   result_type?: 'termly' | 'session';
+  page?: number;
+  page_size?: number;
+  student_class?: string;
+  [key: string]: any;
+}
+
+export interface ResultQueryParams extends FilterParams {
+  page?: number;
+  page_size?: number;
 }
 
 export interface TranscriptOptions {
@@ -63,10 +82,12 @@ export interface TranscriptOptions {
 }
 
 class ResultService {
-  private baseURL = '/api/results'; // Updated: removed /api/ prefix since our api helper handles it
+  private baseURL = '/api/results';
   private cache = new Map<string, {data: any; timestamp: number}>();
   private CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+  // ===== CACHE MANAGEMENT =====
+  
   async getCachedOrFetch(key: string, fetcher: () => Promise<any>) {
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
@@ -78,103 +99,179 @@ class ResultService {
     return data;
   }
 
+  // ===== HELPER METHODS =====
 
-// Helper function to extract session info properly
-// private extractSessionInfo(report: any): AcademicSession | undefined {
-//   // Try to get session from exam_session
-//   const examSession = report.exam_session;
-//   console.log("This is Exam Session", examSession)
-//   if (!examSession) return undefined;
-  
-//   // If exam_session.academic_session is an object (the full session data)
-//   if (examSession.academic_session && typeof examSession.academic_session === 'object') {
-//     return examSession.academic_session as AcademicSession;
-//   }
-  
-//   // If exam_session.academic_session is just an ID, construct an object from available data
-//   if (examSession.academic_session_name) {
-//     return {
-//       id: examSession.academic_session,
-//       name: examSession.academic_session_name
-//     } as AcademicSession;
-//   }
-  
-//   console.log("Could not extract academic session from exam_session") 
-//   return undefined;
-// }
-
-private extractSessionInfo(report: any): AcademicSession | undefined {
-  if (!report) return undefined;
-  
-  const examSession = report.exam_session;
-  
-  // Case 1: exam_session is just an ID (string/number)
-  if (typeof examSession === 'string' || typeof examSession === 'number') {
-    return {
-      id: examSession.toString(),
-      name: report.academic_session_name || report.session_name || 'Unknown'
-    } as AcademicSession;
-  }
-  
-  // Case 2: exam_session is an object
-  if (examSession && typeof examSession === 'object') {
-    // Nested academic_session object
-    if (examSession.academic_session && typeof examSession.academic_session === 'object') {
-      return examSession.academic_session as AcademicSession;
-    }
+  private extractSessionInfo(report: any): AcademicSession | undefined {
+    if (!report) return undefined;
     
-    // academic_session as ID with name
-    if (examSession.academic_session_name) {
+    const examSession = report.exam_session;
+    
+    // Case 1: exam_session is just an ID (string/number)
+    if (typeof examSession === 'string' || typeof examSession === 'number') {
       return {
-        id: examSession.academic_session?.toString() || '',
-        name: examSession.academic_session_name
+        id: examSession.toString(),
+        name: report.academic_session_name || report.session_name || 'Unknown',
+        start_date: '',
+        end_date: '',
+        is_current: false,
+        is_active: true,
+        created_at: '',
+        updated_at: ''
       } as AcademicSession;
     }
-  }
-  
-  // Case 3: Direct academic_session field on report
-  if (report.academic_session) {
-    if (typeof report.academic_session === 'object') {
-      return report.academic_session;
+    
+    // Case 2: exam_session is an object
+    if (examSession && typeof examSession === 'object') {
+      // Nested academic_session object
+      if (examSession.academic_session && typeof examSession.academic_session === 'object') {
+        return examSession.academic_session as AcademicSession;
+      }
+      
+      // academic_session as ID with name
+      if (examSession.academic_session_name) {
+        return {
+          id: examSession.academic_session?.toString() || '',
+          name: examSession.academic_session_name,
+          start_date: '',
+          end_date: '',
+          is_current: false,
+          is_active: true,
+          created_at: '',
+          updated_at: ''
+        } as AcademicSession;
+      }
     }
-    return {
-      id: report.academic_session.toString(),
-      name: report.academic_session_name || 'Unknown'
-    } as AcademicSession;
+    
+    // Case 3: Direct academic_session field on report
+    if (report.academic_session) {
+      if (typeof report.academic_session === 'object') {
+        return report.academic_session;
+      }
+      return {
+        id: report.academic_session.toString(),
+        name: report.academic_session_name || 'Unknown',
+        start_date: '',
+        end_date: '',
+        is_current: false,
+        is_active: true,
+        created_at: '',
+        updated_at: ''
+      } as AcademicSession;
+    }
+    
+    return undefined;
   }
-  
-  return undefined;
-}
 
-// Add status validation
-private isValidStatusTransition(currentStatus: ResultStatus, newStatus: ResultStatus): boolean {
-  const validTransitions: Record<ResultStatus, ResultStatus[]> = {
-    'DRAFT': ['SUBMITTED', 'DRAFT'],
-    'SUBMITTED': ['APPROVED', 'DRAFT', 'SUBMITTED'],
-    'APPROVED': ['PUBLISHED', 'SUBMITTED', 'APPROVED'],
-    'PUBLISHED': ['PUBLISHED'] // Published is final
-  };
-  
-  return validTransitions[currentStatus]?.includes(newStatus) ?? false;
-}
+  private isValidStatusTransition(currentStatus: ResultStatus, newStatus: ResultStatus): boolean {
+    const validTransitions: Record<ResultStatus, ResultStatus[]> = {
+      'DRAFT': ['SUBMITTED', 'DRAFT'],
+      'SUBMITTED': ['APPROVED', 'DRAFT', 'SUBMITTED'],
+      'APPROVED': ['PUBLISHED', 'SUBMITTED', 'APPROVED'],
+      'PUBLISHED': ['PUBLISHED']
+    };
+    
+    return validTransitions[currentStatus]?.includes(newStatus) ?? false;
+  }
 
-  // Data transformation methods - ADDED: Missing transform methods
+  /**
+   * Helper method to fetch ALL pages from a paginated endpoint
+   */
+  private async fetchAllPages<T>(
+    endpoint: string,
+    params: ResultQueryParams = {}
+  ): Promise<T[]> {
+    let allResults: T[] = [];
+    let currentPage = 1;
+    let hasMore = true;
+    
+    console.log(`🔄 Fetching all pages from ${endpoint}...`);
+    
+    while (hasMore) {
+      try {
+        const response = await api.get(endpoint, {
+          ...params,
+          page: currentPage,
+          page_size: params.page_size || 100
+        });
+        
+        // Handle both paginated and non-paginated responses
+        if (response && typeof response === 'object') {
+          // Paginated response
+          if ('results' in response && Array.isArray(response.results)) {
+            const paginatedResponse = response as PaginatedResponse<T>;
+            const pageResults = paginatedResponse.results;
+            allResults = [...allResults, ...pageResults];
+            
+            console.log(`📄 Page ${currentPage}: ${pageResults.length} items (Total so far: ${allResults.length}/${paginatedResponse.count || '?'})`);
+            
+            hasMore = !!paginatedResponse.next;
+            currentPage++;
+          } 
+          // Non-paginated array response
+          else if (Array.isArray(response)) {
+            allResults = response as T[];
+            hasMore = false;
+            console.log(`📄 Got ${allResults.length} items (non-paginated)`);
+          }
+          // Single page with no pagination
+          else {
+            allResults = [response as T];
+            hasMore = false;
+          }
+        } else if (Array.isArray(response)) {
+          allResults = response as T[];
+          hasMore = false;
+        } else {
+          hasMore = false;
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error fetching page ${currentPage}:`, error);
+        hasMore = false;
+      }
+    }
+    
+    console.log(`✅ Fetched ${allResults.length} total items from ${endpoint}`);
+    return allResults;
+  }
+
+  // ===== DATA TRANSFORMATION METHODS =====
+
   private transformNurseryResults(results: NurseryResultData[]): StandardResult[] {
-    console.log("Transforming Nursery Results:", results);
-    return results.map(result => ({
+    console.log("Transforming Nursery Results:", results.length);
+
+    return results.map((result): StandardResult => ({
       id: result.id,
       student: result.student,
       subject: result.subject,
-      academic_session: this. extractSessionInfo(result),
+      academic_session: this.extractSessionInfo(result),
       education_level: 'NURSERY',
       grading_system: result.grading_system,
+      
+      // Scores
       total_score: result.mark_obtained,
       percentage: result.percentage,
       grade: result.grade,
       grade_point: result.grade_point,
       is_passed: result.is_passed,
-      position: result.position,
+      
+      // Position
+      position: result.subject_position ?? result.position,
+      
+      // Exam score
       exam_score: result.mark_obtained,
+      
+      // Remarks
+      teacher_remark: result.academic_comment || '',
+      
+      // Status
+      status: result.status,
+      
+      // Tracking
+      created_at: result.created_at,
+      updated_at: result.updated_at,
+      
+      // Breakdown
       breakdown: {
         max_marks_obtainable: result.max_marks_obtainable,
         mark_obtained: result.mark_obtained,
@@ -182,21 +279,17 @@ private isValidStatusTransition(currentStatus: ResultStatus, newStatus: ResultSt
         health: result.health,
         cleanliness: result.cleanliness,
         general_conduct: result.general_conduct,
-      },
-      status: result.status,
-      teacher_remark: result.academic_comment,
-      created_at: result.created_at,
+      }
     }));
-   
   }
 
   private transformPrimaryResults(results: PrimaryResultData[]): StandardResult[] {
-        console.log("Transforming Nursery Results:", results);
-    return results.map(result => ({
+    console.log("Transforming Primary Results:", results.length);
+    return results.map((result): StandardResult => ({
       id: result.id,
       student: result.student,
       subject: result.subject,
-     academic_session: this.extractSessionInfo(result),
+      academic_session: this.extractSessionInfo(result),
       education_level: 'PRIMARY',
       grading_system: result.grading_system,
       total_score: result.total_score,
@@ -227,16 +320,15 @@ private isValidStatusTransition(currentStatus: ResultStatus, newStatus: ResultSt
       lowest_in_class: result.lowest_in_class,
       position: result.subject_position,
       status: result.status,
-      teacher_remark: result.teacher_remark,
+      teacher_remark: result.teacher_remark || '',
       created_at: result.created_at,
-     
+      updated_at: result.updated_at,
     }));
-    
   }
 
   private transformJuniorSecondaryResults(results: JuniorSecondaryResultData[]): StandardResult[] {
-        console.log("Transforming Nursery Results:", results);
-    return results.map(result => ({
+    console.log("Transforming Junior Secondary Results:", results.length);
+    return results.map((result): StandardResult => ({
       id: result.id,
       student: result.student,
       subject: result.subject,
@@ -271,235 +363,431 @@ private isValidStatusTransition(currentStatus: ResultStatus, newStatus: ResultSt
       lowest_in_class: result.lowest_in_class,
       position: result.subject_position,
       status: result.status,
-      teacher_remark: result.teacher_remark,
+      teacher_remark: result.teacher_remark || '',
       created_at: result.created_at,
+      updated_at: result.updated_at,
     }));
   }
 
-  private transformSeniorSecondaryResults(results: SeniorSecondaryResultData[]): StandardResult[] {
-    return results.map(result => ({
-      id: result.id,
-      student: result.student,
-      subject: result.subject,
-      academic_session: this.extractSessionInfo(result),
-      education_level: 'SENIOR_SECONDARY',
-      stream: result.stream,
-      grading_system: result.grading_system,
-      total_score: result.total_score,
-      percentage: result.percentage,
-      grade: result.grade,
-      grade_point: result.grade_point,
-      is_passed: result.is_passed,
+ // For term results - use SeniorSecondaryTermResultBreakdown
+private transformSeniorSecondaryResults(results: SeniorSecondaryResultData[]): StandardResult[] {
+  console.log("Transforming Senior Secondary Results:", results.length);
+  return results.map((result): SeniorSecondaryStandardResult => ({
+    id: result.id,
+    student: result.student,
+    subject: result.subject,
+    academic_session: this.extractSessionInfo(result),
+    education_level: 'SENIOR_SECONDARY' as const,
+    stream: result.stream,
+    grading_system: result.grading_system,
+    total_score: result.total_score,
+    percentage: result.percentage,
+    grade: result.grade,
+    grade_point: result.grade_point,
+    is_passed: result.is_passed,
+    first_test_score: result.first_test_score,
+    second_test_score: result.second_test_score,
+    third_test_score: result.third_test_score,
+    exam_score: result.exam_score,
+    breakdown: {
       first_test_score: result.first_test_score,
       second_test_score: result.second_test_score,
       third_test_score: result.third_test_score,
       exam_score: result.exam_score,
-      breakdown: {
-        first_test_score: result.first_test_score,
-        second_test_score: result.second_test_score,
-        third_test_score: result.third_test_score,
-        exam_score: result.exam_score,
-      },
-      class_average: result.class_average,
-      highest_in_class: result.highest_in_class,
-      lowest_in_class: result.lowest_in_class,
-      position: result.subject_position,
-      status: result.status,
-      teacher_remark: result.teacher_remark,
-      created_at: result.created_at,
-      exam_session: result.exam_session,
-    term_display: result.term_display,
-    term: result.term,
-    academic_session_name: result.academic_session_name,
-    name: result.name,
-    exam_session_name: result.exam_session_name,
-    session_name: result.session_name,
-    }));
-  }
+    },
+    class_average: result.class_average,
+    highest_in_class: result.highest_in_class,
+    lowest_in_class: result.lowest_in_class,
+    position: result.subject_position,
+    status: result.status,
+    teacher_remark: result.teacher_remark || '',
+    created_at: result.created_at,
+    updated_at: result.updated_at,
+    exam_session: result.exam_session,
+  }));
+}
 
-  private transformSeniorSessionResults(results: SeniorSecondarySessionResultData[]): StandardResult[] {
-    return results.map(result => ({
-      id: result.id,
-      student: result.student,
-      subject: result.subject,
-      academic_session: this.extractSessionInfo(result),
-      education_level: 'SENIOR_SECONDARY',
-      stream: result.stream,
-      total_score: result.obtained,
-      percentage: (result.obtained / result.obtainable) * 100,
-      grade: '', // You might want to calculate this based on percentage
-      is_passed: result.obtained >= (result.obtainable * 0.4), // Assuming 40% pass mark
-      exam_score: result.obtained,
-      class_average: result.class_average,
-      highest_in_class: result.highest_in_class,
-      lowest_in_class: result.lowest_in_class,
-      position: result.subject_position,
-      status: result.status,
-      teacher_remark: result.teacher_remark,
-      created_at: result.created_at,
-    }));
-  }
+// For session results - use SeniorSecondarySessionResultBreakdown
+private transformSeniorSessionResults(results: SeniorSecondarySessionResultData[]): StandardResult[] {
+  console.log("Transforming Senior Session Results:", results.length);
+  return results.map((result): SeniorSecondaryStandardResult => ({
+    id: result.id,
+    student: result.student,
+    subject: result.subject,
+    academic_session: this.extractSessionInfo(result),
+    education_level: 'SENIOR_SECONDARY' as const,
+    stream: result.stream,
+    grading_system: result.grading_system || {
+      id: 'default',
+      name: 'Default Grading',
+      grading_type: 'PERCENTAGE',
+      min_score: 0,
+      max_score: 100,
+      pass_mark: 40,
+    },
+    total_score: result.obtained,
+    percentage: (result.obtained / result.obtainable) * 100,
+    grade: '',
+    is_passed: result.obtained >= (result.obtainable * 0.4),
+    exam_score: result.obtained,
+    breakdown: {
+      first_term_score: result.first_term_score,
+      second_term_score: result.second_term_score,
+      third_term_score: result.third_term_score,
+      average_for_year: result.average_for_year,
+    },
+    class_average: result.class_average,
+    highest_in_class: result.highest_in_class,
+    lowest_in_class: result.lowest_in_class,
+    position: result.subject_position,
+    status: result.status,
+    teacher_remark: result.teacher_remark || '',
+    created_at: result.created_at,
+    updated_at: result.updated_at,
+  }));
+}
 
+  // ===== CORE API METHODS WITH PAGINATION =====
 
-  
-  // Core API methods - UPDATED to use new hierarchical structure
-  async getNurseryResults(params?: FilterParams): Promise<NurseryResultData[]> {
+  async getNurseryResults(params?: ResultQueryParams): Promise<NurseryResultData[]> {
     try {
-      const response = await api.get(`${this.baseURL}/nursery/results/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages<NurseryResultData>(
+        `${this.baseURL}/nursery/results/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching nursery results:', error);
       return [];
     }
-  } 
+  }
 
-  async getPrimaryResults(params?: FilterParams): Promise<PrimaryResultData[]> {
+  async getPrimaryResults(params?: ResultQueryParams): Promise<PrimaryResultData[]> {
     try {
-      const response = await api.get(`${this.baseURL}/primary/results/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages<PrimaryResultData>(
+        `${this.baseURL}/primary/results/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching primary results:', error);
       return [];
     }
   }
 
-  async getJuniorSecondaryResults(params?: FilterParams): Promise<JuniorSecondaryResultData[]> {
+  async getJuniorSecondaryResults(params?: ResultQueryParams): Promise<JuniorSecondaryResultData[]> {
     try {
-      const response = await api.get(`${this.baseURL}/junior-secondary/results/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages<JuniorSecondaryResultData>(
+        `${this.baseURL}/junior-secondary/results/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching junior secondary results:', error);
       return [];
     }
   }
 
-  async getSeniorSecondaryResults(params?: FilterParams): Promise<SeniorSecondaryResultData[]> {
+  async getSeniorSecondaryResults(params?: ResultQueryParams): Promise<SeniorSecondaryResultData[]> {
     try {
-      const response = await api.get(`${this.baseURL}/senior-secondary/results/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages<SeniorSecondaryResultData>(
+        `${this.baseURL}/senior-secondary/results/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching senior secondary results:', error);
       return [];
     }
   }
 
-  async getSeniorSecondarySessionResults(params?: FilterParams): Promise<SeniorSecondarySessionResultData[]> {
+  async getSeniorSecondarySessionResults(params?: ResultQueryParams): Promise<SeniorSecondarySessionResultData[]> {
     try {
-      const response = await api.get(`${this.baseURL}/senior-secondary/session-results/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages<SeniorSecondarySessionResultData>(
+        `${this.baseURL}/senior-secondary/session-results/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching senior secondary session results:', error);
       return [];
     }
   }
 
-  // NEW: Term report methods
-  async getNurseryTermReports(params?: FilterParams): Promise<any[]> {
+  // ===== TERM REPORT METHODS =====
+
+  async getNurseryTermReports(params?: ResultQueryParams): Promise<any[]> {
     try {
-      const response = await api.get(`${this.baseURL}/nursery/term-reports/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages(
+        `${this.baseURL}/nursery/term-reports/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching nursery term reports:', error);
       return [];
     }
   }
 
-  async getPrimaryTermReports(params?: FilterParams): Promise<any[]> {
+  async getPrimaryTermReports(params?: ResultQueryParams): Promise<any[]> {
     try {
-      const response = await api.get(`${this.baseURL}/primary/term-reports/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages(
+        `${this.baseURL}/primary/term-reports/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching primary term reports:', error);
       return [];
     }
   }
 
-  async getJuniorSecondaryTermReports(params?: FilterParams): Promise<any[]> {
+  async getJuniorSecondaryTermReports(params?: ResultQueryParams): Promise<any[]> {
     try {
-      const response = await api.get(`${this.baseURL}/junior-secondary/term-reports/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages(
+        `${this.baseURL}/junior-secondary/term-reports/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching junior secondary term reports:', error);
       return [];
     }
   }
 
-  async getSeniorSecondaryTermReports(params?: FilterParams): Promise<any[]> {
+  async getSeniorSecondaryTermReports(params?: ResultQueryParams): Promise<any[]> {
     try {
-      const response = await api.get(`${this.baseURL}/senior-secondary/term-reports/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages(
+        `${this.baseURL}/senior-secondary/term-reports/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching senior secondary term reports:', error);
       return [];
     }
   }
 
-
-  async approveSubjectResult(resultId: string, educationLevel: string) {
-  try {
-    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
-    
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/approve/`,
-      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/approve/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/approve/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/approve/`,
-    };
-    
-    const endpoint = endpoints[normalizedLevel];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level for approve subject result: ${normalizedLevel}`);
-    }
-    
-    return api.post(endpoint, {});
-  } catch (error) {
-    console.error('Error approving subject result:', error);
-    throw error;
-  }
-}
-
-/**
- * Publish an individual subject result (not a term report)
- */
-async publishSubjectResult(resultId: string, educationLevel: string) {
-  try {
-    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
-    
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/publish/`,
-      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/publish/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/publish/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/publish/`,
-    };
-    
-    const endpoint = endpoints[normalizedLevel];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level for publish subject result: ${normalizedLevel}`);
-    }
-    
-    return api.post(endpoint, {});
-  } catch (error) {
-    console.error('Error publishing subject result:', error);
-    throw error;
-  }
-}
-
-  async getSeniorSecondarySessionReports(params?: FilterParams): Promise<any[]> {
+  async getSeniorSecondarySessionReports(params?: ResultQueryParams): Promise<any[]> {
     try {
-      const response = await api.get(`${this.baseURL}/senior-secondary/session-reports/`, { params });
-      return Array.isArray(response) ? response : (response?.results || []);
+      return await this.fetchAllPages(
+        `${this.baseURL}/senior-secondary/session-reports/`,
+        params
+      );
     } catch (error) {
       console.error('Error fetching senior secondary session reports:', error);
       return [];
     }
   }
 
+  /**
+   * Get ALL term results across all education levels with pagination
+   */
+  async getTermResults(params: ResultQueryParams = {}): Promise<any[]> {
+    try {
+      console.log('🔄 Fetching ALL term results with params:', params);
+      
+      const [nurseryReports, primaryReports, juniorReports, seniorReports] = await Promise.all([
+        this.fetchAllPages(`${this.baseURL}/nursery/term-reports/`, params).catch(() => []),
+        this.fetchAllPages(`${this.baseURL}/primary/term-reports/`, params).catch(() => []),
+        this.fetchAllPages(`${this.baseURL}/junior-secondary/term-reports/`, params).catch(() => []),
+        this.fetchAllPages(`${this.baseURL}/senior-secondary/term-reports/`, params).catch(() => []),
+      ]);
+
+      console.log(`📊 Fetched term reports: Nursery=${nurseryReports.length}, Primary=${primaryReports.length}, Junior=${juniorReports.length}, Senior=${seniorReports.length}`);
+
+      const calculateGrade = (averageScore: number) => {
+        if (!averageScore || isNaN(averageScore)) return 'N/A';
+        if (averageScore >= 70) return 'A';
+        if (averageScore >= 60) return 'B';
+        if (averageScore >= 50) return 'C';
+        if (averageScore >= 45) return 'D';
+        if (averageScore >= 39) return 'E';
+        return 'F';
+      };
+
+      const transformSubjectResults = (subjectResults: any[], educationLevel: string) => {
+        return (subjectResults || []).map((sr: any) => {
+          const baseResult = {
+            id: sr.id,
+            subject: sr.subject || { name: 'Unknown', code: 'N/A' },
+            percentage: parseFloat(sr.percentage || sr.total_percentage || '0'),
+            grade: sr.grade || 'N/A',
+            grade_point: parseFloat(sr.grade_point || '0'),
+            is_passed: sr.is_passed ?? true,
+            status: sr.status || 'DRAFT'
+          };
+
+          switch (educationLevel) {
+            case 'NURSERY':
+              return {
+                ...baseResult,
+                total_ca_score: 0,
+                ca_total: 0,
+                exam_score: parseFloat(sr.mark_obtained || sr.exam_score || '0'),
+                total_score: parseFloat(sr.mark_obtained || sr.total_score || '0'),
+              };
+
+            case 'PRIMARY':
+            case 'JUNIOR_SECONDARY':
+              const caTotal = parseFloat(sr.ca_total || sr.total_ca_score || '0');
+              return {
+                ...baseResult,
+                continuous_assessment_score: parseFloat(sr.continuous_assessment_score || '0'),
+                take_home_test_score: parseFloat(sr.take_home_test_score || '0'),
+                practical_score: parseFloat(sr.practical_score || '0'),
+                project_score: parseFloat(sr.project_score || '0'),
+                appearance_score: parseFloat(sr.appearance_score || '0'),
+                note_copying_score: parseFloat(sr.note_copying_score || '0'),
+                ca_total: caTotal,
+                total_ca_score: caTotal,
+                exam_score: parseFloat(sr.exam_score || '0'),
+                total_score: parseFloat(sr.total_score || '0'),
+              };
+
+            case 'SENIOR_SECONDARY':
+              const firstTest = parseFloat(sr.first_test_score || sr.test1_score || '0');
+              const secondTest = parseFloat(sr.second_test_score || sr.test2_score || '0');
+              const thirdTest = parseFloat(sr.third_test_score || sr.test3_score || '0');
+              const examScore = parseFloat(sr.exam_score || '0');
+              const calculatedCA = firstTest + secondTest + thirdTest;
+              const finalCATotal = parseFloat(sr.ca_total || sr.total_ca_score || '0') || calculatedCA;
+              const totalScore = parseFloat(sr.total_score || '0') || (finalCATotal + examScore);
+              
+              return {
+                ...baseResult,
+                first_test_score: firstTest,
+                second_test_score: secondTest,
+                third_test_score: thirdTest,
+                ca_total: finalCATotal,
+                total_ca_score: finalCATotal,
+                exam_score: examScore,
+                total_score: totalScore,
+              };
+
+            default:
+              return {
+                ...baseResult,
+                total_ca_score: parseFloat(sr.total_ca_score || sr.ca_total || '0'),
+                ca_total: parseFloat(sr.ca_total || sr.total_ca_score || '0'),
+                exam_score: parseFloat(sr.exam_score || '0'),
+                total_score: parseFloat(sr.total_score || '0'),
+              };
+          }
+        });
+      };
+
+      const allReports = [
+        ...nurseryReports.map((report: any) => ({
+          id: report.id,
+          student: report.student || {},
+          academic_session: this.extractSessionInfo(report),
+          term: report.exam_session?.term || 'N/A',
+          total_subjects: report.total_subjects || 0,
+          subjects_passed: report.subjects_passed || 0,
+          subjects_failed: report.subjects_failed || 0,
+          total_score: report.total_marks_obtained || 0,
+          average_score: report.overall_percentage || 0,
+          gpa: 0,
+          class_position: report.class_position || null,
+          total_students: report.total_students_in_class || 0,
+          status: report.status || 'DRAFT',
+          remarks: report.academic_comment || '',
+          next_term_begins: report.next_term_begins || null,
+          subject_results: transformSubjectResults(report.subject_results, 'NURSERY'),
+          created_at: report.created_at,
+          updated_at: report.updated_at,
+          overall_grade: calculateGrade(report.overall_percentage),
+          education_level: 'NURSERY',
+          physical_development: report.physical_development,
+          health: report.health,
+          cleanliness: report.cleanliness,
+          general_conduct: report.general_conduct,
+          height_beginning: report.height_beginning,
+          height_end: report.height_end,
+          weight_beginning: report.weight_beginning,
+          weight_end: report.weight_end,
+        })),
+        
+        ...primaryReports.map((report: any) => ({
+          id: report.id,
+          student: report.student || {},
+          academic_session: this.extractSessionInfo(report),
+          term: report.exam_session?.term || 'N/A',
+          total_subjects: report.total_subjects || 0,
+          subjects_passed: report.subjects_passed || 0,
+          subjects_failed: report.subjects_failed || 0,
+          total_score: report.total_score || 0,
+          average_score: report.average_score || 0,
+          gpa: report.gpa || 0,
+          class_position: report.class_position || null,
+          total_students: report.total_students || 0,
+          status: report.status || 'DRAFT',
+          remarks: report.class_teacher_remark || report.remarks || '',
+          next_term_begins: report.next_term_begins || null,
+          subject_results: transformSubjectResults(report.subject_results, 'PRIMARY'),
+          created_at: report.created_at,
+          updated_at: report.updated_at,
+          overall_grade: report.overall_grade || calculateGrade(report.average_score),
+          education_level: 'PRIMARY',
+        })),
+        
+        ...juniorReports.map((report: any) => ({
+          id: report.id,
+          student: report.student || {},
+          academic_session: this.extractSessionInfo(report),
+          term: report.exam_session?.term || 'N/A',
+          total_subjects: report.total_subjects || 0,
+          subjects_passed: report.subjects_passed || 0,
+          subjects_failed: report.subjects_failed || 0,
+          total_score: report.total_score || 0,
+          average_score: report.average_score || 0,
+          gpa: report.gpa || 0,
+          class_position: report.class_position || null,
+          total_students: report.total_students || 0,
+          status: report.status || 'DRAFT',
+          remarks: report.class_teacher_remark || report.remarks || '',
+          next_term_begins: report.next_term_begins || null,
+          subject_results: transformSubjectResults(report.subject_results, 'JUNIOR_SECONDARY'),
+          created_at: report.created_at,
+          updated_at: report.updated_at,
+          overall_grade: report.overall_grade || calculateGrade(report.average_score),
+          education_level: 'JUNIOR_SECONDARY',
+        })),
+        
+        ...seniorReports.map((report: any) => ({
+          id: report.id,
+          student: report.student || {},
+          academic_session: this.extractSessionInfo(report),
+          term: report.exam_session?.term || 'N/A',
+          total_subjects: report.total_subjects || 0,
+          subjects_passed: report.subjects_passed || 0,
+          subjects_failed: report.subjects_failed || 0,
+          total_score: report.total_score || 0,
+          average_score: report.average_score || 0,
+          gpa: report.gpa || 0,
+          class_position: report.class_position || null,
+          total_students: report.total_students || 0,
+          status: report.status || 'DRAFT',
+          remarks: report.class_teacher_remark || report.remarks || '',
+          next_term_begins: report.next_term_begins || null,
+          subject_results: transformSubjectResults(report.subject_results, 'SENIOR_SECONDARY'),
+          created_at: report.created_at,
+          updated_at: report.updated_at,
+          overall_grade: report.overall_grade || calculateGrade(report.average_score),
+          education_level: 'SENIOR_SECONDARY',
+          stream: report.stream || null,
+        })),
+      ];
+
+      console.log(`✅ Total term reports fetched: ${allReports.length}`);
+      return allReports;
+    } catch (error) {
+      console.error('❌ Error fetching term results:', error);
+      return [];
+    }
+  }
+
+  // ===== CONTINUATION OF ResultService CLASS =====
+
+  // ... (previous methods continued)
+
   async getStudentResults(params: FilterParams): Promise<StandardResult[]> {
     const { education_level, result_type = 'termly', student } = params;
 
     console.log('getStudentResults called with params:', params);
 
-    // If no education level specified, return empty array
     if (!education_level) {
       console.warn('No education_level specified in getStudentResults, returning empty array');
       return [];
@@ -560,253 +848,534 @@ async publishSubjectResult(resultId: string, educationLevel: string) {
     }
   }
 
-  // Add this method to your ResultService class
 
-/**
- * Get ALL term results across all education levels
- * This fetches from education-level-specific term report endpoints
- */
-async getTermResults(params?: FilterParams) {
-  try {
-    console.log('Fetching term results with params:', params);
-    
-    // Fetch from all education-level-specific term report endpoints
-    const [nurseryReports, primaryReports, juniorReports, seniorReports] = await Promise.all([
-      api.get(`${this.baseURL}/nursery/term-reports/`, { params }).catch(() => ({ results: [] })),
-      api.get(`${this.baseURL}/primary/term-reports/`, { params }).catch(() => ({ results: [] })),
-      api.get(`${this.baseURL}/junior-secondary/term-reports/`, { params }).catch(() => ({ results: [] })),
-      api.get(`${this.baseURL}/senior-secondary/term-reports/`, { params }).catch(() => ({ results: [] })),
-    ]);
+  async getTeacherResults(assignments: TeacherAssignment[]) {
+  const results: StandardResult[] = [];
 
-    // Extract arrays from responses
-    const nursery = Array.isArray(nurseryReports) ? nurseryReports : (nurseryReports?.results || []);
-    const primary = Array.isArray(primaryReports) ? primaryReports : (primaryReports?.results || []);
-    const junior = Array.isArray(juniorReports) ? juniorReports : (juniorReports?.results || []);
-    const senior = Array.isArray(seniorReports) ? seniorReports : (seniorReports?.results || []);
+  for (const a of assignments) {
+    if (!a.subject_id || !a.education_level) continue;
 
-
-      
-    // Log sample raw data from API
-    if (senior.length > 0) {
-      console.log('📄 Sample Senior Report (RAW from API):', senior[0]);
-      console.log('   Status from API:', senior[0].status);
-    }
-    if (primary.length > 0) {
-      console.log('📄 Sample Primary Report (RAW from API):', primary[0]);
-      console.log('   Status from API:', primary[0].status);
-    }
-
-    // Helper function to calculate overall grade from average score
-    const calculateGrade = (averageScore: number) => {
-      if (!averageScore || isNaN(averageScore)) return 'N/A';
-      if (averageScore >= 70) return 'A';
-      if (averageScore >= 60) return 'B';
-      if (averageScore >= 50) return 'C';
-      if (averageScore >= 45) return 'D';
-      if (averageScore >= 39) return 'E';
-      return 'F';
-    };
-
-    // Normalize all reports to a common structure matching the UI interface
-    const allReports = [
-      ...nursery.map((report: any) => {
-        console.log('🔍 [ResultService] Raw Nursery Term Report from API:', report);
-        console.log('🔍 [ResultService] Nursery fields:', {
-    total_marks_obtained: report.total_marks_obtained,
-    overall_percentage: report.overall_percentage,
-    subject_results: report.subject_results,
-    physical_development: report.physical_development,
-    health: report.health,
-    cleanliness: report.cleanliness,
-    general_conduct: report.general_conduct
-  });
-        return {
-    id: report.id,
-    student: report.student || {},
-    academic_session: this.extractSessionInfo(report),
-    term: report.exam_session?.term || 'N/A',
-    total_subjects: report.total_subjects || 0,
-    subjects_passed: 0,
-    subjects_failed: 0,
-    total_score: report.total_marks_obtained || 0,
-    average_score: report.overall_percentage || 0,
-    gpa: 0,
-    class_position: report.class_position || null,
-    total_students: report.total_students_in_class || 0,
-    status: report.status || 'DRAFT',
-    remarks: report.academic_comment || '', // ADDED: Include academic comment
-    next_term_begins: report.next_term_begins || null,
-    subject_results: (report.subject_results || []).map((sr: any) => ({
-      id: sr.id,
-      subject: sr.subject,
-      total_ca_score: 0, // Nursery doesn't have CA
-      ca_total: 0,
-      exam_score: sr.mark_obtained || sr.exam_score || 0, // FIX: Use mark_obtained
-      total_score: sr.mark_obtained || sr.exam_score || 0, // FIX: Use mark_obtained
-      percentage: sr.percentage || 0,
-      grade: sr.grade || 'N/A',
-      grade_point: sr.grade_point || 0,
-      is_passed: sr.is_passed,
-      status: sr.status
-    })),
-    created_at: report.created_at,
-    updated_at: report.updated_at,
-    overall_grade: calculateGrade(report.overall_percentage),
-    education_level: 'NURSERY',
-    // ADD THESE PHYSICAL DEVELOPMENT FIELDS
-    physical_development: report.physical_development,
-    health: report.health,
-    cleanliness: report.cleanliness,
-    general_conduct: report.general_conduct,
-    height_beginning: report.height_beginning,
-    height_end: report.height_end,
-    weight_beginning: report.weight_beginning,
-    weight_end: report.weight_end,
-  };
-}),
-      ...primary.map((report: any) => ({
-        id: report.id,
-        student: report.student || {},
-        // academic_session: report.exam_session?.academic_session || {},
-         academic_session: this.extractSessionInfo(report),
-        term: report.exam_session?.term || 'N/A',
-        total_subjects: report.total_subjects || 0,
-        subjects_passed: 0, // Calculated from subject_results if needed
-        subjects_failed: 0,
-        total_score: report.total_score || 0,
-        average_score: report.average_score || 0,
-        gpa: 0,
-        class_position: report.class_position || null,
-        total_students: report.total_students || 0,
-        status: report.status || 'DRAFT',
-        remarks: '',
-        next_term_begins: report.next_term_begins || null,
-        subject_results: report.subject_results || [],
-        created_at: report.created_at,
-        updated_at: report.updated_at,
-        overall_grade: report.overall_grade || calculateGrade(report.average_score),
-        education_level: 'PRIMARY',
-      })),
-      ...junior.map((report: any) => ({
-        id: report.id,
-        student: report.student || {},
-        // academic_session: report.exam_session?.academic_session || {},
-         academic_session: this.extractSessionInfo(report),
-        term: report.exam_session?.term || 'N/A',
-        total_subjects: report.total_subjects || 0,
-        subjects_passed: 0,
-        subjects_failed: 0,
-        total_score: report.total_score || 0,
-        average_score: report.average_score || 0,
-        gpa: 0,
-        class_position: report.class_position || null,
-        total_students: report.total_students || 0,
-        status: report.status || 'DRAFT',
-        remarks: '',
-        next_term_begins: report.next_term_begins || null,
-        subject_results: report.subject_results || [],
-        created_at: report.created_at,
-        updated_at: report.updated_at,
-        overall_grade: report.overall_grade || calculateGrade(report.average_score),
+    if (a.education_level === 'JUNIOR_SECONDARY') {
+      const res = await this.getJuniorSecondaryResults({
+        subject: a.subject_id.toString(),
         education_level: 'JUNIOR_SECONDARY',
-      })),
-      ...senior.map((report: any) => ({
-        id: report.id,
-        student: report.student || {},
-        // academic_session: report.exam_session?.academic_session || {},
-         academic_session: this.extractSessionInfo(report),
-        term: report.exam_session?.term || 'N/A',
-        total_subjects: 0, // Calculate from subject_results
-        subjects_passed: 0,
-        subjects_failed: 0,
-        total_score: report.total_score || 0,
-        average_score: report.average_score || 0,
-        gpa: 0,
-        class_position: report.class_position || null,
-        total_students: report.total_students || 0,
-        status: report.status || 'DRAFT',
-        remarks: '',
-        next_term_begins: report.next_term_begins || null,
-        subject_results: report.subject_results || [],
-        created_at: report.created_at,
-        updated_at: report.updated_at,
-        overall_grade: report.overall_grade || calculateGrade(report.average_score),
-        education_level: 'SENIOR_SECONDARY',
-        stream: report.stream || null,
-      })),
-    ];
-
-    console.log(`Fetched ${allReports.length} term reports across all education levels`);
-    console.log('Sample report:', allReports[0]); // Debug log
-    return allReports;
-  } catch (error) {
-    console.error('Error fetching term results:', error);
-    return [];
-  }
-}
-
-/**
- * Get term results for a specific education level
- */
-async getTermResultsByEducationLevel(educationLevel: string, params?: FilterParams) {
-  try {
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/term-reports/`,
-      'PRIMARY': `${this.baseURL}/primary/term-reports/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/`,
-    };
-
-    const endpoint = endpoints[educationLevel.toUpperCase()];
-    if (!endpoint) {
-      console.warn(`Unsupported education level: ${educationLevel}`);
-      return [];
+      });
+      results.push(...this.transformJuniorSecondaryResults(res));
     }
 
-    const response = await api.get(endpoint, { params });
-    return Array.isArray(response) ? response : (response?.results || []);
-  } catch (error) {
-    console.error(`Error fetching ${educationLevel} term results:`, error);
-    return [];
+    if (a.education_level === 'SENIOR_SECONDARY') {
+      const res = await this.getSeniorSecondaryResults({
+        subject: a.subject_id.toString(),
+        education_level: 'SENIOR_SECONDARY',
+      });
+      results.push(...this.transformSeniorSecondaryResults(res));
+    }
   }
+
+  return results;
 }
 
-/**
- * Trigger term report generation for a specific student
- * This should be called after all subject results for a term are published
- */
-async generateTermReport(studentId: string, examSessionId: string) {
-  try {
-    const response = await api.post(`${this.baseURL}/student-term-results/generate_report/`, {
-      student_id: studentId,
-      exam_session_id: examSessionId,
+
+  // ===== PDF REPORT GENERATION METHODS =====
+
+  private getAuthToken(): string | null {
+    const token = 
+      localStorage.getItem('access_token') ||
+      localStorage.getItem('token') ||
+      localStorage.getItem('authToken') ||
+      sessionStorage.getItem('access_token') ||
+      sessionStorage.getItem('token') ||
+      sessionStorage.getItem('authToken');
+
+    if (!token) {
+      console.error('🔒 No authentication token found in storage');
+      console.log('Available localStorage keys:', Object.keys(localStorage));
+      console.log('Available sessionStorage keys:', Object.keys(sessionStorage));
+    } else {
+      console.log('✅ Authentication token found');
+    }
+
+    return token;
+  }
+
+  private getBaseURL(): string {
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    console.log('🌐 Using API base URL:', baseURL);
+    return baseURL;
+  }
+
+  async downloadTermReportPDF(
+    reportId: string, 
+    educationLevel: string, 
+    term?: string
+  ): Promise<Blob> {
+    try {
+      console.group('📥 downloadTermReportPDF');
+      console.log('Report ID:', reportId);
+      console.log('Education Level:', educationLevel);
+      console.log('Term:', term);
+
+      const authToken = this.getAuthToken();
+      if (!authToken) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const baseURL = this.getBaseURL();
+      const url = new URL(`${baseURL}/api/results/report-generation/download-term-report/`);
+      url.searchParams.append('report_id', reportId);
+      url.searchParams.append('education_level', educationLevel.toUpperCase());
+
+      if (term) {
+        url.searchParams.append('term', term.toUpperCase());
+      }
+
+      console.log('📡 Fetching from:', url.toString());
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/pdf, application/octet-stream, */*'
+        }
+      });
+
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType?.includes('application/json')) {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+            console.error('❌ Error data:', errorData);
+          } else {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          }
+        } catch (parseError) {
+          console.warn('⚠️ Could not parse error response');
+        }
+
+        console.error('❌ Download failed:', errorMessage);
+        console.groupEnd();
+
+        if (response.status === 404) {
+          throw new Error('Report not found. Please ensure the report has been generated.');
+        } else if (response.status === 403) {
+          throw new Error('Access denied. You may not have permission to view this report.');
+        } else if (response.status === 401) {
+          throw new Error('Authentication expired. Please log in again.');
+        } else {
+          throw new Error(errorMessage);
+        }
+      }
+
+      const blob = await response.blob();
+      
+      console.log('✅ PDF blob received:', {
+        size: blob.size,
+        type: blob.type,
+        sizeInKB: (blob.size / 1024).toFixed(2) + ' KB'
+      });
+
+      if (blob.size === 0) {
+        console.error('❌ Received empty blob');
+        throw new Error('Received empty PDF file. The report may not be ready yet.');
+      }
+
+      const contentType = blob.type || response.headers.get('content-type') || '';
+      if (contentType && !contentType.includes('pdf') && !contentType.includes('octet-stream')) {
+        console.warn('⚠️ Unexpected content type:', contentType);
+        console.warn('⚠️ This might not be a PDF, but attempting download anyway');
+      }
+
+      console.log('✅ Download successful');
+      console.groupEnd();
+
+      return blob;
+    } catch (error: any) {
+      console.error('❌ Error in downloadTermReportPDF:', error);
+      console.groupEnd();
+      
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Cannot connect to server. Please check your internet connection and ensure the backend is running.');
+      }
+      
+      throw error;
+    }
+  }
+
+  async downloadSessionReportPDF(reportId: string): Promise<Blob> {
+    try {
+      console.group('📥 downloadSessionReportPDF');
+      console.log('Report ID:', reportId);
+
+      const authToken = this.getAuthToken();
+      if (!authToken) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const baseURL = this.getBaseURL();
+      const url = new URL(`${baseURL}/api/results/report-generation/download-session-report/`);
+      url.searchParams.append('report_id', reportId);
+
+      console.log('📡 Fetching from:', url.toString());
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/pdf, application/octet-stream, */*'
+        }
+      });
+
+      console.log('📊 Response status:', response.status);
+
+      if (!response.ok) {
+        let errorMessage = `Failed to download PDF: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {}
+        
+        console.error('❌ Download failed:', errorMessage);
+        console.groupEnd();
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      console.log('✅ PDF blob received:', blob.size, 'bytes');
+      console.groupEnd();
+
+      return blob;
+    } catch (error) {
+      console.error('❌ Error downloading session report PDF:', error);
+      console.groupEnd();
+      throw error;
+    }
+  }
+
+  async bulkDownloadTermReports(
+    reportIds: string[], 
+    educationLevel: string
+  ): Promise<Blob> {
+    try {
+      console.group('📥 bulkDownloadTermReports');
+      console.log('Report IDs:', reportIds);
+      console.log('Education Level:', educationLevel);
+      console.log('Count:', reportIds.length);
+
+      const authToken = this.getAuthToken();
+      if (!authToken) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
+      const baseURL = this.getBaseURL();
+      const url = `${baseURL}/api/results/report-generation/bulk-download/`;
+
+      console.log('📡 Posting to:', url);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/zip, application/octet-stream, */*'
+        },
+        body: JSON.stringify({
+          report_ids: reportIds,
+          education_level: educationLevel.toUpperCase()
+        })
+      });
+
+      console.log('📊 Response status:', response.status);
+
+      if (!response.ok) {
+        let errorMessage = `Failed to download reports: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {}
+        
+        console.error('❌ Bulk download failed:', errorMessage);
+        console.groupEnd();
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      
+      console.log('✅ ZIP blob received:', {
+        size: blob.size,
+        type: blob.type,
+        sizeInMB: (blob.size / 1024 / 1024).toFixed(2) + ' MB'
+      });
+
+      if (blob.size === 0) {
+        throw new Error('Received empty ZIP file');
+      }
+
+      console.log('✅ Bulk download successful');
+      console.groupEnd();
+
+      return blob;
+    } catch (error) {
+      console.error('❌ Error bulk downloading reports:', error);
+      console.groupEnd();
+      throw error;
+    }
+  }
+
+  triggerBlobDownload(blob: Blob, filename: string): void {
+    try {
+      console.log('💾 Triggering download:', filename, `(${blob.size} bytes)`);
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        console.log('✅ Download triggered and cleaned up');
+      }, 100);
+    } catch (error) {
+      console.error('❌ Error triggering download:', error);
+      throw new Error('Failed to trigger file download');
+    }
+  }
+
+  // ===== STATUS MANAGEMENT =====
+
+  async approveSubjectResult(resultId: string, educationLevel: string) {
+    try {
+      const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+      
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/results/${resultId}/approve/`,
+        'PRIMARY': `${this.baseURL}/primary/results/${resultId}/approve/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/approve/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/approve/`,
+      };
+      
+      const endpoint = endpoints[normalizedLevel];
+      if (!endpoint) {
+        throw new Error(`Unsupported education level for approve subject result: ${normalizedLevel}`);
+      }
+      
+      return api.post(endpoint, {});
+    } catch (error) {
+      console.error('Error approving subject result:', error);
+      throw error;
+    }
+  }
+
+  async publishSubjectResult(resultId: string, educationLevel: string) {
+    try {
+      const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+      
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/results/${resultId}/publish/`,
+        'PRIMARY': `${this.baseURL}/primary/results/${resultId}/publish/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/publish/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/publish/`,
+      };
+      
+      const endpoint = endpoints[normalizedLevel];
+      if (!endpoint) {
+        throw new Error(`Unsupported education level for publish subject result: ${normalizedLevel}`);
+      }
+      
+      return api.post(endpoint, {});
+    } catch (error) {
+      console.error('Error publishing subject result:', error);
+      throw error;
+    }
+  }
+
+  async approveResult(resultId: string, educationLevel: string) {
+    try {
+      const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+      
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/term-reports/${resultId}/approve/`,
+        'PRIMARY': `${this.baseURL}/primary/term-reports/${resultId}/approve/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${resultId}/approve/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${resultId}/approve/`,
+      };
+      
+      const endpoint = endpoints[normalizedLevel];
+      if (!endpoint) {
+        console.warn(`Unsupported education level for approve: ${normalizedLevel}`);
+        return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
+      }
+      
+      return api.post(endpoint, {});
+    } catch (error) {
+      console.error('Error approving result:', error);
+      throw error;
+    }
+  }
+
+  async publishResult(resultId: string, educationLevel: string) {
+    try {
+      const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
+      
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/term-reports/${resultId}/publish/`,
+        'PRIMARY': `${this.baseURL}/primary/term-reports/${resultId}/publish/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${resultId}/publish/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${resultId}/publish/`,
+      };
+      
+      const endpoint = endpoints[normalizedLevel];
+      if (!endpoint) {
+        console.warn(`Unsupported education level for publish: ${normalizedLevel}`);
+        return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
+      }
+      
+      return api.post(endpoint, {});
+    } catch (error) {
+      console.error('Error publishing result:', error);
+      throw error;
+    }
+  }
+
+  // ===== CRUD OPERATIONS =====
+
+  async createStudentResult(data: any, educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery/results/`,
+      'PRIMARY': `${this.baseURL}/primary/results/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/`,
+    };
+    
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
+    }
+    
+    return api.post(endpoint, data);
+  }
+
+  async updateStudentResult(resultId: string, data: any, educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/`,
+      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/`,
+    };
+    
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
+    }
+    
+    console.log('📤 ResultService.updateStudentResult:', {
+      endpoint,
+      resultId,
+      educationLevel,
+      dataKeys: Object.keys(data),
+      data
     });
+  
+    const response = await api.put(endpoint, data);
+    console.log('📥 ResultService.updateStudentResult RESPONSE:', response);
     return response;
-  } catch (error) {
-    console.error('Error generating term report:', error);
-    throw error;
   }
-}
-// Add to ResultService
-async debugTermReports() {
-  console.log('=== Debugging Term Reports ===');
-  
-  const nursery = await this.getNurseryTermReports();
-  console.log('Nursery Reports:', nursery.length);
-  
-  const primary = await this.getPrimaryTermReports();
-  console.log('Primary Reports:', primary.length);
-  
-  const junior = await this.getJuniorSecondaryTermReports();
-  console.log('Junior Secondary Reports:', junior.length);
-  
-  const senior = await this.getSeniorSecondaryTermReports();
-  console.log('Senior Secondary Reports:', senior.length);
-  
-  console.log('=== End Debug ===');
-}
 
-  // Fixed method to get all results without education level requirement
+  async deleteStudentResult(resultId: string, educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/`,
+      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/`,
+    };
+    
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
+    }
+    
+    try {
+      await api.get(endpoint);
+    } catch (checkError: any) {
+      if (checkError.response?.status === 404) {
+        throw new Error(`${educationLevel} result with ID ${resultId} not found. This might be a term report ID instead of an individual result ID.`);
+      }
+      throw checkError;
+    }
+    
+    return api.delete(endpoint);
+  }
+
+  async deleteTermResult(termResultId: string, educationLevel?: string): Promise<void> {
+    try {
+      if (!educationLevel) {
+        try {
+          await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
+          return;
+        } catch (baseError: any) {
+          console.log('Base endpoint delete failed, trying education-level specific endpoints');
+        }
+      }
+      
+      const normalizedLevel = educationLevel?.toUpperCase().replace(/\s+/g, '_');
+      
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/term-reports/${termResultId}/`,
+        'PRIMARY': `${this.baseURL}/primary/term-reports/${termResultId}/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${termResultId}/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${termResultId}/`,
+      };
+      
+      if (normalizedLevel && endpoints[normalizedLevel]) {
+        await api.delete(endpoints[normalizedLevel]);
+      } else {
+        for (const endpoint of Object.values(endpoints)) {
+          try {
+            await api.delete(endpoint);
+            return;
+          } catch (err) {
+            // Continue to next endpoint
+          }
+        }
+        throw new Error(`Term result with ID ${termResultId} not found in any education level.`);
+      }
+    } catch (error) {
+      console.error('Error deleting term result:', error);
+      throw error;
+    }
+  }
+
+  async bulkCreateResults(data: any[], educationLevel: string) {
+    const endpoints = {
+      'NURSERY': `${this.baseURL}/nursery/results/bulk_create/`,
+      'PRIMARY': `${this.baseURL}/primary/results/bulk_create/`,
+      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/bulk_create/`,
+      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/bulk_create/`,
+    };
+    
+    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
+    if (!endpoint) {
+      throw new Error(`Unsupported education level: ${educationLevel}`);
+    }
+    
+    return api.post(endpoint, { results: data });
+  }
+
+  // ===== UTILITY & HELPER METHODS =====
+
   async getAllResults(): Promise<StandardResult[]> {
     try {
       const [nursery, primary, juniorSecondary, seniorSecondary] = await Promise.all([
@@ -828,12 +1397,10 @@ async debugTermReports() {
     }
   }
 
-  // FIXED: Convenience methods with proper filtering
   async getResultsByStudent(studentId: string | number, educationLevel?: string): Promise<StandardResult[]> {
     console.log('Getting results for student:', studentId, 'education level:', educationLevel);
     
     if (educationLevel) {
-      // Use education level to filter properly
       const results = await this.getStudentResults({ 
         student: studentId.toString(), 
         education_level: educationLevel 
@@ -842,7 +1409,6 @@ async debugTermReports() {
       return results;
     }
     
-    // If no education level provided, get all results and filter by student
     const allResults = await this.getAllResults();
     const filteredResults = allResults.filter(result => {
       if (!result || !result.student) return false;
@@ -882,233 +1448,77 @@ async debugTermReports() {
     }
   }
 
+  async getTermResultsByEducationLevel(educationLevel: string, params?: FilterParams) {
+    try {
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/term-reports/`,
+        'PRIMARY': `${this.baseURL}/primary/term-reports/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/`,
+      };
 
-  // Exam sessions - UPDATED
+      const endpoint = endpoints[educationLevel.toUpperCase()];
+      if (!endpoint) {
+        console.warn(`Unsupported education level: ${educationLevel}`);
+        return [];
+      }
+
+      const response = await api.get(endpoint, { params });
+      return Array.isArray(response) ? response : (response?.results || []);
+    } catch (error) {
+      console.error(`Error fetching ${educationLevel} term results:`, error);
+      return [];
+    }
+  }
+
+  async generateTermReport(studentId: string, examSessionId: string) {
+    try {
+      const response = await api.post(`${this.baseURL}/student-term-results/generate_report/`, {
+        student_id: studentId,
+        exam_session_id: examSessionId,
+      });
+      return response;
+    } catch (error) {
+      console.error('Error generating term report:', error);
+      throw error;
+    }
+  }
+
   async getExamSessions(params?: FilterParams): Promise<ExamSessionInfo[]> {
     try {
       const response = await api.get(`${this.baseURL}/exam-sessions/`, { params });
-        console.log("Here is the session", response)
-      return Array.isArray(response) ? response : (response?.results || []);
-    } catch (error) {
-      console.error('Error fetching exam sessions:', error);
-      return [];
-    }
-    
-  }
-
-
-  // CRUD operations - UPDATED to use hierarchical endpoints
-  async createStudentResult(data: any, educationLevel: string) {
-    const endpoints = {
-      'NURSERY': `${this.baseURL}/nursery/results/`,
-      'PRIMARY': `${this.baseURL}/primary/results/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/`,
-    };
-    
-    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level: ${educationLevel}`);
-    }
-    
-    return api.post(endpoint, data);
-  }
-
-  async updateStudentResult(resultId: string, data: any, educationLevel: string) {
-    const endpoints = {
-      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/`,
-      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/`,
-    };
-    
-    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level: ${educationLevel}`);
-    }
-    console.log('📤 ResultService.updateStudentResult:', {
-    endpoint,
-    resultId,
-    educationLevel,
-    dataKeys: Object.keys(data),
-    data
-  });
-  
-    const response = await api.put(endpoint, data);
-    console.log('📥 ResultService.updateStudentResult RESPONSE:', response);
-     return response;
-  }
-
-  async deleteStudentResult(resultId: string, educationLevel: string) {
-    const endpoints = {
-      'NURSERY': `${this.baseURL}/nursery/results/${resultId}/`,
-      'PRIMARY': `${this.baseURL}/primary/results/${resultId}/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/${resultId}/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/${resultId}/`,
-    };
-    
-    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level: ${educationLevel}`);
-    }
-    
-    // First check if the individual result exists
-    try {
-      await api.get(endpoint);
-    } catch (checkError: any) {
-      if (checkError.response?.status === 404) {
-        throw new Error(`${educationLevel} result with ID ${resultId} not found. This might be a term report ID instead of an individual result ID.`);
+      console.log("📦 Exam sessions raw response:", response);
+      
+      let sessions: ExamSessionInfo[] = [];
+      
+      if (Array.isArray(response)) {
+        sessions = response;
+      } else if (response?.results && Array.isArray(response.results)) {
+        sessions = response.results;
+      } else if (response?.data && Array.isArray(response.data)) {
+        sessions = response.data;
+      } else if (typeof response === 'object' && response !== null) {
+        sessions = [response];
       }
-      throw checkError;
-    }
-    
-    return api.delete(endpoint);
-  }
-
-  // NEW: Bulk operations
-  async bulkCreateResults(data: any[], educationLevel: string) {
-    const endpoints = {
-      'NURSERY': `${this.baseURL}/nursery/results/bulk_create/`,
-      'PRIMARY': `${this.baseURL}/primary/results/bulk_create/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/bulk_create/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/bulk_create/`,
-    };
-    
-    const endpoint = endpoints[educationLevel as keyof typeof endpoints];
-    if (!endpoint) {
-      throw new Error(`Unsupported education level: ${educationLevel}`);
-    }
-    
-    return api.post(endpoint, { results: data });
-  }
-
-  
-  // Add to ResultService
-async testTermReports() {
-  console.log('=== TESTING TERM REPORTS API ===');
-  
-  try {
-    // Test each endpoint individually
-    const seniorResults = await api.get(`${this.baseURL}/senior-secondary/term-reports/`);
-    console.log('Senior Secondary Reports:', seniorResults);
-    console.log('Count:', Array.isArray(seniorResults) ? seniorResults.length : seniorResults?.results?.length);
-    
-    const juniorResults = await api.get(`${this.baseURL}/junior-secondary/term-reports/`);
-    console.log('Junior Secondary Reports:', juniorResults);
-    
-    const primaryResults = await api.get(`${this.baseURL}/primary/term-reports/`);
-    console.log('Primary Reports:', primaryResults);
-    
-    const nurseryResults = await api.get(`${this.baseURL}/nursery/term-reports/`);
-    console.log('Nursery Reports:', nurseryResults);
-    
-  } catch (error) {
-    console.error('Test failed:', error);
-  }
-  
-  console.log('=== END TEST ===');
-}
-
-/**
- * Approve a term result (education-level aware)
- */
-async approveResult(resultId: string, educationLevel: string) {
-  try {
-    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
-    
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/term-reports/${resultId}/approve/`,
-      'PRIMARY': `${this.baseURL}/primary/term-reports/${resultId}/approve/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${resultId}/approve/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${resultId}/approve/`,
-    };
-    
-    const endpoint = endpoints[normalizedLevel];
-    if (!endpoint) {
-      console.warn(`Unsupported education level for approve: ${normalizedLevel}`);
-      // Fallback to base endpoint
-      return api.post(`${this.baseURL}/student-term-results/${resultId}/approve/`, {});
-    }
-    
-    return api.post(endpoint, {});
-  } catch (error) {
-    console.error('Error approving result:', error);
-    throw error;
-  }
-}
-
-/**
- * Publish a term result (education-level aware)
- */
-async publishResult(resultId: string, educationLevel: string) {
-  try {
-    const normalizedLevel = educationLevel.toUpperCase().replace(/\s+/g, '_');
-    
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/term-reports/${resultId}/publish/`,
-      'PRIMARY': `${this.baseURL}/primary/term-reports/${resultId}/publish/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${resultId}/publish/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${resultId}/publish/`,
-    };
-    
-    const endpoint = endpoints[normalizedLevel];
-    if (!endpoint) {
-      console.warn(`Unsupported education level for publish: ${normalizedLevel}`);
-      // Fallback to base endpoint
-      return api.post(`${this.baseURL}/student-term-results/${resultId}/publish/`, {});
-    }
-    
-    return api.post(endpoint, {});
-  } catch (error) {
-    console.error('Error publishing result:', error);
-    throw error;
-  }
-}
-
-/**
- * Delete a term result (education-level aware)
- */
-async deleteTermResult(termResultId: string, educationLevel?: string): Promise<void> {
-  try {
-    if (!educationLevel) {
-      // Try to delete from base endpoint first
-      try {
-        await api.delete(`${this.baseURL}/student-term-results/${termResultId}/`);
-        return;
-      } catch (baseError: any) {
-        console.log('Base endpoint delete failed, trying education-level specific endpoints');
+      
+      console.log("✅ Processed sessions:", sessions.length, "items");
+      
+      if (sessions.length === 0) {
+        throw new Error('No exam sessions available. Please contact your administrator.');
       }
+      
+      return sessions;
+      
+    } catch (error: any) {
+      console.error('❌ Error fetching exam sessions:', error);
+      throw new Error(
+        error.response?.data?.message || 
+        error.message || 
+        'Failed to fetch exam sessions'
+      );
     }
-    
-    const normalizedLevel = educationLevel?.toUpperCase().replace(/\s+/g, '_');
-    
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/term-reports/${termResultId}/`,
-      'PRIMARY': `${this.baseURL}/primary/term-reports/${termResultId}/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/term-reports/${termResultId}/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/term-reports/${termResultId}/`,
-    };
-    
-    if (normalizedLevel && endpoints[normalizedLevel]) {
-      await api.delete(endpoints[normalizedLevel]);
-    } else {
-      // Try all endpoints
-      for (const endpoint of Object.values(endpoints)) {
-        try {
-          await api.delete(endpoint);
-          return;
-        } catch (err) {
-          // Continue to next endpoint
-        }
-      }
-      throw new Error(`Term result with ID ${termResultId} not found in any education level.`);
-    }
-  } catch (error) {
-    console.error('Error deleting term result:', error);
-    throw error;
   }
-}
-  // NEW: Class statistics
+
   async getClassStatistics(educationLevel: string, params?: {
     exam_session?: string;
     student_class?: string;
@@ -1130,43 +1540,55 @@ async deleteTermResult(termResultId: string, educationLevel?: string): Promise<v
   }
 
   async findResultIdByComposite(params: {
-  student: string;
-  subject: string;
-  exam_session: string;
-  education_level: string;
-}): Promise<string | null> {
-  try {
-    const { education_level, ...filterParams } = params;
-    const normalizedLevel = education_level.toUpperCase().replace(/\s+/g, '_');
-    
-    const endpoints: Record<string, string> = {
-      'NURSERY': `${this.baseURL}/nursery/results/`,
-      'PRIMARY': `${this.baseURL}/primary/results/`,
-      'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/`,
-      'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/`,
-    };
-    
-    const endpoint = endpoints[normalizedLevel];
-    if (!endpoint) {
-      console.warn(`Unsupported education level: ${normalizedLevel}`);
+    student: string;
+    subject: string;
+    exam_session: string;
+    education_level: string;
+  }): Promise<string | null> {
+    try {
+      console.log('🔍 findResultIdByComposite called with:', params);
+      
+      const { education_level, ...filterParams } = params;
+      const normalizedLevel = education_level.toUpperCase().replace(/\s+/g, '_');
+      
+      const endpoints: Record<string, string> = {
+        'NURSERY': `${this.baseURL}/nursery/results/`,
+        'PRIMARY': `${this.baseURL}/primary/results/`,
+        'JUNIOR_SECONDARY': `${this.baseURL}/junior-secondary/results/`,
+        'SENIOR_SECONDARY': `${this.baseURL}/senior-secondary/results/`,
+      };
+      
+      const endpoint = endpoints[normalizedLevel];
+      
+      if (!endpoint) {
+        console.warn(`⚠️ Unsupported education level: ${normalizedLevel}`);
+        return null;
+      }
+      
+      const response = await api.get(endpoint, { params: filterParams });
+      
+      const results = Array.isArray(response.data) 
+        ? response.data 
+        : (response.data?.results || response.data?.data || []);
+      
+      if (results.length > 0) {
+        const resultId = results[0]?.id || results[0]?.pk;
+        
+        if (resultId) {
+          console.log('✅ Found result ID:', resultId);
+          return resultId.toString();
+        }
+      }
+      
+      console.warn('⚠️ No results found matching criteria');
+      return null;
+      
+    } catch (error: any) {
+      console.error('❌ Error finding result by composite:', error);
       return null;
     }
-    
-    const response = await api.get(endpoint, { params: filterParams });
-    const results = Array.isArray(response) ? response : (response?.results || []);
-    
-    if (results.length > 0) {
-      return results[0].id?.toString() || null;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Error finding result by composite:', error);
-    return null;
   }
-}
 
-  // NEW: Grade distribution (Senior Secondary only)
   async getGradeDistribution(params?: {
     exam_session?: string;
     student_class?: string;
@@ -1174,7 +1596,6 @@ async deleteTermResult(termResultId: string, educationLevel?: string): Promise<v
     return api.get(`${this.baseURL}/senior-secondary/results/grade_distribution/`, { params });
   }
 
-  // Additional utility methods
   async generateTranscript(studentId: string, options?: TranscriptOptions) {
     return api.post(`${this.baseURL}/transcripts/generate/`, {
       student_id: studentId,
@@ -1193,7 +1614,6 @@ async deleteTermResult(termResultId: string, educationLevel?: string): Promise<v
     return api.get(`${this.baseURL}/academic/streams/`, { class_level: classLevel });
   }
 
-  // NEW: Configuration methods - UPDATED endpoints
   async getGradingSystems() {
     return api.get(`${this.baseURL}/grading-systems/`);
   }
@@ -1216,6 +1636,50 @@ async deleteTermResult(termResultId: string, educationLevel?: string): Promise<v
 
   async getResultComments(params?: FilterParams) {
     return api.get(`${this.baseURL}/result-comments/`, { params });
+  }
+
+  // ===== DEBUG METHODS =====
+
+  async debugTermReports() {
+    console.log('=== Debugging Term Reports ===');
+    
+    const nursery = await this.getNurseryTermReports();
+    console.log('Nursery Reports:', nursery.length);
+    
+    const primary = await this.getPrimaryTermReports();
+    console.log('Primary Reports:', primary.length);
+    
+    const junior = await this.getJuniorSecondaryTermReports();
+    console.log('Junior Secondary Reports:', junior.length);
+    
+    const senior = await this.getSeniorSecondaryTermReports();
+    console.log('Senior Secondary Reports:', senior.length);
+    
+    console.log('=== End Debug ===');
+  }
+
+  async testTermReports() {
+    console.log('=== TESTING TERM REPORTS API ===');
+    
+    try {
+      const seniorResults = await api.get(`${this.baseURL}/senior-secondary/term-reports/`);
+      console.log('Senior Secondary Reports:', seniorResults);
+      console.log('Count:', Array.isArray(seniorResults) ? seniorResults.length : seniorResults?.results?.length);
+      
+      const juniorResults = await api.get(`${this.baseURL}/junior-secondary/term-reports/`);
+      console.log('Junior Secondary Reports:', juniorResults);
+      
+      const primaryResults = await api.get(`${this.baseURL}/primary/term-reports/`);
+      console.log('Primary Reports:', primaryResults);
+      
+      const nurseryResults = await api.get(`${this.baseURL}/nursery/term-reports/`);
+      console.log('Nursery Reports:', nurseryResults);
+      
+    } catch (error) {
+      console.error('Test failed:', error);
+    }
+    
+    console.log('=== END TEST ===');
   }
 }
 

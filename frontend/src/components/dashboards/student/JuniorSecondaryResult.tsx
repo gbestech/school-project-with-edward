@@ -134,7 +134,7 @@ const WatermarkLogo = ({ schoolInfo }: { schoolInfo: SchoolSettings }) => (
         className="text-5xl font-bold tracking-wider"
         style={{ color: 'rgba(30, 64, 175, 0.15)' }}
       >
-        {schoolInfo?.school_name?.toUpperCase() || "GOD'S TREASURE SCHOOLS"}
+        {schoolInfo?.school_name?.toUpperCase() || "School Name"}
       </div>
     </div>
   </div>

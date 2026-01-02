@@ -127,7 +127,7 @@ const WatermarkLogo = ({ schoolInfo }: { schoolInfo: SchoolSettings }) => (
             </div>
           )}
           <div className="text-lg font-semibold" style={{ opacity: 0.1 }}>
-            {schoolInfo?.school_name?.toUpperCase() || "GOD'S TREASURE SCHOOLS"}
+            {schoolInfo?.school_name?.toUpperCase() || "School Name"}
           </div>
         </div>
       </div>
@@ -135,7 +135,7 @@ const WatermarkLogo = ({ schoolInfo }: { schoolInfo: SchoolSettings }) => (
         className="text-6xl font-bold tracking-wider"
         style={{ color: 'rgba(30, 64, 175, 0.08)' }}
       >
-        {schoolInfo?.school_name?.toUpperCase() || "GOD'S TREASURE SCHOOLS"}
+        {schoolInfo?.school_name?.toUpperCase() || "School Name"}
       </div>
     </div>
   </div>

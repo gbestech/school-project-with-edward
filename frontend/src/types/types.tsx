@@ -50,31 +50,41 @@ export interface NurseryPhysicalDevelopment {
   weight_end?: number;
 }
 
-export interface TermReport {
-  id: string;
-  student: Student;
-  academic_session?: AcademicSession;
-  term: string;
-  total_subjects: number;
-  subjects_passed: number;
-  subjects_failed: number;
-  total_score: number;
-  average_score: number;
-  gpa: number;
-  class_position: number | null;
-  total_students: number;
-  status: ResultStatus;
-  remarks: string;
-  next_term_begins: string | null;
-  subject_results: TermReportSubjectResult[];
-  created_at: string;
-  updated_at: string;
-  overall_grade: string;
-  education_level: string;
+
+export interface ResultsAPIResponse<T> {
+  count: number;
+  next?: string;
+  previous?: string;
+  results: T[];
 }
 
-export interface NurseryTermReport extends TermReport, NurseryPhysicalDevelopment {
-  education_level: 'NURSERY';
+export type ResultStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+export type EducationLevel = 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY';
+export type TermChoice = 'FIRST' | 'SECOND' | 'THIRD';
+
+
+export interface Term {
+  id: number;
+  name: TermChoice;  // 'FIRST' | 'SECOND' | 'THIRD'
+  name_display: string;  // 'First Term' | 'Second Term' | 'Third Term'
+  academic_session: number;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  is_active: boolean;
+  next_term_begins?: string | null;
+  holidays_start?: string | null;
+  holidays_end?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PhysicalDevelopment = 'Excellent' | 'Very Good' | 'Good' | 'Fair' | 'Poor';
+export interface ResultDetailResponse {
+  result: StandardResult;
+  term_report?: TermReport;
+  grading_system: GradingSystem;
+  grades: Grade[];
 }
 
 export enum Gender {
@@ -250,16 +260,7 @@ export enum ContactMethod {
   APP = 'app'
 }
 
-type EducationLevel =
-  | 'NURSERY'
-  |'PRIMARY'
-  | 'JUNIOR_SECONDARY'
-  | 'SENIOR_SECONDARY'
-  | 'UNKNOWN'
-  | 'MIXED'
-  | string; // keep flexible for unexpected values
 
-  type ResultStatus = 'DRAFT' | 'PUBLISHED' | 'APPROVED' | 'ARCHIVED' | string;
 
 // ==========================================
 // UTILITY TYPES
@@ -288,14 +289,13 @@ export interface SchoolSettings {
   // General settings
   site_name: string;
   school_name: string;
-  school_code: string;
   address: string;
   phone: string;
   email: string;
   logo: string;
   favicon: string;
-  academicYearStart: string;
-  academicYearEnd: string;
+  academicYearStart?: string;
+  academicYearEnd?: string;
   motto: string;
   timezone: string;
   dateFormat: string;
@@ -304,7 +304,7 @@ export interface SchoolSettings {
   // Design settings
   theme: string;
   primaryColor: string;
-  secondaryColor: string;
+  secondaryColor?: string;
   fontFamily: string;
   fontSize: string;
   
@@ -518,6 +518,73 @@ export interface SchoolSettings {
     };
   };
 }
+
+// src/types/GradingTypes.ts
+
+export type GradingType = "PERCENTAGE" | "POINTS" | "LETTER" | "PASS_FAIL";
+
+export interface Grade {
+  id: number;
+  grading_system: number;          // FK to GradingSystem
+  grade: string;                   // e.g., "A", "B", "C"
+  min_score: number;               // Minimum score for this grade
+  max_score: number;               // Maximum score for this grade
+  grade_point?: number | null;     // Optional, for GPA/Points
+  description?: string;
+  is_passing: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GradingSystem {
+  id: number;
+  name: string;
+  grading_type: GradingType;
+  description?: string;
+  min_score: number;
+  max_score: number;
+  pass_mark: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  grades?: Grade[]; // Nested grades
+  enable_grade_curving?: boolean;
+  enable_grade_weighting?: boolean;
+}
+
+export type AcademicSettings = {
+  // Academic Year Settings
+  academicYearStart: string;
+  academicYearEnd: string;
+  termsPerYear: number;
+  weeksPerTerm: number;
+
+  // Class Settings
+  maxClassSize: number;
+  allowClassOverflow: boolean;
+  enableStreaming: boolean;
+  enableSubjectElectives: boolean;
+
+  // Grading Settings
+  gradingSystem: 'percentage' | 'letter' | 'gpa';
+  passPercentage: number;
+  enableGradeCurving: boolean;
+  enableGradeWeighting: boolean;
+
+  // Attendance Settings
+  requireAttendance: boolean;
+  minimumAttendancePercentage: number;
+  enableAttendanceTracking: boolean;
+  allowLateArrival: boolean;
+
+  // Curriculum Settings
+  enableCrossCuttingSubjects: boolean;
+  enableSubjectPrerequisites: boolean;
+  allowSubjectChanges: boolean;
+  enableCreditSystem: boolean;
+};
+
+
 
 // ==========================================
 // USER TYPES
@@ -1183,7 +1250,7 @@ export interface PeriodComparison {
     endDate: string;
     attendanceRate: number;
   };
-  change?: number;
+  change: number;
   changeType: ChangeType;
 }
 
@@ -2101,11 +2168,13 @@ export interface Particle {
 
 export interface StudentInfo {
   id: string;
+  admission_number: string;
   full_name: string;
-  username?: string;
   student_class: string;
-  education_level: string;
-  profile_picture?: string;
+  education_level: 'NURSERY' | 'PRIMARY' | 'JUNIOR_SECONDARY' | 'SENIOR_SECONDARY';
+  gender?: string;
+  date_of_birth?: string;
+  profile_image?: string;
 }
 
 export interface ObjectiveQuestion {
@@ -2168,6 +2237,30 @@ export interface CustomSection {
   questions: Question[];
 }
 
+
+
+// src/types/termReports.ts
+export interface TeacherRemark_Signature {
+  id: string;
+  student: string;
+  exam_session: string;
+
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+
+  class_teacher_signature: string | null;
+  head_teacher_signature: string | null;
+
+  class_teacher_signed_at: string | null;
+  head_teacher_signed_at: string | null;
+
+  status: "DRAFT" | "SUBMITTED" | "APPROVED" | "PUBLISHED";
+  is_published: boolean;
+
+  created_at: string;
+  updated_at: string;
+}
+
  
  export interface AcademicSession {
   id: string;        // Django uses AutoField (int), but DRF usually serializes as string or number.
@@ -2185,8 +2278,15 @@ export interface ExamSession {
   id: string;
   name: string;
   exam_type: string;
-  term: string;
-   academic_session?: AcademicSession | string | number;
+  academic_session: AcademicSession;
+  term: TermChoice | string;
+  start_date: string;
+  end_date: string;
+  result_release_date?: string;
+  is_published: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SubjectInfo {
@@ -2205,21 +2305,29 @@ export interface ExamSessionInfo {
   end_date: string;
   is_published: boolean;
   is_active: boolean;
+  created_at?: string; 
+  updated_at?: string
 }
 
 export interface StreamInfo {
   id: string;
   name: string;
   stream_type: string;
+   code?: string;
+  education_level: string; 
 }
 
 export interface GradingSystemInfo {
-  id: string;
+  id: string | number;
   name: string;
   grading_type: string;
   min_score: number;
   max_score: number;
   pass_mark: number;
+  description?: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface SelectionData {
@@ -2242,75 +2350,145 @@ export interface SelectionData {
 }
 
 // Unified result type for components
-export interface StandardResult {
+export interface BaseStandardResult {
   id: string;
   student: StudentInfo;
   subject: SubjectInfo;
-  exam_session?: ExamSessionInfo;
+  grading_system: GradingSystemInfo | GradingSystem;
+
   academic_session?: AcademicSession;
-  education_level: string;
-  stream?: StreamInfo;
-  grading_system?: GradingSystemInfo;
-  
-  // Standardized score fields
+  exam_session?: ExamSessionInfo | ExamSession;
+
   total_score: number;
   percentage: number;
   grade: string;
   grade_point?: number;
   is_passed: boolean;
-  position?: number;
-  
-  // Raw score fields for editing (keep original field names)
-  first_test_score?: number;
-  second_test_score?: number;
-  third_test_score?: number;
-  continuous_assessment_score?: number;
-  take_home_test_score?: number;
-  appearance_score?: number;
-  practical_score?: number;
-  project_score?: number;
-  note_copying_score?: number;
+
   exam_score: number;
-  
-  // Education-level specific breakdown
-  breakdown?: {
-    // Senior Secondary
-    first_test_score?: number;
-    second_test_score?: number;
-    third_test_score?: number;
-    exam_score?: number;
-    
-    // Primary/Junior Secondary
-    continuous_assessment_score?: number;
-    take_home_test_score?: number;
-    practical_score?: number;
-    appearance_score?: number;
-    project_score?: number;
-    note_copying_score?: number;
-    ca_total?: number;
-    ca_percentage?: number;
-    exam_percentage?: number;
-    
-    // Nursery
-    max_marks_obtainable?: number;
-    mark_obtained?: number;
-    physical_development?: string;
-    health?: string;
-    cleanliness?: string;
-    general_conduct?: string;
-  };
-  
-  // Class statistics
+
+  position?: number;
+  subject_position?: number;
+
   class_average?: number;
   highest_in_class?: number;
   lowest_in_class?: number;
-  
-  // Status and metadata
+
+  teacher_remark: string;
+  class_teacher_remark?: string;
+  head_teacher_remark?: string;
+
   status: ResultStatus;
-  remarks?: string;
-  teacher_remark?: string;
   created_at: string;
+  updated_at: string;
 }
+
+
+export interface NurseryResultBreakdown {
+  max_marks_obtainable: number;
+  mark_obtained: number;
+  physical_development?: string;
+  health?: string;
+  cleanliness?: string;
+  general_conduct?: string;
+}
+
+export interface NurseryStandardResult extends BaseStandardResult {
+  education_level: 'NURSERY';
+  breakdown: NurseryResultBreakdown;
+}
+export interface PrimaryResultBreakdown {
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  project_score: number;
+  appearance_score?: number;
+  note_copying_score: number;
+  ca_total: number;
+  ca_percentage: number;
+  exam_percentage: number;
+}
+
+export interface PrimaryStandardResult extends BaseStandardResult {
+  education_level: 'PRIMARY';
+
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  project_score: number;
+  appearance_score?: number;
+  note_copying_score: number;
+
+  breakdown: PrimaryResultBreakdown;
+}
+
+export interface JuniorSecondaryStandardResultBreakdown {
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  project_score: number;
+  appearance_score?: number;
+  note_copying_score: number;
+  ca_total: number;
+  ca_percentage: number;
+  exam_percentage: number;
+}
+
+export interface JuniorSecondaryStandardResult extends BaseStandardResult {
+  education_level: 'JUNIOR_SECONDARY';
+  continuous_assessment_score: number;
+  take_home_test_score: number;
+  practical_score: number;
+  project_score: number;
+  appearance_score?: number;
+  note_copying_score: number;
+  breakdown: JuniorSecondaryStandardResultBreakdown
+}
+
+export interface SeniorSecondaryStandardResultBreakdown {
+   first_test_score: number,
+      second_test_score: number,
+      third_test_score: number,
+      exam_score: number,
+}
+
+export interface SeniorSecondarySessionStandardResultBreakdown {
+   first_term_score: number,
+      second_term_score: number,
+      third_term_score: number,
+      average_for_year: number,
+}
+
+
+export interface SeniorSecondaryStandardResult extends BaseStandardResult {
+  education_level: 'SENIOR_SECONDARY';
+  breakdown: SeniorSecondaryStandardResultBreakdown
+  stream?: {
+    id: string;
+    name: string;
+    code?: string;
+    education_level: string;
+    
+  };
+  first_test_score?: number;
+  second_test_score?: number;
+  third_test_score?: number;
+}
+
+
+
+export type StandardResult = 
+  | NurseryStandardResult 
+  | PrimaryStandardResult 
+  | JuniorSecondaryStandardResult 
+  | SeniorSecondaryStandardResult;
+
+
+  export type TermReport = 
+  | SeniorSecondaryTermReport 
+  | JuniorSecondaryTermReport 
+  | PrimaryTermReport 
+  | NurseryTermReport;
 
 // Education-level specific result interfaces
 export interface NurseryResultData {
@@ -2326,6 +2504,7 @@ export interface NurseryResultData {
   grade_point?: number;
   is_passed: boolean;
   position?: number;
+  subject_position?: number;
   academic_comment?: string;
   physical_development?: string;
   health?: string;
@@ -2347,7 +2526,7 @@ export interface PrimaryResultData {
   take_home_test_score: number;
   practical_score: number;
   project_score: number;
-  appearance_score?: number;
+  appearance_score?: number;  // Make this optional
   note_copying_score: number;
   exam_score: number;
   ca_total: number;
@@ -2379,7 +2558,7 @@ export interface JuniorSecondaryResultData {
   continuous_assessment_score: number;
   take_home_test_score: number;
   practical_score: number;
-  appearance_score?: number;
+  appearance_score?: number;  // Make this optional
   project_score: number;
   note_copying_score: number;
   exam_score: number;
@@ -2443,6 +2622,7 @@ export interface SeniorSecondarySessionResultData {
   subject: SubjectInfo;
   academic_session?: AcademicSession;
   stream?: StreamInfo;
+  grading_system: GradingSystemInfo;
   first_term_score: number;
   second_term_score: number;
   third_term_score: number;
@@ -2461,33 +2641,508 @@ export interface SeniorSecondarySessionResultData {
 export interface StudentTermResult {
   id: string;
   student: StudentInfo;
-  academic_session?: AcademicSession;
-  term: string;
+  academic_session: AcademicSession;
+  term: 'FIRST' | 'SECOND' | 'THIRD';
+  
+  // Performance metrics
   total_subjects: number;
   subjects_passed: number;
   subjects_failed: number;
   total_score: number;
   average_score: number;
   gpa: number;
+  
+  // Position and class info
   class_position?: number;
   total_students: number;
-  status: string;
-  remarks: string;
+  
+  // Attendance
+  times_opened: number;
+  times_present: number;
+  
+  // Dates
   next_term_begins?: string;
-  subject_results: StandardResult[];
-  comments: ResultComment[];
+  
+  // Remarks
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  // Status
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  is_published: boolean;
+  
+  // Relationships
+  subject_results?: StandardResult[];
+  comments?: ResultComment[];
+  
+  // Meta
+  published_by?: string;
+  published_date?: string;
   created_at: string;
+  updated_at: string;
+}
+
+export interface Stream {
+  id: string;
+  name: string;
+  code: string;
+  education_level: string;
+  stream_type?: string;
+}
+
+export interface SeniorSecondaryResult {
+  education_level: 'SENIOR_SECONDARY';
+  id: string;
+  student: StudentInfo;
+  subject: Subject;
+  exam_session: ExamSession;
+  grading_system: GradingSystem;
+  stream?: Stream;
+  term_report?: string; // UUID reference
+  
+  // Test scores (30 marks CA)
+  first_test_score: number;  // 10 marks
+  second_test_score: number; // 10 marks
+  third_test_score: number;  // 10 marks
+  exam_score: number;        // 70 marks
+  
+  // Calculated scores
+  total_ca_score: number;    // 30 marks
+  total_score: number;       // 100 marks
+  percentage: number;
+  
+  // Grade info
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  
+  // Class statistics
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  
+  // Remarks
+  teacher_remark: string;
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  // Signatures
+  class_teacher_signature_url?: string;
+  head_teacher_signature_url?: string;
+  principal_signature_url?: string;
+  
+  // Status
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  
+  // Tracking
+  entered_by?: string;
+  approved_by?: string;
+  approved_date?: string;
+  published_by?: string;
+  published_date?: string;
+  last_edited_by?: string;
+  last_edited_at?: string;
+  
+  created_at: string;
+  updated_at: string;
+}
+export interface SeniorSecondaryTermReport {
+  id: string;
+  student: StudentInfo;
+  exam_session: ExamSession;
+  stream?: Stream;
+  
+  // Performance metrics
+  total_score: number;
+  average_score: number;
+  overall_grade: string;
+  
+  // Position
+  class_position?: number;
+  total_students: number;
+  
+  // Attendance
+  times_opened: number;
+  times_present: number;
+  
+  // Dates
+  next_term_begins?: string;
+  
+  // Remarks
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  // Status
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  is_published: boolean;
+  
+  // Relationships
+  subject_results: SeniorSecondaryResult[];
+  
+  // Meta
+  published_by?: string;
+  published_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+
+export interface SeniorSecondarySessionResult {
+  id: string;
+  student: StudentInfo;
+  subject: Subject;
+  academic_session: AcademicSession;
+  stream?: Stream;
+  session_report?: string;
+  
+  // Term scores
+  first_term_score: number;
+  second_term_score: number;
+  third_term_score: number;
+  
+  // Session metrics
+  average_for_year: number;
+  obtainable: number;  // 300
+  obtained: number;
+  
+  // Class statistics
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  
+  // Remarks
+  teacher_remark: string;
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  // Signatures
+  class_teacher_signature_url?: string;
+  head_teacher_signature_url?: string;
+  principal_signature_url?: string;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  created_at: string;
+  updated_at: string;
+}
+export interface SeniorSecondarySessionReport {
+  id: string;
+  student: StudentInfo;
+  academic_session: AcademicSession;
+  stream?: Stream;
+  
+  // Term totals
+  term1_total: number;
+  term2_total: number;
+  term3_total: number;
+  
+  // Session metrics
+  taa_score: number;  // Total Annual Average
+  average_for_year: number;
+  obtainable: number;
+  obtained: number;
+  overall_grade: string;
+  
+  // Position
+  class_position?: number;
+  total_students: number;
+  
+  // Remarks
+  teacher_remark: string;
+  head_teacher_remark: string;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  is_published: boolean;
+  
+  // Relationships
+  subject_results: SeniorSecondarySessionResult[];
+  
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JuniorSecondaryResult {
+  education_level: 'JUNIOR_SECONDARY';
+  id: string;
+  student: StudentInfo;
+  subject: Subject;
+  exam_session: ExamSession;
+  grading_system: GradingSystem;
+  term_report?: string;
+  
+  // CA Components (40 marks)
+  continuous_assessment_score: number;  // 15
+  take_home_test_score: number;        // 5
+  practical_score: number;             // 5
+  appearance_score: number;            // 5
+  project_score: number;               // 5
+  note_copying_score: number;          // 5
+  
+  // Exam
+  exam_score: number;  // 60 marks
+  
+  // Calculated
+  ca_total: number;           // 40 marks
+  total_score: number;        // 100 marks
+  ca_percentage: number;
+  exam_percentage: number;
+  total_percentage: number;
+  
+  // Grade
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  
+  // Statistics
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  
+  // Previous term
+  previous_term_score: number;
+  cumulative_score: number;
+  
+  // Remarks
+  teacher_remark: string;
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  // Signatures
+  class_teacher_signature_url?: string;
+  head_teacher_signature_url?: string;
+  principal_signature_url?: string;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  
+  // Tracking
+  entered_by?: string;
+  approved_by?: string;
+  approved_date?: string;
+  published_by?: string;
+  published_date?: string;
+  last_edited_by?: string;
+  last_edited_at?: string;
+  
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JuniorSecondaryTermReport {
+  id: string;
+  student: StudentInfo;
+  exam_session: ExamSession;
+  
+  total_score: number;
+  average_score: number;
+  overall_grade: string;
+  
+  class_position?: number;
+  total_students: number;
+  
+  times_opened: number;
+  times_present: number;
+  
+  next_term_begins?: string;
+  
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  is_published: boolean;
+  
+  subject_results: JuniorSecondaryResult[];
+  
+  published_by?: string;
+  published_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+
+export interface PrimaryResult {
+  education_level: 'PRIMARY';
+  id: string;
+  student: StudentInfo;
+  subject: Subject;
+  exam_session: ExamSession;
+  grading_system: GradingSystem;
+  term_report?: string;
+  
+  // CA Components (40 marks) - Same as Junior Secondary
+  continuous_assessment_score: number;  // 15
+  take_home_test_score: number;        // 5
+  practical_score: number;             // 5
+  appearance_score: number;            // 5
+  project_score: number;               // 5
+  note_copying_score: number;          // 5
+  
+  exam_score: number;  // 60 marks
+  
+  ca_total: number;
+  total_score: number;
+  ca_percentage: number;
+  exam_percentage: number;
+  total_percentage: number;
+  
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  
+  class_average: number;
+  highest_in_class: number;
+  lowest_in_class: number;
+  subject_position?: number;
+  
+  previous_term_score: number;
+  cumulative_score: number;
+  
+  teacher_remark: string;
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  class_teacher_signature_url?: string;
+  head_teacher_signature_url?: string;
+  principal_signature_url?: string;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  
+  entered_by?: string;
+  approved_by?: string;
+  approved_date?: string;
+  published_by?: string;
+  published_date?: string;
+  last_edited_by?: string;
+  last_edited_at?: string;
+  
+  created_at: string;
+  updated_at: string;
+}
+
+
+export interface PrimaryTermReport {
+  id: string;
+  student: StudentInfo;
+  exam_session: ExamSession;
+  
+  total_score: number;
+  average_score: number;
+  overall_grade: string;
+  
+  class_position?: number;
+  total_students: number;
+  
+  times_opened: number;
+  times_present: number;
+  
+  next_term_begins?: string;
+  
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  status: 'DRAFT' | 'APPROVED' | 'PUBLISHED';
+  is_published: boolean;
+  
+  subject_results: PrimaryResult[];
+  
+  published_by?: string;
+  published_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+
+export interface NurseryResult {
+  education_level: 'NURSERY';
+  id: string;
+  student: StudentInfo;
+  subject: SubjectInfo;
+  exam_session: ExamSession;
+  grading_system: GradingSystemInfo;
+  term_report?: string;
+  
+  max_marks_obtainable: number;
+  mark_obtained: number;
+  percentage: number;
+  total_score: number; 
+  subject_position?: number;
+  academic_comment: string;
+  teacher_remark?: string;
+  head_teacher_remark: string
+  class_teacher_remark?: string;
+  grade: string;
+  grade_point?: number;
+  is_passed: boolean;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  
+  entered_by?: string;
+  approved_by?: string;
+  approved_date?: string;
+  published_by?: string;
+  published_date?: string;
+  last_edited_by?: string;
+  last_edited_at?: string;
+  
+  created_at: string;
+  updated_at: string;
+}
+
+
+export interface NurseryTermReport {
+  id: string;
+  student: StudentInfo;
+  exam_session: ExamSession;
+  
+  // Academic metrics
+  total_subjects: number;
+  total_max_marks: number;
+  total_marks_obtained: number;
+  overall_percentage: number;
+  
+  // Position
+  class_position?: number;
+  total_students_in_class: number;
+  
+  // Attendance
+  times_school_opened: number;
+  times_student_present: number;
+  
+  // Physical development
+  physical_development?: 'Excellent' | 'Very Good' | 'Good' | 'Fair' | 'Poor';
+  health?: 'Excellent' | 'Very Good' | 'Good' | 'Fair' | 'Poor';
+  cleanliness?: 'Excellent' | 'Very Good' | 'Good' | 'Fair' | 'Poor';
+  general_conduct?: 'Excellent' | 'Very Good' | 'Good' | 'Fair' | 'Poor';
+  physical_development_comment: string;
+  
+  // Physical measurements
+  height_beginning?: number;
+  height_end?: number;
+  weight_beginning?: number;
+  weight_end?: number;
+  
+  next_term_begins?: string;
+  
+  class_teacher_remark: string;
+  head_teacher_remark: string;
+  
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'PUBLISHED';
+  is_published: boolean;
+  
+  subject_results: NurseryResult[];
+  
+  published_by?: string;
+  published_date?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ResultComment {
   id: string;
-  comment_type: string;
+  comment_type: 'GENERAL' | 'SUBJECT' | 'BEHAVIOR' | 'RECOMMENDATION';
   comment: string;
-  commented_by: {
-    id: string;
-    username: string;
-    full_name: string;
-  };
+  commented_by: string;
   created_at: string;
 }
 

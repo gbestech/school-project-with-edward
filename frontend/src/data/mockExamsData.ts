@@ -181,7 +181,7 @@ export const mockExams: Exam[] = [
       ],
     },
     school: {
-      name: "GOD'S TREASURE SCHOOLS",
+      name: "School Name",
       address: "NO. 54 DAGBANA ROAD JIKWOYI PHASE 3 ABUJA",
       session: '2025/2026 ACADEMIC SESSION',
       term: 'FIRST TERM EXAMINATION',
