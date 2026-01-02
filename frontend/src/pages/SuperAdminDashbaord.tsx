@@ -158,9 +158,11 @@ const SuperAdminDashboard = () => {
   const schoolName = schoolSettings?.school_name || "Al-Qolam Ulmuwaffaq Schools";
   const schoolCode = schoolSettings?.school_code || "SCH";
   const schoolMotto = schoolSettings?.motto || "Excellence in Education";
- const academicYear = schoolSettings?.academicYearStart && schoolSettings?.academicYearEnd 
-  ? `${schoolSettings.academicYearStart}/${schoolSettings.academicYearEnd}` 
-  : "2025/2027";
+ const academicYear = 
+  (schoolSettings?.academicYearStart && schoolSettings?.academicYearEnd)
+    ? `${schoolSettings.academicYearStart}/${schoolSettings.academicYearEnd}`
+    : schoolSettings?.academicYearEnd || "2025/2026";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
       {/* Animated Background Elements */}
@@ -192,7 +194,7 @@ const SuperAdminDashboard = () => {
       `}</style>
 
       {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-6 py-12">
+      <div className="relative z-10 container mx-auto px-6 pt-24 pb-12">
         {/* Header Section */}
         <div className={`text-center mb-16 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10'}`}>
           {/* School Logo */}
